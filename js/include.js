@@ -22,6 +22,15 @@
 (async function loadIncludes() {
   const BASE = (typeof window.__siteGuiaBase === 'string') ? window.__siteGuiaBase : '';
 
+  function resolveInternalUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(url) || url.startsWith('//')) return url;
+    if (!BASE) return url;
+    if (url === BASE || url.startsWith(BASE + '/')) return url;
+    if (url.startsWith('/')) return BASE + url;
+    return url;
+  }
+
   /**
    * Busca o conteúdo de um recurso textual.
    * @param {string} url URL do partial.
@@ -50,7 +59,7 @@
     await Promise.all(nodes.map(async (el) => {
       const url = el.getAttribute('data-include');
       // Prepend BASE para funcionar em GitHub Pages com subpath
-      const resolvedUrl = url.startsWith('http') ? url : BASE + url;
+      const resolvedUrl = resolveInternalUrl(url);
       try {
         const html = await fetchText(resolvedUrl);
         const tmp = document.createElement('div');

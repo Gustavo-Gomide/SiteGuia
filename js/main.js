@@ -1,56 +1,44 @@
 /**
- * @file main.js - Versão Autocorreção GitHub Pages
+ * @file main.js
+ * @summary Orquestrador de carregamento de scripts do site.
+ *
+ * @description
+ * Este módulo permite que páginas HTML incluam apenas um script (main.js) e deleguem
+ * a ele o carregamento dos demais módulos JavaScript do projeto.
+ *
+ * Princípios adotados:
+ * - Carregamento sequencial (ordem determinística) para preservar dependências
+ *   implícitas e a ordem de registro de listeners.
+ * - Guardas contra carregamento duplicado (Set interno e detecção de <script src="...">).
+ * - include.js é carregado por último, garantindo que módulos que escutam
+ *   `includes:loaded` já estejam registrados.
  */
 
 (function () {
     if (window.__siteGuiaMainLoaded) return;
     window.__siteGuiaMainLoaded = true;
 
-    // 1. Identifica a raiz do projeto dinamicamente
+    /**
+     * Detecta o prefixo base do site (funciona em GitHub Pages com subpath).
+     * Ex: /SiteGuia em usuario.github.io/SiteGuia
+     */
     function getSiteRoot() {
-        const hostname = window.location.hostname;
-        const pathname = window.location.pathname;
-
-        // Se estiver no GitHub Pages (gustavo-gomide.github.io/SiteGuia)
-        if (hostname.includes('github.io')) {
-            return '/SiteGuia'; 
+        const path = window.location.pathname;
+        const index = path.indexOf('/html/');
+        if (index !== -1) return path.substring(0, index);
+        // Fora de /html/ — tenta inferir pelo script atual
+        const scripts = document.querySelectorAll('script[src]');
+        for (const s of scripts) {
+            const src = s.getAttribute('src');
+            if (src && src.endsWith('/js/main.js')) {
+                return src.slice(0, src.length - '/js/main.js'.length);
+            }
         }
-        // Se estiver no Localhost (procura a pasta antes de /html/)
-        const index = pathname.indexOf('/html/');
-        if (index !== -1) return pathname.substring(0, index);
-        return ''; 
+        return '';
     }
 
     const BASE = getSiteRoot();
-    window.__siteGuiaBase = BASE;
 
-    // 2. CORREÇÃO DE EMERGÊNCIA (CSS e FAVICON)
-    // Este bloco percorre o HTML e troca "/css/..." por "/SiteGuia/css/..."
-    // Isso acontece antes dos outros scripts carregarem, evitando o 404.
-    const corrigirCaminhosEstaticos = () => {
-        if (!BASE) return; // Não faz nada se estiver no Localhost raiz
-
-        // Corrige todos os links de CSS
-        document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href && href.startsWith('/') && !href.startsWith(BASE)) {
-                link.href = BASE + href;
-            }
-        });
-
-        // Corrige o Favicon
-        document.querySelectorAll('link[rel*="icon"]').forEach(link => {
-            const href = link.getAttribute('href');
-            if (href && href.startsWith('/') && !href.startsWith(BASE)) {
-                link.href = BASE + href;
-            }
-        });
-    };
-
-    // Executa a correção de caminhos imediatamente
-    corrigirCaminhosEstaticos();
-
-    // 3. CARREGAMENTO SEQUENCIAL DOS MÓDULOS
     const SCRIPTS_IN_ORDER = [
         '/js/svg_registry.js',
         '/js/base.js',
@@ -65,25 +53,41 @@
         '/js/include.js'
     ].map(p => BASE + p);
 
-    function loadScript(src) {
-        return new Promise((resolve) => {
+    // Expõe o BASE para outros módulos carregados depois
+    window.__siteGuiaBase = BASE;
+
+    const loaded = new Set();
+
+    function alreadyPresent(src) {
+        return Boolean(document.querySelector(`script[src="${src}"]`));
+    }
+
+    function loadScriptSequential(src) {
+        return new Promise((resolve, reject) => {
+            if (loaded.has(src) || alreadyPresent(src)) {
+                loaded.add(src);
+                resolve();
+                return;
+            }
+
             const s = document.createElement('script');
             s.src = src;
             s.async = false;
-            s.onload = resolve;
-            s.onerror = () => {
-                console.error('[main.js] Erro crítico no módulo:', src);
-                resolve(); // Não trava a fila se um script falhar
-            };
-            document.head.appendChild(s);
+            s.setAttribute('data-loaded-by', 'main.js');
+
+            s.onload = () => { loaded.add(src); resolve(); };
+            s.onerror = () => reject(new Error('Falha ao carregar: ' + src));
+
+            (document.head || document.documentElement).appendChild(s);
         });
     }
 
     (async () => {
         for (const src of SCRIPTS_IN_ORDER) {
-            await loadScript(src);
+            await loadScriptSequential(src);
         }
-        // Avisa que a base está pronta para os builders (nav, search)
-        window.dispatchEvent(new CustomEvent('siteBaseReady', { detail: { base: BASE } }));
-    })();
+    })().catch((err) => {
+        console.error('[main.js] erro ao carregar scripts:', err);
+    });
 })();
+

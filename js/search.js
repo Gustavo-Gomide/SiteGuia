@@ -24,6 +24,16 @@
     const NAV_URL = BASE + '/js/nav_data.json';
     const MAX_RESULTS = 10;
 
+    function resolveInternalHref(href) {
+        if (!href || typeof href !== 'string') return href;
+        if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return href;
+        if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) return href;
+        if (!BASE) return href;
+        if (href === BASE || href.startsWith(BASE + '/')) return href;
+        if (href.startsWith('/')) return BASE + href;
+        return href;
+    }
+
     /** @type {Array<{label:string,href:string,breadcrumb:string,_norm:string}>} */
     let index = [];
 
@@ -230,7 +240,7 @@
         function navigate(href) {
             closeDropdown();
             input.value = '';
-            window.location.href = BASE + href;
+            window.location.href = resolveInternalHref(href);
         }
 
         function escHtml(str) {

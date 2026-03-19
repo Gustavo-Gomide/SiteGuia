@@ -19,6 +19,18 @@
  */
 
 (function() {
+  const BASE = (typeof window.__siteGuiaBase === 'string') ? window.__siteGuiaBase : '';
+
+  function resolveInternalHref(href) {
+    if (!href || typeof href !== 'string') return href;
+    if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return href;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) return href;
+    if (!BASE) return href;
+    if (href === BASE || href.startsWith(BASE + '/')) return href;
+    if (href.startsWith('/')) return BASE + href;
+    return href;
+  }
+
   /**
    * @typedef {Object} NavItem
    * @property {string} label Texto exibido.
@@ -112,7 +124,7 @@
       spanPos.innerHTML = iconAfter;
       a.appendChild(spanPos);
     }
-    if (item.href) a.href = item.href;
+    if (item.href) a.href = resolveInternalHref(item.href);
     if (item.target) a.target = item.target;
     return a;
   }
