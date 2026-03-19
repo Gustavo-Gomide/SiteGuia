@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="COBOL em Terminal e CLI: GnuCOBOL em Linux, leitura de argumentos via ACCEPT, processamento de arquivos de texto, pipe UNIX, relatórios para SYSOUT e scripting corporativo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Terminal e CLI</h1>
+          <p>COBOL moderno com GnuCOBOL roda perfeitamente em Linux como programa de linha de comando — lê argumentos via <code>ACCEPT ... FROM COMMAND-LINE</code>, processa arquivos CSV, lê de STDIN e escreve para STDOUT. É a forma mais acessível de aprender COBOL sem mainframe.</p>
+        </div>
+        <p class="intro-highlight">
+          No ambiente mainframe, todo "output" vai para <strong>SYSOUT</strong> — a saída padrão capturada pelo JES (Job Entry Subsystem) e exibida no JES spool. Em GnuCOBOL no Linux, <code>DISPLAY</code> escreve no stdout e <code>ACCEPT</code> lê do stdin, mapeando para o comportamento UNIX esperado.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hello-args">Argumentos de Linha de Comando</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ACCEPT FROM COMMAND-LINE — ler argumentos</div>
+          <pre class="example">       IDENTIFICATION DIVISION.
+       PROGRAM-ID. SAUDACLI.
+
+       WORKING-STORAGE SECTION.
+         01 WS-ARG1          PIC X(50).
+         01 WS-ARG2          PIC X(50).
+         01 WS-ARG-COUNT     PIC 9(2).
+         01 WS-AMBIENTE      PIC X(20).
+
+       PROCEDURE DIVISION.
+<span class="com">      *> ── Número de argumentos ─────────────────────────────────</span>
+           ACCEPT WS-ARG-COUNT FROM ARGUMENT-NUMBER.
+
+           IF WS-ARG-COUNT < 1
+               DISPLAY 'Uso: saudacli &lt;nome&gt; [saudacao]'
+               STOP RUN
+           END-IF.
+
+<span class="com">      *> ── Ler argumentos por posição ───────────────────────────</span>
+           MOVE 1 TO WS-ARG-COUNT.
+           ACCEPT WS-ARG1 FROM ARGUMENT-VALUE.
+
+           MOVE 2 TO WS-ARG-COUNT.
+           ACCEPT WS-ARG2 FROM ARGUMENT-VALUE.
+
+           IF WS-ARG2 = SPACES
+               MOVE 'Olá' TO WS-ARG2
+           END-IF.
+
+           DISPLAY WS-ARG2 ', ' FUNCTION TRIM(WS-ARG1) '!'
+
+<span class="com">      *> ── Ler variável de ambiente ─────────────────────────────</span>
+           ACCEPT WS-AMBIENTE FROM ENVIRONMENT 'LANG'.
+           DISPLAY 'LANG=' WS-AMBIENTE.
+
+           STOP RUN.</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Compilar e executar</div>
+          <pre class="example"><span class="com"># Compilar</span>
+cobc -x -free saudacli.cob -o saudacli
+
+<span class="com"># Executar</span>
+./saudacli "Maria" "Bom dia"
+<span class="com"># → Bom dia, Maria!</span>
+
+./saudacli "João"
+<span class="com"># → Olá, João!</span>
+
+<span class="com"># Código de retorno para shell scripts</span>
+echo $?    <span class="com"># 0 = sucesso</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="stdin-stdout">Leitura de STDIN e Escrita para STDOUT</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Processar linhas de STDIN — integração com pipe UNIX</div>
+          <pre class="example">       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CONTAPAL.
+
+       WORKING-STORAGE SECTION.
+         01 WS-LINHA          PIC X(200).
+         01 WS-TOTAL-LINHAS   PIC 9(8) VALUE 0.
+         01 WS-TOTAL-PALAVRAS PIC 9(9) VALUE 0.
+         01 WS-TOTAL-CHARS    PIC 9(9) VALUE 0.
+         01 WS-EOF            PIC X VALUE 'N'.
+           88 FIM-STDIN       VALUE 'S'.
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+         FILE-CONTROL.
+           SELECT STDIN-FILE ASSIGN TO STDIN
+               ORGANIZATION IS LINE SEQUENTIAL
+               FILE STATUS IS WS-FS-STDIN.
+
+       DATA DIVISION.
+       FILE SECTION.
+         FD STDIN-FILE.
+         01 STDIN-RECORD PIC X(200).
+
+       WORKING-STORAGE SECTION.
+         01 WS-FS-STDIN PIC XX.
+         01 WS-POS      PIC 9(3).
+         01 WS-CHAR     PIC X.
+         01 WS-EM-PAL   PIC X VALUE 'N'.
+
+       PROCEDURE DIVISION.
+           OPEN INPUT STDIN-FILE.
+           PERFORM UNTIL FIM-STDIN
+               READ STDIN-FILE
+                   AT END MOVE 'S' TO WS-EOF
+                   NOT AT END
+                       ADD 1 TO WS-TOTAL-LINHAS
+                       MOVE FUNCTION LENGTH(
+                           FUNCTION TRIM(STDIN-RECORD)) TO WS-POS
+                       ADD WS-POS TO WS-TOTAL-CHARS
+                       PERFORM CONTAR-PALAVRAS
+               END-READ
+           END-PERFORM.
+           CLOSE STDIN-FILE.
+           DISPLAY WS-TOTAL-LINHAS ' linhas'
+           DISPLAY WS-TOTAL-PALAVRAS ' palavras'
+           DISPLAY WS-TOTAL-CHARS ' caracteres'.
+           STOP RUN.
+
+       CONTAR-PALAVRAS.
+           MOVE 'N' TO WS-EM-PAL.
+           PERFORM VARYING WS-POS FROM 1 BY 1
+               UNTIL WS-POS > FUNCTION LENGTH(STDIN-RECORD)
+               MOVE STDIN-RECORD(WS-POS:1) TO WS-CHAR
+               EVALUATE TRUE
+                   WHEN WS-CHAR = SPACE AND WS-EM-PAL = 'S'
+                       MOVE 'N' TO WS-EM-PAL
+                   WHEN WS-CHAR NOT EQUAL SPACE AND WS-EM-PAL = 'N'
+                       MOVE 'S' TO WS-EM-PAL
+                       ADD 1 TO WS-TOTAL-PALAVRAS
+               END-EVALUATE
+           END-PERFORM.</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Integração com pipe UNIX</div>
+          <pre class="example"><span class="com"># Contar palavras em um arquivo</span>
+cat /etc/hosts | ./contapal
+<span class="com"># → 22 linhas</span>
+<span class="com"># → 65 palavras</span>
+<span class="com"># → 430 caracteres</span>
+
+<span class="com"># Usar em pipeline com outros comandos</span>
+grep -i 'error' aplicacao.log | ./contapal
+
+<span class="com"># Comparar com wc nativo</span>
+wc /etc/hosts</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="relatorio">Relatório Formatado — REPORT WRITER</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Relatório de vendas com paginação e totais</div>
+          <pre class="example">       IDENTIFICATION DIVISION.
+       PROGRAM-ID. RELVENDAS.
+
+       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+         FILE-CONTROL.
+           SELECT ARQ-VENDAS ASSIGN TO 'vendas.dat'
+               ORGANIZATION IS LINE SEQUENTIAL.
+           SELECT ARQ-RELAT ASSIGN TO 'relatorio.txt'
+               ORGANIZATION IS LINE SEQUENTIAL.
+
+       DATA DIVISION.
+       FILE SECTION.
+         FD ARQ-VENDAS.
+         01 REG-VENDA.
+           05 RV-DATA      PIC 9(8).
+           05 RV-VENDEDOR  PIC X(20).
+           05 RV-PRODUTO   PIC X(30).
+           05 RV-QTDE      PIC 9(5).
+           05 RV-PRECO     PIC 9(7)V99.
+
+         FD ARQ-RELAT.
+         01 REG-RELAT      PIC X(133).
+
+       WORKING-STORAGE SECTION.
+         01 WS-TOTAL-GERAL  PIC 9(12)V99 COMP-3.
+         01 WS-TOTAL-PAGI   PIC 9(12)V99 COMP-3.
+         01 WS-LINHA-CORP   PIC 9(3).
+         01 WS-PAGINA       PIC 9(4).
+         01 WS-EOF          PIC X VALUE 'N'.
+
+         01 HD-CABECALHO.
+           05 FILLER        PIC X(20) VALUE 'RELATORIO DE VENDAS'.
+           05 FILLER        PIC X(40) VALUE SPACES.
+           05 FILLER        PIC X(7) VALUE 'PAGINA '.
+           05 HD-PAG        PIC ZZZ9.
+
+         01 HD-COLUNAS.
+           05 FILLER PIC X(10) VALUE 'DATA'.
+           05 FILLER PIC X(22) VALUE 'VENDEDOR'.
+           05 FILLER PIC X(32) VALUE 'PRODUTO'.
+           05 FILLER PIC X(7)  VALUE 'QTDE'.
+           05 FILLER PIC X(14) VALUE 'VALOR'.
+           05 FILLER PIC X(2)  VALUE 'ST'.
+
+         01 DL-DETALHE.
+           05 DL-DATA       PIC 9999/99/99.
+           05 FILLER        PIC X VALUE SPACE.
+           05 DL-VENDEDOR   PIC X(20).
+           05 DL-PRODUTO    PIC X(30).
+           05 DL-QTDE       PIC ZZ,ZZ9.
+           05 FILLER        PIC X VALUE SPACE.
+           05 DL-VALOR      PIC ZZZ,ZZZ,ZZ9.99.
+
+       PROCEDURE DIVISION.
+       0000-INICIO.
+           OPEN INPUT ARQ-VENDAS.
+           OPEN OUTPUT ARQ-RELAT.
+           MOVE 1 TO WS-PAGINA.
+           MOVE 0 TO WS-LINHA-CORP WS-TOTAL-GERAL.
+           PERFORM IMPRIMIR-CABECALHO.
+
+           PERFORM UNTIL WS-EOF = 'S'
+               READ ARQ-VENDAS
+                   AT END MOVE 'S' TO WS-EOF
+                   NOT AT END
+                       PERFORM PROCESSAR-VENDA
+               END-READ
+           END-PERFORM.
+
+           PERFORM IMPRIMIR-TOTAIS.
+           CLOSE ARQ-VENDAS ARQ-RELAT.
+           STOP RUN.
+
+       PROCESSAR-VENDA.
+           IF WS-LINHA-CORP > 55
+               PERFORM IMPRIMIR-CABECALHO
+           END-IF.
+           MOVE RV-DATA     TO DL-DATA.
+           MOVE RV-VENDEDOR TO DL-VENDEDOR.
+           MOVE RV-PRODUTO  TO DL-PRODUTO.
+           MOVE RV-QTDE     TO DL-QTDE.
+           COMPUTE DL-VALOR = RV-QTDE * RV-PRECO.
+           ADD DL-VALOR TO WS-TOTAL-GERAL.
+           WRITE REG-RELAT FROM DL-DETALHE.
+           ADD 1 TO WS-LINHA-CORP.
+
+       IMPRIMIR-CABECALHO.
+           MOVE WS-PAGINA TO HD-PAG.
+           WRITE REG-RELAT FROM HD-CABECALHO AFTER ADVANCING PAGE.
+           WRITE REG-RELAT FROM HD-COLUNAS.
+           MOVE 0 TO WS-LINHA-CORP.
+           ADD 1 TO WS-PAGINA.
+
+       IMPRIMIR-TOTAIS.
+           WRITE REG-RELAT FROM SPACES.
+           MOVE FUNCTION TRIM('Total Geral: R$ ') TO REG-RELAT.
+           WRITE REG-RELAT.
+           DISPLAY 'Relatório gerado: relatorio.txt'.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GnuCOBOL. <strong>GnuCOBOL FAQ — ACCEPT/DISPLAY and STDIN/STDOUT</strong>. Disponível em: &lt;https://gnucobol.sourceforge.io/faq.html&gt;. Acesso em: 2025.</li>
+            <li>GnuCOBOL. <strong>GnuCOBOL Programmer's Guide — I/O and File Handling</strong>. Disponível em: &lt;https://gnucobol.sourceforge.io/guides.html&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>Enterprise COBOL — ACCEPT and DISPLAY Statements</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/cobol-zos/6.4&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="sistemas_corporativos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Sistemas Corporativos</a></li>
+          <li><a href="batch_mainframe.html"><span data-svg="seta-direita" aria-hidden="true"></span> Batch e Mainframe</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Uma peculiaridade do COBOL no GnuCOBOL: <code>ACCEPT WS-VAR FROM COMMAND-LINE</code> lê o próximo argumento da linha de comando a cada chamada — o ponteiro avança automaticamente. Não há função <code>argv(n)</code> explícita; é necessário usar <code>MOVE n TO WS-ARG-NUMBER</code> seguido de <code>ACCEPT ... FROM ARGUMENT-VALUE</code> para ler um argumento específico por posição.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

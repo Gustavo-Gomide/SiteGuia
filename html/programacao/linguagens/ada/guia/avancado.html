@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ada avançado: OOP com tagged types, tasks e concorrência, generics, contratos SPARK e tempo real." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Ada Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Ada &mdash; Avançado</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Ada Avançado</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>OOP, Concorrência, Generics e Verificação Formal</h1>
+          <p>Os mecanismos que tornam Ada a escolha para sistemas onde a falha não é uma opção.</p>
+        </div>
+        <p class="intro-highlight">
+          Ada vai muito além de um sistema de tipos robusto. Seu modelo de
+          <strong>objetos com tagged types</strong>, a concorrência unificada por
+          <strong>tasks e protected objects</strong>, os <strong>generics</strong> com restrições
+          formais de gênero e o subconjunto <strong>SPARK</strong> para verificação matemática
+          formam um conjunto de ferramentas sem paralelo em engenharia de software crítico.
+          Esta página cobre os tópicos que separam programadores Ada básicos dos profission ais
+          que escrevem software para aviões e satélites.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- OOP: TAGGED TYPES -->
+      <section>
+        <h2 id="tagged-types" class="section-title">1. Orientação a Objetos com Tagged Types</h2>
+        <p>
+          Ada não tem "classes" como Java ou C++. Em vez disso, usa <strong>tagged types</strong>:
+          records que podem ser estendidos por herança e ter operações primitivas (métodos virtuais).
+          Ada 95 foi a primeira linguagem ISO com OOP completo padronizado.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; hierarquia de tipos tagged</div>
+          <pre class="example"><span class="kw">package</span> Animais <span class="kw">is</span>
+
+   <span class="com">-- Tipo base abstrato (como classe abstrata Java)</span>
+   <span class="kw">type</span> <span class="tp">Animal</span> <span class="kw">is abstract tagged record</span>
+      Nome : <span class="kw">access</span> <span class="kw">constant</span> String;
+      Peso : Float := <span class="num">0.0</span>;
+   <span class="kw">end record</span>;
+
+   <span class="com">-- Operação primitiva abstrata (método virtual puro)</span>
+   <span class="kw">procedure</span> <span class="fn">Emitir_Som</span> (A : <span class="tp">Animal</span>) <span class="kw">is abstract</span>;
+   <span class="kw">function</span>  <span class="fn">Descricao</span>  (A : <span class="tp">Animal</span>) <span class="kw">return</span> String <span class="kw">is abstract</span>;
+
+   <span class="com">-- Subtipo derivado: herda + adiciona campos</span>
+   <span class="kw">type</span> <span class="tp">Cao</span> <span class="kw">is new</span> <span class="tp">Animal</span> <span class="kw">with record</span>
+      Raca : String (<span class="num">1</span> .. <span class="num">30</span>);
+   <span class="kw">end record</span>;
+
+   <span class="kw">overriding</span>
+   <span class="kw">procedure</span> <span class="fn">Emitir_Som</span> (A : <span class="tp">Cao</span>);
+   <span class="kw">overriding</span>
+   <span class="kw">function</span>  <span class="fn">Descricao</span>  (A : <span class="tp">Cao</span>) <span class="kw">return</span> String;
+
+   <span class="kw">type</span> <span class="tp">Gato</span> <span class="kw">is new</span> <span class="tp">Animal</span> <span class="kw">with null record</span>;
+
+   <span class="kw">overriding</span>
+   <span class="kw">procedure</span> <span class="fn">Emitir_Som</span> (A : <span class="tp">Gato</span>);
+   <span class="kw">overriding</span>
+   <span class="kw">function</span>  <span class="fn">Descricao</span>  (A : <span class="tp">Gato</span>) <span class="kw">return</span> String;
+
+<span class="kw">end</span> Animais;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; dispatch dinâmico via class-wide types</div>
+          <pre class="example"><span class="kw">with</span> Animais; <span class="kw">use</span> Animais;
+<span class="kw">with</span> Ada.Text_IO; <span class="kw">use</span> Ada.Text_IO;
+
+<span class="kw">procedure</span> <span class="fn">OOP_Demo</span> <span class="kw">is</span>
+   <span class="com">-- Animal'Class é o "class-wide type" — referência polimórfica</span>
+   <span class="kw">type</span> <span class="tp">Animal_Ref</span> <span class="kw">is access all</span> <span class="tp">Animal</span><span class="kw">'Class</span>;
+
+   Zoo : <span class="kw">array</span> (<span class="num">1</span> .. <span class="num">3</span>) <span class="kw">of</span> <span class="tp">Animal_Ref</span>;
+<span class="kw">begin</span>
+   Zoo (<span class="num">1</span>) := <span class="kw">new</span> <span class="tp">Cao</span>  '(Nome => <span class="kw">new</span> String'(<span class="str">"Rex"</span>), Peso => <span class="num">30.0</span>, Raca => (others => ' '));
+   Zoo (<span class="num">2</span>) := <span class="kw">new</span> <span class="tp">Gato</span> '(Nome => <span class="kw">new</span> String'(<span class="str">"Mimi"</span>), Peso => <span class="num">4.5</span>);
+
+   <span class="kw">for</span> I <span class="kw">in</span> Zoo<span class="kw">'Range</span> <span class="kw">loop</span>
+      <span class="kw">if</span> Zoo (I) /= <span class="kw">null then</span>
+         Emitir_Som (Zoo (I)<span class="kw">.all</span>);  <span class="com">-- dispatch dinâmico!</span>
+         Put_Line   (Descricao (Zoo (I)<span class="kw">.all</span>));
+      <span class="kw">end if</span>;
+   <span class="kw">end loop</span>;
+<span class="kw">end</span> OOP_Demo;</pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            O marcador <code class="code-inline">overriding</code> é um contrato com o compilador:
+            ele garante que você <em>está</em> sobrescrevendo uma operação da classe pai.
+            Em C++, esquecer <code class="code-inline">virtual</code> ou usar o nome errado
+            introduz bugs silenciosos; Ada detecta isso em compilação.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- TASKS E CONCORRÊNCIA -->
+      <section>
+        <h2 id="tasks" class="section-title">2. Tasks e Concorrência Nativa</h2>
+        <p>
+          Ada tem concorrência como parte da <em>linguagem</em>, não de uma biblioteca.
+          <strong>Tasks</strong> são threads de execução declaradas como tipos ou objetos.
+          <strong>Protected objects</strong> são monitores: objetos com dados compartilhados
+          protegidos por mutexes gerenciados implicitamente.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; task simples com rendezvous</div>
+          <pre class="example"><span class="kw">with</span> Ada.Text_IO; <span class="kw">use</span> Ada.Text_IO;
+
+<span class="kw">procedure</span> <span class="fn">Concorrencia_Demo</span> <span class="kw">is</span>
+
+   <span class="com">-- Declaração de task: especificação com "entries" (pontos de sincronização)</span>
+   <span class="kw">task</span> <span class="tp">Trabalhador</span> <span class="kw">is</span>
+      <span class="kw">entry</span> <span class="fn">Iniciar</span> (Tarefa : String);
+      <span class="kw">entry</span> <span class="fn">Parar</span>;
+   <span class="kw">end</span> Trabalhador;
+
+   <span class="kw">task body</span> Trabalhador <span class="kw">is</span>
+      Trabalho_Atual : String (<span class="num">1</span> .. <span class="num">50</span>);
+   <span class="kw">begin</span>
+      <span class="kw">loop</span>
+         <span class="kw">select</span>
+            <span class="kw">accept</span> Iniciar (Tarefa : String) <span class="kw">do</span>
+               Trabalho_Atual (<span class="num">1</span> .. Tarefa'Length) := Tarefa;
+               Put_Line (<span class="str">"Iniciando: "</span> &amp; Tarefa);
+            <span class="kw">end</span> Iniciar;
+         <span class="kw">or</span>
+            <span class="kw">accept</span> Parar;
+            Put_Line (<span class="str">"Trabalhador parando."</span>);
+            <span class="kw">exit</span>;
+         <span class="kw">end select</span>;
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Trabalhador;
+
+<span class="kw">begin</span>
+   Trabalhador.Iniciar (<span class="str">"Processar relatório"</span>);  <span class="com">-- rendezvous (sincronização)</span>
+   Trabalhador.Parar;
+<span class="kw">end</span> Concorrencia_Demo;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; protected object (monitor seguro)</div>
+          <pre class="example"><span class="kw">protected</span> Contador_Global <span class="kw">is</span>
+   <span class="kw">procedure</span> <span class="fn">Incrementar</span>;
+   <span class="kw">function</span>  <span class="fn">Valor</span> <span class="kw">return</span> Natural;
+   <span class="kw">entry</span>     <span class="fn">Aguardar_Minimo</span> (Min : Natural);
+<span class="kw">private</span>
+   V : Natural := <span class="num">0</span>;
+<span class="kw">end</span> Contador_Global;
+
+<span class="kw">protected body</span> Contador_Global <span class="kw">is</span>
+   <span class="kw">procedure</span> <span class="fn">Incrementar</span> <span class="kw">is</span>
+   <span class="kw">begin</span>  V := V + <span class="num">1</span>;  <span class="kw">end</span> Incrementar;
+
+   <span class="kw">function</span> <span class="fn">Valor</span> <span class="kw">return</span> Natural <span class="kw">is</span>
+   <span class="kw">begin</span>  <span class="kw">return</span> V;  <span class="kw">end</span> Valor;
+
+   <span class="com">-- entry com "barrier" — a task espera até a condição ser verdadeira</span>
+   <span class="kw">entry</span> <span class="fn">Aguardar_Minimo</span> (Min : Natural) <span class="kw">when</span> V >= Min <span class="kw">is</span>
+   <span class="kw">begin</span>  <span class="kw">null</span>;  <span class="kw">end</span> Aguardar_Minimo;
+<span class="kw">end</span> Contador_Global;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- GENERICS -->
+      <section>
+        <h2 id="generics" class="section-title">3. Generics (Programação Genérica)</h2>
+        <p>
+          Os <strong>generics</strong> de Ada são análogos aos templates de C++, mas com
+          verificação de tipo completa na instanciação: o compilador verifica os parâmetros
+          formais antes de instanciar. Isso evita os famosos erros "template instantiation"
+          de C++ com mensagens incompreensíveis.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; generic stack (pilha genérica)</div>
+          <pre class="example"><span class="kw">generic</span>
+   <span class="tp">Capacidade</span> : <span class="kw">in</span> Positive;          <span class="com">-- parâmetro genérico de valor</span>
+   <span class="kw">type</span> <span class="tp">Elemento</span> (<span class="kw">&lt;&gt;</span>) <span class="kw">is private</span>;   <span class="com">-- parâmetro genérico de tipo (&lt;&gt; = indefinido = qualquer tipo)</span>
+<span class="kw">package</span> <span class="tp">Pilha_Generica</span> <span class="kw">is</span>
+
+   <span class="kw">type</span> <span class="tp">Pilha</span> <span class="kw">is limited private</span>;
+
+   <span class="kw">procedure</span> <span class="fn">Empilhar</span>  (P : <span class="kw">in out</span> <span class="tp">Pilha</span>; Item : <span class="tp">Elemento</span>);
+   <span class="kw">procedure</span> <span class="fn">Desempilhar</span> (P : <span class="kw">in out</span> <span class="tp">Pilha</span>; Item : <span class="kw">out</span> <span class="tp">Elemento</span>);
+   <span class="kw">function</span>  <span class="fn">Esta_Vazia</span>  (P : <span class="tp">Pilha</span>) <span class="kw">return</span> Boolean;
+   Pilha_Cheia : <span class="kw">exception</span>;
+   Pilha_Vazia : <span class="kw">exception</span>;
+
+<span class="kw">private</span>
+   <span class="kw">type</span> <span class="tp">Indice</span> <span class="kw">is range</span> <span class="num">0</span> .. <span class="tp">Capacidade</span>;
+   <span class="kw">type</span> <span class="tp">Vetor</span>  <span class="kw">is array</span> (<span class="num">1</span> .. <span class="tp">Capacidade</span>) <span class="kw">of</span> <span class="tp">Elemento</span>;
+   <span class="kw">type</span> <span class="tp">Pilha</span>  <span class="kw">is record</span>
+      Dados : <span class="tp">Vetor</span>;
+      Topo  : <span class="tp">Indice</span> := <span class="num">0</span>;
+   <span class="kw">end record</span>;
+<span class="kw">end</span> Pilha_Generica;
+
+<span class="com">-- Instanciação: cria tipos concretos</span>
+<span class="kw">package</span> <span class="tp">Pilha_Inteiros</span>  <span class="kw">is new</span> Pilha_Generica (Capacidade => <span class="num">100</span>, Elemento => Integer);
+<span class="kw">package</span> <span class="tp">Pilha_Strings</span>   <span class="kw">is new</span> Pilha_Generica (Capacidade => <span class="num">50</span>,  Elemento => String);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SPARK -->
+      <section>
+        <h2 id="spark" class="section-title">4. SPARK Ada &mdash; Verificação Formal</h2>
+        <p>
+          <strong>SPARK</strong> é um subconjunto de Ada projetado para verificação formal.
+          Com a ferrramenta <strong>GNATprove</strong>, é possível provar matematicamente que
+          um programa SPARK não tem buffer overflows, divisões por zero, acesso a ponteiros nulos,
+          nem violações de pré/pós-condições — sem executar o código.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada spark &mdash; contratos formais com Pre/Post</div>
+          <pre class="example"><span class="kw">package</span> Conta_Bancaria
+   <span class="kw">with</span> SPARK_Mode => On
+<span class="kw">is</span>
+   <span class="kw">type</span> <span class="tp">Saldo_T</span> <span class="kw">is range</span> <span class="num">0</span> .. <span class="num">1_000_000_00</span>;  <span class="com">-- em centavos</span>
+
+   <span class="kw">type</span> <span class="tp">Conta</span> <span class="kw">is private</span>;
+
+   <span class="kw">function</span> <span class="fn">Saldo</span> (C : <span class="tp">Conta</span>) <span class="kw">return</span> <span class="tp">Saldo_T</span>;
+
+   <span class="kw">procedure</span> <span class="fn">Depositar</span> (C : <span class="kw">in out</span> <span class="tp">Conta</span>; Valor : <span class="tp">Saldo_T</span>)
+      <span class="kw">with</span>
+         Pre  => Valor > <span class="num">0</span>,
+         Post => Saldo (C) = Saldo (C)<span class="kw">'Old</span> + Valor;
+         <span class="com">-- Pós-condição: saldo aumentou exatamente pelo valor depositado</span>
+
+   <span class="kw">procedure</span> <span class="fn">Sacar</span> (C : <span class="kw">in out</span> <span class="tp">Conta</span>; Valor : <span class="tp">Saldo_T</span>)
+      <span class="kw">with</span>
+         Pre  => Valor > <span class="num">0</span> <span class="kw">and</span> Saldo (C) >= Valor,
+         Post => Saldo (C) = Saldo (C)<span class="kw">'Old</span> - Valor;
+         <span class="com">-- GNATprove PROVA que saldo nunca fica negativo</span>
+
+<span class="kw">private</span>
+   <span class="kw">type</span> <span class="tp">Conta</span> <span class="kw">is record</span>
+      Saldo_Interno : <span class="tp">Saldo_T</span> := <span class="num">0</span>;
+   <span class="kw">end record</span>;
+<span class="kw">end</span> Conta_Bancaria;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">terminal &mdash; executar GNATprove</div>
+          <pre class="example"><span class="com"># Provar ausência de erros em tempo de execução (RTE)</span>
+gnatprove -P meu_projeto.gpr --mode=prove --level=2
+
+<span class="com"># Saída esperada para código correto:</span>
+<span class="com"># conta_bancaria.adb:12: info: precondition proved</span>
+<span class="com"># conta_bancaria.adb:15: info: postcondition proved</span>
+<span class="com"># conta_bancaria.adb:22: info: overflow check proved</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Nível Proof</h3>
+            <p>
+              <code>--mode=prove</code>: verifica pré/pós-condições formalmente.
+              Exige que cada subprograma tenha contratos completos. Usado no
+              desenvolvimento de sistemas DO-178C DAL-A (mais crítico).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Nível Flow</h3>
+            <p>
+              <code>--mode=flow</code>: analisa fluxo de dados — detecta variáveis
+              não inicializadas, efeitos colaterais não declarados e dependências
+              incorretas. Mais rápido que prova completa.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>SPARK vs Rust</h3>
+            <p>
+              Rust garante segurança de memória estaticamente. SPARK vai além:
+              prova propriedades funcionais arbitrárias (cálculos corretos,
+              saldos nunca negativos, buffers nunca fora dos limites).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Casos Industriais</h3>
+            <p>
+              SPARK é usado no kernel do sistema operacional da <strong>Muen</strong>
+              (separation kernel certificado), no <strong>MULTOS</strong> (smartcards)
+              e em componentes do sistema ATC britânico (<abbr title="National Air Traffic Services">NATS</abbr>).
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- TEMPO REAL: RAVENSCAR -->
+      <section>
+        <h2 id="tempo-real" class="section-title">5. Perfil Ravenscar &mdash; Tempo Real Certificável</h2>
+        <p>
+          O <strong>Ravenscar Profile</strong> é um subconjunto das tasks Ada projetado para
+          sistemas de tempo real estrito (<abbr title="Hard Real-Time">HRT</abbr>) onde é
+          necessário calcular o <abbr title="Worst Case Execution Time">WCET</abbr>. Ele restringe algumas
+          construções de concorrência para tornar o comportamento temporal analisável.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; ativação periódica com Ravenscar</div>
+          <pre class="example"><span class="kw">pragma</span> Profile (Ravenscar);   <span class="com">-- ativa restrições do perfil</span>
+
+<span class="kw">with</span> Ada.Real_Time; <span class="kw">use</span> Ada.Real_Time;
+<span class="kw">with</span> Ada.Text_IO;
+
+<span class="kw">procedure</span> <span class="fn">Sistema_Tempo_Real</span> <span class="kw">is</span>
+
+   <span class="com">-- Task periódica com period fixo — padrão Ravenscar</span>
+   <span class="kw">task</span> <span class="tp">Sensor_Task</span>
+      <span class="kw">with</span> Priority => <span class="num">10</span>;  <span class="com">-- priority ceiling</span>
+
+   <span class="kw">task body</span> Sensor_Task <span class="kw">is</span>
+      Proximo_Ciclo : Time     := Clock;
+      Periodo       : <span class="kw">constant</span> Time_Span := Milliseconds (<span class="num">100</span>);  <span class="com">-- 100ms</span>
+   <span class="kw">begin</span>
+      <span class="kw">loop</span>
+         Proximo_Ciclo := Proximo_Ciclo + Periodo;
+         <span class="kw">delay until</span> Proximo_Ciclo;  <span class="com">-- dormir até próximo ciclo</span>
+         Ada.Text_IO.Put_Line (<span class="str">"Lendo sensor..."</span>);
+         <span class="com">-- processar leitura</span>
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Sensor_Task;
+
+<span class="kw">begin</span>
+   <span class="kw">null</span>;  <span class="com">-- tasks iniciam automaticamente</span>
+<span class="kw">end</span> Sistema_Tempo_Real;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MCCORMICK, John; CHAPIN, Jerome. <strong>Building High Integrity Applications with SPARK</strong>. Cambridge University Press, 2015.</li>
+            <li>BURNS, Alan; WELLINGS, Andy. <strong>Concurrent and Real-Time Programming in Ada</strong>. Cambridge University Press, 2007.</li>
+            <li>ADACORE. <strong>SPARK 2014 Reference Manual</strong>. Disponível em: <a href="https://docs.adacore.com/spark2014-docs/html/lrm/" target="_blank" rel="noopener">docs.adacore.com</a>. Acesso em: 2026.</li>
+            <li>ROSEN, Jean-Pierre. <strong>Ada 95: The Lovelace Tutorial</strong>. Springer, 1995.</li>
+            <li>GONZALEZ-HARBOUR, M. et al. <strong>Ravenscar: a minimal tasking profile for high-integrity real-time programs</strong>. Ada Europe Workshop, 1997.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/linguagens/ada/guia/ecossistema_tooling.html" class="link-card">
+            <span data-svg="seta-direita" aria-hidden="true"></span>Ecossistema Ada &mdash; GNAT, Alire, GPS, GNATprove
+          </a></li>
+          <li><a href="/html/programacao/linguagens/ada/aplicacoes/sistemas_criticos.html" class="link-card">
+            <span data-svg="seta-direita" aria-hidden="true"></span>Ada em Sistemas Críticos &mdash; DO-178C, EN 50128
+          </a></li>
+          <li><a href="/html/programacao/linguagens/ada/aplicacoes/concorrencia.html" class="link-card">
+            <span data-svg="seta-direita" aria-hidden="true"></span>Ada Concorrência &mdash; Tasks Avançadas e Real-Time
+          </a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "SPARK permite não apenas afirmar que o código funciona, mas provar que ele funciona —
+          uma distinção que em sistemas críticos significa a diferença entre vida e morte."
+          &mdash; John McCormick, Building High Integrity Applications with SPARK
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

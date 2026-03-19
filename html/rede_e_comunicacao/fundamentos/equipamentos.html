@@ -1,0 +1,330 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Equipamentos de rede: hub, switch, roteador, bridge, firewall, access point e modem. Camada OSI, função, quando usar, comandos Cisco IOS básicos e VLANs." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Equipamentos de Rede | Fundamentos | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fundamentos de Redes</strong></p></div>
+
+      <section>
+        <h2 id="visao-geral" class="section-title">Equipamentos de Rede</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Equipamentos de Rede</h1>
+          <p class="page-subtitle">Do hub ao firewall NGFW &mdash; entenda o que cada equipamento faz, em qual camada OSI opera e quando usar cada um</p>
+        </div>
+        <p class="intro-highlight">
+          Cada equipamento de rede opera em uma camada específica da pilha OSI, o que define o que ele "enxerga" no tráfego e como toma decisões. Um hub apenas regenera o sinal elétrico (camada 1). Um switch lê endereços MAC (camada 2). Um roteador lê endereços IP (camada 3). Um firewall NGFW pode inspecionar até a camada 7. Compreender isso é fundamental para escolher o equipamento certo e diagnosticar problemas corretamente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tabela-equipamentos" class="section-title">Visão Geral por Camada</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Equipamento</th><th>Camada OSI</th><th>Endereçamento usado</th><th>Domínio de colisão</th><th>Domínio de broadcast</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Hub / Repetidor</td><td>1 &mdash; Física</td><td>Nenhum (regenera bits)</td><td>Único para todas as portas</td><td>Único para todas as portas</td></tr>
+              <tr><td>Bridge</td><td>2 &mdash; Enlace</td><td>Endereço MAC</td><td>Separado por porta</td><td>Único (propaga broadcast)</td></tr>
+              <tr><td>Switch L2</td><td>2 &mdash; Enlace</td><td>Endereço MAC</td><td>Separado por porta</td><td>Único por VLAN</td></tr>
+              <tr><td>Switch L3</td><td>2 e 3</td><td>MAC + IP</td><td>Separado por porta</td><td>Separado por VLAN/subrede (roteia entre VLANs)</td></tr>
+              <tr><td>Roteador</td><td>3 &mdash; Rede</td><td>Endereço IP</td><td>Separado por interface</td><td>Separado por interface (não propaga broadcast)</td></tr>
+              <tr><td>Firewall (stateful)</td><td>3 e 4</td><td>IP + TCP/UDP portas</td><td>Separado</td><td>Separado</td></tr>
+              <tr><td>Firewall NGFW</td><td>Até 7</td><td>IP, porta, aplicação, usuário</td><td>Separado</td><td>Separado</td></tr>
+              <tr><td>Access Point (AP)</td><td>1 e 2</td><td>MAC (pontd de acesso Wi-Fi)</td><td>Separado (SSID)</td><td>Por SSID/VLAN mapeado</td></tr>
+              <tr><td>Load Balancer</td><td>4 a 7</td><td>IP + porta + conteúdo HTTP</td><td>N/A</td><td>N/A</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="dispositivos-detalhes" class="section-title">Cada Equipamento em Detalhe</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Hub (Concentrador)</h3>
+            <p><strong>Camada 1 &mdash; Física</strong></p>
+            <p>Simplesmente <strong>replica o sinal elétrico</strong> recebido em uma porta para todas as outras. Não lê nem endereços MAC nem IP &mdash; é "burro" por design.</p>
+            <ul>
+              <li>Cria um único domínio de colisão: só um dispositivo pode transmitir por vez (CSMA/CD)</li>
+              <li>Toda comunicação é compartilhada: se A transmite para B, C e D também recebem os bits</li>
+              <li>Banda compartilhada: 10 dispositivos em hub de 100 Mbps = ~10 Mbps por dispositivo real</li>
+              <li><strong>Obsoleto.</strong> Não existe motivo para usar hub em redes novas. Switches são praticamente do mesmo custo hoje</li>
+              <li>Ainda útil para: port mirroring manual em análise de tráfego legado (capturar pacotes de terceiros)</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Switch L2 (Comutador)</h3>
+            <p><strong>Camada 2 &mdash; Enlace</strong></p>
+            <p>Opera com endereços MAC. Aprende quais MACs estão em quais portas e <strong>encaminha frames apenas para a porta correta</strong> &mdash; não para todas.</p>
+            <ul>
+              <li>Tabela CAM (Content Addressable Memory): aprende MAC → porta ao ver frames chegando</li>
+              <li>Full-duplex: cada porta tem seu próprio domínio de colisão &mdash; sem CSMA/CD</li>
+              <li>Flooding: quando o MAC de destino não está na tabela, envia para todas as portas (exceto origem)</li>
+              <li>VLANs (802.1Q): segmenta logicamente a rede em múltiplos domínios L2 isolados</li>
+              <li>STP/RSTP: evita loops de switching entre switches redundantes</li>
+              <li>PoE (Power over Ethernet): alimenta APs, câmeras e telefones VoIP pelo cabo de rede</li>
+              <li><strong>Switch não gerenciável:</strong> plug-and-play, sem configuração, barato, uso doméstico</li>
+              <li><strong>Switch gerenciável:</strong> CLI ou web interface, VLANs, QoS, SNMP, port mirroring, ACLs</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Switch L3 (Switch com Roteamento)</h3>
+            <p><strong>Camadas 2 e 3</strong></p>
+            <p>Um switch com capacidade de roteamento via hardware (ASICs). Roteia entre VLANs sem precisar de um roteador externo separado, com performance muito superior ao roteador em software.</p>
+            <ul>
+              <li>SVIs (Switched Virtual Interfaces): interfaces virtuais com IP para cada VLAN &mdash; gateway da VLAN</li>
+              <li>Routing inter-VLAN nativo: pacotes entre VLANs são roteados dentro do switch</li>
+              <li>Suporta protocolos de roteamento: OSPF, BGP, EIGRP</li>
+              <li>Típico na camada de distribuição e núcleo de redes corporativas</li>
+              <li>Exemplos: Cisco Catalyst 9300, Juniper EX, Aruba 2930F</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Roteador</h3>
+            <p><strong>Camada 3 &mdash; Rede</strong></p>
+            <p>Opera com endereços IP. <strong>Encaminha pacotes entre redes diferentes</strong> consultando a tabela de rotas. É o elemento que conecta sua LAN à internet.</p>
+            <ul>
+              <li>Separa domínios de broadcast &mdash; não propaga broadcasts entre interfaces</li>
+              <li>NAT: tradução de IPs privados para público (PAT)</li>
+              <li>Tabela de rotas: rotas estáticas (configuradas manualmente) ou dinâmicas (OSPF, BGP, RIP)</li>
+              <li>Firewall básico: ACLs (Access Control Lists) para filtrar pacotes por IP/porta</li>
+              <li>QoS: priorização de tráfego VoIP sobre navegação, por exemplo</li>
+              <li>WAN: conecta a links de operadora (fibra, 4G/5G, MPLS, xDSL)</li>
+              <li>Roteadores domésticos (TP-Link, D-Link) combinam roteador + switch + AP + NAT/firewall em um só</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Firewall</h3>
+            <p><strong>Camada 3&ndash;7 (depende do tipo)</strong></p>
+            <p>Controla e filtra o tráfego de rede com base em regras de segurança. O guardião que decide o que entra e sai da rede.</p>
+            <ul>
+              <li><strong>Packet Filter (stateless):</strong> filtra por IP origem/destino + porta + protocolo. Sem contexto de conexão. Camadas 3&ndash;4. Rápido, mas limitado</li>
+              <li><strong>Stateful Inspection:</strong> mantém tabela de estado de conexões TCP/UDP. Permite resposta a conexões iniciadas internamente; bloqueia respostas a conexões não solicitadas. Camadas 3&ndash;4</li>
+              <li><strong>ALG (Application Layer Gateway):</strong> inspeciona protocolos específicos como FTP, SIP, H.323 que precisam de tratamento especial com NAT</li>
+              <li><strong>NGFW (Next-Generation Firewall):</strong> adiciona IPS (Intrusion Prevention), DPI (Deep Packet Inspection), identificação de aplicação (Layer 7), controle por usuário (integração AD), SSL inspection, sandboxing. Camadas 2&ndash;7</li>
+              <li>Fabricantes NGFW: Palo Alto Networks, Fortinet, Check Point, Cisco Firepower, Sophos</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Access Point (AP) Wi-Fi</h3>
+            <p><strong>Camadas 1 e 2</strong></p>
+            <p>Converte o sinal sem fio 802.11 em tráfego Ethernet com fio e vice-versa. É o "switch sem fio" que permite que dispositivos móveis acessem a rede cabeada.</p>
+            <ul>
+              <li>Modos: AP autônomo (configuração individual), AP gerenciado por controlador (Cisco, Aruba, Ubiquiti UniFi)</li>
+              <li>SSID: nome da rede Wi-Fi que os clientes veem. Um AP pode transmitir múltiplos SSIDs</li>
+              <li>Mapeamento SSID → VLAN: cada SSID pode ser mapeado a uma VLAN diferente (ex: "Corporativo" → VLAN 10, "Visitantes" → VLAN 20)</li>
+              <li>Padrões: 802.11n (Wi-Fi 4, 2.4/5 GHz), 802.11ac (Wi-Fi 5, 5 GHz), 802.11ax (Wi-Fi 6, 2.4/5/6 GHz), 802.11be (Wi-Fi 7)</li>
+              <li>Alimentação: PoE (802.3af/at/bt) &mdash; sem precisar de tomada separada</li>
+              <li>Roaming: 802.11r (Fast BSS Transition) e 802.11k/v para roaming rápido entre APs</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Modem</h3>
+            <p><strong>Camada 1 (e parcialmente 2)</strong></p>
+            <p><strong>MOdulator/DEModulator:</strong> converte o sinal digital da rede local em sinal analógico (ou digital do tipo certo) para o meio de transmissão do provedor, e vice-versa.</p>
+            <ul>
+              <li><strong>DSL (xDSL):</strong> modula dados sobre par de cobre telefônico (ADSL, VDSL2)</li>
+              <li><strong>Cable modem (DOCSIS):</strong> modula sobre cabo coaxial de TV a cabo (DOCSIS 3.1: até 10 Gbps downstream)</li>
+              <li><strong>Modem de fibra (ONU/ONT):</strong> converte sinal óptico (GPON, XGS-PON) em Ethernet para o roteador</li>
+              <li><strong>Modem 4G/5G:</strong> converte sinal de rádio celular em Ethernet</li>
+              <li>Em instalações modernas, o modem e o roteador vêm em um único dispositivo (gateway da operadora)</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Load Balancer</h3>
+            <p><strong>Camadas 4 a 7</strong></p>
+            <p>Distribui requisições entre múltiplos servidores para maximizar throughput, minimizar latência e garantir alta disponibilidade. Fundamental em arquiteturas de produção.</p>
+            <ul>
+              <li><strong>L4 (TCP/UDP):</strong> distribui conexões por IP/porta. Mais rápido, sem inspecionar conteúdo (ex: HAProxy em modo TCP, AWS NLB)</li>
+              <li><strong>L7 (HTTP/HTTPS):</strong> distribui por URL, header HTTP, cookie, método. Permite afinidade de sessão (sticky sessions), SSL offloading, health checks avançados (ex: Nginx, HAProxy HTTP, AWS ALB)</li>
+              <li>Algoritmos: Round Robin, Least Connections, IP Hash, Weighted, Resource-Based</li>
+              <li>Health checks: remove automaticamente servidores com falha do pool</li>
+              <li>SSL Termination: decripta HTTPS no LB, envia HTTP para os backends (reduz carga de CPU dos servidores)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ios-basico" class="section-title">Comandos Cisco IOS &mdash; Básico Prático</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Configuração inicial de switch</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Cisco IOS &mdash; Modos e configuração básica</div>
+              <pre class="code-block">Switch> enable                    ! entra no modo privilegiado (EXEC)
+Switch# configure terminal        ! entra no modo de configuração global
+Switch(config)# hostname SW-01   ! define o nome do switch
+Switch(config)# no ip domain-lookup  ! desativa tentativa de resolver nomes
+Switch(config)# service password-encryption  ! roda hash nas senhas
+
+! Senha para modo privilegiado
+Switch(config)# enable secret MinhaSenh@Forte
+
+! Configurar acesso via VTY (SSH/Telnet)
+Switch(config)# line vty 0 15
+Switch(config-line)# transport input ssh
+Switch(config-line)# login local
+Switch(config-line)# exit
+
+! Criar usuário local
+Switch(config)# username admin privilege 15 secret MinhaSenh@Forte
+
+! Salvar configuração
+Switch# copy running-config startup-config
+Switch# write memory    ! equivalente ao copy run start</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Configuração de VLANs</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Cisco IOS &mdash; VLANs, access e trunk</div>
+              <pre class="code-block">! Criar VLANs na base de dados do switch
+Switch(config)# vlan 10
+Switch(config-vlan)# name CORPORATIVO
+Switch(config-vlan)# exit
+Switch(config)# vlan 20
+Switch(config-vlan)# name VISITANTES
+Switch(config-vlan)# exit
+
+! Porta Access (dispositivo final, sem tag)
+Switch(config)# interface fastEthernet 0/1
+Switch(config-if)# switchport mode access
+Switch(config-if)# switchport access vlan 10
+Switch(config-if)# exit
+
+! Porta Trunk (para outro switch ou AP com múltiplas VLANs)
+Switch(config)# interface gigabitEthernet 0/1
+Switch(config-if)# switchport mode trunk
+Switch(config-if)# switchport trunk encapsulation dot1q
+Switch(config-if)# switchport trunk allowed vlan 10,20
+Switch(config-if)# exit
+
+! Verificar VLANs
+Switch# show vlan brief
+Switch# show interfaces trunk</pre>
+            </div>
+          </div>
+        </div>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Diagnóstico de switching</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Cisco IOS &mdash; Comandos de show e debug</div>
+              <pre class="code-block">! Ver tabela MAC (CAM table)
+Switch# show mac address-table
+Switch# show mac address-table dynamic
+
+! Ver estado das interfaces
+Switch# show interfaces status
+Switch# show interfaces gigabitEthernet 0/1
+
+! Ver configuração das interfaces
+Switch# show running-config interface fa0/1
+
+! Spanning Tree
+Switch# show spanning-tree
+Switch# show spanning-tree vlan 10
+
+! Ver vizinhos CDP (Cisco Discovery Protocol)
+Switch# show cdp neighbors
+Switch# show cdp neighbors detail
+
+! Limpar tabela MAC forçando re-aprendizado
+Switch# clear mac address-table dynamic</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Interface de gerência e roteamento inter-VLAN (L3)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Cisco IOS &mdash; SVI e roteamento</div>
+              <pre class="code-block">! Interface de gerência do switch (SVI VLAN 1 ou dedicada)
+Switch(config)# interface vlan 1
+Switch(config-if)# ip address 192.168.1.10 255.255.255.0
+Switch(config-if)# no shutdown
+Switch(config-if)# exit
+Switch(config)# ip default-gateway 192.168.1.1
+
+! Switch L3 &mdash; roteamento entre VLANs via SVI
+Switch(config)# ip routing              ! ativa roteamento
+
+Switch(config)# interface vlan 10
+Switch(config-if)# ip address 10.10.10.1 255.255.255.0
+Switch(config-if)# no shutdown
+
+Switch(config)# interface vlan 20
+Switch(config-if)# ip address 10.10.20.1 255.255.255.0
+Switch(config-if)# no shutdown
+
+! Verificar rotas
+Switch# show ip route</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Padrões IEEE</h3>
+            <ul>
+              <li>IEEE 802.1Q &mdash; VLANs e Trunk (tagging 802.1Q)</li>
+              <li>IEEE 802.1D &mdash; Spanning Tree Protocol (STP)</li>
+              <li>IEEE 802.1w &mdash; Rapid Spanning Tree (RSTP)</li>
+              <li>IEEE 802.3af/at/bt &mdash; Power over Ethernet (PoE)</li>
+              <li>IEEE 802.11ax &mdash; Wi-Fi 6 (OFDMA, MU-MIMO aprimorado)</li>
+              <li>IEEE 802.3ae/an/ba &mdash; 10/40/100 Gigabit Ethernet</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Livros e Recursos</h3>
+            <ul>
+              <li>Odom, W. <strong>CCNA 200-301 Official Cert Guide, Vol. 1 e 2</strong>. Cisco Press.</li>
+              <li>Foundational reading: Cisco Learning Network &mdash; <em>free study materials</em></li>
+              <li>Juniper Networks. <strong>Junos OS Configuration Guide</strong> &mdash; alternativa ao IOS</li>
+              <li>Lammle, T. <strong>CompTIA Network+ Study Guide</strong>. Sybex.</li>
+              <li>TechTarget SearchNetworking &mdash; artigos sobre NGFW, SD-WAN e load balancing</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando: <a href="topologias.html"><strong>Topologias de Rede</strong></a> (como os equipamentos se conectam), <a href="modelo_osi.html"><strong>Modelo OSI</strong></a> (em qual camada cada um opera) e <a href="../introducao.html"><strong>Introdução às Redes</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A diferença entre hub e switch parece trivial até você colocar um analisador de tráfego na rede: no hub, você vê o pacote de todo mundo; no switch, só o seu. Esse detalhe de camada 2 é a base da segurança de rede &mdash; e também da sua dificuldade em capturar tráfego de terceiros."
+        </p>
+      </div>
+
+    </div><!-- /.content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,218 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Mutex e semáforos: as primitivas de sincronização mais usadas — funcionamento, diferenças, implementação no kernel, pthreads e std::mutex, e armadilhas comuns." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Mutex e Semáforos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Mutex e Semáforos</h1>
+            <p class="page-subtitle">As duas primitivas fundamentais de sincronização — diferenças de ownership, semântica e quando usar cada uma.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          <strong>Mutex</strong> (mutual exclusion lock) e <strong>semáforo</strong> são as ferramentas mais usadas para coordenar acesso a recursos compartilhados entre threads e processos. Embora relacionados, possuem semânticas distintas: o mutex é uma trava com <em>ownership</em> (quem travou deve destravar), enquanto o semáforo é um contador de sinalização sem proprietário.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — MUTEX ═══════════════════ -->
+      <section id="mutex">
+        <h2>Mutex</h2>
+        <p>O mutex garante que apenas uma thread execute a seção crítica por vez. A thread que chama <code class="code-inline">lock()</code> adquire o mutex; se já estiver travado, a thread dorme até ser acordada pelo kernel quando o mutex for liberado:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — pthread_mutex_t: uso básico e inicialização</div>
+          <pre class="code-block">#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+
+static int saldo = 1000;
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+void depositar(int valor) {
+    pthread_mutex_lock(&amp;mtx);      /* adquire — bloqueia se ocupado */
+    saldo += valor;
+    pthread_mutex_unlock(&amp;mtx);    /* libera — acorda threads esperando */
+}
+
+void sacar(int valor) {
+    pthread_mutex_lock(&amp;mtx);
+    if (saldo &gt;= valor)
+        saldo -= valor;
+    pthread_mutex_unlock(&amp;mtx);
+}
+
+/* Propriedades do mutex POSIX padrão:
+   - Não reentrante: chamar lock() duas vezes na mesma thread causa deadlock
+   - Use PTHREAD_MUTEX_RECURSIVE se precisar de reentrada
+   - Ownership: somente quem chamou lock() pode chamar unlock()           */</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ — std::unique_lock com timeout (timed_mutex)</div>
+          <pre class="code-block">#include &lt;mutex&gt;
+#include &lt;chrono&gt;
+#include &lt;stdexcept&gt;
+
+std::timed_mutex mtx;
+
+void operacao_critica() {
+    using namespace std::chrono_literals;
+    std::unique_lock&lt;std::timed_mutex&gt; lock(mtx, 100ms);
+    if (!lock.owns_lock())
+        throw std::runtime_error("timeout ao adquirir mutex");
+    /* ... seção crítica ... */
+}   /* unlock() automático ao sair do escopo — RAII */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — SEMÁFORO ═══════════════════ -->
+      <section id="semaforo">
+        <h2>Semáforo</h2>
+        <p>Um semáforo mantém um contador inteiro não-negativo. A operação P (wait/down) decrementa; se chegar a zero, bloqueia. A operação V (signal/up) incrementa e acorda uma thread bloqueada:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — sem_t POSIX: semáforo binário e de contagem</div>
+          <pre class="code-block">#include &lt;semaphore.h&gt;
+#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+
+/* Semáforo BINÁRIO (equivalente a mutex, mas sem ownership) */
+static sem_t bin;
+
+void thread_a(void) {
+    sem_wait(&amp;bin);   /* P(): decrementa; bloqueia se == 0 */
+    /* seção crítica */
+    sem_post(&amp;bin);   /* V(): incrementa; acorda thread esperando */
+}
+
+/* Semáforo de CONTAGEM: controla acesso a N conexões de BD */
+static sem_t pool_conexoes;
+
+void init(void) {
+    sem_init(&amp;pool_conexoes, 0, 10);  /* máximo 10 conexões simultâneas */
+}
+
+void usar_conexao(void) {
+    sem_wait(&amp;pool_conexoes);   /* adquire uma conexão (decrementa) */
+    /* ... usa conexão ... */
+    sem_post(&amp;pool_conexoes);   /* libera a conexão (incrementa) */
+}
+
+/* Nota: sem_t não tem owner — qualquer thread pode chamar sem_post()
+   Isso permite usar semáforos para SINALIZAÇÃO entre threads distintas */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — DIFERENÇAS ═══════════════════ -->
+      <section id="diferencas">
+        <h2>Mutex vs Semáforo: Diferenças</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Critério</th><th>Mutex</th><th>Semáforo</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Ownership</strong></td>
+                <td>Sim — somente quem fez lock() pode fazer unlock()</td>
+                <td>Não — qualquer thread pode chamar post()/signal()</td>
+              </tr>
+              <tr>
+                <td><strong>Valor inicial</strong></td>
+                <td>Sempre binário (travado/destravado)</td>
+                <td>Inteiro N (binário quando N=1, contagem quando N&gt;1)</td>
+              </tr>
+              <tr>
+                <td><strong>Uso principal</strong></td>
+                <td>Proteger seção crítica (lock/unlock no mesmo escopo)</td>
+                <td>Sinalização entre threads, controle de recursos (N instâncias)</td>
+              </tr>
+              <tr>
+                <td><strong>Sinalização cruzada</strong></td>
+                <td>Não foi projetado para isso</td>
+                <td>Sim — thread A faz sem_post(), thread B acorda do sem_wait()</td>
+              </tr>
+              <tr>
+                <td><strong>Priority inheritance</strong></td>
+                <td>Suportado (PTHREAD_PRIO_INHERIT)</td>
+                <td>Geralmente não suportado</td>
+              </tr>
+              <tr>
+                <td><strong>Reentrada</strong></td>
+                <td>Não por padrão (use PTHREAD_MUTEX_RECURSIVE)</td>
+                <td>N/A (sem ownership)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — ARMADILHAS ═══════════════════ -->
+      <section id="armadilhas">
+        <h2>Armadilhas e Boas Práticas</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Deadlock por Ordem Errada</h3>
+            <p>Thread A adquire mutex1 depois mutex2; thread B adquire mutex2 depois mutex1 — impasse garantido. Solução: estabelecer uma <strong>ordem global de aquisição</strong> (ex.: por endereço de memória do mutex) e seguir sempre essa ordem.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Priority Inversion</h3>
+            <p>Thread de alta prioridade espera mutex mantido por thread de baixa prioridade, que por sua vez é preemptada por thread de média prioridade. Solução: <strong>priority inheritance</strong> — o kernel eleva temporariamente a prioridade do holder para o nível do waiter.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">RAII em C++</h3>
+            <p>Usar <code class="code-inline">std::lock_guard</code> ou <code class="code-inline">std::unique_lock</code> garante que o mutex seja liberado automaticamente ao sair do escopo — mesmo em caso de exceção. Nunca gerencie mutex manualmente em C++ moderno.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Double-Lock e Esquecimento</h3>
+            <p>Chamar <code class="code-inline">lock()</code> duas vezes na mesma thread com mutex não-recursivo causa deadlock imediato. Esquecer <code class="code-inline">unlock()</code> (ex.: retornar antecipadamente) deixa o mutex preso para sempre — corrija com RAII.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja o contexto mais amplo de sincronização em
+          <a href="/html/sistemas/processos/sincronizacao.html">Sincronização de Processos</a> e
+          <a href="/html/sistemas/processos/deadlocks.html">Deadlocks</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Um mutex protege dados; um semáforo coordena eventos — escolher errado leva a código funcional que falha sob carga."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

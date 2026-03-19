@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e tooling de Assembly: NASM, GAS (AT&T), MASM, YASM, GDB para código assembly, objdump, strace, linkers ld/gold/lld e Makefiles para projetos em assembly." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Ecossistema e Tooling</h1>
+          <p>O ecossistema de Assembly inclui <strong>assemblers</strong> (que traduzem mnemônicos em bytes de máquina), <strong>linkers</strong> (que combinam objetos em executáveis), <strong>debuggers</strong> de baixo nível, ferramentas de análise de binários e suporte em IDEs. Conhecer estas ferramentas é indispensável para escrever, depurar e otimizar código assembly de forma produtiva.</p>
+        </div>
+        <p class="intro-highlight">
+          O fluxo completo é: <code>código.asm</code> → <strong>assembler</strong> (NASM/GAS) → <code>objeto.o</code> → <strong>linker</strong> (ld) → <code>executável ELF/PE</code> → executado pelo sistema operacional. Ferramentas como <code>objdump</code>, <code>strace</code> e <code>gdb</code> permitem inspecionar cada etapa deste processo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="assemblers">Assemblers: NASM, GAS, MASM e YASM</h2>
+        <div class="panel">
+          <p class="panel-title">Comparativo de assemblers</p>
+          <table class="table">
+            <thead><tr><th>Assembler</th><th>Sintaxe</th><th>Plataformas</th><th>Uso Principal</th><th>Licenca</th></tr></thead>
+            <tbody>
+              <tr><td>NASM</td><td>Intel</td><td>Linux, Win, macOS</td><td>Programas standalone, bootloaders</td><td>BSD-2</td></tr>
+              <tr><td>GAS (GNU as)</td><td>AT&T (padrão) / Intel (.intel_syntax)</td><td>Todas (GCC toolchain)</td><td>Inline assembly em C/C++, código do kernel Linux</td><td>GPL</td></tr>
+              <tr><td>MASM</td><td>Intel</td><td>Windows apenas</td><td>Projetos Windows/UEFI, VS integrado</td><td>Proprietário</td></tr>
+              <tr><td>YASM</td><td>Intel e AT&T</td><td>Linux, Win</td><td>Fork do NASM com suporte LLVM/DWARF</td><td>BSD-2</td></tr>
+              <tr><td>FASM</td><td>Intel própria</td><td>Linux, Win</td><td>Meta-programming avançado, compilador recursivo</td><td>Domínio público</td></tr>
+              <tr><td>MLASM (LLVM MC)</td><td>Intel e AT&T</td><td>Todas</td><td>Backend do Clang/LLVM, integrado em compiladores</td><td>Apache 2.0</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; Usando NASM (Intel syntax)</div>
+          <pre class="example"><span class="com"># Instalação</span>
+sudo apt install nasm      <span class="com"># Ubuntu/Debian</span>
+brew install nasm          <span class="com"># macOS</span>
+
+<span class="com"># Compilar para ELF64 (Linux x86-64)</span>
+nasm -f elf64 programa.asm -o programa.o
+
+<span class="com"># Com informações de debug (DWARF)</span>
+nasm -f elf64 -g -F dwarf programa.asm -o programa.o
+
+<span class="com"># Listar saída (.lst) - mostra bytecode ao lado do asm</span>
+nasm -f elf64 -l programa.lst programa.asm -o programa.o
+
+<span class="com"># Linkagem com ld</span>
+ld -o programa programa.o
+
+<span class="com"># Linkagem com gcc (acesso à libc)</span>
+gcc -o programa programa.o -nostartfiles   <span class="com"># sem crt0</span>
+gcc -o programa programa.o                  <span class="com"># com crt0 (main normal)</span>
+
+<span class="com"># macOS: formato Mach-O 64-bit</span>
+nasm -f macho64 programa.asm -o programa.o
+ld -macosx_version_min 10.15 -o programa programa.o -lSystem</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GAS (GNU Assembler) &mdash; sintaxe AT&T vs Intel</div>
+          <pre class="example"><span class="com"># GAS AT&T syntax (padrão)</span>
+<span class="com"># Ordem operandos: FONTE, DESTINO (oposto ao Intel!)</span>
+<span class="com"># Sufixos: b=byte, w=word, l=long(32-bit), q=quad(64-bit)</span>
+<span class="com"># Registradores: %rax, %rdi...  Memória: (%rdi), 8(%rsp)</span>
+<span class="com"># Imediatos: $42, $0x1F</span>
+
+    .section .data
+msg:
+    .asciz "Hello\n"           <span class="com"># .asciz = string + \0</span>
+    .align 8
+
+    .section .text
+    .global _start
+_start:
+    movq  $1, %rax             <span class="com"># sys_write</span>
+    movq  $1, %rdi             <span class="com"># stdout</span>
+    leaq  msg(%rip), %rsi      <span class="com"># endereço da string (RIP-relative)</span>
+    movq  $6, %rdx             <span class="com"># comprimento</span>
+    syscall
+
+    movq  $60, %rax
+    xorq  %rdi, %rdi
+    syscall
+
+<span class="com"># Usando sintaxe Intel dentro do GAS:</span>
+    .intel_syntax noprefix
+    mov rax, 1
+    mov rdi, 1
+    syscall
+    .att_syntax prefix           <span class="com"># voltar para AT&T</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="linkers">Linkers: ld, gold, lld</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; Usando linkers ld, gold e lld</div>
+          <pre class="example"><span class="com"># ── ld (BFD linker) — padrão GNU ──────────────────────────</span>
+ld -o saida arquivo.o               <span class="com"># simples</span>
+ld -o saida arquivo.o -lc -dynamic-linker /lib64/ld-linux-x86-64.so.2
+<span class="com"># -lc: ligar com libc.  -dynamic-linker: especificar o loader ELF</span>
+
+ld -T script.ld -o firmware.elf kernel.o init.o  <span class="com"># linker script customizado</span>
+
+<span class="com"># ── Linker Script básico ───────────────────────────────────</span>
+<span class="com">/* firmware.ld — bare metal ARM */</span>
+OUTPUT_FORMAT(elf32-littlearm)
+ENTRY(_start)
+SECTIONS {
+    . = 0x08000000;          <span class="com">/* Flash address */</span>
+    .text : { *(.text*) }
+    .data : { *(.data*) }
+    .bss  : { *(.bss*)  }
+}
+
+<span class="com"># ── lld (LLVM linker) — mais rápido ───────────────────────</span>
+clang -fuse-ld=lld -o programa arquivo.o
+
+<span class="com"># ── Analisar seções do objeto ─────────────────────────────</span>
+objdump -h programa.o         <span class="com"># exibir seções (.text, .data, .bss...)</span>
+size programa.o               <span class="com"># tamanho de each section</span>
+nm programa.o                 <span class="com"># tabela de símbolos (funções, variáveis)</span>
+readelf -a programa           <span class="com"># tudo: header, seções, símbolos, dinâmicos</span>
+file programa                 <span class="com"># tipo do arquivo (ELF 64-bit vs PE)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gdb">GDB — Depurando Assembly</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; GDB para codigo assembly x86-64</div>
+          <pre class="example"><span class="com"># Compilar com debug info</span>
+nasm -f elf64 -g -F dwarf prog.asm -o prog.o
+ld -o prog prog.o
+
+<span class="com"># Iniciar GDB</span>
+gdb ./prog
+
+<span class="com"># ── Comandos essenciais dentro do GDB ─────────────────────</span>
+(gdb) layout asm           <span class="com"># janela dividida: assembly + registers</span>
+(gdb) layout regs          <span class="com"># mostrar registradores</span>
+(gdb) tui enable           <span class="com"># interface TUI (terminal)</span>
+
+(gdb) break _start         <span class="com"># breakpoint no label</span>
+(gdb) break *0x401000      <span class="com"># breakpoint em endereço</span>
+(gdb) run
+(gdb) stepi                <span class="com"># si: executar 1 instrução</span>
+(gdb) nexti                <span class="com"># ni: próxima instrução (sem entrar em call)</span>
+(gdb) continue             <span class="com"># c: continuar até próximo break</span>
+
+<span class="com"># Inspecionar registradores</span>
+(gdb) info registers       <span class="com"># todos os registradores</span>
+(gdb) info registers rax rsi rdi
+(gdb) p/x $rax             <span class="com"># print rax em hexadecimal</span>
+(gdb) p/d $rax             <span class="com"># print em decimal</span>
+
+<span class="com"># Inspecionar memória</span>
+(gdb) x/10xg $rsp          <span class="com"># 10 × 8 bytes da stack (hex)</span>
+(gdb) x/s $rdi             <span class="com"># string apontada por RDI</span>
+(gdb) x/4i $rip            <span class="com"># próximas 4 instruções</span>
+
+<span class="com"># Modificar valores</span>
+(gdb) set $rax = 42
+(gdb) set *(int*)0x601000 = 99
+
+<span class="com"># Desassemblar</span>
+(gdb) disas _start
+(gdb) disas /r _start,+32  <span class="com"># +32 bytes, mostrar bytes raw</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="objdump-strace">objdump, strace e perf</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; Analise de binarios e syscalls</div>
+          <pre class="example"><span class="com"># ── objdump — disassembler e inspector de binários ─────────</span>
+objdump -d programa                    <span class="com"># desassemblar seções de código</span>
+objdump -d -M intel programa           <span class="com"># sintaxe Intel em vez de AT&T</span>
+objdump -s -j .data programa           <span class="com"># hex dump da seção .data</span>
+objdump -d --no-show-raw-insn prog     <span class="com"># sem bytes brutos (mais limpo)</span>
+
+<span class="com"># ── strace — rastrear syscalls em tempo real ───────────────</span>
+strace ./programa                      <span class="com"># mostrar todas as syscalls</span>
+strace -e trace=read,write ./prog      <span class="com"># filtrar syscalls específicas</span>
+strace -c ./programa                   <span class="com"># sumário estatístico ao final</span>
+strace -o log.txt ./programa           <span class="com"># salvar em arquivo</span>
+strace -p 1234                         <span class="com"># attach a processo existente</span>
+
+<span class="com"># ── perf — profiling de desempenho ─────────────────────────</span>
+perf stat ./programa                   <span class="com"># contadores de hardware (cache, etc.)</span>
+perf record ./programa                 <span class="com"># gravar amostras de CPU</span>
+perf report                            <span class="com"># analisar hot paths</span>
+perf list                              <span class="com"># eventos disponíveis</span>
+
+<span class="com"># ── readelf — estrutura ELF completa ───────────────────────</span>
+readelf -h programa                    <span class="com"># header ELF</span>
+readelf -S programa                    <span class="com"># seções</span>
+readelf -l programa                    <span class="com"># program headers (segmentos)</span>
+readelf -s programa                    <span class="com"># tabela de símbolos</span>
+readelf -d programa                    <span class="com"># dynamic section (libs dependidas)</span>
+
+<span class="com"># ── Extras ─────────────────────────────────────────────────</span>
+ldd programa                           <span class="com"># bibliotecas dinâmicas dependidas</span>
+strings programa                       <span class="com"># strings ASCII/UTF-8 no binário</span>
+hexdump -C programa | head             <span class="com"># dump hexadecimal com ASCII</span>
+xxd programa | head                    <span class="com"># alternativa ao hexdump</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="makefile">Makefile para Projetos Assembly</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Makefile &mdash; Projeto NASM x86-64 completo</div>
+          <pre class="example"><span class="com"># Makefile para projetos NASM x86-64 / Linux</span>
+
+ASM     := nasm
+ASFLAGS := -f elf64 -g -F dwarf
+LD      := ld
+LDFLAGS :=
+CC      := gcc
+CFLAGS  := -O2 -Wall -g
+
+SRC_DIR := src
+OBJ_DIR := build
+
+SRCS := $(wildcard $(SRC_DIR)/*.asm)
+OBJS := $(patsubst $(SRC_DIR)/%.asm, $(OBJ_DIR)/%.o, $(SRCS))
+TARGET := programa
+
+.PHONY: all clean debug run
+
+all: $(TARGET)
+
+<span class="com"># Compilar cada .asm → .o</span>
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.asm | $(OBJ_DIR)
+	$(ASM) $(ASFLAGS) $&lt; -o $@
+
+<span class="com"># Linkar todos os .o</span>
+$(TARGET): $(OBJS)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+$(OBJ_DIR):
+	mkdir -p $@
+
+run: all
+	./$(TARGET)
+
+debug: all
+	gdb ./$(TARGET)
+
+clean:
+	rm -rf $(OBJ_DIR) $(TARGET)
+
+<span class="com"># Caso misture .asm com C:</span>
+<span class="com"># CSRCS := $(wildcard $(SRC_DIR)/*.c)</span>
+<span class="com"># COBJS := $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(CSRCS))</span>
+<span class="com"># $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)</span>
+<span class="com">#    $(CC) $(CFLAGS) -c $< -o $@</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>NASM DEVELOPERS. <strong>NASM — The Netwide Assembler: Documentation</strong>. Disponível em: &lt;https://nasm.us/docs.php&gt;. Acesso em: 2025.</li>
+            <li>GNU PROJECT. <strong>Using the GNU Assembler (GAS)</strong>. Free Software Foundation, 2024. Disponível em: &lt;https://sourceware.org/binutils/docs/as/&gt;. Acesso em: 2025.</li>
+            <li>GNU PROJECT. <strong>GDB: The GNU Project Debugger</strong>. Disponível em: &lt;https://www.sourceware.org/gdb/documentation/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Avançado (SIMD, Inline ASM)</a></li>
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Bibliotecas e Interop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>objdump -d -M intel</strong> é seu melhor aliado para entender o que um compilador C/C++ gerou em assembly — compare o output com <code>-O0</code>, <code>-O2</code> e <code>-O3</code> para ver otimizações como inlining, vetorização e eliminação de código morto acontecendo na prática.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

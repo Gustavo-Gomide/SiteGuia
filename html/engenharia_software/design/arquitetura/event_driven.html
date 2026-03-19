@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Arquitetura orientada a eventos: eventos, consumidores, idempotência, consistência eventual e quando usar (e quando evitar).">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Event-Driven | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Serviços que reagem a fatos do passado</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Arquitetura Event-Driven</h1>
+          <p class="page-subtitle">Desacoplamento por publicação e consumo de eventos</p>
+        </div>
+        <p class="intro-highlight">Em arquitetura event-driven, serviços publicam eventos imutáveis (fatos do passado) e outros serviços reagem de forma assíncrona. Isso desacopla produtores de consumidores, mas exige disciplina: idempotência, observabilidade e consistência eventual são problemas reais que precisam de estratégia.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">Conceitos fundamentais</h2>
+        <div class="section-divider"></div>
+        <p>Os blocos básicos de uma arquitetura event-driven:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Conceito</th>
+                <th>Definição</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Evento</strong></td>
+                <td>Fato imutável que ocorreu no passado.</td>
+                <td>PedidoPago, UsuarioCriado, EstoqueBaixado</td>
+              </tr>
+              <tr>
+                <td><strong>Publisher</strong></td>
+                <td>Serviço que emite o evento.</td>
+                <td>Serviço de Pedidos publica PedidoConfirmado</td>
+              </tr>
+              <tr>
+                <td><strong>Consumer</strong></td>
+                <td>Serviço que processa o evento de forma independente.</td>
+                <td>Faturamento, Estoque, Notificações</td>
+              </tr>
+              <tr>
+                <td><strong>Broker</strong></td>
+                <td>Infraestrutura de entrega de mensagens (fila/stream).</td>
+                <td>Kafka, RabbitMQ, AWS SQS/SNS</td>
+              </tr>
+              <tr>
+                <td><strong>Dead-letter Queue</strong></td>
+                <td>Destino para mensagens que falharam após retries.</td>
+                <td>Fila de dead-letters com alertas e reprocessamento manual</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — publicação e consumo</h2>
+        <div class="section-divider"></div>
+        <p>Um evento de pagamento confirmado sendo publicado e consumido por múltiplos serviços:</p>
+        <div class="code-container">
+          <pre class="code-block">// Evento (imutável, fato do passado)
+type PedidoPagoEvento = {
+  tipo: 'PedidoPago';
+  pedidoId: string;
+  valor: number;
+  dataPagamento: string;
+  clienteId: string;
+};
+
+// Publisher (Serviço de Pagamentos)
+async function confirmarPagamento(pagamentoId: string): Promise<void> {
+  const pagamento = await pagamentoRepo.buscar(pagamentoId);
+  pagamento.confirmar();
+  await pagamentoRepo.salvar(pagamento);
+
+  // Publica evento DEPOIS de persistir (at-least-once)
+  await broker.publicar('PedidoPago', {
+    tipo: 'PedidoPago',
+    pedidoId: pagamento.pedidoId,
+    valor: pagamento.valor,
+    dataPagamento: new Date().toISOString(),
+    clienteId: pagamento.clienteId,
+  });
+}
+
+// Consumer (Faturamento) — DEVE ser idempotente
+async function handlePedidoPago(evento: PedidoPagoEvento): Promise<void> {
+  const jaProcessado = await faturaRepo.existe(evento.pedidoId);
+  if (jaProcessado) return; // idempotência
+
+  await faturaRepo.criar({
+    pedidoId: evento.pedidoId,
+    valor: evento.valor,
+    data: evento.dataPagamento,
+  });
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="cuidados" class="section-title">Cuidados essenciais</h2>
+        <div class="section-divider"></div>
+        <p>Os problemas que surgem ao não considerar esses pontos são difíceis de depurar em produção:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Idempotência</h3>
+            <p>O mesmo evento pode ser entregue 2x. O consumer deve lidar com isso sem duplicar dados ou afeitos.</p>
+          </div>
+          <div class="card">
+            <h3>Observabilidade</h3>
+            <p>Rastrear um fluxo entre serviços exige correlation ID, tracing distribuído e logs estruturados.</p>
+          </div>
+          <div class="card">
+            <h3>Retry e Dead-letter</h3>
+            <p>Falhas nos consumers precisam de retry automático e destino para mensagens irrecuperáveis.</p>
+          </div>
+          <div class="card">
+            <h3>Consistência eventual</h3>
+            <p>Dados entre serviços convergem ao longo do tempo, não imediatamente. Projeto deve aceitar isso.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Arquitetura event-driven combina bem com <a href="/html/engenharia_software/design/arquitetura/microservicos.html">Microserviços</a> e <a href="/html/engenharia_software/design/arquitetura/ddd.html">DDD</a> (Domain Events como fronteira de bounded contexts).</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Eventos desacoplam coordenação, mas acoplam significado. Nomeie-os com cuidado."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

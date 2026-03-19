@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Visitor: padrão comportamental que separa operações de uma estrutura de objetos, permitindo adicionar ações sem alterar classes." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Visitor | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Adicionar operações a estruturas sem modificar suas classes</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Visitor</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">Visitor separa algoritmos da estrutura do objeto. Cada elemento aceita um visitor; o visitor decide o que fazer com cada tipo de elemento. Isso permite adicionar novas operações sem modificar as classes dos elementos — aplica OCP para atuações sobre estruturas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Protocolo de double dispatch</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Element</strong></td>
+                <td>Interface com <code>accept(visitor)</code>.</td>
+                <td>Nó de AST, componente UI</td>
+              </tr>
+              <tr>
+                <td><strong>ConcreteElement</strong></td>
+                <td>Chama <code>visitor.visitTipo(this)</code> no accept.</td>
+                <td>NumeroNode, SomaNode, ProdutoNode</td>
+              </tr>
+              <tr>
+                <td><strong>Visitor</strong></td>
+                <td>Interface com um método <code>visit</code> por tipo de elemento.</td>
+                <td>AvaliarVisitor, ImprimirVisitor</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — AST de expressões</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface Visitor {
+  visitNumero(n: NumeroNode): number;
+  visitSoma(n: SomaNode): number;
+  visitProduto(n: ProdutoNode): number;
+}
+
+interface NodeExpr {
+  accept(v: Visitor): number;
+}
+
+class NumeroNode implements NodeExpr {
+  constructor(readonly valor: number) {}
+  accept(v: Visitor) { return v.visitNumero(this); }
+}
+
+class SomaNode implements NodeExpr {
+  constructor(readonly esq: NodeExpr, readonly dir: NodeExpr) {}
+  accept(v: Visitor) { return v.visitSoma(this); }
+}
+
+class ProdutoNode implements NodeExpr {
+  constructor(readonly esq: NodeExpr, readonly dir: NodeExpr) {}
+  accept(v: Visitor) { return v.visitProduto(this); }
+}
+
+// Visitor concreto: avaliação
+class AvaliarVisitor implements Visitor {
+  visitNumero(n: NumeroNode)   { return n.valor; }
+  visitSoma(n: SomaNode)       { return n.esq.accept(this) + n.dir.accept(this); }
+  visitProduto(n: ProdutoNode) { return n.esq.accept(this) * n.dir.accept(this); }
+}
+
+// (2 + 3) * 4
+const ast = new ProdutoNode(
+  new SomaNode(new NumeroNode(2), new NumeroNode(3)),
+  new NumeroNode(4)
+);
+console.log(ast.accept(new AvaliarVisitor())); // 20</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e quando evitar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>A hierarquia de tipos é estável mas as operações mudam. Compiladores, ASTs, relatores sobre estruturas de dados.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>O conjunto de tipos muda frequentemente — adicionar um novo tipo exige atualizar todos os visitors existentes.</p>
+          </div>
+          <div class="card">
+            <h3>Double dispatch</h3>
+            <p>O despacho duplo (accept no elemento + visit no visitor) garante que o visitor certo processa o tipo certo.</p>
+          </div>
+          <div class="card">
+            <h3>vs Interpreter</h3>
+            <p>Interpreter define interpretação dentro do objeto. Visitor externaliza a operação. Para operações múltiplas, Visitor escala melhor.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Visitor é muito usado em compiladores e transformadores de AST. Veja <a href="/html/engenharia_software/design/design_patterns/structural/composite.html">Composite</a> — estruturas em árvore que Visitor frequentemente percorre.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Visitor resolve o dilema entre tipos estáveis e operações dinâmicas — adicione comportamentos sem tocar nos elementos."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

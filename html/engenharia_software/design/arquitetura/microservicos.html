@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Microserviços: benefícios e custos, quando usar, bounded contexts, comunicação e sinais de que é cedo demais.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Microserviços | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Serviços autônomos com fronteiras de deploy</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Microserviços</h1>
+          <p class="page-subtitle">Autonomia de times ao custo de complexidade distribuída</p>
+        </div>
+        <p class="intro-highlight">Microserviços são serviços pequenos com deploy independente que se comunicam por rede. Eles aumentam a autonomia de times, mas trazem custo real: observabilidade distribuída, consistência eventual, latencia de rede e complexidade operacional que não existem no monólito.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">Microserviços vs Monólito</h2>
+        <div class="section-divider"></div>
+        <p>Cada abordagem tem vantagens e custos reais — a escolha depende de maturidade e contexto:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Dimensão</th>
+                <th>Monólito</th>
+                <th>Microserviços</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Deploy</strong></td>
+                <td>Uma única unidade — simples e previsível.</td>
+                <td>Serviços independentes — requer CI/CD maduro.</td>
+              </tr>
+              <tr>
+                <td><strong>Observabilidade</strong></td>
+                <td>Logs e traces centralizados — debug simples.</td>
+                <td>Tracing distribuído necessário (Jaeger, OpenTelemetry).</td>
+              </tr>
+              <tr>
+                <td><strong>Consistência</strong></td>
+                <td>Transações ACID entre módulos.</td>
+                <td>Consistência eventual ou sagas distribuídas.</td>
+              </tr>
+              <tr>
+                <td><strong>Escala</strong></td>
+                <td>Escala toda a aplicação.</td>
+                <td>Escala serviços individualmente.</td>
+              </tr>
+              <tr>
+                <td><strong>Times</strong></td>
+                <td>Um time pode dominar tudo — coordenação necessária.</td>
+                <td>Times autônomos por serviço/domínio.</td>
+              </tr>
+              <tr>
+                <td><strong>Custo inicial</strong></td>
+                <td>Baixo — ideal para MVP e produtos em validação.</td>
+                <td>Alto — exige infraestrutura madura desde o início.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="comunicacao" class="section-title">Padrões de comunicação</h2>
+        <div class="section-divider"></div>
+        <p>Serviços comunicam por dois padrões principais com trade-offs distintos:</p>
+        <div class="code-container">
+          <pre class="code-block">// PADRÃO 1: SÍNCRONO (REST/gRPC) — resposta imediata
+// Vantagem: fluxo simples. Desvantagem: acoplamento temporal.
+
+// POST /api/pedidos -> Serviço Pedidos
+//   -> GET /api/estoque/{produtoId}  (síncrono, aguarda)
+//   -> POST /api/pagamentos          (síncrono, aguarda)
+//   -> resposta final ao cliente
+
+// PADRÃO 2: ASSÍNCRONO (eventos) — desacoplado
+// Vantagem: resiliência e desacoplamento. Desvantagem: consistência eventual.
+
+// POST /api/pedidos -> Serviço Pedidos
+//   -> publica PedidoCriado no broker
+//   -> resposta imediata ao cliente (202 Accepted)
+
+// Serviço Estoque consome PedidoCriado
+//   -> reserva estoque
+//   -> publica EstoqueReservado
+
+// Serviço Pagamentos consome EstoqueReservado
+//   -> processa pagamento
+//   -> publica PedidoPago ou PagamentoRecusado</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando e como usar</h2>
+        <div class="section-divider"></div>
+        <p>A decisão de adotar microserviços deve ser baseada em maturidade operacional, não em moda:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Múltiplos times com ritmo próprio. Bounded contexts claros. Necessidade real de escala/isolamento de falha.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Sem CI/CD confiável. Sem monitoramento/alertas. Domínio ainda mudando e fronteiras indefinidas.</p>
+          </div>
+          <div class="card">
+            <h3>Checklist operacional</h3>
+            <p>Tracing distribuído, alertas por serviço, rollback individual, health checks, circuit breakers.</p>
+          </div>
+          <div class="card">
+            <h3>Comece pelo monólito</h3>
+            <p>Um monólito modular é muitas vezes a etapa correta — extraía serviços quando a fronteira próvar seu valor.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Microserviços são naturalmente alinhados a <a href="/html/engenharia_software/design/arquitetura/ddd.html">Bounded Contexts do DDD</a>. Combine com <a href="/html/engenharia_software/design/arquitetura/event_driven.html">Event-Driven</a> para desacoplar comunicação entre eles.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Microserviços resolvem problemas de org. Antes do problema de org existir, eles são o problema."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

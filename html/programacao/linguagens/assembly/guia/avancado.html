@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly avancado: SIMD SSE/AVX vetorizado, instrucoes de string, syscalls Linux, convencoes de chamada System V e Windows x64, inline assembly em C/C++, otimizacoes de performance." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Avançado</h1>
+          <p>Os tópicos avançados de Assembly cobrem <strong>SIMD (SSE/AVX)</strong> para processamento vetorial de múltiplos dados em paralelo, instruções de string otimizadas, syscalls diretas ao kernel Linux, convenções de chamada System V ABI e Windows x64, inline assembly dentro de C/C++ e técnicas de otimização como branch-free code, loop unrolling e prefetch de memória.</p>
+        </div>
+        <p class="intro-highlight">
+          Com SIMD, uma única instrução AVX2 como <code>vaddps ymm0, ymm1, ymm2</code> soma <strong>8 floats de 32 bits simultaneamente</strong> em vez de 1 — viabilizando processamento de áudio, vídeo, criptografia e ML a velocidades impossíveis de atingir em linguagens de alto nível sem estas extensões.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="simd-sse">SIMD — SSE e AVX</h2>
+        <div class="panel">
+          <p class="panel-title">Evolucao das extensoes SIMD x86</p>
+          <table class="table">
+            <thead><tr><th>Extensao</th><th>Registradores</th><th>Largura</th><th>Floats/instrucao</th><th>Introducao</th></tr></thead>
+            <tbody>
+              <tr><td>SSE</td><td>XMM0–XMM7</td><td>128-bit</td><td>4× float32 ou 2× float64</td><td>Pentium III (1999)</td></tr>
+              <tr><td>SSE2</td><td>XMM0–XMM7</td><td>128-bit</td><td>+ integers 8/16/32/64-bit</td><td>Pentium 4 (2001)</td></tr>
+              <tr><td>SSE4.2</td><td>XMM0–XMM15</td><td>128-bit</td><td>+ PCMPESTRI/CRC32</td><td>Nehalem (2008)</td></tr>
+              <tr><td>AVX</td><td>YMM0–YMM15</td><td>256-bit</td><td>8× float32 ou 4× float64</td><td>Sandy Bridge (2011)</td></tr>
+              <tr><td>AVX2</td><td>YMM0–YMM15</td><td>256-bit</td><td>+ integers 256-bit completos</td><td>Haswell (2013)</td></tr>
+              <tr><td>AVX-512</td><td>ZMM0–ZMM31</td><td>512-bit</td><td>16× float32 ou 8× float64</td><td>Skylake-X (2017)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; SSE: somar vetores de floats 32-bit</div>
+          <pre class="example"><span class="com">; Somar 4 floats de 32-bit com SSE (XMM — 128 bits = 4 × 32 bits)</span>
+
+<span class="kw">section</span> .data
+    <span class="kw">align</span> <span class="num">16</span>                     <span class="com">; SSE exige alinhamento de 16 bytes</span>
+    a    <span class="fn">dd</span>  <span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>, <span class="num">4.0</span>  <span class="com">; 4 floats</span>
+    b    <span class="fn">dd</span>  <span class="num">5.0</span>, <span class="num">6.0</span>, <span class="num">7.0</span>, <span class="num">8.0</span>
+    res  <span class="fn">dd</span>  <span class="num">0.0</span>, <span class="num">0.0</span>, <span class="num">0.0</span>, <span class="num">0.0</span>
+
+<span class="kw">section</span> .text
+somar_sse:
+    <span class="kw">movaps</span>  xmm0, [a]     <span class="com">; carrega 4 floats alinhados</span>
+    <span class="kw">movaps</span>  xmm1, [b]
+    <span class="kw">addps</span>   xmm0, xmm1    <span class="com">; xmm0[0..3] += xmm1[0..3] em paralelo</span>
+    <span class="kw">movaps</span>  [res], xmm0   <span class="com">; salva resultado</span>
+    <span class="kw">ret</span>
+
+<span class="com">; Operações ps = packed single (4×float32)</span>
+<span class="com">; Operações pd = packed double (2×float64)</span>
+<span class="com">; Operações ss = scalar single (1×float32, bits altos ignorados)</span>
+<span class="com">; Operações sd = scalar double  (1×float64)</span>
+
+<span class="com">; Produto escalar de 4 floats com SSE4.1</span>
+produto_escalar:
+    <span class="kw">movaps</span>  xmm0, [a]
+    <span class="kw">movaps</span>  xmm1, [b]
+    <span class="kw">dpps</span>    xmm0, xmm1, <span class="num">0xF1</span>  <span class="com">; dot product: soma a*b[0..3], resultado em xmm0[0]</span>
+    <span class="com">; 0xF1 = mask 1111 0001: multiplicar todos 4, somar, colocar em elem 0</span>
+    <span class="kw">movss</span>   [resultado], xmm0   <span class="com">; salva scalar float</span>
+    <span class="kw">ret</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; AVX2: multiplicar array de 8 int32 em paralelo</div>
+          <pre class="example"><span class="com">; AVX2 — YMM = 256 bits = 8 × int32</span>
+<span class="com">; Verificar suporte: CPUID EAX=7, ECX=0 → EBX bit 5 (AVX2)</span>
+
+<span class="kw">section</span> .data
+    <span class="kw">align</span> <span class="num">32</span>                              <span class="com">; AVX precisa alinhar a 32 bytes</span>
+    v1   <span class="fn">dd</span>  <span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>,<span class="num">6</span>,<span class="num">7</span>,<span class="num">8</span>
+    v2   <span class="fn">dd</span>  <span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>,<span class="num">2</span>
+    out  <span class="fn">dd</span>  <span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>
+
+<span class="kw">section</span> .text
+multiplicar_avx2:
+    <span class="kw">vmovdqa</span>  ymm0, [v1]       <span class="com">; carrega 8 int32 alinhados</span>
+    <span class="kw">vmovdqa</span>  ymm1, [v2]
+    <span class="kw">vpmulld</span>  ymm2, ymm0, ymm1 <span class="com">; multiply 8 packed int32 low (AVX2)</span>
+    <span class="kw">vmovdqa</span>  [out], ymm2
+    <span class="kw">vzeroupper</span>                 <span class="com">; OBRIGATÓRIO: limpa bits 128+ antes de chamar C</span>
+    <span class="kw">ret</span>
+
+<span class="com">; Loop SIMD: processar N floats com AVX (passo de 8)</span>
+simd_loop:
+    <span class="com">; rdi = ponteiro para array, rsi = n elementos</span>
+    <span class="kw">xor</span>   rcx, rcx
+.loop:
+    <span class="kw">cmp</span>   rcx, rsi
+    <span class="kw">jge</span>   .fim
+    <span class="kw">vmovups</span>  ymm0, [rdi + rcx*<span class="num">4</span>]  <span class="com">; vmovups = não alinhado</span>
+    <span class="kw">vmulps</span>   ymm0, ymm0, ymm0       <span class="com">; elevar ao quadrado (8 floats)</span>
+    <span class="kw">vmovups</span>  [rdi + rcx*<span class="num">4</span>], ymm0
+    <span class="kw">add</span>   rcx, <span class="num">8</span>
+    <span class="kw">jmp</span>   .loop
+.fim:
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="syscalls">Syscalls Linux e Convencoes de Chamada</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Syscalls Linux (tabela e exemplos)</div>
+          <pre class="example"><span class="com">; Linux x86-64 syscall ABI:</span>
+<span class="com">;   Número da syscall: RAX</span>
+<span class="com">;   Argumentos:        RDI, RSI, RDX, R10, R8, R9</span>
+<span class="com">;   Retorno:           RAX  (negativo = -errno)</span>
+<span class="com">;   Registradores preservados: RBX, RBP, RSP, R12-R15</span>
+<span class="com">;   Clobbers:          RCX, R11, RAX</span>
+
+SYS_read    <span class="kw">equ</span> <span class="num">0</span>
+SYS_write   <span class="kw">equ</span> <span class="num">1</span>
+SYS_open    <span class="kw">equ</span> <span class="num">2</span>
+SYS_close   <span class="kw">equ</span> <span class="num">3</span>
+SYS_mmap    <span class="kw">equ</span> <span class="num">9</span>
+SYS_munmap  <span class="kw">equ</span> <span class="num">11</span>
+SYS_exit    <span class="kw">equ</span> <span class="num">60</span>
+SYS_socket  <span class="kw">equ</span> <span class="num">41</span>
+SYS_connect <span class="kw">equ</span> <span class="num">42</span>
+
+<span class="com">; open("/etc/hostname", O_RDONLY)</span>
+open_arquivo:
+    <span class="kw">lea</span>   rdi, [rel path]    <span class="com">; rdi = "/etc/hostname"</span>
+    <span class="kw">xor</span>   esi, esi           <span class="com">; flags = O_RDONLY = 0</span>
+    <span class="kw">xor</span>   edx, edx           <span class="com">; mode = 0</span>
+    <span class="kw">mov</span>   eax, SYS_open
+    <span class="kw">syscall</span>
+    <span class="com">; rax = fd  (ou < 0 em erro)</span>
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">js</span>    .erro              <span class="com">; SF=1 → negativo → erro</span>
+    <span class="kw">ret</span>
+
+<span class="com">; mmap: alocar memória anônima</span>
+alocar_mem:
+    <span class="com">; void* mmap(NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0)</span>
+    <span class="kw">xor</span>   edi, edi           <span class="com">; addr = NULL</span>
+    <span class="kw">mov</span>   rsi, <span class="num">4096</span>         <span class="com">; size = 1 página</span>
+    <span class="kw">mov</span>   edx, <span class="num">3</span>            <span class="com">; PROT_READ(1)|PROT_WRITE(2)</span>
+    <span class="kw">mov</span>   r10d, <span class="num">0x22</span>        <span class="com">; MAP_PRIVATE(2)|MAP_ANONYMOUS(0x20)</span>
+    <span class="kw">mov</span>   r8d, -<span class="num">1</span>           <span class="com">; fd = -1</span>
+    <span class="kw">xor</span>   r9d, r9d           <span class="com">; offset = 0</span>
+    <span class="kw">mov</span>   eax, SYS_mmap
+    <span class="kw">syscall</span>                  <span class="com">; rax = endereço da memória alocada</span>
+    <span class="kw">ret</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM &mdash; Convencoes de chamada: System V vs Windows x64</div>
+          <pre class="example"><span class="com">; ╔═══════════════════════════╦══════════════════════╦══════════════════════╗</span>
+<span class="com">; ║ Posição                   ║ System V AMD64 (Linux)║ Windows x64          ║</span>
+<span class="com">; ╠═══════════════════════════╬══════════════════════╬══════════════════════╣</span>
+<span class="com">; ║ 1° argumento inteiro      ║ RDI                  ║ RCX                  ║</span>
+<span class="com">; ║ 2° argumento inteiro      ║ RSI                  ║ RDX                  ║</span>
+<span class="com">; ║ 3° argumento inteiro      ║ RDX                  ║ R8                   ║</span>
+<span class="com">; ║ 4° argumento inteiro      ║ RCX                  ║ R9                   ║</span>
+<span class="com">; ║ 5° argumento inteiro      ║ R8                   ║ stack                ║</span>
+<span class="com">; ║ 6° argumento inteiro      ║ R9                   ║ stack                ║</span>
+<span class="com">; ║ Retorno inteiro           ║ RAX (RDX extensão)   ║ RAX                  ║</span>
+<span class="com">; ║ Retorno float             ║ XMM0                 ║ XMM0                 ║</span>
+<span class="com">; ║ Callee-saved              ║ RBX,RBP,R12-R15      ║ RBX,RBP,RDI,RSI      ║</span>
+<span class="com">; ║ Shadow space              ║ Nao                  ║ 32 bytes obrigatorio ║</span>
+<span class="com">; ╚═══════════════════════════╩══════════════════════╩══════════════════════╝</span>
+
+<span class="com">; Windows x64: SEMPRE reservar 32 bytes de shadow space antes de CALL</span>
+chamada_windows:
+    <span class="kw">sub</span>   rsp, <span class="num">40</span>        <span class="com">; 32 shadow + 8 alinhar (40 = 8*5, múltiplo de 16)</span>
+    <span class="kw">mov</span>   rcx, rdi       <span class="com">; 1° arg: Windows usa RCX</span>
+    <span class="kw">mov</span>   rdx, rsi       <span class="com">; 2° arg</span>
+    <span class="kw">call</span>  funcao_win
+    <span class="kw">add</span>   rsp, <span class="num">40</span>
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="inline-asm">Inline Assembly em C/C++</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C/GCC &mdash; GCC inline assembly com constraints</div>
+          <pre class="example"><span class="com">// GCC Extended Inline Assembly:  asm volatile ("instrucoes" : outputs : inputs : clobbers);</span>
+
+<span class="com">// 1. Somar dois inteiros sem usar o operador +</span>
+<span class="kw">int</span> <span class="fn">soma_asm</span>(<span class="kw">int</span> a, <span class="kw">int</span> b) {
+    <span class="kw">int</span> result;
+    <span class="kw">asm</span> <span class="kw">volatile</span> (
+        <span class="str">"addl %2, %0"</span>          <span class="com">// instrucao: %0=result, %1=a, %2=b</span>
+        : <span class="str">"=r"</span> (result)         <span class="com">// output: result em qualquer reg</span>
+        : <span class="str">"0"</span> (a), <span class="str">"r"</span> (b)      <span class="com">// inputs: %0 inicializado com 'a', b em reg</span>
+        : <span class="str">"cc"</span>                   <span class="com">// clobber: flags (cc)</span>
+    );
+    <span class="kw">return</span> result;
+}
+
+<span class="com">// 2. CPUID — detectar funcionalidades do processador</span>
+<span class="kw">void</span> <span class="fn">get_cpuid</span>(<span class="kw">uint32_t</span> leaf, <span class="kw">uint32_t</span>* eax, <span class="kw">uint32_t</span>* ebx,
+               <span class="kw">uint32_t</span>* ecx, <span class="kw">uint32_t</span>* edx) {
+    <span class="kw">asm</span> <span class="kw">volatile</span> (
+        <span class="str">"cpuid"</span>
+        : <span class="str">"=a"</span>(*eax), <span class="str">"=b"</span>(*ebx), <span class="str">"=c"</span>(*ecx), <span class="str">"=d"</span>(*edx)
+        : <span class="str">"a"</span>(leaf)
+    );
+}
+
+<span class="com">// 3. RDTSC — ler contador de ciclos (benchmarking)</span>
+<span class="kw">uint64_t</span> <span class="fn">rdtsc</span>() {
+    <span class="kw">uint32_t</span> lo, hi;
+    <span class="kw">asm</span> <span class="kw">volatile</span> (
+        <span class="str">"rdtsc"</span>
+        : <span class="str">"=a"</span>(lo), <span class="str">"=d"</span>(hi)
+    );
+    <span class="kw">return</span> ((<span class="kw">uint64_t</span>)hi &lt;&lt; <span class="num">32</span>) | lo;
+}
+
+<span class="com">// 4. Memory barrier (fence)</span>
+<span class="kw">void</span> <span class="fn">memory_fence</span>() {
+    <span class="kw">asm</span> <span class="kw">volatile</span> (<span class="str">"mfence"</span> ::: <span class="str">"memory"</span>); <span class="com">// "memory" = clobber toda memória</span>
+}
+
+<span class="com">// 5. SIMD via intrinsics (recomendado sobre inline ASM)</span>
+<span class="kw">#include</span> <span class="str">&lt;immintrin.h&gt;</span>
+<span class="kw">void</span> <span class="fn">somar_avx</span>(<span class="kw">float</span>* a, <span class="kw">float</span>* b, <span class="kw">float</span>* c, <span class="kw">int</span> n) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; n; i += <span class="num">8</span>) {
+        __m256 va = _mm256_loadu_ps(&amp;a[i]);  <span class="com">// carregar 8 floats</span>
+        __m256 vb = _mm256_loadu_ps(&amp;b[i]);
+        __m256 vc = _mm256_add_ps(va, vb);   <span class="com">// soma vetorial</span>
+        _mm256_storeu_ps(&amp;c[i], vc);
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="otimizacoes">Tecnicas de Otimizacao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Branch-free, loop unrolling, prefetch</div>
+          <pre class="example"><span class="com">; ── Branch-free: min(a, b) sem salto ──────────────</span>
+<span class="com">; Usando CMOV (conditional move) — sem branch prediction penalty</span>
+min_branchfree:
+    <span class="com">; rdi = a,  rsi = b,  retorna min em rax</span>
+    <span class="kw">mov</span>   rax, rdi
+    <span class="kw">cmp</span>   rdi, rsi
+    <span class="kw">cmovg</span> rax, rsi      <span class="com">; if (a > b): rax = b</span>
+    <span class="kw">ret</span>
+
+<span class="com">; ── Absolute value sem branch ──────────────────────</span>
+abs_inteiro:
+    <span class="com">; rdi = x, retorna |x| em rax</span>
+    <span class="kw">mov</span>   rax, rdi
+    <span class="kw">mov</span>   rcx, rdi
+    <span class="kw">sar</span>   rcx, <span class="num">63</span>       <span class="com">; rcx = 0 se x>=0, -1 (0xFFF...) se x<0</span>
+    <span class="kw">xor</span>   rax, rcx       <span class="com">; inverte bits se negativo</span>
+    <span class="kw">sub</span>   rax, rcx       <span class="com">; soma 1 se negativo (complemento de dois)</span>
+    <span class="kw">ret</span>
+
+<span class="com">; ── Loop Unrolling — somar array de 8 int64 (4-way unroll) ─</span>
+soma_array:
+    <span class="com">; rdi = ponteiro, rsi = count (múltiplo de 4)</span>
+    <span class="kw">xor</span>   rax, rax        <span class="com">; acumulador</span>
+    <span class="kw">xor</span>   rcx, rcx
+.loop:
+    <span class="kw">cmp</span>   rcx, rsi
+    <span class="kw">jge</span>   .fim
+    <span class="kw">add</span>   rax, [rdi + rcx*<span class="num">8</span>]      <span class="com">; iter 1</span>
+    <span class="kw">add</span>   rax, [rdi + rcx*<span class="num">8</span> + <span class="num">8</span>]  <span class="com">; iter 2</span>
+    <span class="kw">add</span>   rax, [rdi + rcx*<span class="num">8</span> + <span class="num">16</span>] <span class="com">; iter 3</span>
+    <span class="kw">add</span>   rax, [rdi + rcx*<span class="num">8</span> + <span class="num">24</span>] <span class="com">; iter 4 (4 loads por iteração)</span>
+    <span class="kw">add</span>   rcx, <span class="num">4</span>
+    <span class="kw">jmp</span>   .loop
+.fim:
+    <span class="kw">ret</span>
+
+<span class="com">; ── Prefetch — carregar cache antes de precisar ────────</span>
+prefetch_example:
+    <span class="com">; PREFETCHT0: carregar em todos os níveis de cache</span>
+    <span class="com">; PREFETCHT1: L2/L3.  PREFETCHNTA: non-temporal (streaming)</span>
+    <span class="kw">prefetcht0</span> [rdi + <span class="num">256</span>]   <span class="com">; pré-carregar 256 bytes à frente</span>
+    <span class="kw">mov</span>        rax, [rdi]
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>AGNER FOG. <strong>Optimizing subroutines in assembly language</strong>. Copenhagen: Technical University of Denmark, 2024. Disponível em: &lt;https://agner.org/optimize&gt;. Acesso em: 2025.</li>
+            <li>INTEL. <strong>Intel Intrinsics Guide</strong>. Disponível em: &lt;https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html&gt;. Acesso em: 2025.</li>
+            <li>GCC. <strong>GCC-Inline-Assembly-HOWTO</strong>. Disponível em: &lt;https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Fundamentos</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>VZEROUPPER</strong> deve ser chamado ao sair de qualquer código AVX antes de chamar funções que usem SSE legado — a transição de estado entre YMM (256-bit) e XMM (128-bit sem VEX) causa penalidades de centenas de ciclos em CPUs Intel, bugs invisíveis e difíceis de diagnosticar.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

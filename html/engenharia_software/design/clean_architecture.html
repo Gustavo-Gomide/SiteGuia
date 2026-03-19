@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clean Architecture na prática: regra da dependência, casos de uso, fronteiras e checklist para manter o domínio isolado.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Clean Architecture | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Isolar o domínio de detalhes técnicos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Clean Architecture</h1>
+          <p class="page-subtitle">Arquitetura de sistemas com domínio isolado — Robert C. Martin</p>
+        </div>
+        <p class="intro-highlight">Clean Architecture organiza o sistema em camadas concêntricas onde as dependências apontam sempre para dentro — detalhes (frameworks, banco, UI) dependem do domínio, nunca o contrário. O objetivo é poder substituir banco, framework ou interface sem reescrever regras de negócio.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="camadas" class="section-title">As camadas concêntricas</h2>
+        <div class="section-divider"></div>
+        <p>Cada camada só pode depender das camadas mais internas. A regra da dependência é inviolável:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Camada</th>
+                <th>Responsabilidade</th>
+                <th>Exemplos</th>
+                <th>Pode conhecer</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Entidades</strong></td>
+                <td>Regras de negócio corporativas — mudam raramente.</td>
+                <td>Pedido, Usuario, Produto</td>
+                <td>Ninguém — é o núcleo</td>
+              </tr>
+              <tr>
+                <td><strong>Casos de Uso</strong></td>
+                <td>Regras de negócio da aplicação — orquestram entidades.</td>
+                <td>CriarPedidoUseCase, AutenticarUsuario</td>
+                <td>Entidades</td>
+              </tr>
+              <tr>
+                <td><strong>Adaptadores</strong></td>
+                <td>Convertem dados entre casos de uso e mundo externo.</td>
+                <td>Controllers, Presenters, Gateways</td>
+                <td>Casos de Uso + Entidades</td>
+              </tr>
+              <tr>
+                <td><strong>Frameworks e Drivers</strong></td>
+                <td>Detalhes: banco, web, UI, serviços externos.</td>
+                <td>Express, Sequelize, React, Kafka</td>
+                <td>Tudo — é a camada mais externa</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="portas-adaptadores" class="section-title">Portas e Adaptadores — exemplo</h2>
+        <div class="section-divider"></div>
+        <p>A camada de domínio define <em>interfaces</em> (portas); os detalhes fornecem <em>implementações</em> (adaptadores):</p>
+        <div class="code-container">
+          <pre class="code-block">// Porta (definida no núcleo — casos de uso)
+interface NotificacaoGateway {
+  enviar(destinatario: string, mensagem: string): Promise<void>;
+}
+
+// Adaptador (detalhe — framework externo)
+class EmailNotificacaoAdapter implements NotificacaoGateway {
+  async enviar(destinatario: string, mensagem: string) {
+    await this.smtpClient.send({ to: destinatario, body: mensagem });
+  }
+}
+
+// Caso de uso (não conhece SMTP, só a interface)
+class ConfirmarPedidoUseCase {
+  constructor(private notificacao: NotificacaoGateway) {}
+
+  async executar(pedidoId: string) {
+    const pedido = await this.pedidoRepo.buscar(pedidoId);
+    pedido.confirmar();
+    await this.notificacao.enviar(pedido.clienteEmail, 'Pedido confirmado!');
+  }
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Sinais que indicam a necessidade</h2>
+        <div class="section-divider"></div>
+        <p>Clean Architecture tem custo real de setup — use quando os sinais abaixo aparecem:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Domínio testável</h3>
+            <p>Você quer testar regras de negócio sem subir banco, servidor ou mocks de framework.</p>
+          </div>
+          <div class="card">
+            <h3>Troca de framework</h3>
+            <p>Há planos de mudar banco, ORM ou biblioteca de HTTP sem reescrever regras de negócio.</p>
+          </div>
+          <div class="card">
+            <h3>Equipe grande</h3>
+            <p>Fronteiras explícitas reduzem acoplamento acidental entre times trabalhando em paralelo.</p>
+          </div>
+          <div class="card">
+            <h3>Longevidade</h3>
+            <p>O sistema precisará evoluir por anos com requisitos que mudam — domínio deve sobreviver a modas de framework.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>A regra da dependência é o coração da Clean Architecture. Combine com <a href="/html/engenharia_software/design/solid.html">SOLID</a> e <a href="/html/engenharia_software/design/design_patterns/introducao_patterns.html">Design Patterns</a> para maximizar a manutenibilidade.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Dependências devem apontar para dentro. Detalhes dependem de políticas, nunca o contrário."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html> “porta” (interface):

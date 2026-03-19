@@ -1,0 +1,111 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Animacao 3D para jogos: key poses, timing e integracao com locomocao e combate." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Animacao 3D | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Animacao 3D para Jogos</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">Animacao 3D para Jogos</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>Animacao 3D: Key Poses, Timing e Integracao com a Engine</h1>
+        <p>Da pose de referencia ao state machine: como animacao de arquivo vira comportamento de personagem.</p>
+      </div>
+      <p class="intro-highlight">Animacao de jogo nao e animacao de filme. O objetivo nao e impressionar numa cena linear — e comunicar estado do personagem de forma legivel para o jogador em qualquer frame do loop, inclusive no frame 1 do idle.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">Animacao para Jogo vs Animacao para Filme</h2>
+      <p>Em filme, a narrativa controla quando cada animacao acontece e por quanto tempo. Em jogos, o <strong>jogador controla o tempo</strong>: uma animacao de corrida pode durar indefinidamente, loop de idle pode ser interrompido a qualquer frame e ataques precisam ser cancelaveis se o design pedir. Isso muda tudo: cada clip precisa de <strong>pose de entrada e saida previsiveis</strong> para o sistema de blending da engine.</p>
+      <p>A diferenca pratica: animador de filme polida spline. Animador de jogo polida <strong>loops de 4, 8 ou 16 frames</strong> com pose inicial igual a pose final, e cuida de transicoes entre estados (idle-to-run, run-to-attack, hit-reaction).</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">Key Poses e Timing</h2>
+      <p>A base tecnica da animacao sao as <strong>key poses</strong>: contact, down, passing e high para um ciclo de caminhada; windup, strike e recovery para um ataque. In-betweens preenchem o espaco entre as keys, mas sao as keys que carregam a leitura do movimento.</p>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Timing por Contexto</h3>
+          <ul>
+            <li><strong>Idle:</strong> 60–120 frames a 30fps. Loop com drift leve para nao parecer robotico.</li>
+            <li><strong>Run cycle:</strong> 8–16 frames. Cada 4 frames e um paso; passos simetricos permitem loop.</li>
+            <li><strong>Ataque leve:</strong> 20–40 frames. Windup (4–8f), strike (4–6f), recovery (8–16f).</li>
+            <li><strong>Hit reaction:</strong> 12–20 frames. Rapido para nao interruper demais o flow do player.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Root Motion</h3>
+          <p>Root motion e quando o deslocamento do personagem vem do proprio clip de animacao (o bone root se move no espaco). Permite animacoes mais organicas, mas exige que a engine leia o delta de posicao do root a cada frame. Contrapartida: <em>in-place animation</em> nao mexe o root — o movimento e controlado pelo codigo de locomocao.</p>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tipos" class="section-title">Tipos e Organizacao de Clips</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Nomenclatura de Clips</h3>
+          <ul>
+            <li><code class="code-inline">CH_Player_Idle_01</code> (Character, entidade, estado, variacao).</li>
+            <li><code class="code-inline">CH_Player_Run_Forward</code></li>
+            <li><code class="code-inline">CH_Player_Attack_Light_01</code></li>
+            <li><code class="code-inline">CH_Player_Death_Front</code></li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Blend Tree e State Machine</h3>
+          <p>Na engine, clips sao organizados em <strong>Animator Controller</strong> (Unity) ou <strong>Animation Blueprint</strong> (Unreal). Um <em>blend tree</em> mistura idle e run proporcionalmente a velocidade. O <em>state machine</em> define transicoes com condicoes (<em>isGrounded</em>, <em>speed</em>, <em>isAttacking</em>) e tempos de crossfade.</p>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">NLA, Export e Otimizacao</h2>
+      <div class="panel">
+        <p>No Blender, o <strong>NLA Editor</strong> (Non-Linear Animation) organiza todas as actions em faixas independentes. Para exportar para engine, cada action do NLA vira um clip separado no FBX. A nomenclatura da action vira o nome do clip na engine — usar o padrao de nomenclatura no NLA desde o inicio evita renomeacao manual no Unity/Unreal.</p>
+        <p>Otimizacao de animacao: remover keyframes desnecessarios (curvatura plana entre dois keys iguais), usar <code class="code-inline">Sample Rate</code> de 30fps para jogos mobile (em vez de 60fps), e compressao de animacao na engine (Unity Anim Compression, Unreal Compression Settings). Animacao de personagem de jogo mobile bem comprimida ocupa menos de 100KB por clip simples.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>LASSETER, John. <strong>Principles of Traditional Animation Applied to 3D Computer Animation</strong>. SIGGRAPH, 1987.</li>
+        <li>BEANE, Andy. <strong>3D Animation Essentials</strong>. Sybex, 2012.</li>
+        <li>UNITY TECHNOLOGIES. <strong>Animation State Machines</strong>. Unity Manual, 2024.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>Boa animacao de jogo e aquela que o jogador nunca para para admirar — porque ela nunca quebra a imersao.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"Em jogos, animacao e servico: serve ao gameplay, comunicando o estado do personagem frame a frame."</p>
+    </div>
+  </div></main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e interoperabilidade em Assembly: chamadas à libc, syscalls Linux completas, Win32 API em NASM, BIOS interrupts, UEFI e linkagem com C." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Bibliotecas e Interop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Bibliotecas e Interop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Bibliotecas e Interop</h1>
+          <p>Assembly raramente existe em isolamento total. Na prática, código assembly <strong>chama funções da libc</strong> (printf, malloc, memcpy), faz <strong>syscalls diretas ao kernel Linux</strong>, usa a <strong>Win32 API</strong> no Windows, acessa <strong>BIOS/firmware</strong> em código bare-metal e se integra com projetos C/C++ como módulos compilados isolados linkados junto.</p>
+        </div>
+        <p class="intro-highlight">
+          A regra de ouro: use <strong>syscalls diretas</strong> quando precisar de zero dependências (processo de inicialização, bootloader, shellcode), use a <strong>libc</strong> quando quiser portabilidade entre Linux/macOS/Windows, e use <strong>DDLs/SOs externos</strong> quando precisar de funcionalidades complexas sem reimplementar tudo do zero.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="libc">Usando a libc em Assembly</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Chamando printf, malloc e memcpy</div>
+          <pre class="example"><span class="com">; Linkagem: gcc -o prog prog.o   (ou ld com -lc e -dynamic-linker)</span>
+<span class="com">; As funções externas são declaradas com "extern"</span>
+
+<span class="kw">extern</span> printf
+<span class="kw">extern</span> malloc
+<span class="kw">extern</span> free
+<span class="kw">extern</span> memcpy
+<span class="kw">extern</span> strlen
+<span class="kw">extern</span> puts
+
+<span class="kw">global</span> main
+
+<span class="kw">section</span> .data
+    fmt_int   <span class="fn">db</span> <span class="str">"Valor: %d\n"</span>, <span class="num">0</span>
+    fmt_str   <span class="fn">db</span> <span class="str">"String: %s\n"</span>, <span class="num">0</span>
+    hello     <span class="fn">db</span> <span class="str">"Ola, Mundo!"</span>, <span class="num">0</span>
+
+<span class="kw">section</span> .text
+main:
+    <span class="com">; ── printf("Valor: %d\n", 42) ──</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> fmt_int]   <span class="com">; 1° arg: formato</span>
+    <span class="kw">mov</span>   esi, <span class="num">42</span>               <span class="com">; 2° arg: inteiro</span>
+    <span class="kw">xor</span>   eax, eax              <span class="com">; RAX=0: nenhum argumento XMM</span>
+    <span class="kw">call</span>  printf
+
+    <span class="com">; ── puts("Ola, Mundo!") ──</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> hello]
+    <span class="kw">call</span>  puts
+
+    <span class="com">; ── malloc(256) ──</span>
+    <span class="kw">mov</span>   edi, <span class="num">256</span>          <span class="com">; tamanho em bytes</span>
+    <span class="kw">call</span>  malloc             <span class="com">; rax = ponteiro ou NULL</span>
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">jz</span>    .erro
+    <span class="kw">push</span>  rax                <span class="com">; salvar ponteiro</span>
+
+    <span class="com">; ── memcpy(dest, src, n) ──</span>
+    <span class="kw">mov</span>   rdi, rax           <span class="com">; destino = ponteiro alocado</span>
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> hello]   <span class="com">; fonte = string hello</span>
+    <span class="kw">mov</span>   edx, <span class="num">12</span>            <span class="com">; n = 12 bytes</span>
+    <span class="kw">call</span>  memcpy
+
+    <span class="com">; ── free(ptr) ──</span>
+    <span class="kw">pop</span>   rdi                <span class="com">; recuperar ponteiro</span>
+    <span class="kw">call</span>  free
+
+.erro:
+    <span class="kw">xor</span>   eax, eax
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="syscalls-ref">Referencia de Syscalls Linux x86-64</h2>
+        <div class="panel">
+          <p class="panel-title">Syscalls Linux x86-64 mais usadas</p>
+          <table class="table">
+            <thead><tr><th>Num (RAX)</th><th>Nome</th><th>RDI</th><th>RSI</th><th>RDX</th><th>Retorno</th></tr></thead>
+            <tbody>
+              <tr><td>0</td><td>read</td><td>fd</td><td>buf*</td><td>count</td><td>bytes lidos</td></tr>
+              <tr><td>1</td><td>write</td><td>fd</td><td>buf*</td><td>count</td><td>bytes escritos</td></tr>
+              <tr><td>2</td><td>open</td><td>path*</td><td>flags</td><td>mode</td><td>fd</td></tr>
+              <tr><td>3</td><td>close</td><td>fd</td><td>—</td><td>—</td><td>0 ou -errno</td></tr>
+              <tr><td>4</td><td>stat</td><td>path*</td><td>statbuf*</td><td>—</td><td>0 ou -errno</td></tr>
+              <tr><td>9</td><td>mmap</td><td>addr</td><td>length</td><td>prot</td><td>endereço</td></tr>
+              <tr><td>10</td><td>mprotect</td><td>addr</td><td>len</td><td>prot</td><td>0 ou -errno</td></tr>
+              <tr><td>11</td><td>munmap</td><td>addr</td><td>len</td><td>—</td><td>0 ou -errno</td></tr>
+              <tr><td>12</td><td>brk</td><td>addr</td><td>—</td><td>—</td><td>novo brk</td></tr>
+              <tr><td>20</td><td>writev</td><td>fd</td><td>iov*</td><td>iovcnt</td><td>bytes escritos</td></tr>
+              <tr><td>41</td><td>socket</td><td>domain</td><td>type</td><td>protocol</td><td>fd</td></tr>
+              <tr><td>42</td><td>connect</td><td>sockfd</td><td>addr*</td><td>addrlen</td><td>0 ou -errno</td></tr>
+              <tr><td>49</td><td>bind</td><td>sockfd</td><td>addr*</td><td>addrlen</td><td>0 ou -errno</td></tr>
+              <tr><td>50</td><td>listen</td><td>sockfd</td><td>backlog</td><td>—</td><td>0 ou -errno</td></tr>
+              <tr><td>56</td><td>clone</td><td>flags</td><td>stack</td><td>parent_tid*</td><td>pid filho</td></tr>
+              <tr><td>57</td><td>fork</td><td>—</td><td>—</td><td>—</td><td>pid filho</td></tr>
+              <tr><td>59</td><td>execve</td><td>path*</td><td>argv**</td><td>envp**</td><td>não retorna</td></tr>
+              <tr><td>60</td><td>exit</td><td>status</td><td>—</td><td>—</td><td>não retorna</td></tr>
+              <tr><td>231</td><td>exit_group</td><td>status</td><td>—</td><td>—</td><td>não retorna</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM &mdash; fork + execve (criar processo filho)</div>
+          <pre class="example"><span class="kw">section</span> .data
+    programa  <span class="fn">db</span> <span class="str">"/bin/ls"</span>, <span class="num">0</span>
+    arg0      <span class="fn">db</span> <span class="str">"ls"</span>, <span class="num">0</span>
+    arg1      <span class="fn">db</span> <span class="str">"-la"</span>, <span class="num">0</span>
+    argvec    <span class="fn">dq</span> arg0, arg1, <span class="num">0</span>    <span class="com">; argv[] = { "ls", "-la", NULL }</span>
+    envvec    <span class="fn">dq</span> <span class="num">0</span>                 <span class="com">; envp[] = { NULL }</span>
+
+<span class="kw">section</span> .text
+<span class="kw">global</span> _start
+_start:
+    <span class="com">; fork()</span>
+    <span class="kw">mov</span>   eax, <span class="num">57</span>
+    <span class="kw">syscall</span>
+    <span class="kw">test</span>  eax, eax
+    <span class="kw">jz</span>    .filho          <span class="com">; fork retorna 0 no filho</span>
+    <span class="kw">jl</span>    .erro
+    <span class="com">; parent: rax = pid do filho</span>
+    <span class="kw">mov</span>   rdi, rax        <span class="com">; wait4(pid, NULL, 0, NULL)</span>
+    <span class="kw">xor</span>   esi, esi
+    <span class="kw">xor</span>   edx, edx
+    <span class="kw">xor</span>   r10d, r10d
+    <span class="kw">mov</span>   eax, <span class="num">61</span>         <span class="com">; wait4</span>
+    <span class="kw">syscall</span>
+    <span class="kw">jmp</span>   .sair
+.filho:
+    <span class="com">; execve("/bin/ls", ["ls","-la",NULL], [NULL])</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> programa]
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> argvec]
+    <span class="kw">lea</span>   rdx, [<span class="kw">rel</span> envvec]
+    <span class="kw">mov</span>   eax, <span class="num">59</span>
+    <span class="kw">syscall</span>
+.erro:
+.sair:
+    <span class="kw">xor</span>   edi, edi
+    <span class="kw">mov</span>   eax, <span class="num">60</span>
+    <span class="kw">syscall</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="win32">Win32 API em NASM (Windows)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x64/Win &mdash; MessageBox e ExitProcess via Win32</div>
+          <pre class="example"><span class="com">; NASM Windows PE64</span>
+<span class="com">; nasm -f win64 prog.asm -o prog.obj</span>
+<span class="com">; link /subsystem:windows /entry:_start prog.obj kernel32.lib user32.lib</span>
+
+<span class="kw">extern</span> MessageBoxA
+<span class="kw">extern</span> ExitProcess
+<span class="kw">extern</span> GetConsoleWindow
+
+MB_OK        <span class="kw">equ</span> <span class="num">0</span>
+MB_ICONINFO  <span class="kw">equ</span> <span class="num">0x40</span>
+
+<span class="kw">section</span> .data
+    titulo  <span class="fn">db</span> <span class="str">"Ola"</span>, <span class="num">0</span>
+    msg     <span class="fn">db</span> <span class="str">"Assembly Windows!"</span>, <span class="num">0</span>
+
+<span class="kw">section</span> .text
+<span class="kw">global</span> _start
+_start:
+    <span class="com">; Windows x64 ABI: RCX=arg1, RDX=arg2, R8=arg3, R9=arg4</span>
+    <span class="com">; OBRIGATÓRIO: 32 bytes de shadow space (sub rsp, 32)</span>
+    <span class="kw">sub</span>   rsp, <span class="num">40</span>                 <span class="com">; 32 shadow + 8 para alinhar a 16</span>
+
+    <span class="com">; MessageBoxA(NULL, "Assembly Windows!", "Ola", MB_OK|MB_ICONINFO)</span>
+    <span class="kw">xor</span>   ecx, ecx                <span class="com">; hWnd = NULL</span>
+    <span class="kw">lea</span>   rdx, [<span class="kw">rel</span> msg]          <span class="com">; lpText</span>
+    <span class="kw">lea</span>   r8,  [<span class="kw">rel</span> titulo]       <span class="com">; lpCaption</span>
+    <span class="kw">mov</span>   r9d, MB_OK              <span class="com">; uType</span>
+    <span class="kw">call</span>  MessageBoxA
+
+    <span class="kw">add</span>   rsp, <span class="num">40</span>
+    <span class="com">; ExitProcess(0)</span>
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">call</span>  ExitProcess
+
+<span class="com">; ── Janela Console (GetStdHandle + WriteConsoleA) ──</span>
+<span class="kw">extern</span> GetStdHandle
+<span class="kw">extern</span> WriteConsoleA
+<span class="kw">extern</span> WriteFile
+
+STD_OUTPUT_HANDLE <span class="kw">equ</span> -<span class="num">11</span>
+
+escrever_console:
+    <span class="kw">sub</span>   rsp, <span class="num">40</span>
+    <span class="kw">mov</span>   ecx, STD_OUTPUT_HANDLE
+    <span class="kw">call</span>  GetStdHandle             <span class="com">; rax = handle de stdout</span>
+    <span class="kw">mov</span>   rcx, rax                <span class="com">; hStdOut</span>
+    <span class="kw">lea</span>   rdx, [<span class="kw">rel</span> msg]          <span class="com">; lpBuffer</span>
+    <span class="kw">mov</span>   r8d, <span class="num">18</span>                 <span class="com">; nNumberOfCharsToWrite</span>
+    <span class="kw">lea</span>   r9,  [<span class="kw">rel</span> .written]     <span class="com">; lpNumberOfCharsWritten</span>
+    <span class="kw">push</span>  <span class="num">0</span>                       <span class="com">; lpReserved = NULL (stack)</span>
+    <span class="kw">call</span>  WriteConsoleA
+    <span class="kw">add</span>   rsp, <span class="num">48</span>
+    <span class="kw">ret</span>
+.written <span class="fn">dd</span> <span class="num">0</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bios">BIOS Interrupts e UEFI (Bare Metal)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86 Real Mode &mdash; Bootloader com interrupcoes BIOS</div>
+          <pre class="example"><span class="com">; Bootloader x86 real mode (16-bit)</span>
+<span class="com">; BIOS carrega os 512 primeiros bytes do disco em 0x7C00</span>
+<span class="com">; nasm -f bin bootloader.asm -o bootloader.bin</span>
+<span class="com">; dd if=bootloader.bin of=/dev/sdX bs=512 count=1</span>
+
+    <span class="fn">BITS</span> <span class="num">16</span>
+    <span class="fn">ORG</span>  <span class="num">0x7C00</span>
+
+<span class="kw">jmp</span> inicio
+<span class="fn">times</span> <span class="num">3</span>-($-$$) <span class="fn">db</span> <span class="num">0</span>
+
+inicio:
+    <span class="kw">cli</span>
+    <span class="kw">xor</span>  ax, ax
+    <span class="kw">mov</span>  ds, ax          <span class="com">; data segment = 0</span>
+    <span class="kw">mov</span>  es, ax
+    <span class="kw">mov</span>  ss, ax
+    <span class="kw">mov</span>  sp, <span class="num">0x7C00</span>      <span class="com">; stack abaixo do bootloader</span>
+    <span class="kw">sti</span>
+
+    <span class="com">; INT 10h, AH=0Eh — imprimir caractere em modo texto BIOS</span>
+    <span class="kw">mov</span>  si, msg
+.print_loop:
+    <span class="kw">lodsb</span>                <span class="com">; AL = [SI++]</span>
+    <span class="kw">test</span> al, al
+    <span class="kw">jz</span>   .done
+    <span class="kw">mov</span>  ah, <span class="num">0x0E</span>        <span class="com">; BIOS teletype output</span>
+    <span class="kw">mov</span>  bh, <span class="num">0</span>           <span class="com">; page 0</span>
+    <span class="kw">int</span>  <span class="num">0x10</span>
+    <span class="kw">jmp</span>  .print_loop
+.done:
+    <span class="kw">hlt</span>
+
+    <span class="com">; INT 13h, AH=02h — ler setores do disco via BIOS</span>
+ler_disco:
+    <span class="kw">mov</span>  ah, <span class="num">0x02</span>        <span class="com">; função: read sectors</span>
+    <span class="kw">mov</span>  al, <span class="num">1</span>           <span class="com">; número de setores</span>
+    <span class="kw">mov</span>  ch, <span class="num">0</span>           <span class="com">; cylinder 0</span>
+    <span class="kw">mov</span>  cl, <span class="num">2</span>           <span class="com">; setor 2 (começa em 1)</span>
+    <span class="kw">mov</span>  dh, <span class="num">0</span>           <span class="com">; head 0</span>
+    <span class="kw">mov</span>  dl, <span class="num">0x80</span>        <span class="com">; 1° HD</span>
+    <span class="kw">mov</span>  bx, <span class="num">0x8000</span>      <span class="com">; ES:BX = destino na memória</span>
+    <span class="kw">int</span>  <span class="num">0x13</span>
+    <span class="kw">jc</span>   .disk_error     <span class="com">; carry flag = erro</span>
+    <span class="kw">ret</span>
+.disk_error:
+    <span class="kw">hlt</span>
+
+msg <span class="fn">db</span> <span class="str">"Assembly Bootloader!"</span>, <span class="num">13</span>, <span class="num">10</span>, <span class="num">0</span>
+
+<span class="com">; Boot signature: os dois últimos bytes DEVEM ser 0x55, 0xAA</span>
+    <span class="fn">times</span> <span class="num">510</span>-($-$$) <span class="fn">db</span> <span class="num">0</span>
+    <span class="fn">dw</span>    <span class="num">0xAA55</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LINUX MAN-PAGES. <strong>syscall(2) — Linux system calls</strong>. Disponível em: &lt;https://man7.org/linux/man-pages/man2/syscall.2.html&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>x64 calling convention — Windows</strong>. Microsoft Docs, 2024. Disponível em: &lt;https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention&gt;. Acesso em: 2025.</li>
+            <li>WIKI.OSDEV.ORG. <strong>Bootloader</strong>. OSDev Wiki, 2024. Disponível em: &lt;https://wiki.osdev.org/Bootloader&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Ecossistema e Tooling</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Ao chamar funções C (libc ou Win32), <strong>RAX deve ser zero antes de chamar printf</strong> se não houver argumentos em registradores XMM — o valor de RAX indica ao printf variádico quantos argumentos SIMD existem, e um valor não-zerado pode causar comportamento indefinido ou crash.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

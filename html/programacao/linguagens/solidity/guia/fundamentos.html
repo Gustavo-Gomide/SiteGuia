@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Fundamentos de Solidity: tipos, memoria, funcoes, eventos e tratamento de erros." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Solidity: Fundamentos | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Solidity: Fundamentos</strong></p></div>
+
+			<section>
+				<h2 class="section-title" id="base-tecnica-para-contratos-robustos">Base tecnica para contratos robustos</h2>
+				<div class="page-header">
+					<span data-svg="solidity" aria-hidden="true"></span>
+					<h1>Domine os elementos fundamentais da linguagem</h1>
+					<p>Tipos, localizacao de dados, funcoes, eventos e tratamento de erro sao o nucleo de qualquer contrato seguro.</p>
+				</div>
+				<p class="intro-highlight">Grande parte das vulnerabilidades em smart contracts nasce de fundamentos mal aplicados, nao de tecnicas avancadas.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="tipos">Tipos primitivos e estruturados</h2>
+				<p>Solidity oferece tipos de valor (`uint`, `int`, `bool`, `address`, `bytesN`) e tipos de referencia (`string`, `bytes`, arrays, mappings, structs). A escolha correta influencia custo de gas, legibilidade e seguranca.</p>
+				<div class="panel">
+					<h3 class="panel-title">Regra pratica</h3>
+					<p>Prefira o tipo mais semantico e minimamente suficiente. Exemplo: usar `uint64` para timestamp e `address` para conta evita ambiguidades.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="storage-memory-calldata">Storage, memory e calldata</h2>
+				<p>`storage` persiste na blockchain e custa mais para escrita. `memory` e temporario durante a execucao. `calldata` e somente leitura para dados de entrada, geralmente mais barato em funcoes externas.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header"><span>Solidity</span></div>
+					<pre class="example"><code><span class="kw">pragma solidity</span> <span class="str">^0.8.24</span>;
+
+<span class="kw">contract</span> <span class="fn">Cadastro</span> {
+		<span class="kw">string</span>[] <span class="kw">private</span> nomes;
+
+		<span class="kw">function</span> <span class="fn">adicionar</span>(<span class="kw">string</span> <span class="kw">calldata</span> nome) <span class="kw">external</span> {
+				nomes.<span class="fn">push</span>(nome);
+		}
+
+		<span class="kw">function</span> <span class="fn">ler</span>(<span class="kw">uint256</span> i) <span class="kw">external</span> <span class="kw">view</span> <span class="kw">returns</span> (<span class="kw">string</span> <span class="kw">memory</span>) {
+				<span class="kw">return</span> nomes[i];
+		}
+}</code></pre>
+				</div>
+				<p>No exemplo, entrada em `calldata` reduz copia desnecessaria; retorno usa `memory` porque sai do contexto interno para o externo.</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="funcoes-modifiers">Funcoes, visibilidade e modifiers</h2>
+				<p>Visibilidades (`public`, `external`, `internal`, `private`) definem fronteiras de acesso. Modifiers encapsulam pre-condicoes reutilizaveis, como controle de permissao.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header"><span>Solidity</span></div>
+					<pre class="example"><code><span class="kw">contract</span> <span class="fn">Cofre</span> {
+		<span class="kw">address</span> <span class="kw">public</span> dono;
+
+		<span class="kw">modifier</span> <span class="fn">apenasDono</span>() {
+				<span class="kw">require</span>(msg.sender == dono, <span class="str">"sem permissao"</span>);
+				_;
+		}
+
+		<span class="kw">constructor</span>() { dono = msg.sender; }
+
+		<span class="kw">function</span> <span class="fn">acaoSensivel</span>() <span class="kw">external</span> <span class="fn">apenasDono</span> {
+				<span class="com">// logica administrativa</span>
+		}
+}</code></pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="eventos-colecoes-erros">Eventos, mappings, arrays e erros</h2>
+				<p>Eventos criam trilha auditavel para indexadores e interfaces. `mapping` e ideal para busca O(1) por chave. `require`, `revert` e `assert` servem a cenarios diferentes.</p>
+				<ul>
+					<li><strong>require:</strong> valida entrada ou estado esperado do usuario.</li>
+					<li><strong>revert:</strong> interrompe fluxo com motivo customizado.</li>
+					<li><strong>assert:</strong> invariantes internas que nunca deveriam falhar.</li>
+				</ul>
+				<div class="callout">
+					<p><span data-svg="alert" aria-hidden="true"></span> Em producao, prefira erros customizados para reduzir gas e melhorar diagnstico de falhas.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<ul>
+					<li>SOLIDITY TEAM. <em>Types</em>. Disponivel em: <a href="https://docs.soliditylang.org/en/latest/types.html" target="_blank" rel="noopener">https://docs.soliditylang.org/en/latest/types.html</a>.</li>
+					<li>SOLIDITY TEAM. <em>Units and Global Variables</em>. Disponivel em: <a href="https://docs.soliditylang.org/en/latest/units-and-global-variables.html" target="_blank" rel="noopener">https://docs.soliditylang.org/en/latest/units-and-global-variables.html</a>.</li>
+					<li>FRAVOLL, Markus. <em>Solidity Patterns</em>. Disponivel em: <a href="https://fravoll.github.io/solidity-patterns/" target="_blank" rel="noopener">https://fravoll.github.io/solidity-patterns/</a>.</li>
+					<li>CONSENSYS DILIGENCE. <em>Smart Contract Best Practices</em>. Disponivel em: <a href="https://consensys.github.io/smart-contract-best-practices/" target="_blank" rel="noopener">https://consensys.github.io/smart-contract-best-practices/</a>.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><strong>Fundamentos bem aplicados escalam:</strong> contratos avancados sao combinacoes de tipos corretos, estado previsivel e validacoes explicitas.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/solidity/guia/avancado.html">Proxima leitura: Solidity Avancado</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/solidity/guia/projetos_boas_praticas.html">Boas praticas e seguranca</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

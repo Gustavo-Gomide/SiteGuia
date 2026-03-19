@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Introdução ao assembly: o que é, para que serve, assemblers NASM/GAS/MASM, formato de instrução e primeiro programa." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Introdução ao Assembly | Assembly | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="code"></span>
+          <div>
+            <h1 class="page-title">Introdução ao Assembly</h1>
+            <p class="page-subtitle">A linguagem mais próxima do hardware: mnemonônicos, assemblers e o primeiro programa</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Assembly é uma linguagem de representação textual das instruções de máquina. Cada
+          mnemonônico (ex: <code class="code-inline">MOV</code>, <code class="code-inline">ADD</code>, <code class="code-inline">JMP</code>)
+          corresponde diretamente a um opcode binário. Não existe abstração sobre o hardware —
+          você controla registradores, endereços e flags diretamente.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — POR QUE APRENDER ═══════════════════ -->
+      <section id="por-que">
+        <h2 id="por-que" class="section-title">Por que Aprender Assembly?</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Depuração avanada</h3>
+            <p>Entender o disassembly no GDB/LLDB/WinDbg é essencial para depurar crashes, buffer overflows e problemas de desempenho em código de baixo nível.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Segurança e Reverse Engineering</h3>
+            <p>Análise de malware, exploits, engenharia reversa de binários e CTFs exigem leitura fluente de assembly x86-64 e ARM.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Otimização de Desempenho</h3>
+            <p>Hot paths em kernels de OS, codecs de vídeo, DSP e simuladores físicos são escritos em assembly (ou SIMD intrinsics) para extrair o máximo do hardware.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — ASSEMBLERS ═══════════════════ -->
+      <section id="assemblers">
+        <h2 id="assemblers" class="section-title">Assemblers Populares</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Assembler</th><th>Sintaxe</th><th>Plataformas</th><th>Uso</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NASM</td><td>Intel</td><td>Linux, Windows, macOS</td><td>Aprendizado, OSes, CTFs</td></tr>
+              <tr><td>GAS (GNU Assembler)</td><td>AT&amp;T (padrão) ou Intel (-intel)</td><td>Linux, qualquer alvo GCC</td><td>Inline assembly em C/C++, kernel Linux</td></tr>
+              <tr><td>MASM</td><td>Intel</td><td>Windows (MSVC)</td><td>Win32/64 development</td></tr>
+              <tr><td>FASM</td><td>Intel</td><td>Linux, Windows</td><td>OSes minimalistas (auto-assembla)</td></tr>
+              <tr><td>GNU ARM Assembler</td><td>ARM</td><td>Linux ARM, bare metal</td><td>Kernels, microcontroladores</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — PRIMEIRO PROGRAMA ═══════════════════ -->
+      <section id="hello">
+        <h2 id="hello" class="section-title">Hello World — NASM x86-64 Linux</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">hello.asm — NASM, syscall Linux</div>
+          <pre class="code-block">section .data
+    msg db "Hello, World!", 0x0A  ; string + newline
+    len equ $ - msg               ; tamanho calculado pelo assembler
+
+section .text
+    global _start
+
+_start:
+    ; syscall write(fd=1, buf=msg, count=len)
+    mov rax, 1        ; syscall number: write
+    mov rdi, 1        ; fd: stdout
+    mov rsi, msg      ; endereço do buffer
+    mov rdx, len      ; número de bytes
+    syscall           ; chamada ao kernel
+
+    ; syscall exit(0)
+    mov rax, 60       ; syscall number: exit
+    xor rdi, rdi      ; exit code 0
+    syscall
+
+; Build:
+; nasm -f elf64 hello.asm -o hello.o
+; ld hello.o -o hello
+; ./hello</pre>
+        </div>
+        <p class="note">No Windows o ponto de entrada e as syscalls são diferentes; é comum usar a CRT ou Windows API diretamente. Em macOS (ABI Mach-O), syscalls usam números diferentes e são prefixadas com <code class="code-inline">0x2000000</code>.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se nos registradores em
+          <a href="/html/hardware_arquitetura/assembly/registradores.html">Registradores</a> e nas instruções em
+          <a href="/html/hardware_arquitetura/assembly/instrucoes.html">Instruções Assembly</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Assembly não é difícil — é apenas honesto sobre o que o computador faz."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

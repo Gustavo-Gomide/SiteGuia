@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e Frameworks do ecossistema .NET: ASP.NET Core, Entity Framework Core, Dapper, MediatR, AutoMapper, FluentValidation, Serilog, SignalR, gRPC e mais." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Bibliotecas e Frameworks C# | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>Bibliotecas e Frameworks C#</h1>
+          <p>O ecossistema NuGet conta com mais de 300 mil pacotes. As bibliotecas mais usadas incluem ASP.NET Core para web, Entity Framework Core e Dapper para banco de dados, MediatR para CQRS, FluentValidation para validacao, Serilog para logging estruturado, SignalR para WebSockets e Polly para resiliencia.</p>
+        </div>
+        <p class="intro-highlight">
+          A BCL (Base Class Library) do .NET ja inclui colecoes, I/O, redes, criptografia, reflexao e muito mais sem depencias externas. Os frameworks de terceiros complementam com padres de arquitetura, ORMs e abstraccoes de infraestrutura.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="aspnetcore">ASP.NET Core — Web e API</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + ASP.NET Core — Minimal API, controllers, middleware e DI</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">AspNetCore</span>.<span class="tp">Builder</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Extensions</span>.<span class="tp">DependencyInjection</span>;
+
+<span class="kw">var</span> builder = <span class="tp">WebApplication</span>.<span class="fn">CreateBuilder</span>(args);
+
+<span class="com">// Registrar servicos no container de DI</span>
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="tp">ICache</span>, <span class="tp">MemoryCache</span>&gt;();
+builder.Services.<span class="fn">AddScoped</span>&lt;<span class="tp">IProdutoRepo</span>, <span class="tp">ProdutoRepository</span>&gt;();
+builder.Services.<span class="fn">AddTransient</span>&lt;<span class="tp">IEmailService</span>, <span class="tp">SmtpEmailService</span>&gt;();
+builder.Services.<span class="fn">AddDbContext</span>&lt;<span class="tp">AppDbContext</span>&gt;(opt =&gt;
+  opt.<span class="fn">UseNpgsql</span>(builder.Configuration.<span class="fn">GetConnectionString</span>(<span class="str">"Postgres"</span>)));
+builder.Services.<span class="fn">AddControllers</span>();
+builder.Services.<span class="fn">AddEndpointsApiExplorer</span>();
+builder.Services.<span class="fn">AddSwaggerGen</span>();
+
+<span class="kw">var</span> app = builder.<span class="fn">Build</span>();
+
+<span class="com">// Middleware pipeline (ordem importa)</span>
+app.<span class="fn">UseHttpsRedirection</span>();
+app.<span class="fn">UseAuthentication</span>();
+app.<span class="fn">UseAuthorization</span>();
+app.<span class="fn">UseSwagger</span>(); app.<span class="fn">UseSwaggerUI</span>();
+
+<span class="com">// Minimal API — endpoints sem controller</span>
+app.<span class="fn">MapGet</span>(<span class="str">"/produtos/{id:int}"</span>, <span class="kw">async</span> (<span class="kw">int</span> id, <span class="tp">IProdutoRepo</span> repo) =&gt;
+{
+  <span class="kw">var</span> produto = <span class="kw">await</span> repo.<span class="fn">FindAsync</span>(id);
+  <span class="kw">return</span> produto <span class="kw">is null</span>
+    ? <span class="tp">Results</span>.<span class="fn">NotFound</span>(<span class="kw">new</span> { Mensagem = <span class="str">"Produto nao encontrado"</span> })
+    : <span class="tp">Results</span>.<span class="fn">Ok</span>(produto);
+}).<span class="fn">WithName</span>(<span class="str">"GetProduto"</span>).<span class="fn">WithTags</span>(<span class="str">"Produtos"</span>);
+
+app.<span class="fn">MapPost</span>(<span class="str">"/produtos"</span>, <span class="kw">async</span> (<span class="tp">CriarProdutoDto</span> dto, <span class="tp">IProdutoRepo</span> repo) =&gt;
+{
+  <span class="kw">var</span> id = <span class="kw">await</span> repo.<span class="fn">CriarAsync</span>(dto);
+  <span class="kw">return</span> <span class="tp">Results</span>.<span class="fn">CreatedAtRoute</span>(<span class="str">"GetProduto"</span>, <span class="kw">new</span> { id }, dto);
+});
+
+app.<span class="fn">MapControllers</span>();
+app.<span class="fn">Run</span>();
+
+<span class="com">// Controller tradicional com atributos</span>
+[<span class="tp">ApiController</span>, <span class="tp">Route</span>(<span class="str">"api/[controller]"</span>)]
+<span class="kw">class</span> <span class="tp">PedidosController</span>(<span class="tp">IPedidoService</span> svc) : <span class="tp">ControllerBase</span>
+{
+  [<span class="tp">HttpGet</span>(<span class="str">"{id:guid}"</span>)]
+  [<span class="tp">ProducesResponseType</span>&lt;<span class="tp">PedidoDto</span>&gt;(<span class="num">200</span>)]
+  [<span class="tp">ProducesResponseType</span>(<span class="num">404</span>)]
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">IActionResult</span>&gt; <span class="fn">Get</span>(<span class="tp">Guid</span> id) {
+    <span class="kw">var</span> pedido = <span class="kw">await</span> svc.<span class="fn">BuscarAsync</span>(id);
+    <span class="kw">return</span> pedido == <span class="kw">null</span> ? <span class="fn">NotFound</span>() : <span class="fn">Ok</span>(pedido);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ef-dapper">Entity Framework Core e Dapper</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + EF Core — migrations, queries LINQ e Dapper para queries otimizadas</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">EntityFrameworkCore</span>;
+<span class="kw">using</span> <span class="tp">Dapper</span>;
+
+<span class="com">// Entidades</span>
+<span class="kw">class</span> <span class="tp">Produto</span>
+{
+  <span class="kw">public int</span>     Id      { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public string</span>  Nome    { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+  <span class="kw">public decimal</span> Preco   { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public int</span>     CatId  { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public</span> <span class="tp">Categoria</span>? Categoria { <span class="kw">get</span>; <span class="kw">set</span>; }
+}
+
+<span class="com">// DbContext com configuracao Fluent API</span>
+<span class="kw">class</span> <span class="tp">AppDbContext</span> : <span class="tp">DbContext</span>
+{
+  <span class="kw">public</span> <span class="tp">AppDbContext</span>(<span class="tp">DbContextOptions</span>&lt;<span class="tp">AppDbContext</span>&gt; opts) : <span class="kw">base</span>(opts) {}
+  <span class="kw">public</span> <span class="tp">DbSet</span>&lt;<span class="tp">Produto</span>&gt; Produtos =&gt; <span class="fn">Set</span>&lt;<span class="tp">Produto</span>&gt;();
+
+  <span class="kw">protected override void</span> <span class="fn">OnModelCreating</span>(<span class="tp">ModelBuilder</span> mb)
+  {
+    mb.<span class="fn">Entity</span>&lt;<span class="tp">Produto</span>&gt;(p =&gt; {
+      p.<span class="fn">HasKey</span>(x =&gt; x.Id);
+      p.<span class="fn">Property</span>(x =&gt; x.Nome).<span class="fn">HasMaxLength</span>(<span class="num">200</span>).<span class="fn">IsRequired</span>();
+      p.<span class="fn">Property</span>(x =&gt; x.Preco).<span class="fn">HasPrecision</span>(<span class="num">18</span>, <span class="num">2</span>);
+      p.<span class="fn">HasOne</span>(x =&gt; x.Categoria)
+       .<span class="fn">WithMany</span>(c =&gt; c.Produtos)
+       .<span class="fn">HasForeignKey</span>(x =&gt; x.CatId)
+       .<span class="fn">OnDelete</span>(<span class="tp">DeleteBehavior</span>.Restrict);
+      p.<span class="fn">HasIndex</span>(x =&gt; x.Nome).<span class="fn">IsUnique</span>();
+    });
+  }
+}
+
+<span class="com">// Repositorio com EF Core</span>
+<span class="kw">class</span> <span class="tp">ProdutoRepository</span>(<span class="tp">AppDbContext</span> db)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">BuscarBaratosAsync</span>(<span class="kw">decimal</span> limite) =&gt;
+    <span class="kw">await</span> db.Produtos
+      .<span class="fn">Include</span>(p =&gt; p.Categoria)
+      .<span class="fn">Where</span>(p =&gt; p.Preco &lt; limite)
+      .<span class="fn">OrderBy</span>(p =&gt; p.Preco)
+      .<span class="fn">AsNoTracking</span>()    <span class="com">// read-only: sem track de mudancas</span>
+      .<span class="fn">ToListAsync</span>();
+
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">SalvarAsync</span>(<span class="tp">Produto</span> p) {
+    db.Produtos.<span class="fn">Add</span>(p);
+    <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>();
+  }
+}
+
+<span class="com">// Dapper — micro-ORM para queries SQL diretas</span>
+<span class="kw">class</span> <span class="tp">ProdutoDapperRepo</span>(<span class="tp">IDbConnection</span> conn)
+{
+  <span class="com">// Parametrizado — previne SQL injection</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">IEnumerable</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">BuscarPorCategoriaAsync</span>(<span class="kw">int</span> catId) =&gt;
+    <span class="kw">await</span> conn.<span class="fn">QueryAsync</span>&lt;<span class="tp">Produto</span>&gt;(
+      <span class="str">"SELECT p.*, c.Nome AS CategoriaNome FROM Produtos p JOIN Categorias c ON c.Id = p.CatId WHERE p.CatId = @CatId"</span>,
+      <span class="kw">new</span> { CatId = catId });
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">int</span>&gt; <span class="fn">InserirAsync</span>(<span class="tp">Produto</span> p) =&gt;
+    <span class="kw">await</span> conn.<span class="fn">ExecuteScalarAsync</span>&lt;<span class="kw">int</span>&gt;(
+      <span class="str">"INSERT INTO Produtos(Nome, Preco, CatId) VALUES(@Nome, @Preco, @CatId); SELECT LAST_INSERT_ID();"</span>,
+      p);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="padrao-arquitetura">MediatR, FluentValidation e Polly</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + MediatR — CQRS com Commands, Queries e Handlers</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">MediatR</span>;
+<span class="kw">using</span> <span class="tp">FluentValidation</span>;
+
+<span class="com">// === MediatR — CQRS pattern ===</span>
+<span class="com">// Command</span>
+<span class="kw">record</span> <span class="tp">CriarPedidoCommand</span>(<span class="tp">Guid</span> ClienteId, <span class="tp">List</span>&lt;<span class="tp">ItemDto</span>&gt; Itens) : <span class="tp">IRequest</span>&lt;<span class="tp">Guid</span>&gt;;
+
+<span class="com">// Handler</span>
+<span class="kw">class</span> <span class="tp">CriarPedidoHandler</span>(<span class="tp">AppDbContext</span> db, <span class="tp">IEventBus</span> bus)
+    : <span class="tp">IRequestHandler</span>&lt;<span class="tp">CriarPedidoCommand</span>, <span class="tp">Guid</span>&gt;
+{
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">Guid</span>&gt; <span class="fn">Handle</span>(<span class="tp">CriarPedidoCommand</span> req, <span class="tp">CancellationToken</span> ct)
+  {
+    <span class="kw">var</span> pedido = <span class="kw">new</span> <span class="tp">Pedido</span> { ClienteId = req.ClienteId };
+    <span class="kw">foreach</span> (<span class="kw">var</span> item <span class="kw">in</span> req.Itens)
+      pedido.<span class="fn">AdicionarItem</span>(item.ProdutoId, item.Qtd);
+    db.Pedidos.<span class="fn">Add</span>(pedido);
+    <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>(ct);
+    <span class="kw">await</span> bus.<span class="fn">PublicarAsync</span>(<span class="kw">new</span> <span class="tp">PedidoCriadoEvent</span>(pedido.Id), ct);
+    <span class="kw">return</span> pedido.Id;
+  }
+}
+
+<span class="com">// Pipeline Behavior — cross-cutting (log, validacao, retry)</span>
+<span class="kw">class</span> <span class="tp">ValidationBehavior</span>&lt;TReq, TResp&gt;(<span class="tp">IEnumerable</span>&lt;<span class="tp">IValidator</span>&lt;TReq&gt;&gt; validators)
+    : <span class="tp">IPipelineBehavior</span>&lt;TReq, TResp&gt; <span class="kw">where</span> TReq : <span class="kw">notnull</span>
+{
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;TResp&gt; <span class="fn">Handle</span>(TReq req, <span class="tp">RequestHandlerDelegate</span>&lt;TResp&gt; next, <span class="tp">CancellationToken</span> ct)
+  {
+    <span class="kw">var</span> erros = validators
+      .<span class="fn">SelectMany</span>(v =&gt; v.<span class="fn">Validate</span>(req).Errors)
+      .<span class="fn">Where</span>(e =&gt; e != <span class="kw">null</span>)
+      .<span class="fn">ToList</span>();
+    <span class="kw">if</span> (erros.Count &gt; <span class="num">0</span>)
+      <span class="kw">throw new</span> <span class="tp">ValidationException</span>(erros);
+    <span class="kw">return await</span> <span class="fn">next</span>();
+  }
+}
+
+<span class="com">// FluentValidation</span>
+<span class="kw">class</span> <span class="tp">CriarPedidoValidator</span> : <span class="tp">AbstractValidator</span>&lt;<span class="tp">CriarPedidoCommand</span>&gt;
+{
+  <span class="kw">public</span> <span class="tp">CriarPedidoValidator</span>() {
+    <span class="fn">RuleFor</span>(x =&gt; x.ClienteId).<span class="fn">NotEmpty</span>();
+    <span class="fn">RuleFor</span>(x =&gt; x.Itens).<span class="fn">NotEmpty</span>().<span class="fn">WithMessage</span>(<span class="str">"Pedido precisa de ao menos 1 item"</span>);
+    <span class="fn">RuleForEach</span>(x =&gt; x.Itens)
+      .<span class="fn">ChildRules</span>(item =&gt; {
+        item.<span class="fn">RuleFor</span>(x =&gt; x.Qtd).<span class="fn">GreaterThan</span>(<span class="num">0</span>);
+        item.<span class="fn">RuleFor</span>(x =&gt; x.ProdutoId).<span class="fn">NotEmpty</span>();
+      });
+  }
+}
+
+<span class="com">// Polly — resiliencia: retry, circuit breaker, timeout</span>
+<span class="kw">using</span> <span class="tp">Polly</span>;
+<span class="kw">using</span> <span class="tp">Polly</span>.<span class="tp">Retry</span>;
+
+<span class="kw">var</span> retryPolicy = <span class="kw">new</span> <span class="tp">ResiliencePipelineBuilder</span>&lt;<span class="kw">string</span>&gt;()
+  .<span class="fn">AddRetry</span>(<span class="kw">new</span> <span class="tp">RetryStrategyOptions</span>&lt;<span class="kw">string</span>&gt; {
+    MaxRetryAttempts   = <span class="num">3</span>,
+    Delay              = <span class="tp">TimeSpan</span>.<span class="fn">FromSeconds</span>(<span class="num">1</span>),
+    BackoffType        = <span class="tp">DelayBackoffType</span>.Exponential,
+    ShouldHandle       = <span class="kw">new</span> <span class="tp">PredicateBuilder</span>&lt;<span class="kw">string</span>&gt;().<span class="fn">Handle</span>&lt;<span class="tp">HttpRequestException</span>&gt;(),
+    OnRetry            = args =&gt; { <span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">$"Retry {args.AttemptNumber}"</span>); <span class="kw">return</span> <span class="tp">ValueTask</span>.CompletedTask; }
+  })
+  .<span class="fn">AddTimeout</span>(<span class="tp">TimeSpan</span>.<span class="fn">FromSeconds</span>(<span class="num">5</span>))
+  .<span class="fn">Build</span>();
+<span class="kw">var</span> resp = <span class="kw">await</span> retryPolicy.<span class="fn">ExecuteAsync</span>(ct =&gt; http.<span class="fn">GetStringAsync</span>(<span class="str">"https://api.exemplo.com"</span>, ct));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="signalr">SignalR — WebSockets e Tempo Real</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + SignalR &mdash; hub de notificacoes e cliente JavaScript</div>
+          <pre class="example"><span class="com">// Hub — servidor</span>
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">AspNetCore</span>.<span class="tp">SignalR</span>;
+
+<span class="kw">class</span> <span class="tp">NotificacoesHub</span> : <span class="tp">Hub</span>
+{
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">EnviarMensagem</span>(<span class="kw">string</span> grupo, <span class="kw">string</span> msg) =&gt;
+    <span class="kw">await</span> Clients.<span class="fn">Group</span>(grupo).<span class="fn">SendAsync</span>(<span class="str">"ReceberMensagem"</span>, Context.<span class="tp">User</span>?.Identity?.Name, msg);
+
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">EntrarGrupo</span>(<span class="kw">string</span> grupo) =&gt;
+    <span class="kw">await</span> Groups.<span class="fn">AddToGroupAsync</span>(Context.<span class="tp">ConnectionId</span>, grupo);
+
+  <span class="kw">public override async</span> <span class="tp">Task</span> <span class="fn">OnConnectedAsync</span>() {
+    <span class="kw">await</span> Clients.<span class="tp">Caller</span>.<span class="fn">SendAsync</span>(<span class="str">"Welcome"</span>, <span class="str">$"Conectado: {Context.ConnectionId}"</span>);
+    <span class="kw">await</span> <span class="kw">base</span>.<span class="fn">OnConnectedAsync</span>();
+  }
+}
+
+<span class="com">// Registrar no Program.cs</span>
+builder.Services.<span class="fn">AddSignalR</span>();
+app.<span class="fn">MapHub</span>&lt;<span class="tp">NotificacoesHub</span>&gt;(<span class="str">"/hubs/notificacoes"</span>);
+
+<span class="com">// Enviar do servidor para clientes via IHubContext (fora do Hub)</span>
+<span class="kw">class</span> <span class="tp">PedidoService</span>(<span class="tp">IHubContext</span>&lt;<span class="tp">NotificacoesHub</span>&gt; hub)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">ProcessarPedidoAsync</span>(<span class="tp">Pedido</span> p, <span class="tp">CancellationToken</span> ct) {
+    <span class="com">// ... processar ...</span>
+    <span class="kw">await</span> hub.Clients.<span class="fn">Group</span>(<span class="str">$"cliente-{p.ClienteId}"</span>)
+      .<span class="fn">SendAsync</span>(<span class="str">"PedidoAtualizado"</span>, <span class="kw">new</span> { p.Id, Status = <span class="str">"Processado"</span> }, ct);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tabela">Guia Rapido de Bibliotecas</h2>
+
+        <div class="panel">
+          <p class="panel-title">Bibliotecas essenciais do ecossistema .NET</p>
+          <table class="table">
+            <thead><tr><th>Biblioteca</th><th>Categoria</th><th>Uso Principal</th></tr></thead>
+            <tbody>
+              <tr><td>ASP.NET Core</td><td>Web Framework</td><td>API REST, MVC, Blazor, gRPC, SignalR</td></tr>
+              <tr><td>Entity Framework Core</td><td>ORM</td><td>Mapeamento OO-relacional, migrations, LINQ para SQL</td></tr>
+              <tr><td>Dapper</td><td>Micro-ORM</td><td>SQL direto com mapeamento de objeto, alta performance</td></tr>
+              <tr><td>MediatR</td><td>CQRS / Mediator</td><td>Commands/Queries segregados, pipeline behaviors</td></tr>
+              <tr><td>FluentValidation</td><td>Validacao</td><td>Regras de validacao fortemente tipadas e compostas</td></tr>
+              <tr><td>Serilog</td><td>Logging</td><td>Logging estruturado (JSON) com sinks plugaveis</td></tr>
+              <tr><td>Polly</td><td>Resiliencia</td><td>Retry, circuit breaker, timeout, bulkhead</td></tr>
+              <tr><td>AutoMapper</td><td>Mapeamento</td><td>Mapeamento automatico entre DTOs e entidades</td></tr>
+              <tr><td>SignalR</td><td>Tempo Real</td><td>WebSockets bidirecionais, grupos, streaming</td></tr>
+              <tr><td>xUnit / NUnit</td><td>Testes</td><td>Testes unitarios e de integracao</td></tr>
+              <tr><td>Moq / NSubstitute</td><td>Mocking</td><td>Substituicao de dependencias em testes</td></tr>
+              <tr><td>BenchmarkDotNet</td><td>Performance</td><td>Micro-benchmarks precisos com analise estatistica</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>ASP.NET Core documentation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/aspnet/core/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Entity Framework Core</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/ef/core/&gt;. Acesso em: 2025.</li>
+            <li>POLLY. <strong>Polly — .NET resilience and transient-fault-handling library</strong>. Disponível em: &lt;https://github.com/App-vNext/Polly&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# Avancado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> MediatR nao e apenas um pattern de despacho — e um ponto de extensao arquitetural. Pipeline Behaviors sao interceptors em volta de cada command/query, implementando separacao de responsabilidades sem modificar os handlers: logging, validacao, caching e transactions em camadas independentes.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

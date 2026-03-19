@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas em Perl: strict/warnings, Test::More, estrutura de módulo CPAN, autodie, Log::Log4perl e documentação POD." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Perl — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Perl &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="perl" aria-hidden="true"></span></div>
+          <h1>Projetos e Boas Práticas</h1>
+          <p>Estrutura de projetos profissionais: testes automatizados, logging, documentação POD e convenções que os módulos do CPAN seguem.</p>
+        </div>
+        <p class="intro-highlight">
+          Escrever Perl de qualidade vai além de código que funciona. Strict, warnings, testes automatizados com TAP, documentação POD e logging configu­rável são os pilares que transformam scripts descartáveis em software manutenível.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="strict-warnings-pratica">strict e warnings: Prática Obrigatória</h2>
+        <p>
+          Todo arquivo Perl de produção deve começar com esses dois pragmas. Eles evitam classes inteiras de bugs silenciosos e são a primeira linha de defesa do desenvolvedor.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">boilerplate_moderno.pl</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+
+<span class="com"># Opção A: clássico, compatível com Perl 5.8+</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>;           <span class="com"># exceções automáticas em open/close/read/write</span>
+<span class="kw">use</span> <span class="num">5.010</span>;             <span class="com"># habilita say, state, given/when</span>
+
+<span class="com"># Opção B: moderno (Perl 5.36+)</span>
+<span class="com"># use v5.36;  # ativa strict + warnings + unicode + assinaturas</span>
+
+<span class="com"># O que strict proíbe:</span>
+
+<span class="com"># 1. Variáveis não declaradas</span>
+<span class="com"># $x = 1;               # ERRO: Global symbol requires explicit package name</span>
+<span class="kw">my</span> <span class="tp">$x</span> = <span class="num">1</span>;             <span class="com"># correto: declaração léxica com my</span>
+
+<span class="com"># 2. Strings como nomes de sub-rotinas</span>
+<span class="com"># &{"minha_sub"}();     # ERRO com strict refs</span>
+
+<span class="com"># O que warnings detecta:</span>
+<span class="kw">my</span> <span class="tp">$num</span> = <span class="str">"abc"</span> + <span class="num">0</span>;   <span class="com"># aviso: "abc" não é numérico</span>
+<span class="kw">my</span> <span class="tp">$u</span>;
+<span class="fn">print</span> <span class="tp">$u</span>;              <span class="com"># aviso: uso de variável não inicializada</span>
+
+<span class="com"># Categorias de aviso podem ser controladas</span>
+<span class="kw">no</span> <span class="tp">warnings</span> <span class="str">'uninitialized'</span>;  <span class="com"># silencia só esta categoria</span>
+<span class="fn">print</span> <span class="tp">$u</span>;                     <span class="com"># sem aviso agora</span>
+<span class="kw">use</span> <span class="tp">warnings</span> <span class="str">'uninitialized'</span>; <span class="com"># reativa</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Testes com Test::More e Test::Simple</h2>
+        <p>
+          Perl é o criador do protocolo <strong>TAP</strong> (Test Anything Protocol). Todo módulo CPAN sério tem uma suíte de testes em <code class="code-inline">t/</code>. O framework padrão é <strong>Test::More</strong>, que fornece assertions declarativas e integração com o harness <code class="code-inline">prove</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">t/01_basico.t — arquivo de teste</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Test::More</span>;         <span class="com"># importa ok, is, isnt, like, cmp_ok, etc.</span>
+
+<span class="com"># Testar uma função hipotética</span>
+<span class="kw">use</span> <span class="tp">lib</span> <span class="str">'lib'</span>;           <span class="com"># adiciona lib/ ao @INC</span>
+<span class="kw">use</span> <span class="tp">MeuModulo::Math</span>;    <span class="com"># o módulo que estamos testando</span>
+
+<span class="com"># ok() — verifica que a expressão é verdadeira</span>
+<span class="fn">ok</span>(<span class="fn">soma</span>(<span class="num">2</span>, <span class="num">3</span>) == <span class="num">5</span>, <span class="str">"soma(2,3) deve ser 5"</span>);
+
+<span class="com"># is() — verifica igualdade com eq / ==</span>
+<span class="fn">is</span>(<span class="fn">soma</span>(<span class="num">0</span>, <span class="num">0</span>), <span class="num">0</span>,     <span class="str">"soma(0,0) = 0"</span>);
+<span class="fn">is</span>(<span class="fn">soma</span>(-<span class="num">1</span>, <span class="num">1</span>), <span class="num">0</span>,   <span class="str">"soma negativo"</span>);
+
+<span class="com"># isnt() — verifica desigualdade</span>
+<span class="fn">isnt</span>(<span class="fn">soma</span>(<span class="num">1</span>, <span class="num">1</span>), <span class="num">3</span>, <span class="str">"1+1 não é 3"</span>);
+
+<span class="com"># like() — verifica com regex</span>
+<span class="fn">like</span>(<span class="fn">versao</span>(), <span class="str">qr/^\d+\.\d+/</span>, <span class="str">"versão tem formato x.y"</span>);
+
+<span class="com"># cmp_ok() — comparação flexível</span>
+<span class="fn">cmp_ok</span>(<span class="fn">fatorial</span>(<span class="num">5</span>), <span class="str">'=='</span>, <span class="num">120</span>, <span class="str">"5! = 120"</span>);
+
+<span class="com"># Testar exceção com eval</span>
+<span class="fn">eval</span> { <span class="fn">dividir</span>(<span class="num">1</span>, <span class="num">0</span>) };
+<span class="fn">like</span>(<span class="tp">$@</span>, <span class="str">qr/[Zz]ero/</span>, <span class="str">"divisão por zero lança exceção"</span>);
+
+<span class="com"># Testar estrutura de dados</span>
+<span class="kw">my</span> <span class="tp">@arr</span> = <span class="fn">primeiros_n</span>(<span class="num">3</span>);
+<span class="fn">is_deeply</span>(\<span class="tp">@arr</span>, [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>], <span class="str">"primeiros_n(3) retorna [1,2,3]"</span>);
+
+<span class="com"># done_testing() conta os testes automaticamente (recomendado)</span>
+<span class="fn">done_testing</span>();
+
+<span class="com"># Alternativa: declarar count no topo</span>
+<span class="com"># use Test::More tests => 8;</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — executar testes</div>
+          <pre class="example"><span class="com"># Executar um arquivo de teste</span>
+prove t/01_basico.t
+
+<span class="com"># Executar todos os testes em t/</span>
+prove t/
+
+<span class="com"># Modo verboso (mostra cada ok/not ok)</span>
+prove -v t/
+
+<span class="com"># Executar em paralelo (mais rápido)</span>
+prove -j4 t/
+
+<span class="com"># Integração com Makefile.PL</span>
+perl Makefile.PL
+make
+make test</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-modulo">Estrutura de Módulo CPAN</h2>
+        <p>
+          Todo módulo Perl bem estruturado segue uma convenção de diretórios que os instaladores (<code class="code-inline">cpanm</code>, <code class="code-inline">carton</code>) e a infraestrutura CPAN entendem. O utilitário <code class="code-inline">Module::Starter</code> gera o esqueleto automaticamente.
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">Layout de Diretórios</h3>
+          <pre class="example">MeuModulo/
+├── lib/
+│   └── MeuModulo/
+│       ├── Math.pm         <span class="com"># módulo principal</span>
+│       └── Utils.pm        <span class="com"># submódulo</span>
+├── t/
+│   ├── 01_basico.t         <span class="com"># testes numerados por ordem</span>
+│   └── 02_avancado.t
+├── bin/
+│   └── minha_ferramenta    <span class="com"># executáveis</span>
+├── cpanfile                <span class="com"># dependências (Carton)</span>
+├── Makefile.PL             <span class="com"># ou Build.PL (Module::Build)</span>
+├── Changes                 <span class="com"># changelog</span>
+├── MANIFEST                <span class="com"># lista todos os arquivos</span>
+├── MANIFEST.SKIP           <span class="com"># arquivos a ignorar</span>
+└── README.md</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lib/MeuModulo/Math.pm</div>
+          <pre class="example"><span class="kw">package</span> <span class="tp">MeuModulo::Math</span>;
+
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">our</span> <span class="tp">$VERSION</span> = <span class="str">'0.01'</span>;
+
+<span class="kw">use</span> <span class="tp">Exporter</span> <span class="str">'import'</span>;          <span class="com"># herda import()</span>
+<span class="kw">our</span> <span class="tp">@EXPORT_OK</span> = <span class="str">qw(soma fatorial dividir versao)</span>;  <span class="com"># exportação opt-in</span>
+
+<span class="kw">sub</span> <span class="tp">soma</span>      { <span class="tp">$_</span>[<span class="num">0</span>] + <span class="tp">$_</span>[<span class="num">1</span>] }
+<span class="kw">sub</span> <span class="tp">versao</span>   { <span class="kw">return</span> <span class="tp">$VERSION</span> }
+
+<span class="kw">sub</span> <span class="tp">fatorial</span> {
+    <span class="kw">my</span> (<span class="tp">$n</span>) = <span class="tp">@_</span>;
+    <span class="kw">return</span> <span class="num">1</span> <span class="kw">if</span> <span class="tp">$n</span> &lt;= <span class="num">1</span>;
+    <span class="kw">return</span> <span class="tp">$n</span> * <span class="fn">fatorial</span>(<span class="tp">$n</span> - <span class="num">1</span>);
+}
+
+<span class="kw">sub</span> <span class="tp">dividir</span> {
+    <span class="kw">my</span> (<span class="tp">$a</span>, <span class="tp">$b</span>) = <span class="tp">@_</span>;
+    <span class="fn">die</span> <span class="str">"Divisão por zero!\n"</span> <span class="kw">if</span> <span class="tp">$b</span> == <span class="num">0</span>;
+    <span class="kw">return</span> <span class="tp">$a</span> / <span class="tp">$b</span>;
+}
+
+<span class="com"># Módulos DEVEM retornar verdadeiro no final</span>
+<span class="num">1</span>;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Makefile.PL — metadados do módulo</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">ExtUtils::MakeMaker</span>;
+
+<span class="fn">WriteMakefile</span>(
+    NAME          =&gt; <span class="str">'MeuModulo'</span>,
+    VERSION_FROM  =&gt; <span class="str">'lib/MeuModulo/Math.pm'</span>,
+    ABSTRACT_FROM =&gt; <span class="str">'lib/MeuModulo/Math.pm'</span>,
+    AUTHOR        =&gt; <span class="str">'Eu <eu@example.com>'</span>,
+    LICENSE       =&gt; <span class="str">'perl_5'</span>,
+    PREREQ_PM     =&gt; {
+        <span class="str">'Moo'</span>      =&gt; <span class="str">'2.0'</span>,
+        <span class="str">'Try::Tiny'</span> =&gt; <span class="str">'0'</span>,
+    },
+    TEST_REQUIRES =&gt; {
+        <span class="str">'Test::More'</span> =&gt; <span class="str">'1.302'</span>,
+    },
+    MIN_PERL_VERSION =&gt; <span class="str">'5.020'</span>,
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="autodie">autodie: Exceções Automáticas</h2>
+        <p>
+          O módulo <strong>autodie</strong> faz com que funções de I/O e de sistema (<code class="code-inline">open</code>, <code class="code-inline">close</code>, <code class="code-inline">read</code>, <code class="code-inline">write</code>, <code class="code-inline">mkdir</code>, etc.) lançam exceção automaticamente em falha, eliminando o padrão verboso <code class="code-inline">or die "$!"</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">autodie_exemplo.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>; <span class="com"># aplica a open, close, read, write, mkdir, etc.</span>
+
+<span class="com"># SEM autodie (padrão verboso)</span>
+<span class="com"># open(my $fh, '<', 'dados.txt') or die "Não abriu: $!";</span>
+
+<span class="com"># COM autodie (limpo)</span>
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$fh</span>, <span class="str">'&lt;'</span>, <span class="str">'dados.txt'</span>;   <span class="com"># morre automaticamente se falhar</span>
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$linha</span> = &lt;<span class="tp">$fh</span>&gt;) {
+    <span class="fn">chomp</span> <span class="tp">$linha</span>;
+    <span class="fn">say</span> <span class="tp">$linha</span>;
+}
+<span class="kw">close</span> <span class="tp">$fh</span>;
+
+<span class="com"># autodie com escopo — apenas em bloco específico</span>
+{
+    <span class="kw">use</span> <span class="tp">autodie</span> <span class="str">qw(open close)</span>;    <span class="com"># só open e close no escopo</span>
+    <span class="kw">open</span> <span class="kw">my</span> <span class="tp">$out</span>, <span class="str">'&gt;'</span>, <span class="str">'/tmp/saida.txt'</span>;
+    <span class="fn">print</span> <span class="tp">$out</span> <span class="str">"dados\n"</span>;
+    <span class="kw">close</span> <span class="tp">$out</span>;
+}
+
+<span class="com"># Capturar exceção de autodie</span>
+<span class="kw">use</span> <span class="tp">autodie</span>;
+<span class="fn">eval</span> {
+    <span class="kw">open</span> <span class="kw">my</span> <span class="tp">$fh</span>, <span class="str">'&lt;'</span>, <span class="str">'/nao/existe'</span>;
+};
+<span class="kw">if</span> (<span class="kw">my</span> <span class="tp">$e</span> = <span class="tp">$@</span>) {
+    <span class="kw">if</span> (<span class="tp">$e</span>-&gt;<span class="fn">isa</span>(<span class="str">'autodie::exception'</span>)) {
+        <span class="fn">say</span> <span class="str">"Falha em: "</span> . <span class="tp">$e</span>-&gt;function;
+        <span class="fn">say</span> <span class="str">"Motivo: "</span>  . <span class="tp">$e</span>-&gt;errno;
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="logging">Log::Log4perl: Logging Profissional</h2>
+        <p>
+          <strong>Log::Log4perl</strong> é a implementação Perl do framework Log4j. Permite configurar níveis de log (DEBUG, INFO, WARN, ERROR, FATAL), múltiplos appenders (arquivo, STDOUT, syslog) e formatação personalizada — sem modificar o código da aplicação.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">log4perl.conf — configuração</div>
+          <pre class="example"><span class="com"># log4perl.conf</span>
+log4perl.rootLogger = DEBUG, Screen, Arquivo
+
+<span class="com"># Appender 1: tela (stdout)</span>
+log4perl.appender.Screen              = Log::Log4perl::Appender::Screen
+log4perl.appender.Screen.layout       = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Screen.layout.ConversionPattern = %d{HH:mm:ss} %-5p %c — %m%n
+
+<span class="com"># Appender 2: arquivo rotacionado</span>
+log4perl.appender.Arquivo             = Log::Log4perl::Appender::File
+log4perl.appender.Arquivo.filename    = /var/log/app/app.log
+log4perl.appender.Arquivo.mode        = append
+log4perl.appender.Arquivo.layout      = Log::Log4perl::Layout::PatternLayout
+log4perl.appender.Arquivo.layout.ConversionPattern = %d %p %c — %m%n
+
+<span class="com"># Logger específico por módulo — nível diferente</span>
+log4perl.logger.MeuApp.Database = WARN</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">app.pl — uso do Log4perl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Log::Log4perl</span>;
+
+<span class="com"># Inicializar com arquivo de configuração</span>
+<span class="tp">Log::Log4perl</span>-&gt;<span class="fn">init</span>(<span class="str">'log4perl.conf'</span>);
+
+<span class="com"># Obter logger nomeado (use o package name da classe)</span>
+<span class="kw">my</span> <span class="tp">$log</span> = <span class="tp">Log::Log4perl</span>-&gt;<span class="fn">get_logger</span>(<span class="str">'MeuApp'</span>);
+
+<span class="tp">$log</span>-&gt;<span class="fn">debug</span>(<span class="str">"Início do processamento"</span>);
+<span class="tp">$log</span>-&gt;<span class="fn">info</span>(<span class="str">"Conectado ao banco de dados"</span>);
+
+<span class="kw">eval</span> {
+    <span class="kw">my</span> <span class="tp">$resultado</span> = <span class="fn">processar</span>();
+    <span class="tp">$log</span>-&gt;<span class="fn">info</span>(<span class="str">"Processado $resultado registros"</span>);
+};
+<span class="kw">if</span> (<span class="tp">$@</span>) {
+    <span class="tp">$log</span>-&gt;<span class="fn">error</span>(<span class="str">"Falha no processamento: $@"</span>);
+    <span class="tp">$log</span>-&gt;<span class="fn">logdie</span>(<span class="str">"Abortando"</span>);  <span class="com"># log + die</span>
+}
+
+<span class="com"># Configuração inline (sem arquivo) — útil para testes</span>
+<span class="tp">Log::Log4perl</span>-&gt;<span class="fn">easy_init</span>({
+    level  =&gt; <span class="tp">$Log::Log4perl::INFO</span>,
+    layout =&gt; <span class="str">'%d %p %m%n'</span>,
+    file   =&gt; <span class="str">'>>/tmp/app.log'</span>,
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pod">POD: Plain Old Documentation</h2>
+        <p>
+          <strong>POD</strong> (Plain Old Documentation) é o sistema de documentação embutido do Perl. Comentários POD são intercalados diretamente no código-fonte e processados por ferramentas como <code class="code-inline">perldoc</code>, <code class="code-inline">pod2html</code> e <code class="code-inline">pod2man</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lib/MeuModulo/Math.pm — com POD completo</div>
+          <pre class="example"><span class="kw">package</span> <span class="tp">MeuModulo::Math</span>;
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">our</span> <span class="tp">$VERSION</span> = <span class="str">'1.00'</span>;
+
+<span class="kw">sub</span> <span class="tp">soma</span> { <span class="tp">$_</span>[<span class="num">0</span>] + <span class="tp">$_</span>[<span class="num">1</span>] }
+<span class="kw">sub</span> <span class="tp">fatorial</span> {
+    <span class="kw">my</span> (<span class="tp">$n</span>) = <span class="tp">@_</span>;
+    <span class="kw">return</span> <span class="num">1</span> <span class="kw">if</span> <span class="tp">$n</span> &lt;= <span class="num">1</span>;
+    <span class="kw">return</span> <span class="tp">$n</span> * <span class="fn">fatorial</span>(<span class="tp">$n</span>-<span class="num">1</span>);
+}
+
+<span class="num">1</span>;
+
+<span class="com">__END__  # tudo abaixo é ignorado pelo compiler Perl</span>
+
+<span class="str">=head1 NAME</span>
+
+<span class="str">MeuModulo::Math - Funções matemáticas básicas</span>
+
+<span class="str">=head1 VERSION</span>
+
+<span class="str">Version 1.00</span>
+
+<span class="str">=head1 SYNOPSIS</span>
+
+<span class="str">  use MeuModulo::Math qw(soma fatorial);</span>
+
+<span class="str">  my $resultado = soma(3, 4);       # 7</span>
+<span class="str">  my $fat       = fatorial(5);      # 120</span>
+
+<span class="str">=head1 DESCRIPTION</span>
+
+<span class="str">Módulo que fornece funções matemáticas básicas para cálculos comuns.</span>
+<span class="str">Todas as funções são exportáveis opcionalmente via C&lt;@EXPORT_OK&gt;.</span>
+
+<span class="str">=head1 FUNÇÕES</span>
+
+<span class="str">=head2 soma($a, $b)</span>
+
+<span class="str">Retorna a soma de dois números.</span>
+
+<span class="str">  my $s = soma(10, 5);  # 15</span>
+
+<span class="str">=head2 fatorial($n)</span>
+
+<span class="str">Retorna o fatorial de C&lt;$n&gt;. Para C&lt;$n &lt;= 1&gt;, retorna C&lt;1&gt;.</span>
+
+<span class="str">=head1 ERROS</span>
+
+<span class="str">Nenhum erro conhecido. Reporte via GitHub Issues.</span>
+
+<span class="str">=head1 AUTOR</span>
+
+<span class="str">Seu Nome, C&lt;seu@email.com&gt;</span>
+
+<span class="str">=head1 LICENÇA</span>
+
+<span class="str">Este módulo é software livre; você pode redistribuí-lo sob os</span>
+<span class="str">termos da Artistic License ou da GPL v1+.</span>
+
+<span class="str">=cut</span></pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> POD entre <code class="code-inline">=head1</code> e <code class="code-inline">=cut</code> pode aparecer em qualquer lugar do arquivo. A convenção é colocar após o código ou após <code class="code-inline">__END__</code>. Use <code class="code-inline">perldoc lib/MeuModulo/Math.pm</code> para visualizar.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CONWAY, Damian. <strong>Perl Best Practices</strong>. O'Reilly Media, 2005. O livro de referência para boas práticas Perl.</li>
+            <li>CHROMATIC. <strong>Modern Perl</strong>. 4. ed. Chromatic, 2016. Disponível em: <a href="https://modernperlbooks.com/books/modern_perl_2016/" target="_blank" rel="noopener">https://modernperlbooks.com/books/modern_perl_2016/</a></li>
+            <li>PERL FOUNDATION. <strong>perlpod — Plain Old Documentation format</strong>. Disponível em: <a href="https://perldoc.perl.org/perlpod" target="_blank" rel="noopener">https://perldoc.perl.org/perlpod</a></li>
+            <li>PERL FOUNDATION. <strong>perlnewmod — Preparing a new module for distribution</strong>. Disponível em: <a href="https://perldoc.perl.org/perlnewmod" target="_blank" rel="noopener">https://perldoc.perl.org/perlnewmod</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Ecossistema &amp; Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Avançado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/automacao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Automação</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Código sem testes é código legado desde o dia em que foi escrito." — Michael Feathers, Working Effectively with Legacy Code
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

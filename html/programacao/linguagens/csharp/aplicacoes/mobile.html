@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para Mobile: .NET MAUI (iOS e Android nativo com um codebase), plataform-specific code, permissoes, notificacoes push, camera, GPS, armazenamento local com SQLite e publicacao nas stores." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Mobile</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para Mobile</h1>
+          <p><strong>.NET MAUI</strong> (Multi-platform App UI) e a plataforma oficial Microsoft para desenvolvimento mobile com C# — um unico codebase compila para iOS, Android, macOS e Windows com acesso a APIs nativas de cada plataforma. Usa XAML para UI declarativa, CommunityToolkit.Mvvm para MVVM, e Essentials para permissoes, camera, GPS, armazenamento seguro e notificacoes.</p>
+        </div>
+        <p class="intro-highlight">
+          Em .NET MAUI, o codigo C# e compilado para nativo via AOT (Ahead-of-Time) no iOS e via JIT no Android. O acesso a APIs nativas especificas de plataforma e feito via <code>#if ANDROID / #elif IOS</code> ou via abstraccao de interface + implementacao por plataforma.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto .NET MAUI</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + .NET MAUI &mdash; MauiProgram.cs, App.xaml.cs e Shell navigation</div>
+          <pre class="example"><span class="com">// MauiProgram.cs — ponto de entrada e DI</span>
+<span class="kw">using</span> <span class="tp">CommunityToolkit</span>.<span class="tp">Maui</span>;
+
+<span class="kw">public static class</span> <span class="tp">MauiProgram</span>
+{
+  <span class="kw">public static</span> <span class="tp">MauiApp</span> <span class="fn">CreateMauiApp</span>()
+  {
+    <span class="kw">var</span> builder = <span class="tp">MauiApp</span>.<span class="fn">CreateBuilder</span>();
+    builder
+      .<span class="fn">UseMauiApp</span>&lt;<span class="tp">App</span>&gt;()
+      .<span class="fn">UseMauiCommunityToolkit</span>()
+      .<span class="fn">ConfigureFonts</span>(fonts =&gt; {
+        fonts.<span class="fn">AddFont</span>(<span class="str">"Inter-Regular.ttf"</span>, <span class="str">"InterRegular"</span>);
+        fonts.<span class="fn">AddFont</span>(<span class="str">"Inter-Bold.ttf"</span>, <span class="str">"InterBold"</span>);
+      });
+
+    <span class="com">// Services</span>
+    builder.Services
+      .<span class="fn">AddSingleton</span>&lt;<span class="tp">IContatosService</span>, <span class="tp">ContatosService</span>&gt;()
+      .<span class="fn">AddSingleton</span>&lt;<span class="tp">ILocalDb</span>, <span class="tp">SqliteDb</span>&gt;()
+      .<span class="fn">AddTransient</span>&lt;<span class="tp">ContatosViewModel</span>&gt;()
+      .<span class="fn">AddTransient</span>&lt;<span class="tp">ContatosPage</span>&gt;()
+      .<span class="fn">AddTransient</span>&lt;<span class="tp">DetalheContatoPage</span>&gt;();
+
+    <span class="kw">return</span> builder.<span class="fn">Build</span>();
+  }
+}
+
+<span class="com">// AppShell.xaml.cs — rotas de navegacao</span>
+<span class="kw">public partial class</span> <span class="tp">AppShell</span> : <span class="tp">Shell</span>
+{
+  <span class="kw">public</span> <span class="tp">AppShell</span>()
+  {
+    <span class="fn">InitializeComponent</span>();
+    <span class="tp">Routing</span>.<span class="fn">RegisterRoute</span>(<span class="str">"detalhes"</span>, <span class="kw">typeof</span>(<span class="tp">DetalheContatoPage</span>));
+  }
+}
+
+<span class="com">// Navegar para detalhe com parametro</span>
+<span class="kw">await</span> <span class="tp">Shell</span>.Current.<span class="fn">GoToAsync</span>(<span class="str">"detalhes"</span>, <span class="kw">new</span> <span class="tp">Dictionary</span>&lt;<span class="kw">string</span>, <span class="kw">object</span>&gt; {
+  [<span class="str">"contato"</span>] = contatoSelecionado
+});
+
+<span class="com">// DetalheContatoPage recebe o parametro via [QueryProperty]</span>
+<span class="at">[QueryProperty(nameof(Contato), "contato")]</span>
+<span class="kw">public partial class</span> <span class="tp">DetalheContatoViewModel</span> : <span class="tp">ObservableObject</span>
+{
+  <span class="at">[ObservableProperty]</span>
+  <span class="kw">private</span> <span class="tp">Contato</span>? _contato;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="essentials">MAUI Essentials — Camera, GPS, Permissoes e Armazenamento</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + .NET MAUI Essentials &mdash; GPS, camera, secure storage e notificacoes</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Maui</span>.<span class="tp">ApplicationModel</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Maui</span>.<span class="tp">Devices</span>.<span class="tp">Sensors</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Maui</span>.<span class="tp">Media</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Maui</span>.<span class="tp">Storage</span>;
+
+<span class="com">// 1. GPS — solicitar permissao e obter localizacao</span>
+<span class="kw">async</span> <span class="tp">Task</span>&lt;<span class="tp">Location</span>?&gt; <span class="fn">ObterLocalizacaoAsync</span>()
+{
+  <span class="kw">var</span> status = <span class="kw">await</span> <span class="tp">Permissions</span>.<span class="fn">RequestAsync</span>&lt;<span class="tp">Permissions</span>.<span class="tp">LocationWhenInUse</span>&gt;();
+  <span class="kw">if</span> (status != <span class="tp">PermissionStatus</span>.Granted)
+  {
+    <span class="kw">await</span> <span class="tp">Shell</span>.Current.<span class="fn">DisplayAlert</span>(<span class="str">"Permissao"</span>, <span class="str">"GPS nao autorizado."</span>, <span class="str">"OK"</span>);
+    <span class="kw">return null</span>;
+  }
+  <span class="kw">var</span> req = <span class="kw">new</span> <span class="tp">GeolocationRequest</span>(<span class="tp">GeolocationAccuracy</span>.Medium, <span class="tp">TimeSpan</span>.<span class="fn">FromSeconds</span>(<span class="num">10</span>));
+  <span class="kw">return await</span> <span class="tp">Geolocation</span>.<span class="fn">GetLocationAsync</span>(req);
+}
+
+<span class="com">// 2. Camera / galeria — capturar foto</span>
+<span class="kw">async</span> <span class="tp">Task</span>&lt;<span class="tp">FileResult</span>?&gt; <span class="fn">CapturarFotoAsync</span>()
+{
+  <span class="kw">if</span> (!<span class="tp">MediaPicker</span>.Default.IsCaptureSupported) <span class="kw">return null</span>;
+  <span class="kw">return await</span> <span class="tp">MediaPicker</span>.Default.<span class="fn">CapturePhotoAsync</span>(<span class="kw">new</span> <span class="tp">MediaPickerOptions</span> {
+    Title = <span class="str">"Tire uma foto do local"</span>
+  });
+}
+
+<span class="com">// 3. Secure Storage — salvar tokens com seguranca (Keychain iOS / Keystore Android)</span>
+<span class="kw">await</span> <span class="tp">SecureStorage</span>.Default.<span class="fn">SetAsync</span>(<span class="str">"access_token"</span>, token);
+<span class="kw">var</span> tkn = <span class="kw">await</span> <span class="tp">SecureStorage</span>.Default.<span class="fn">GetAsync</span>(<span class="str">"access_token"</span>);
+
+<span class="com">// 4. Preferences — configuracoes simples (nao sigilosas)</span>
+<span class="tp">Preferences</span>.Default.<span class="fn">Set</span>(<span class="str">"tema"</span>, <span class="str">"escuro"</span>);
+<span class="kw">var</span> tema = <span class="tp">Preferences</span>.Default.<span class="fn">Get</span>(<span class="str">"tema"</span>, <span class="str">"claro"</span>);
+
+<span class="com">// 5. Connectivity — verificar conexao de rede</span>
+<span class="kw">if</span> (<span class="tp">Connectivity</span>.Current.NetworkAccess != <span class="tp">NetworkAccess</span>.Internet)
+  <span class="kw">await</span> <span class="tp">Shell</span>.Current.<span class="fn">DisplayAlert</span>(<span class="str">"Offline"</span>, <span class="str">"Sem conexao com a internet."</span>, <span class="str">"OK"</span>);
+
+<span class="com">// 6. Share — compartilhar conteudo nativo</span>
+<span class="kw">await</span> <span class="tp">Share</span>.Default.<span class="fn">RequestAsync</span>(<span class="kw">new</span> <span class="tp">ShareTextRequest</span> {
+  Title = <span class="str">"Compartilhar localizacao"</span>,
+  Text  = $<span class="str">"Estou em Lat={loc.Latitude:F4} Lon={loc.Longitude:F4}"</span>
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite">SQLite — Banco de Dados Local</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + SQLite-net-pcl &mdash; CRUD local persistido no dispositivo</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">SQLite</span>;
+
+<span class="at">[Table("contatos")]</span>
+<span class="kw">public class</span> <span class="tp">Contato</span>
+{
+  <span class="at">[PrimaryKey, AutoIncrement]</span>
+  <span class="kw">public int</span>    Id     { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="at">[MaxLength(200), NotNull]</span>
+  <span class="kw">public string</span> Nome   { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+  <span class="kw">public string</span> Email  { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+  <span class="at">[Indexed]</span>
+  <span class="kw">public string</span> Telefone { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+}
+
+<span class="kw">class</span> <span class="tp">SqliteDb</span> : <span class="tp">ILocalDb</span>
+{
+  <span class="kw">private readonly</span> <span class="tp">SQLiteAsyncConnection</span> _conn;
+
+  <span class="kw">public</span> <span class="tp">SqliteDb</span>()
+  {
+    <span class="kw">var</span> dbPath = <span class="tp">Path</span>.<span class="fn">Combine</span>(<span class="tp">FileSystem</span>.AppDataDirectory, <span class="str">"app.db3"</span>);
+    _conn = <span class="kw">new</span> <span class="tp">SQLiteAsyncConnection</span>(dbPath,
+      <span class="tp">SQLiteOpenFlags</span>.ReadWrite | <span class="tp">SQLiteOpenFlags</span>.Create | <span class="tp">SQLiteOpenFlags</span>.FullMutex);
+  }
+
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">InicializarAsync</span>() =&gt;
+    <span class="kw">await</span> _conn.<span class="fn">CreateTableAsync</span>&lt;<span class="tp">Contato</span>&gt;();
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Contato</span>&gt;&gt; <span class="fn">ListarAsync</span>() =&gt;
+    <span class="kw">await</span> _conn.<span class="fn">Table</span>&lt;<span class="tp">Contato</span>&gt;().<span class="fn">ToListAsync</span>();
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Contato</span>&gt;&gt; <span class="fn">BuscarAsync</span>(<span class="kw">string</span> termo) =&gt;
+    <span class="kw">await</span> _conn.<span class="fn">Table</span>&lt;<span class="tp">Contato</span>&gt;()
+               .<span class="fn">Where</span>(c =&gt; c.Nome.<span class="fn">Contains</span>(termo))
+               .<span class="fn">ToListAsync</span>();
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">int</span>&gt; <span class="fn">SalvarAsync</span>(<span class="tp">Contato</span> c) =&gt;
+    c.Id != <span class="num">0</span> ? <span class="kw">await</span> _conn.<span class="fn">UpdateAsync</span>(c) : <span class="kw">await</span> _conn.<span class="fn">InsertAsync</span>(c);
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">int</span>&gt; <span class="fn">RemoverAsync</span>(<span class="tp">Contato</span> c) =&gt;
+    <span class="kw">await</span> _conn.<span class="fn">DeleteAsync</span>(c);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="platform-code">Codigo Especifico por Plataforma</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + .NET MAUI &mdash; interface abstrata com implementacoes por plataforma</div>
+          <pre class="example"><span class="com">// Interface compartilhada — Platforms/</span>
+<span class="kw">public interface</span> <span class="tp">IVibracao</span>
+{
+  <span class="kw">void</span> <span class="fn">Vibrar</span>(<span class="kw">int</span> duracaoMs);
+}
+
+<span class="com">// Platforms/Android/VibracaoAndroid.cs</span>
+<span class="kw">public class</span> <span class="tp">VibracaoAndroid</span> : <span class="tp">IVibracao</span>
+{
+  <span class="kw">public void</span> <span class="fn">Vibrar</span>(<span class="kw">int</span> ms)
+  {
+    <span class="kw">var</span> vibrator = Android.<span class="tp">App</span>.<span class="tp">Application</span>.Context
+      .<span class="fn">GetSystemService</span>(Android.<span class="tp">Content</span>.<span class="tp">Context</span>.VibratorService) <span class="kw">as</span> Android.<span class="tp">OS</span>.<span class="tp">Vibrator</span>;
+    <span class="kw">if</span> (Android.<span class="tp">OS</span>.<span class="tp">Build</span>.VERSION.SdkInt &gt;= Android.<span class="tp">OS</span>.<span class="tp">BuildVersionCodes</span>.O)
+      vibrator?.Vibrate(Android.<span class="tp">OS</span>.<span class="tp">VibrationEffect</span>
+        .<span class="fn">CreateOneShot</span>(ms, Android.<span class="tp">OS</span>.<span class="tp">VibrationEffect</span>.DefaultAmplitude));
+    <span class="kw">else</span>
+      vibrator?.Vibrate(ms);
+  }
+}
+
+<span class="com">// Platforms/iOS/VibracaoIos.cs</span>
+<span class="kw">public class</span> <span class="tp">VibracaoIos</span> : <span class="tp">IVibracao</span>
+{
+  <span class="kw">public void</span> <span class="fn">Vibrar</span>(<span class="kw">int</span> _)
+    =&gt; <span class="tp">AudioToolbox</span>.<span class="tp">SystemSound</span>.Vibrate.<span class="fn">PlayAlertSound</span>();
+}
+
+<span class="com">// Registro condicional em MauiProgram.cs</span>
+<span class="com">// Abordagem alternativa com #if</span>
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="tp">IVibracao</span>&gt;(
+<span class="kw">#if</span> ANDROID
+  <span class="kw">new</span> <span class="tp">VibracaoAndroid</span>()
+<span class="kw">#elif</span> IOS
+  <span class="kw">new</span> <span class="tp">VibracaoIos</span>()
+<span class="kw">#else</span>
+  <span class="kw">new</span> <span class="tp">VibracaoNoop</span>()
+<span class="kw">#endif</span>
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>.NET MAUI documentation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/maui/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>.NET MAUI Essentials</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/maui/platform-integration/&gt;. Acesso em: 2025.</li>
+            <li>SQLITE-NET-PCL. <strong>SQLite-net — Lightweight ORM for .NET, iOS and Android</strong>. Disponível em: &lt;https://github.com/praeclarum/sqlite-net&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Terminal e CLI</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> No .NET MAUI, nunca armazene tokens ou senhas em <code>Preferences</code> — use sempre <code>SecureStorage</code>, que usa Keychain no iOS e Android Keystore no Android. O <code>Preferences</code> persiste em texto claro em SharedPreferences (Android) e NSUserDefaults (iOS).</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

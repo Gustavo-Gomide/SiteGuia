@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Terminal e CLI com F#: Argu para argumentos DU-tipados, scripting FSI, System.IO, console colorido e automação de arquivos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Terminal e CLI</h1>
+          <p>F# é excelente para ferramentas de linha de comando e scripts de automação: a biblioteca Argu usa Discriminated Unions para definir argumentos CLI completamente tipados com help automático; FSI permite scripts standalone sem compilação; o pipeline funcional <code>|&gt;</code> lê arquivos como sequências lazy, processa e salva com código conciso e seguro.</p>
+        </div>
+        <p class="intro-highlight">
+          Com <strong>Argu</strong>, você define seus argumentos CLI como uma DU: cada case é uma flag ou opção. O parser lê <code>argv</code>, valida tipos e retorna um valor F# — não strings. Erro de tipo na CLI vira erro de tipo em F#. Help é gerado automaticamente a partir dos nomes e atributos dos cases.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="argu">Argu — Argumentos CLI Tipados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CLI completa com subcomandos, flags e validação</div>
+          <pre class="example"><span class="com">// dotnet add package Argu</span>
+open Argu
+
+<span class="com">// DU define os argumentos — cada case é um argumento</span>
+type CliArgs =
+    | [&lt;AltCommandLine(<span class="str">"-i"</span>)&gt;] Input  of path: string
+    | [&lt;AltCommandLine(<span class="str">"-o"</span>)&gt;] Output of path: string
+    | [&lt;AltCommandLine(<span class="str">"-v"</span>)&gt;] Verbose
+    | [&lt;AltCommandLine(<span class="str">"-n"</span>)&gt;] Lines  of count: int
+    | Force
+
+    interface IArgParserTemplate with
+        member s.Usage =
+            match s with
+            | Input  _ -> <span class="str">"Arquivo de entrada"</span>
+            | Output _ -> <span class="str">"Arquivo de saída"</span>
+            | Verbose   -> <span class="str">"Modo verboso"</span>
+            | Lines  _  -> <span class="str">"Número de linhas a processar"</span>
+            | Force     -> <span class="str">"Sobrescrever arquivo existente"</span>
+
+[&lt;EntryPoint&gt;]
+<span class="kw">let</span> main argv =
+    <span class="kw">let</span> parser  = ArgumentParser.Create&lt;CliArgs&gt;(programName = <span class="str">"meutool"</span>)
+    <span class="kw">let</span> results = parser.ParseCommandLine(argv)
+
+    <span class="com">// Extrair valores tipados — não strings!</span>
+    <span class="kw">let</span> entrada  = results.GetResult(Input)
+    <span class="kw">let</span> saida    = results.GetResult(Output, defaultValue = <span class="str">"output.txt"</span>)
+    <span class="kw">let</span> verbose  = results.Contains Verbose
+    <span class="kw">let</span> nLinhas  = results.GetResult(Lines, defaultValue = -1)
+    <span class="kw">let</span> forcar   = results.Contains Force
+
+    if verbose then
+        printfn <span class="str">"Entrada: %s → Saída: %s (linhas: %d)"</span> entrada saida nLinhas
+
+    <span class="com">// Lógica...</span>
+    0
+
+<span class="com">// Uso:  meutool --input arq.txt --output res.txt -v --lines 100</span>
+<span class="com">// Help: meutool --help  (gerado automaticamente)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="system-io">System.IO — Arquivos com Pipeline Funcional</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ler, transformar e salvar arquivos de forma funcional</div>
+          <pre class="example">open System.IO
+
+<span class="com">// Ler linhas como seq (lazy — não carrega tudo na memória)</span>
+<span class="kw">let</span> lerLinhas arquivo : string seq =
+    File.ReadLines(arquivo)   <span class="com">// lazy</span>
+
+<span class="com">// Processar CSV grande sem DataFrame</span>
+<span class="kw">let</span> processarCsv entrada saida =
+    use writer = new StreamWriter(saida)
+    writer.WriteLine(<span class="str">"Nome,Valor,Dobro"</span>)
+    lerLinhas entrada
+    |> Seq.skip 1                         <span class="com">// pular header</span>
+    |> Seq.map (fun linha -> linha.Split(<span class="str">","</span>))
+    |> Seq.filter (fun cols -> cols.Length = 2)
+    |> Seq.map (fun cols ->
+        let nome  = cols.[0].Trim()
+        let valor = cols.[1].Trim() |> float
+        nome, valor, valor * 2.0)
+    |> Seq.iter (fun (nome, v, d) ->
+        writer.WriteLine(sprintf <span class="str">"%s,%.2f,%.2f"</span> nome v d))
+
+<span class="com">// Percorrer diretório recursivamente</span>
+<span class="kw">let</span> buscarArquivos raiz extensao =
+    Directory.EnumerateFiles(raiz, sprintf <span class="str">"*.%s"</span> extensao, SearchOption.AllDirectories)
+    |> Seq.toList
+
+<span class="com">// Copiar e renomear em batch</span>
+<span class="kw">let</span> renomearArquivos dir prefixo =
+    Directory.EnumerateFiles(dir)
+    |> Seq.iteri (fun i caminho ->
+        let ext   = Path.GetExtension(caminho)
+        let novo  = Path.Combine(dir, sprintf <span class="str">"%s_%03d%s"</span> prefixo i ext)
+        File.Move(caminho, novo))
+
+<span class="com">// Ler JSON de arquivo</span>
+open System.Text.Json
+<span class="kw">let</span> lerJson&lt;'T&gt; caminho =
+    File.ReadAllText(caminho)
+    |> fun txt -> JsonSerializer.Deserialize&lt;'T&gt;(txt)
+
+<span class="com">// Escrever JSON formatado</span>
+<span class="kw">let</span> salvarJson&lt;'T&gt; caminho (valor: 'T) =
+    <span class="kw">let</span> opts = JsonSerializerOptions(WriteIndented = true)
+    JsonSerializer.Serialize(valor, opts)
+    |> fun json -> File.WriteAllText(caminho, json)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="console-colorido">Console Colorido e Formatação</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Cores ANSI, tabelas no terminal e progress reporting</div>
+          <pre class="example">open System
+
+<span class="com">// Cores ANSI (funciona no Windows Terminal, macOS, Linux)</span>
+<span class="kw">let</span> verde   = <span class="str">"\x1b[32m"</span>
+<span class="kw">let</span> vermelho = <span class="str">"\x1b[31m"</span>
+<span class="kw">let</span> amarelo  = <span class="str">"\x1b[33m"</span>
+<span class="kw">let</span> negrito  = <span class="str">"\x1b[1m"</span>
+<span class="kw">let</span> reset    = <span class="str">"\x1b[0m"</span>
+
+<span class="kw">let</span> ok   msg = printfn <span class="str">"%s✓%s %s"</span> verde reset msg
+<span class="kw">let</span> erro  msg = printfn <span class="str">"%s✗%s %s"</span> vermelho reset msg
+<span class="kw">let</span> aviso msg = printfn <span class="str">"%s⚠%s %s"</span> amarelo reset msg
+
+ok    <span class="str">"Arquivo processado com sucesso"</span>
+erro  <span class="str">"Arquivo não encontrado: dados.csv"</span>
+aviso <span class="str">"Nenhum item correspondeu ao filtro"</span>
+
+<span class="com">// Tabela no terminal</span>
+<span class="kw">let</span> imprimirTabela (headers: string list) (rows: string list list) =
+    <span class="kw">let</span> widths =
+        headers |> List.mapi (fun i h ->
+            rows
+            |> List.map (fun r -> if i < r.Length then r.[i].Length else 0)
+            |> List.max
+            |> max h.Length)
+    <span class="kw">let</span> linha = widths |> List.map (fun w -> String.replicate w <span class="str">"-"</span>) |> String.concat <span class="str">"-+-"</span>
+    <span class="kw">let</span> formatar cols =
+        List.mapi (fun i c -> (cols |> List.item i).PadRight(widths.[i])) [0..widths.Length-1]
+        |> String.concat <span class="str">" | "</span>
+    printfn <span class="str">"| %s |"</span> (formatar headers)
+    printfn <span class="str">"+-%-s-+"</span> linha
+    rows |> List.iter (fun r -> printfn <span class="str">"| %s |"</span> (formatar r))
+
+<span class="com">// Barra de progresso</span>
+<span class="kw">let</span> progresso atual total =
+    <span class="kw">let</span> pct  = int (float atual / float total * 40.0)
+    <span class="kw">let</span> bar  = String.replicate pct <span class="str">"#"</span> + String.replicate (40-pct) <span class="str">"."</span>
+    printf <span class="str">"\r[%s] %d/%d"</span> bar atual total
+
+<span class="kw">for</span> i <span class="kw">in</span> 0..100 do
+    progresso i 100
+    System.Threading.Thread.Sleep(20)
+printfn <span class="str">"\nConcluído!"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processos-externos">Processos Externos e Shell</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Executar comandos externos e capturar saída</div>
+          <pre class="example">open System.Diagnostics
+
+<span class="com">// Helper para executar um comando e capturar stdout+stderr</span>
+<span class="kw">let</span> executar (cmd: string) (args: string) : int * string =
+    let info =
+        ProcessStartInfo(
+            FileName               = cmd,
+            Arguments              = args,
+            RedirectStandardOutput = true,
+            RedirectStandardError  = true,
+            UseShellExecute        = false)
+    use proc = new Process(StartInfo = info)
+    proc.Start() |> ignore
+    <span class="kw">let</span> stdout = proc.StandardOutput.ReadToEnd()
+    <span class="kw">let</span> stderr = proc.StandardError.ReadToEnd()
+    proc.WaitForExit()
+    proc.ExitCode, stdout + stderr
+
+<span class="com">// Usar</span>
+<span class="kw">let</span> (code, output) = executar <span class="str">"git"</span> <span class="str">"log --oneline -10"</span>
+if code = 0 then
+    output.Split('\n')
+    |> Array.filter (fun l -> l.Length > 0)
+    |> Array.iter (printfn <span class="str">"  %s"</span>)
+else
+    eprintfn <span class="str">"Erro: %s"</span> output
+
+<span class="com">// Listar commits modificados no último dia</span>
+<span class="kw">let</span> (_, commits) = executar <span class="str">"git"</span> <span class="str">"log --since=1.day --name-only --format=%n"</span>
+commits.Split('\n')
+|> Array.filter (fun l -> l.EndsWith(<span class="str">".fs"</span>))
+|> Array.distinct
+|> Array.iter (printfn <span class="str">"Modificado: %s"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="automacao-exemplo">Exemplo Completo — Ferramenta de Relatório</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">report.fsx — ferramenta CLI standalone</div>
+          <pre class="example">#!/usr/bin/env dotnet-script
+<span class="com">// report.fsx — executar: dotnet fsi report.fsx --dir . --ext fs</span>
+
+#r "nuget: Argu"
+open System.IO
+open Argu
+
+type Args =
+    | [&lt;AltCommandLine(<span class="str">"-d"</span>)&gt;] Dir of directory: string
+    | [&lt;AltCommandLine(<span class="str">"-e"</span>)&gt;] Ext of extension: string
+    | [&lt;AltCommandLine(<span class="str">"-o"</span>)&gt;] Output of file: string
+    interface IArgParserTemplate with
+        member s.Usage =
+            match s with
+            | Dir _ -> <span class="str">"Diretório raiz"</span>
+            | Ext _ -> <span class="str">"Extensão (sem ponto)"</span>
+            | Output _ -> <span class="str">"Arquivo de saída"</span>
+
+<span class="kw">let</span> parser = ArgumentParser.Create&lt;Args&gt;()
+<span class="kw">let</span> args   = parser.ParseCommandLine(fsi.CommandLineArgs.[1..])
+
+<span class="kw">let</span> raiz = args.GetResult(Dir, defaultValue = <span class="str">"."</span>)
+<span class="kw">let</span> ext  = args.GetResult(Ext, defaultValue = <span class="str">"fs"</span>)
+<span class="kw">let</span> saida = args.TryGetResult Output
+
+<span class="kw">let</span> arquivos =
+    Directory.EnumerateFiles(raiz, sprintf <span class="str">"*.%s"</span> ext, SearchOption.AllDirectories)
+    |> Seq.toArray
+
+<span class="kw">let</span> estatisticas () =
+    arquivos |> Array.map (fun arq ->
+        let linhas = File.ReadLines(arq) |> Seq.length
+        arq, linhas)
+
+<span class="kw">let</span> stats = estatisticas()
+<span class="kw">let</span> total = stats |> Array.sumBy snd
+<span class="kw">let</span> relatorio =
+    stats
+    |> Array.sortByDescending snd
+    |> Array.map (fun (f, n) -> sprintf <span class="str">"%-60s %5d linhas"</span> f n)
+    |> Array.append [| sprintf <span class="str">"=== %d arquivos .%s, %d linhas total ==="</span> arquivos.Length ext total |]
+
+relatorio |> Array.iter (printfn <span class="str">"%s"</span>)
+
+match saida with
+| Some caminho -> File.WriteAllLines(caminho, relatorio); printfn <span class="str">"Salvo em %s"</span> caminho
+| None         -> ()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Argu. <strong>Argu — Declarative CLI argument parsing for F#</strong>. Disponível em: &lt;https://github.com/fsprojects/Argu&gt;. Acesso em: 2026.</li>
+            <li>Microsoft. <strong>F# Interactive (dotnet fsi)</strong>. Disponível em: &lt;https://learn.microsoft.com/dotnet/fsharp/tools/fsharp-interactive&gt;. Acesso em: 2026.</li>
+            <li>WLASCHIN, S. <strong>F# for Fun and Profit — F# as a scripting language</strong>. Disponível em: &lt;https://fsharpforfunandprofit.com&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Voltar: Introdução ao F#</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> F# como linguagem de script (<code>.fsx</code>) elimina a dicotomia shell script (frágil, sem tipos) vs aplicativo compilado (verboso, burocrático). Um <code>.fsx</code> tem <strong>tipos estáticos, acesso total ao .NET BCL, pacotes NuGet inline com <code>#r</code></strong>, e roda com <code>dotnet fsi arquivo.fsx</code> — sem compilação manual, sem projeto, sem <code>csproj</code>. É o ponto ideal entre a agilidade do bash e a robustez de uma aplicação real.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

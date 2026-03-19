@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Terminal e CLI: CLI11 para parsear argumentos, FTXUI para TUI interativa, ncurses, termios raw mode, ANSI escape codes e subprocessos com popen." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Terminal e CLI</h1>
+          <p>Ferramentas de linha de comando em C++: CLI11 para parsing de argumentos complexos com subcomandos, FTXUI para interfaces de terminal (TUI) interativas e animadas, ncurses para controle total do terminal, termios para modo raw e leitura de teclas individuais, e ANSI escape codes para cor e formatacao.</p>
+        </div>
+        <p class="intro-highlight">
+          C++ produz executaveis standalone sem runtime externo — ideal para ferramentas de sistema, compiladores, gerenciadores de pacotes e scripts de build. CLI11, FTXUI e cxxopts sao header-only ou de compilacao trivial, facilitando distribuicao.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cli11">CLI11 — Parsing de Argumentos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + CLI11 &mdash; flags, opcoes, subcomandos, validadores e help automatico</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;CLI/CLI.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;filesystem&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">int</span> argc, <span class="kw">char</span>** argv) {
+  <span class="tp">CLI::App</span> app{<span class="str">"dataproc — processador de dados v1.0"</span>};
+  app.<span class="fn">set_version_flag</span>(<span class="str">"--version"</span>, <span class="str">"1.0.0"</span>);
+  app.<span class="fn">require_subcommand</span>(<span class="num">1</span>);  <span class="com">// exige exatamente 1 subcomando</span>
+
+  <span class="com">// === Subcomando: convert ===</span>
+  std::<span class="tp">string</span> inputFile, outputFile, formato = <span class="str">"json"</span>;
+  <span class="kw">bool</span>        verboso = <span class="kw">false</span>;
+  <span class="kw">int</span>         workers = <span class="num">4</span>;
+
+  <span class="kw">auto</span>* conv = app.<span class="fn">add_subcommand</span>(<span class="str">"convert"</span>, <span class="str">"Converter formato de arquivo"</span>);
+  conv-&gt;<span class="fn">add_option</span>(<span class="str">"-i,--input"</span>, inputFile, <span class="str">"Arquivo de entrada"</span>)
+      -&gt;<span class="fn">required</span>()
+      -&gt;<span class="fn">check</span>(CLI::<span class="tp">ExistingFile</span>);      <span class="com">// valida que o arquivo existe</span>
+  conv-&gt;<span class="fn">add_option</span>(<span class="str">"-o,--output"</span>, outputFile, <span class="str">"Arquivo de saida"</span>)
+      -&gt;<span class="fn">required</span>();
+  conv-&gt;<span class="fn">add_option</span>(<span class="str">"-f,--format"</span>, formato, <span class="str">"Formato: json|csv|parquet"</span>)
+      -&gt;<span class="fn">check</span>(CLI::<span class="tp">IsMember</span>({<span class="str">"json"</span>, <span class="str">"csv"</span>, <span class="str">"parquet"</span>}));
+  conv-&gt;<span class="fn">add_option</span>(<span class="str">"-w,--workers"</span>, workers, <span class="str">"Threads de trabalho [1-32]"</span>)
+      -&gt;<span class="fn">check</span>(CLI::<span class="tp">Range</span>(<span class="num">1</span>, <span class="num">32</span>));
+  conv-&gt;<span class="fn">add_flag</span>(<span class="str">"-v,--verbose"</span>, verboso, <span class="str">"Saida detalhada"</span>);
+
+  <span class="com">// === Subcomando: stats ===</span>
+  std::<span class="tp">vector</span>&lt;std::<span class="tp">string</span>&gt; arquivos;
+  <span class="kw">bool</span>                    incluirMedia = <span class="kw">true</span>;
+
+  <span class="kw">auto</span>* stats = app.<span class="fn">add_subcommand</span>(<span class="str">"stats"</span>, <span class="str">"Calcular estatisticas"</span>);
+  stats-&gt;<span class="fn">add_option</span>(<span class="str">"arquivos"</span>, arquivos, <span class="str">"Arquivos de entrada (1+)"</span>)
+       -&gt;<span class="fn">required</span>()-&gt;<span class="fn">check</span>(CLI::<span class="tp">ExistingFile</span>);
+  stats-&gt;<span class="fn">add_flag</span>(<span class="str">"!--no-mean"</span>, incluirMedia, <span class="str">"Omitir media"</span>);
+
+  <span class="com">// Callback executado se subcomando marcado</span>
+  conv-&gt;<span class="fn">callback</span>([&amp;]() {
+    std::<span class="fn">println</span>(<span class="str">"Convertendo {} → {} (formato={}, workers={})"</span>,
+      inputFile, outputFile, formato, workers);
+    <span class="kw">if</span> (verboso) std::<span class="fn">println</span>(<span class="str">"[verbose] Threads inicializadas"</span>);
+  });
+
+  stats-&gt;<span class="fn">callback</span>([&amp;]() {
+    <span class="kw">for</span> (<span class="kw">const auto</span>&amp; f : arquivos)
+      std::<span class="fn">println</span>(<span class="str">"Analisando {} (media={})"</span>, f, incluirMedia);
+  });
+
+  CLI11_PARSE(app, argc, argv);
+  <span class="kw">return</span> <span class="num">0</span>;
+}
+
+<span class="com">// Uso:</span>
+<span class="com">// ./dataproc convert -i dados.csv -o saida.json -f json -w 8 -v</span>
+<span class="com">// ./dataproc stats arquivo1.csv arquivo2.csv --no-mean</span>
+<span class="com">// ./dataproc --help | --version</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ftxui">FTXUI — Interface TUI Moderna</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + FTXUI &mdash; menu, input, progress bar, canvas e layout</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;ftxui/component/component.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ftxui/component/screen_interactive.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ftxui/dom/elements.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;functional&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;thread&gt;</span>
+<span class="kw">using namespace</span> ftxui;
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="kw">auto</span> screen = <span class="tp">ScreenInteractive</span>::<span class="fn">Fullscreen</span>();
+
+  <span class="com">// Input de texto</span>
+  std::<span class="tp">string</span> entrada;
+  <span class="kw">auto</span> inputComp = <span class="tp">Input</span>(&amp;entrada, <span class="str">"Digite algo..."</span>);
+
+  <span class="com">// Menu de selecao</span>
+  std::<span class="tp">vector</span>&lt;std::<span class="tp">string</span>&gt; itens = { <span class="str">"Abrir arquivo"</span>, <span class="str">"Processar"</span>, <span class="str">"Salvar"</span>, <span class="str">"Sair"</span> };
+  <span class="kw">int</span> menuSelecionado = <span class="num">0</span>;
+  <span class="kw">auto</span> menuComp = <span class="tp">Menu</span>(&amp;itens, &amp;menuSelecionado);
+
+  <span class="com">// Checkboxes</span>
+  <span class="kw">bool</span> optA = <span class="kw">true</span>, optB = <span class="kw">false</span>;
+  <span class="kw">auto</span> cb1 = <span class="tp">Checkbox</span>(<span class="str">"Compressao"</span>, &amp;optA);
+  <span class="kw">auto</span> cb2 = <span class="tp">Checkbox</span>(<span class="str">"Criptografia"</span>, &amp;optB);
+
+  <span class="com">// Slider</span>
+  <span class="kw">int</span>  nivelSlider = <span class="num">50</span>;
+  <span class="kw">auto</span> sliderComp  = <span class="tp">Slider</span>(<span class="str">"Nivel: "</span>, &amp;nivelSlider, <span class="num">0</span>, <span class="num">100</span>, <span class="num">1</span>);
+
+  <span class="com">// Progress bar animada em background thread</span>
+  <span class="kw">float</span> progresso = <span class="num">0.0f</span>;
+  std::<span class="tp">atomic</span>&lt;<span class="kw">bool</span>&gt; rodando{ <span class="kw">true</span> };
+  std::<span class="tp">thread</span> worker([&amp;] {
+    <span class="kw">while</span> (rodando &amp;&amp; progresso &lt; <span class="num">1.0f</span>) {
+      progresso += <span class="num">0.01f</span>;
+      screen.<span class="fn">PostEvent</span>(<span class="tp">Event</span>::<span class="tp">Custom</span>);  <span class="com">// redesenhar a UI</span>
+      std::this_thread::<span class="fn">sleep_for</span>(std::chrono::<span class="fn">milliseconds</span>(<span class="num">50</span>));
+    }
+  });
+
+  <span class="com">// Componente raiz com layout</span>
+  <span class="kw">auto</span> layout = <span class="tp">Container</span>::<span class="fn">Vertical</span>({
+    inputComp,
+    menuComp,
+    <span class="tp">Container</span>::<span class="fn">Horizontal</span>({ cb1, cb2 }),
+    sliderComp,
+  });
+
+  <span class="kw">auto</span> renderer = <span class="tp">Renderer</span>(layout, [&amp;] {
+    <span class="kw">return</span> <span class="fn">vbox</span>({
+      <span class="fn">text</span>(<span class="str">"=== DataProc TUI ==="</span>) | <span class="fn">bold</span> | <span class="fn">center</span>,
+      <span class="fn">separator</span>(),
+      <span class="fn">hbox</span>({ <span class="fn">text</span>(<span class="str">" Busca: "</span>), inputComp-&gt;<span class="fn">Render</span>() | <span class="fn">flex</span> }),
+      <span class="fn">separator</span>(),
+      <span class="fn">hbox</span>({
+        <span class="fn">vbox</span>({ <span class="fn">text</span>(<span class="str">"Acoes"</span>) | <span class="fn">bold</span>, menuComp-&gt;<span class="fn">Render</span>() }) | <span class="fn">flex</span>,
+        <span class="fn">separator</span>(),
+        <span class="fn">vbox</span>({
+          <span class="fn">text</span>(<span class="str">"Opcoes"</span>) | <span class="fn">bold</span>,
+          cb1-&gt;<span class="fn">Render</span>(), cb2-&gt;<span class="fn">Render</span>(),
+          <span class="fn">separator</span>(),
+          sliderComp-&gt;<span class="fn">Render</span>(),
+          <span class="fn">text</span>(<span class="str">"Progresso:"</span>),
+          <span class="fn">gauge</span>(progresso) | <span class="fn">color</span>(<span class="tp">Color</span>::<span class="tp">GreenLight</span>),
+        }) | <span class="fn">flex</span>
+      }),
+      <span class="fn">separator</span>(),
+      <span class="fn">text</span>(<span class="str">"[q] sair  [Tab] navegar  [Enter] selecionar"</span>)
+        | <span class="fn">dim</span> | <span class="fn">center</span>,
+    }) | <span class="fn">border</span>;
+  });
+
+  <span class="kw">auto</span> comp = <span class="tp">CatchEvent</span>(renderer, [&amp;](<span class="tp">Event</span> ev) {
+    <span class="kw">if</span> (ev == <span class="tp">Event</span>::<span class="tp">Character</span>(<span class="str">'q'</span>)) { rodando = <span class="kw">false</span>; screen.<span class="fn">ExitLoopClosure</span>()(); <span class="kw">return true</span>; }
+    <span class="kw">return false</span>;
+  });
+
+  screen.<span class="fn">Loop</span>(comp);
+  <span class="kw">if</span> (worker.<span class="fn">joinable</span>()) worker.<span class="fn">join</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="termios">termios — Raw Mode e ANSI</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + termios &mdash; leitura tecla a tecla, ANSI colors e cursor</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;termios.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string_view&gt;</span>
+
+<span class="com">// RAII para ativar/desativar raw mode</span>
+<span class="kw">class</span> <span class="tp">RawMode</span> {
+  <span class="tp">termios</span> orig_;
+<span class="kw">public</span>:
+  <span class="tp">RawMode</span>() {
+    <span class="fn">tcgetattr</span>(<span class="tp">STDIN_FILENO</span>, &amp;orig_);
+    <span class="tp">termios</span> raw = orig_;
+    raw.c_lflag &amp;= ~(<span class="tp">ICANON</span> | <span class="tp">ECHO</span>);  <span class="com">// sem buffer de linha, sem echo</span>
+    raw.c_cc[<span class="tp">VMIN</span>]  = <span class="num">1</span>;  <span class="com">// bloqueia ate 1 caracter</span>
+    raw.c_cc[<span class="tp">VTIME</span>] = <span class="num">0</span>;
+    <span class="fn">tcsetattr</span>(<span class="tp">STDIN_FILENO</span>, <span class="tp">TCSANOW</span>, &amp;raw);
+  }
+  ~<span class="tp">RawMode</span>() { <span class="fn">tcsetattr</span>(<span class="tp">STDIN_FILENO</span>, <span class="tp">TCSANOW</span>, &amp;orig_); }
+};
+
+<span class="com">// ANSI escape helper</span>
+<span class="kw">namespace</span> ansi {
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> reset   = <span class="str">"\033[0m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> bold    = <span class="str">"\033[1m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> vermelho = <span class="str">"\033[31m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> verde   = <span class="str">"\033[32m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> amarelo = <span class="str">"\033[33m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> azul    = <span class="str">"\033[34m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> ciano   = <span class="str">"\033[36m"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> clearScr = <span class="str">"\033[2J\033[H"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> cursorHide = <span class="str">"\033[?25l"</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">string_view</span> cursorShow = <span class="str">"\033[?25h"</span>;
+
+  <span class="kw">inline void</span> <span class="fn">moveto</span>(<span class="kw">int</span> row, <span class="kw">int</span> col) {
+    std::<span class="fn">print</span>(<span class="str">"\033[{};{}H"</span>, row, col);
+  }
+  <span class="kw">inline void</span> <span class="fn">cores256</span>(<span class="kw">int</span> fg, <span class="kw">int</span> bg) {
+    std::<span class="fn">print</span>(<span class="str">"\033[38;5;{}m\033[48;5;{}m"</span>, fg, bg);
+  }
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  std::<span class="fn">print</span>(<span class="str">"{}"</span>, ansi::clearScr);
+  std::<span class="fn">print</span>(<span class="str">"{}"</span>, ansi::cursorHide);
+
+  <span class="com">// Gradiente de cor 256</span>
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">36</span>; ++i) {
+    ansi::<span class="fn">cores256</span>(<span class="num">255</span>, <span class="num">16</span> + i);
+    std::<span class="fn">print</span>(<span class="str">"  "</span>);
+  }
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, ansi::reset);
+
+  std::<span class="fn">println</span>(<span class="str">"{}{}Bem-vindo ao raw mode! Pressione 'q' para sair.{}{}",
+    ansi::bold, ansi::ciano, ansi::reset, ansi::cursorShow</span>);
+
+  <span class="tp">RawMode</span> rm;  <span class="com">// ativa raw mode — desativado no destrutor</span>
+  <span class="kw">char</span> ch;
+  <span class="kw">while</span> (std::<span class="fn">read</span>(<span class="tp">STDIN_FILENO</span>, &amp;ch, <span class="num">1</span>) == <span class="num">1</span> &amp;&amp; ch != <span class="str">'q'</span>) {
+    <span class="kw">if</span> (ch == <span class="str">'\033'</span>) {
+      <span class="com">// Sequencia de escape (setas: \033[A/B/C/D)</span>
+      <span class="kw">char</span> seq[<span class="num">3</span>]{};
+      <span class="fn">read</span>(<span class="tp">STDIN_FILENO</span>, seq, <span class="num">2</span>);
+      <span class="kw">if</span> (seq[<span class="num">0</span>] == <span class="str">'['</span>) {
+        <span class="kw">switch</span> (seq[<span class="num">1</span>]) {
+          <span class="kw">case</span> <span class="str">'A'</span>: std::<span class="fn">println</span>(<span class="str">"{}Seta para cima{}"</span>,   ansi::verde,   ansi::reset); <span class="kw">break</span>;
+          <span class="kw">case</span> <span class="str">'B'</span>: std::<span class="fn">println</span>(<span class="str">"{}Seta para baixo{}"</span>,  ansi::amarelo, ansi::reset); <span class="kw">break</span>;
+          <span class="kw">case</span> <span class="str">'C'</span>: std::<span class="fn">println</span>(<span class="str">"{}Seta direita{}"</span>,     ansi::azul,    ansi::reset); <span class="kw">break</span>;
+          <span class="kw">case</span> <span class="str">'D'</span>: std::<span class="fn">println</span>(<span class="str">"{}Seta esquerda{}"</span>,    ansi::ciano,   ansi::reset); <span class="kw">break</span>;
+        }
+      }
+    } <span class="kw">else</span> {
+      std::<span class="fn">println</span>(<span class="str">"{}'{}' (ASCII {}){}"</span>,
+        ansi::vermelho, ch, <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(ch), ansi::reset);
+    }
+  }
+  <span class="fn">println</span>(<span class="str">"{}Saindo...{}"</span>, ansi::amarelo, ansi::reset);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="subprocessos">Subprocessos e Pipes</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; popen, pipe() + fork(), e captura de output de processo filho</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;cstdio&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;array&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;memory&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdexcept&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Executar comando e capturar stdout como string</span>
+<span class="at">[[nodiscard]]</span>
+std::<span class="tp">string</span> <span class="fn">exec</span>(std::<span class="tp">string_view</span> cmd) {
+  <span class="com">// NOTA: nunca passe entrada do usuario diretamente aqui</span>
+  <span class="com">// Valide e sanitize antes de montar o comando</span>
+  std::<span class="tp">unique_ptr</span>&lt;<span class="tp">FILE</span>, <span class="kw">decltype</span>(&amp;<span class="fn">pclose</span>)> pipe{
+    <span class="fn">popen</span>(cmd.<span class="fn">data</span>(), <span class="str">"r"</span>),
+    &amp;<span class="fn">pclose</span>
+  };
+  <span class="kw">if</span> (!pipe) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"popen falhou"</span>);
+
+  std::<span class="tp">string</span> resultado;
+  std::<span class="tp">array</span>&lt;<span class="kw">char</span>, <span class="num">4096</span>&gt; buf;
+  <span class="kw">while</span> (<span class="fn">fgets</span>(buf.<span class="fn">data</span>(), buf.<span class="fn">size</span>(), pipe.<span class="fn">get</span>()) != <span class="kw">nullptr</span>)
+    resultado += buf.<span class="fn">data</span>();
+  <span class="kw">return</span> resultado;
+}
+
+<span class="com">// Obter versao do compilador &mdash; chamada com argumentos fixos (seguro)</span>
+<span class="kw">void</span> <span class="fn">infoSistema</span>() {
+  std::<span class="fn">print</span>(<span class="str">"GCC: {}"</span>, <span class="fn">exec</span>(<span class="str">"g++ --version 2>&1 | head -1"</span>));
+  std::<span class="fn">print</span>(<span class="str">"OS : {}"</span>, <span class="fn">exec</span>(<span class="str">"uname -sr"</span>));
+  std::<span class="fn">print</span>(<span class="str">"CPU: {}"</span>, <span class="fn">exec</span>(<span class="str">"nproc"</span>));
+}
+
+<span class="com">// Versao segura com execv sem shell (evita injection)</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sys/wait.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">executarSeguro</span>(<span class="kw">const char</span>* prog, std::<span class="tp">vector</span>&lt;<span class="kw">const char</span>*&gt; args) {
+  args.<span class="fn">push_back</span>(<span class="kw">nullptr</span>);  <span class="com">// NULL sentinel do execv</span>
+  <span class="tp">pid_t</span> pid = <span class="fn">fork</span>();
+  <span class="kw">if</span> (pid == <span class="num">0</span>) {
+    <span class="com">// processo filho</span>
+    <span class="fn">execv</span>(prog, <span class="kw">const_cast</span>&lt;<span class="kw">char</span>* <span class="kw">const</span>*&gt;(args.<span class="fn">data</span>()));
+    <span class="fn">_exit</span>(<span class="num">127</span>);  <span class="com">// execv so retorna em falha</span>
+  }
+  <span class="kw">int</span> status;
+  <span class="fn">waitpid</span>(pid, &amp;status, <span class="num">0</span>);
+  <span class="kw">return</span> <span class="tp">WEXITSTATUS</span>(status);
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="fn">infoSistema</span>();
+  <span class="com">// Compilar e executar arquivo — sem shell, sem injection</span>
+  <span class="kw">int</span> r = <span class="fn">executarSeguro</span>(<span class="str">"/usr/bin/g++"</span>,
+    { <span class="str">"/usr/bin/g++"</span>, <span class="str">"-std=c++23"</span>, <span class="str">"-O2"</span>, <span class="str">"main.cpp"</span>, <span class="str">"-o"</span>, <span class="str">"main"</span> });
+  std::<span class="fn">println</span>(<span class="str">"g++ saiu com codigo {}"</span>, r);
+}</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <strong>Injecao de comandos:</strong> Nunca passe dados de entrada do usuario para <code>popen()</code>, <code>system()</code> ou <code>execlp()</code> sem validacao rigorosa. Use <code>execv()</code> com vetor de argumentos para executar processos sem invocar o shell — isso elimina o risco de injecao de comandos via caracteres especiais como <code>;</code>, <code>&amp;</code> ou <code>`</code>.
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Comparativo de Bibliotecas CLI/TUI</h2>
+
+        <div class="panel">
+          <p class="panel-title">Bibliotecas para CLI e TUI em C++</p>
+          <table class="table">
+            <thead><tr><th>Biblioteca</th><th>Tipo</th><th>Header-only</th><th>Melhor para</th></tr></thead>
+            <tbody>
+              <tr><td>CLI11</td><td>Parser de argumentos</td><td>Sim</td><td>CLIs complexas com subcomandos, validacao e help automatico</td></tr>
+              <tr><td>FTXUI</td><td>TUI moderna</td><td>Nao (compila)</td><td>Dashboards, forms interativos, animacoes no terminal</td></tr>
+              <tr><td>ncurses</td><td>TUI classica</td><td>Nao</td><td>Apps legadas, compatibilidade maxima Unix</td></tr>
+              <tr><td>cxxopts</td><td>Parser simples</td><td>Sim</td><td>CLIs simples, dependencia minimal</td></tr>
+              <tr><td>argparse</td><td>Parser Python-like</td><td>Sim</td><td>Desenvolvedores familiarizados com argparse Python</td></tr>
+              <tr><td>rang</td><td>Cores ANSI</td><td>Sim</td><td>Colorir saida de logs e mensagens de erro</td></tr>
+              <tr><td>indicators</td><td>Progress bars</td><td>Sim</td><td>Barras de progresso e spinners em downloads/builds</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CLI11. <strong>CLI11: Command Line Parser for C++11 and beyond</strong>. Disponível em: &lt;https://github.com/CLIUtils/CLI11&gt;. Acesso em: 2025.</li>
+            <li>FTXUI. <strong>FTXUI: Functional Terminal User Interface C++ Library</strong>. Disponível em: &lt;https://github.com/ArthurSonzogni/FTXUI&gt;. Acesso em: 2025.</li>
+            <li>OPEN GROUP. <strong>The Single UNIX Specification: termios</strong>. Disponível em: &lt;https://pubs.opengroup.org/onlinepubs/9699919799&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Mobile</a></li>
+          <li><a href="../guia/introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introducao ao C++</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> FTXUI usa o paradigma funcional-reativo: a UI e pura funcao do estado, redesenhada a cada evento. Isso torna o codigo previsivel e testavel — diferente do ncurses imperativo onde voce deve rastrear manualmente o que precisa ser redesenhado.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

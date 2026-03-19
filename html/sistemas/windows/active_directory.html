@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Active Directory: estrutura lógica, objetos, GPOs, autenticação Kerberos, ferramentas de administração e gerenciamento com PowerShell." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Active Directory | Windows | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — ACTIVE DIRECTORY ═══════════════════ -->
+      <section>
+        <h2 id="active-directory" class="section-title">Active Directory</h2>
+        <div class="section-divider"></div>
+        <p class="intro-highlight">
+          AD DS (Active Directory Domain Services) é o serviço de diretório da Microsoft para gerenciar identidades e recursos em redes corporativas. Define a estrutura lógica (Forest → Domain → OU) e fornece autenticação centralizada via Kerberos, aplicação de GPOs (Group Policy Objects) e resolução de nomes via DNS integrado.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — ESTRUTURA LÓGICA DO AD ═══════════════════ -->
+      <section>
+        <h2 id="estrutura-logica" class="section-title">Estrutura Lógica do AD</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Active Directory — Hierarquia Lógica</div>
+          <pre class="code-block">Forest (ex: empresa.com)
+└── Tree: empresa.com
+    ├── Domain: empresa.com
+    │   ├── OU: TI
+    │   │   ├── OU: Servidores
+    │   │   │   └── Computer: SRV-DC01
+    │   │   └── OU: Workstations
+    │   │       └── Computer: WKS-001
+    │   ├── OU: RH
+    │   │   └── User: joao.silva
+    │   ├── OU: Financeiro
+    │   │   └── User: maria.santos
+    │   ├── Built-in Groups: Domain Admins, Enterprise Admins, Domain Users
+    │   └── Site objects, GPOs, trusts
+    └── Child Domain: filial.empresa.com (trust automático)
+
+# Objetos principais:
+# User    — conta de usuário com atributos (email, telefone, cargo...)
+# Group   — Security groups (permissões) e Distribution groups (email)
+# Computer — conta de máquina (trust channel com o domínio)
+# OU      — unidade organizacional para delegar admin e aplicar GPO
+# GPO     — Group Policy Object: políticas vinculadas a site/domain/OU</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — AUTENTICAÇÃO KERBEROS ═══════════════════ -->
+      <section>
+        <h2 id="autenticacao-kerberos" class="section-title">Autenticação Kerberos</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Etapa</th>
+                <th>Componente</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1. AS-REQ</td><td>Client → KDC (AS)</td><td>Cliente pede TGT usando hash da senha</td></tr>
+              <tr><td>2. AS-REP</td><td>KDC (AS) → Client</td><td>KDC retorna TGT criptografado com chave do krbtgt</td></tr>
+              <tr><td>3. TGS-REQ</td><td>Client → KDC (TGS)</td><td>Cliente pede Service Ticket para recurso específico</td></tr>
+              <tr><td>4. TGS-REP</td><td>KDC (TGS) → Client</td><td>KDC retorna Service Ticket</td></tr>
+              <tr><td>5. AP-REQ</td><td>Client → Service</td><td>Cliente envia Service Ticket ao servidor de destino</td></tr>
+              <tr><td>6. AP-REP</td><td>Service → Client</td><td>Servidor valida ticket e autentica o cliente</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — GPO — GROUP POLICY ═══════════════════ -->
+      <section>
+        <h2 id="gpo" class="section-title">GPO — Group Policy</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PowerShell — Group Policy</div>
+          <pre class="code-block"># GPOs são vinculadas a Sites, Domínios ou OUs
+# Processamento: Local > Site > Domain > OU (filho sobrescreve pai)
+# Refresh automático: 90 minutos +- random offset (usuário), 5 min (DC)
+
+# Forçar atualização de GPO imediatamente
+gpupdate /force
+
+# Gerar relatório de GPO efetiva para um usuário/computador
+gpresult /H C:\gpresult.html /User DOMAIN\joao.silva
+
+# Via PowerShell (módulo GroupPolicy)
+Get-GPO -All | Select-Object DisplayName, GpoStatus, ModificationTime
+New-GPO -Name "Politica-TI-Segurança"
+Get-GPOReport -Name "Politica-TI-Segurança" -ReportType HTML -Path "C:\gpo_relatorio.html"
+
+# Configurações comuns via GPO:
+# - Password Policy: Computer > Windows Settings > Security Settings > Account Policies
+# - Software Restriction / AppLocker
+# - Mapeamento de drives de rede
+# - Configurações do Internet Explorer/Edge
+# - Scripts de logon/logoff e startup/shutdown
+# - Desktop background, wallpaper, screensaver</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — GERENCIAMENTO COM POWERSHELL ═══════════════════ -->
+      <section>
+        <h2 id="gerenciamento-powershell" class="section-title">Gerenciamento com PowerShell</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PowerShell — Active Directory</div>
+          <pre class="code-block"># Módulo: ActiveDirectory (RSAT ou Windows Server)
+Import-Module ActiveDirectory
+
+# Buscar usuários
+Get-ADUser -Filter {Department -eq "TI"} -Properties Department, Manager |
+  Select-Object Name, SamAccountName, Manager
+
+# Criar usuário
+New-ADUser -Name "Carlos Ferreira" -GivenName "Carlos" -Surname "Ferreira" `
+  -SamAccountName "carlos.ferreira" -UserPrincipalName "carlos.ferreira@empresa.com" `
+  -Path "OU=TI,DC=empresa,DC=com" -AccountPassword (Read-Host -AsSecureString) -Enabled $true
+
+# Adicionar a grupo
+Add-ADGroupMember -Identity "GRP-TI-Admins" -Members "carlos.ferreira"
+
+# Encontrar usuários que não logam há 90 dias
+$data = (Get-Date).AddDays(-90)
+Get-ADUser -Filter {LastLogonDate -lt $data -and Enabled -eq $true} -Properties LastLogonDate |
+  Select-Object Name, SamAccountName, LastLogonDate | Sort-Object LastLogonDate
+
+# Desbloquear conta
+Unlock-ADAccount -Identity "joao.silva"
+
+# Ver todos os computadores no domínio
+Get-ADComputer -Filter * -Properties OperatingSystem, LastLogonDate |
+  Select-Object Name, OperatingSystem, LastLogonDate | Sort-Object LastLogonDate -Descending</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <a href="/html/sistemas/windows/administracao.html">Administração do Windows</a>
+        <a href="/html/sistemas/windows/powershell.html">PowerShell</a>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Domain Admins é o grupo mais perigoso de um ambiente corporativo — trate como root em produção."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

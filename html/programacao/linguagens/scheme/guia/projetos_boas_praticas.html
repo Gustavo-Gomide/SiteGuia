@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Scheme — Projetos e Boas Praticas: estrutura de repositorio, testes, modulos, portabilidade, macros, FFI e manutencao." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Scheme — Projetos e Boas Praticas | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Scheme — Projetos e Boas Praticas</strong></p></div>
+
+			<section>
+				<h2 id="hero" class="section-title">Scheme — Projetos e Boas Praticas</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="Scheme"><span data-svg="lisp" aria-hidden="true"></span></div>
+					<h1>Projeto bom em Scheme isola complexidade sem matar experimentacao</h1>
+					<p>A forca de Scheme esta na liberdade para compor funcoes, macros e modulos. A fraqueza aparece quando essa liberdade nao vira estrutura, teste e fronteiras arquiteturais claras.</p>
+				</div>
+				<p class="intro-highlight">Boas praticas em Scheme significam manter o nucleo da logica simples, tornar os efeitos explicitos e impedir que detalhes do runtime contaminem tudo.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="conceitos" class="section-title">Conceitos centrais</h2>
+				<p>Uma equipe iniciante tende a tratar Scheme como um conjunto de scripts elegantes. Uma equipe madura trata Scheme como linguagem para construir sistemas modulares, com <strong>fronteiras bem definidas</strong> entre logica pura, efeitos, macros, adaptadores externos e codigo dependente da implementacao.</p>
+				<p>A analogia util e a de uma oficina organizada. Ferramentas continuam disponiveis e proximas, mas cada uma tem lugar certo. Da mesma forma, o projeto precisa de convencoes sobre modulos, nomes, testes, API publica, contratos e caminhos de build.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="como-funciona" class="section-title">Estrutura recomendada de projeto</h2>
+				<p>O desenho ideal depende do runtime, mas a disciplina basica se repete: separe codigo de dominio, integracoes, testes, scripts de automacao e documentacao. Isso deixa claro o que pode ser portado, o que depende de FFI e o que precisa de validacao operacional.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Estrutura de repositorio para uma base Scheme de medio porte</div>
+					<pre class="example">scheme-app/
+|- README.md
+|- docs/
+|- src/
+|  |- core/
+|  |- adapters/
+|  |- macros/
+|  |- runtime/
+|- test/
+|  |- unit/
+|  |- integration/
+|- scripts/
+|- benchmarks/
+|- examples/</pre>
+				</div>
+				<div class="panel">
+					<h3 class="panel-title">Regra pratica</h3>
+					<p>Se voce nao consegue apontar em segundos onde termina o codigo puro e onde comecam IO, concorrencia, rede ou banco, o projeto ja esta caro de manter.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="tipos" class="section-title">Arquiteturas comuns em projetos Scheme</h2>
+				<div class="grid-cards">
+					<div class="card"><strong>Biblioteca portavel</strong><p>Foca em R7RS e SRFIs, minimiza dependencias especificas e prioriza API pequena e testavel.</p></div>
+					<div class="card"><strong>Aplicacao centrada no runtime</strong><p>Explora profundamente Racket, Guile ou Chicken para ganhar produtividade, empacotamento e integracao.</p></div>
+					<div class="card"><strong>Sistema orientado a macros</strong><p>Usa DSLs e transformacoes sintaticas para elevar o nivel de abstracao, exigindo disciplina maior de expansao e diagnostico.</p></div>
+					<div class="card"><strong>Projeto com FFI</strong><p>Separa cuidadosamente a borda nativa, mede custo de crossing e protege o dominio contra detalhes externos.</p></div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="uso-pratico" class="section-title">Uso pratico: modulos, testes e fronteiras</h2>
+				<p>Um bom modulo Scheme exporta pouco e diz claramente o que espera receber. O teste deve cobrir o nucleo puro em alta velocidade e deixar integracoes para uma camada separada. Isso preserva a experiencia REPL-first sem transformar o projeto em um conjunto de estados acidentais.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Racket — fronteira explicita entre dominio e adaptador</div>
+					<pre class="example">#lang racket
+
+(provide totalizar-pedido salvar-pedido!)
+
+(define (totalizar-pedido itens)
+	(for/sum ([item itens])
+		(* (hash-ref item 'quantidade)
+		   (hash-ref item 'preco))))
+
+(define (salvar-pedido! repo pedido)
+	(repo 'insert pedido))</pre>
+				</div>
+				<p>O calculo do total nao sabe nada sobre banco, rede ou formato externo. A persistencia entra como dependencia explicita, o que facilita teste, troca de implementacao e simulacao no REPL.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">SRFI-64 — teste unitario portavel</div>
+					<pre class="example">(import (scheme base)
+		(srfi 64)
+		(minha-lib pedidos))
+
+(test-begin "pedidos")
+
+(test-equal "total simples"
+	30
+	(totalizar-pedido
+	 (list
+		(make-item 2 10)
+		(make-item 1 10))))
+
+(test-end)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="casos-de-uso" class="section-title">Boas praticas em cenarios reais</h2>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Cenario</th><th>Boa pratica dominante</th><th>Risco evitado</th></tr></thead>
+						<tbody>
+							<tr><td>Biblioteca publica</td><td>API pequena, sem vazamento de runtime, testes portaveis</td><td>Quebra de compatibilidade entre implementacoes.</td></tr>
+							<tr><td>Servico web</td><td>Separar roteamento, dominio, serializacao e armazenamento</td><td>Acoplamento entre framework web e regra de negocio.</td></tr>
+							<tr><td>Projeto com macros</td><td>Documentar expansao e testar sintaxe publica</td><td>DSL opaca e erro dificil de diagnosticar.</td></tr>
+							<tr><td>Interop com C</td><td>Criar camada isolada para FFI e medir crossing</td><td>Vazamento de ponteiros, contratos fracos e depuracao cara.</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="callout">
+					<p><span data-svg="info" aria-hidden="true"></span> O melhor projeto Scheme nao e o mais "esperto". E o que continua compreensivel meses depois, inclusive para quem nao escreveu as macros originais.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="avancado" class="section-title">Topicos avancados: macros, desempenho e manutencao</h2>
+				<p>Quando o projeto cresce, os maiores ganhos e os maiores perigos vem dos mesmos lugares: macros, controle de fluxo avancado, FFI e especializacao por runtime. A equipe precisa adotar criterios para quando abstrair e quando deixar o codigo explicito.</p>
+				<div class="panel">
+					<h3 class="panel-title">Checklist tecnico de maturidade</h3>
+					<p>Macros com testes de expansao, benchmarks reproduziveis, validacao de contratos nas bordas, convencoes de nomenclatura por modulo, scripts de build versionados, documentacao de release e politica clara de compatibilidade. Sem isso, o projeto acumula genialidade local e divida global.</p>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Nao use macro apenas para reduzir digitacao. Macro deve capturar uma estrutura semantica recorrente. Quando ela mascara controle de fluxo ou esconde efeitos, a manutencao piora.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="ecossistema" class="section-title">Ferramentas de apoio a projetos saudaveis</h2>
+				<div class="grid-cards">
+					<div class="card"><strong>RackUnit e SRFI-64</strong><p>Base para testes unitarios e de regressao.</p></div>
+					<div class="card"><strong>Scribble e documentacao do runtime</strong><p>Documentar API publica e exemplos reduz retrabalho de equipe.</p></div>
+					<div class="card"><strong>raco, guild e scripts de build</strong><p>Transformam passos manuais em pipeline verificavel.</p></div>
+					<div class="card"><strong>Benchmarks e profiling</strong><p>Medem o custo real de macros, estruturas de dados e chamadas FFI.</p></div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="comparacao" class="section-title">Comparacao: disciplina de projeto em Scheme versus scripting ad-hoc</h2>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Aspecto</th><th>Projeto Scheme bem estruturado</th><th>Scripting improvisado</th></tr></thead>
+						<tbody>
+							<tr><td>Modularidade</td><td>Fronteiras claras entre dominio e infraestrutura</td><td>Funcoes e efeitos misturados</td></tr>
+							<tr><td>Portabilidade</td><td>Dependencias mapeadas e encapsuladas</td><td>Acoplamento invisivel ao runtime</td></tr>
+							<tr><td>Testabilidade</td><td>Alta, com nucleo puro e adaptadores simulaveis</td><td>Baixa, dependente de estado global e REPL manual</td></tr>
+							<tr><td>Evolucao</td><td>Refatoracao guiada por modulos e contratos</td><td>Medo de mexer por falta de fronteiras</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<div class="panel">
+					<ul>
+						<li>ABELSON, H.; SUSSMAN, G. <strong>Structure and Interpretation of Computer Programs</strong>. 2. ed. MIT Press, 1996.</li>
+						<li>FELLEISEN, M. et al. <strong>How to Design Programs</strong>. 2. ed. MIT Press, 2018.</li>
+						<li>DYBVIG, R. K. <strong>The Scheme Programming Language</strong>. 4. ed. MIT Press, 2009.</li>
+						<li>R7RS WORKING GROUP. <strong>Revised(7) Report on the Algorithmic Language Scheme</strong>. Disponivel em: &lt;https://small.r7rs.org/&gt;. Acesso em: 13 mar. 2026.</li>
+						<li>SRFI EDITORS. <strong>SRFI 64: A Scheme API for Test Suites</strong>. Disponivel em: &lt;https://srfi.schemers.org/srfi-64/&gt;. Acesso em: 13 mar. 2026.</li>
+						<li>RACKET TEAM. <strong>RackUnit: Unit Testing</strong>. Disponivel em: &lt;https://docs.racket-lang.org/rackunit/&gt;. Acesso em: 13 mar. 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto robusto em Scheme nao nasce de truques brilhantes; nasce de modulos pequenos, testes confiaveis e escolhas explicitas sobre portabilidade e efeito.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/scheme/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme — Ecossistema e Tooling</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/scheme/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme — Bibliotecas e Frameworks</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/scheme/guia/fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme — Fundamentos</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

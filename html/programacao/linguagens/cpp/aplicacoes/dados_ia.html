@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Dados e IA: OpenCV 4, LibTorch C++ API, ONNX Runtime, xtensor/xarray, Faiss, MLPack e pipelines de machine learning nativos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Dados e IA</h1>
+          <p>Processamento de imagens com OpenCV 4, inferencia com LibTorch (C++ API do PyTorch), deploy de modelos via ONNX Runtime, algebra tensorial com xtensor/xarray, busca por similaridade com Faiss, e machine learning classico com MLPack.</p>
+        </div>
+        <p class="intro-highlight">
+          C++ e a lingua franca dos frameworks de IA — PyTorch, TensorFlow, OpenCV e Faiss sao escritos em C++. Dominar a API C++ desses projetos permite performance maxima, deploy em producao sem overhead Python, e integracao em dispositivos embarcados ou jogos.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="opencv">OpenCV 4 — Visao Computacional</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + OpenCV 4 &mdash; rede DNN, deteccao de objetos e transformacoes</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;opencv2/opencv.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;opencv2/dnn.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// --- Operacoes basicas de imagem ---</span>
+  cv::<span class="tp">Mat</span> img = cv::<span class="fn">imread</span>(<span class="str">"foto.jpg"</span>);
+  <span class="kw">if</span> (img.<span class="fn">empty</span>()) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"Imagem nao encontrada"</span>);
+
+  cv::<span class="tp">Mat</span> gray, blur, edges;
+  cv::<span class="fn">cvtColor</span>(img, gray, cv::<span class="tp">COLOR_BGR2GRAY</span>);
+  cv::<span class="fn">GaussianBlur</span>(gray, blur, { <span class="num">7</span>, <span class="num">7</span> }, <span class="num">0</span>);
+  cv::<span class="fn">Canny</span>(blur, edges, <span class="num">50</span>, <span class="num">150</span>);
+
+  <span class="com">// Resize + crop</span>
+  cv::<span class="tp">Mat</span> resized;
+  cv::<span class="fn">resize</span>(img, resized, { <span class="num">640</span>, <span class="num">480</span> });
+  cv::<span class="tp">Mat</span> roi = resized(cv::<span class="tp">Rect</span>(<span class="num">100</span>, <span class="num">100</span>, <span class="num">200</span>, <span class="num">200</span>));
+
+  <span class="com">// Histograma equalizado (melhora contraste)</span>
+  cv::<span class="tp">Mat</span> equalized;
+  cv::<span class="fn">equalizeHist</span>(gray, equalized);
+
+  <span class="com">// --- Deteccao de faces com Haar Cascade ---</span>
+  cv::<span class="tp">CascadeClassifier</span> face_cascade;
+  face_cascade.<span class="fn">load</span>(<span class="str">"haarcascade_frontalface_default.xml"</span>);
+  std::<span class="tp">vector</span>&lt;cv::<span class="tp">Rect</span>&gt; faces;
+  face_cascade.<span class="fn">detectMultiScale</span>(gray, faces, <span class="num">1.1</span>, <span class="num">4</span>,
+    <span class="num">0</span>, { <span class="num">30</span>, <span class="num">30</span> });
+  <span class="kw">for</span> (<span class="kw">const auto</span>&amp; f : faces) {
+    cv::<span class="fn">rectangle</span>(img, f, cv::<span class="tp">Scalar</span>(<span class="num">0</span>, <span class="num">255</span>, <span class="num">0</span>), <span class="num">2</span>);
+  }
+  std::<span class="fn">println</span>(<span class="str">"Faces detectadas: {}"</span>, faces.<span class="fn">size</span>());
+
+  <span class="com">// --- Rede DNN: carrega modelo ONNX generico ---</span>
+  cv::dnn::<span class="tp">Net</span> net = cv::dnn::<span class="fn">readNetFromONNX</span>(<span class="str">"modelo.onnx"</span>);
+  net.<span class="fn">setPreferableBackend</span>(cv::dnn::<span class="tp">DNN_BACKEND_CUDA</span>);
+  net.<span class="fn">setPreferableTarget</span>(cv::dnn::<span class="tp">DNN_TARGET_CUDA</span>);
+
+  <span class="com">// Preprocessamento: blob 224x224 normalizado</span>
+  cv::<span class="tp">Mat</span> blob = cv::dnn::<span class="fn">blobFromImage</span>(
+    img, <span class="num">1.0</span> / <span class="num">255.0</span>, { <span class="num">224</span>, <span class="num">224</span> },
+    cv::<span class="tp">Scalar</span>(<span class="num">0.485</span>, <span class="num">0.456</span>, <span class="num">0.406</span>),
+    <span class="kw">true</span>,   <span class="com">// swapRB (BGR -> RGB)</span>
+    <span class="kw">false</span>); <span class="com">// crop</span>
+
+  net.<span class="fn">setInput</span>(blob);
+  cv::<span class="tp">Mat</span> saida = net.<span class="fn">forward</span>();  <span class="com">// shape [1, num_classes]</span>
+
+  cv::<span class="tp">Point</span> classId;
+  <span class="kw">double</span> confianca;
+  cv::<span class="fn">minMaxLoc</span>(saida.<span class="fn">reshape</span>(<span class="num">1</span>, <span class="num">1</span>), <span class="kw">nullptr</span>,
+    &amp;confianca, <span class="kw">nullptr</span>, &amp;classId);
+  std::<span class="fn">println</span>(<span class="str">"Classe: {}  Confianca: {:.2f}%"</span>,
+    classId.x, confianca * <span class="num">100.0</span>);
+
+  cv::<span class="fn">imwrite</span>(<span class="str">"resultado.jpg"</span>, img);
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + OpenCV &mdash; VideoCapture, rastreamento com KCF tracker</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;opencv2/opencv.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;opencv2/tracking.hpp&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  cv::<span class="tp">VideoCapture</span> cap(<span class="num">0</span>);  <span class="com">// webcam 0 ou caminho de arquivo</span>
+  cap.<span class="fn">set</span>(cv::<span class="tp">CAP_PROP_FRAME_WIDTH</span>,  <span class="num">1280</span>);
+  cap.<span class="fn">set</span>(cv::<span class="tp">CAP_PROP_FRAME_HEIGHT</span>, <span class="num">720</span>);
+
+  cv::<span class="tp">Mat</span> frame;
+  cap &gt;&gt; frame;
+
+  <span class="com">// Selecionar ROI para rastreamento</span>
+  cv::<span class="tp">Rect2d</span> bbox = cv::<span class="fn">selectROI</span>(<span class="str">"Selecione objeto"</span>, frame);
+  <span class="kw">auto</span> tracker = cv::TrackerKCF::<span class="fn">create</span>();
+  tracker-&gt;<span class="fn">init</span>(frame, bbox);
+
+  <span class="kw">while</span> (cap.<span class="fn">read</span>(frame)) {
+    <span class="kw">bool</span> ok = tracker-&gt;<span class="fn">update</span>(frame, bbox);
+    <span class="kw">if</span> (ok) {
+      cv::<span class="fn">rectangle</span>(frame, bbox, cv::<span class="tp">Scalar</span>(<span class="num">0</span>, <span class="num">255</span>, <span class="num">0</span>), <span class="num">2</span>);
+    } <span class="kw">else</span> {
+      cv::<span class="fn">putText</span>(frame, <span class="str">"Tracking perdido"</span>,
+        { <span class="num">30</span>, <span class="num">50</span> }, cv::<span class="tp">FONT_HERSHEY_SIMPLEX</span>,
+        <span class="num">1.0</span>, cv::<span class="tp">Scalar</span>(<span class="num">0</span>, <span class="num">0</span>, <span class="num">255</span>), <span class="num">2</span>);
+    }
+    cv::<span class="fn">imshow</span>(<span class="str">"Tracker"</span>, frame);
+    <span class="kw">if</span> (cv::<span class="fn">waitKey</span>(<span class="num">1</span>) == <span class="num">27</span>) <span class="kw">break</span>;  <span class="com">// ESC sai</span>
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="libtorch">LibTorch — PyTorch C++ API</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + LibTorch &mdash; tensores, autograd e modelo TorchScript</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;torch/torch.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;torch/script.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// --- Tensores e Autograd ---</span>
+<span class="kw">void</span> <span class="fn">demo_tensores</span>() {
+  torch::<span class="tp">Tensor</span> a = torch::<span class="fn">tensor</span>({<span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>}, torch::<span class="fn">requires_grad</span>(<span class="kw">true</span>));
+  torch::<span class="tp">Tensor</span> b = torch::<span class="fn">tensor</span>({<span class="num">4.0</span>, <span class="num">5.0</span>, <span class="num">6.0</span>});
+
+  torch::<span class="tp">Tensor</span> c = a * b + a.<span class="fn">pow</span>(<span class="num">2</span>);   <span class="com">// c = a*b + a^2</span>
+  c.<span class="fn">sum</span>().<span class="fn">backward</span>();                    <span class="com">// dc/da = b + 2a</span>
+
+  std::<span class="fn">println</span>(<span class="str">"grad: {}"</span>, a.<span class="fn">grad</span>().<span class="fn">toString</span>());
+
+  <span class="com">// Operacoes matriciais</span>
+  torch::<span class="tp">Tensor</span> A = torch::<span class="fn">rand</span>({<span class="num">3</span>, <span class="num">4</span>});
+  torch::<span class="tp">Tensor</span> B = torch::<span class="fn">rand</span>({<span class="num">4</span>, <span class="num">3</span>});
+  torch::<span class="tp">Tensor</span> C = torch::<span class="fn">mm</span>(A, B);     <span class="com">// matrix multiply [3x3]</span>
+}
+
+<span class="com">// --- Rede neural simples (MLP) ---</span>
+<span class="kw">struct</span> <span class="tp">MLP</span> : torch::nn::<span class="tp">Module</span> {
+  torch::nn::<span class="tp">Linear</span> fc1, fc2, fc3;
+
+  <span class="tp">MLP</span>(<span class="kw">int</span> in, <span class="kw">int</span> hidden, <span class="kw">int</span> out)
+    : fc1(<span class="fn">register_module</span>(<span class="str">"fc1"</span>, torch::nn::<span class="tp">Linear</span>(in, hidden))),
+      fc2(<span class="fn">register_module</span>(<span class="str">"fc2"</span>, torch::nn::<span class="tp">Linear</span>(hidden, hidden))),
+      fc3(<span class="fn">register_module</span>(<span class="str">"fc3"</span>, torch::nn::<span class="tp">Linear</span>(hidden, out))) {}
+
+  torch::<span class="tp">Tensor</span> <span class="fn">forward</span>(torch::<span class="tp">Tensor</span> x) {
+    x = torch::nn::functional::<span class="fn">relu</span>(fc1-&gt;<span class="fn">forward</span>(x));
+    x = torch::nn::functional::<span class="fn">dropout</span>(x, <span class="num">0.3</span>, <span class="kw">this</span>-&gt;<span class="fn">is_training</span>());
+    x = torch::nn::functional::<span class="fn">relu</span>(fc2-&gt;<span class="fn">forward</span>(x));
+    x = fc3-&gt;<span class="fn">forward</span>(x);
+    <span class="kw">return</span> torch::nn::functional::<span class="fn">log_softmax</span>(x, <span class="num">1</span>);
+  }
+};
+
+<span class="kw">void</span> <span class="fn">treinar</span>() {
+  <span class="kw">auto</span> model = std::<span class="fn">make_shared</span>&lt;<span class="tp">MLP</span>&gt;(<span class="num">784</span>, <span class="num">256</span>, <span class="num">10</span>);
+  torch::<span class="tp">Device</span> device = torch::<span class="fn">cuda_is_available</span>()
+    ? torch::<span class="tp">kCUDA</span> : torch::<span class="tp">kCPU</span>;
+  model-&gt;<span class="fn">to</span>(device);
+
+  torch::optim::<span class="tp">Adam</span> optim(model-&gt;<span class="fn">parameters</span>(), <span class="num">1e-3</span>);
+
+  <span class="kw">for</span> (<span class="kw">int</span> epoch = <span class="num">0</span>; epoch &lt; <span class="num">10</span>; ++epoch) {
+    model-&gt;<span class="fn">train</span>();
+    torch::<span class="tp">Tensor</span> x = torch::<span class="fn">randn</span>({<span class="num">64</span>, <span class="num">784</span>}).<span class="fn">to</span>(device);
+    torch::<span class="tp">Tensor</span> y = torch::<span class="fn">randint</span>(<span class="num">0</span>, <span class="num">10</span>, {<span class="num">64</span>}).<span class="fn">to</span>(device);
+
+    torch::<span class="tp">Tensor</span> pred = model-&gt;<span class="fn">forward</span>(x);
+    torch::<span class="tp">Tensor</span> loss = torch::nn::functional::<span class="fn">nll_loss</span>(pred, y);
+
+    optim.<span class="fn">zero_grad</span>();
+    loss.<span class="fn">backward</span>();
+    optim.<span class="fn">step</span>();
+    std::<span class="fn">println</span>(<span class="str">"Epoch {} loss={:.4f}"</span>, epoch + <span class="num">1</span>, loss.<span class="fn">item</span>&lt;<span class="kw">float</span>&gt;());
+  }
+
+  <span class="com">// Salvar como TorchScript para produção</span>
+  model-&gt;<span class="fn">eval</span>();
+  <span class="kw">auto</span> exemplo = torch::<span class="fn">ones</span>({<span class="num">1</span>, <span class="num">784</span>}).<span class="fn">to</span>(device);
+  <span class="kw">auto</span> traced = torch::jit::<span class="fn">trace</span>(model, exemplo);
+  traced-&gt;<span class="fn">save</span>(<span class="str">"mlp.pt"</span>);
+}
+
+<span class="com">// --- Carregar modelo .pt para inferencia ---</span>
+<span class="kw">void</span> <span class="fn">inferencia</span>() {
+  <span class="kw">auto</span> module = torch::jit::<span class="fn">load</span>(<span class="str">"mlp.pt"</span>);
+  module.<span class="fn">eval</span>();
+
+  torch::<span class="tp">Tensor</span> entrada = torch::<span class="fn">ones</span>({<span class="num">1</span>, <span class="num">784</span>});
+  std::<span class="tp">vector</span>&lt;torch::jit::<span class="tp">IValue</span>&gt; inputs;
+  inputs.<span class="fn">push_back</span>(entrada);
+  <span class="kw">auto</span> saida = module.<span class="fn">forward</span>(inputs).<span class="fn">toTensor</span>();
+  std::<span class="fn">println</span>(<span class="str">"Logits: {}"</span>, saida.<span class="fn">toString</span>());
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="onnx">ONNX Runtime — Inferencia de Modelos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + ONNX Runtime &mdash; sessao, bindings de entrada/saida e execution providers</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;onnxruntime_cxx_api.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  Ort::<span class="tp">Env</span> env(ORT_LOGGING_LEVEL_WARNING, <span class="str">"inferencia"</span>);
+
+  Ort::<span class="tp">SessionOptions</span> opts;
+  opts.<span class="fn">SetIntraOpNumThreads</span>(<span class="num">4</span>);
+  opts.<span class="fn">SetGraphOptimizationLevel</span>(GraphOptimizationLevel::<span class="tp">ORT_ENABLE_ALL</span>);
+
+  <span class="com">// CUDA Execution Provider (fall back para CPU se nao disponivel)</span>
+  OrtCUDAProviderOptions cuda_opts;
+  cuda_opts.device_id = <span class="num">0</span>;
+  opts.<span class="fn">AppendExecutionProvider_CUDA</span>(cuda_opts);
+
+  Ort::<span class="tp">Session</span> session{ env, <span class="tp">L"modelo.onnx"</span>, opts };
+
+  <span class="com">// Inspecionar entradas e saidas</span>
+  Ort::<span class="tp">AllocatorWithDefaultOptions</span> alloc;
+  <span class="kw">auto</span> in_name  = session.<span class="fn">GetInputNameAllocated</span>(<span class="num">0</span>, alloc);
+  <span class="kw">auto</span> out_name = session.<span class="fn">GetOutputNameAllocated</span>(<span class="num">0</span>, alloc);
+  std::<span class="fn">println</span>(<span class="str">"Input : {}"</span>,  in_name.<span class="fn">get</span>());
+  std::<span class="fn">println</span>(<span class="str">"Output: {}"</span>, out_name.<span class="fn">get</span>());
+
+  <span class="com">// Tensor de entrada [batch=1, channels=3, H=224, W=224]</span>
+  std::<span class="tp">vector</span>&lt;<span class="kw">float</span>&gt; input_data(<span class="num">1</span> * <span class="num">3</span> * <span class="num">224</span> * <span class="num">224</span>, <span class="num">0.5f</span>);
+  std::<span class="tp">array</span>&lt;<span class="kw">int64_t</span>, <span class="num">4</span>&gt; shape{ <span class="num">1</span>, <span class="num">3</span>, <span class="num">224</span>, <span class="num">224</span> };
+
+  Ort::<span class="tp">MemoryInfo</span> mem = Ort::<span class="tp">MemoryInfo</span>::<span class="fn">CreateCpu</span>(
+    OrtArenaAllocator, OrtMemTypeDefault);
+
+  Ort::<span class="tp">Value</span> input_tensor = Ort::<span class="tp">Value</span>::<span class="fn">CreateTensor</span>&lt;<span class="kw">float</span>&gt;(
+    mem, input_data.<span class="fn">data</span>(), input_data.<span class="fn">size</span>(),
+    shape.<span class="fn">data</span>(), shape.<span class="fn">size</span>());
+
+  <span class="kw">const char</span>* input_names[]  = { in_name.<span class="fn">get</span>() };
+  <span class="kw">const char</span>* output_names[] = { out_name.<span class="fn">get</span>() };
+
+  <span class="kw">auto</span> output_tensors = session.<span class="fn">Run</span>(
+    Ort::<span class="tp">RunOptions</span>{ <span class="kw">nullptr</span> },
+    input_names, &amp;input_tensor, <span class="num">1</span>,
+    output_names, <span class="num">1</span>);
+
+  <span class="kw">float</span>* scores = output_tensors[<span class="num">0</span>].<span class="fn">GetTensorMutableData</span>&lt;<span class="kw">float</span>&gt;();
+  <span class="kw">auto</span> out_shape = output_tensors[<span class="num">0</span>].<span class="fn">GetTensorTypeAndShapeInfo</span>().<span class="fn">GetShape</span>();
+  std::<span class="fn">println</span>(<span class="str">"Classes: {}  Score[0]: {:.4f}"</span>, out_shape[<span class="num">1</span>], scores[<span class="num">0</span>]);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="xtensor">xtensor — Algebra Tensorial Header-Only</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + xtensor &mdash; arrays N-D, broadcasting, reducoes e integracao NumPy</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;xtensor/xarray.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;xtensor/xio.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;xtensor/xmath.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;xtensor/xrandom.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;xtensor/xview.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// xarray: shape dinamico em runtime</span>
+  xt::<span class="tp">xarray</span>&lt;<span class="kw">double</span>&gt; a = {{ <span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span> },
+                           { <span class="num">4.0</span>, <span class="num">5.0</span>, <span class="num">6.0</span> }};  <span class="com">// shape [2, 3]</span>
+
+  <span class="com">// xtensor: shape fixo em compile-time</span>
+  xt::<span class="tp">xtensor</span>&lt;<span class="kw">double</span>, <span class="num">2</span>&gt; b = xt::<span class="fn">ones</span>&lt;<span class="kw">double</span>&gt;({ <span class="num">2</span>, <span class="num">3</span> });
+
+  <span class="com">// Operacoes element-wise</span>
+  <span class="kw">auto</span> c = a + b * <span class="num">2.0</span>;   <span class="com">// broadcasting automatico</span>
+  <span class="kw">auto</span> d = xt::<span class="fn">exp</span>(a) / xt::<span class="fn">sum</span>(xt::<span class="fn">exp</span>(a));  <span class="com">// softmax manual</span>
+
+  <span class="com">// Views (zero-copy)</span>
+  <span class="kw">auto</span> linha0 = xt::<span class="fn">view</span>(a, <span class="num">0</span>, xt::<span class="fn">all</span>());   <span class="com">// linha [1,2,3]</span>
+  <span class="kw">auto</span> col1   = xt::<span class="fn">view</span>(a, xt::<span class="fn">all</span>(), <span class="num">1</span>);  <span class="com">// coluna [2,5]</span>
+
+  <span class="com">// Reducoes com axis</span>
+  <span class="kw">auto</span> soma_colunas = xt::<span class="fn">sum</span>(a, { <span class="num">0</span> });        <span class="com">// [5, 7, 9]</span>
+  <span class="kw">auto</span> media_linhas = xt::<span class="fn">mean</span>(a, xt::<span class="tp">xaxis</span>(<span class="num">1</span>)); <span class="com">// [2, 5]</span>
+
+  <span class="com">// Random arrays</span>
+  <span class="kw">auto</span> r = xt::random::<span class="fn">randn</span>&lt;<span class="kw">float</span>&gt;({ <span class="num">100</span>, <span class="num">100</span> });
+
+  <span class="com">// Produto matricial</span>
+  xt::<span class="tp">xarray</span>&lt;<span class="kw">double</span>&gt; X = xt::random::<span class="fn">randn</span>&lt;<span class="kw">double</span>&gt;({ <span class="num">10</span>, <span class="num">5</span> });
+  xt::<span class="tp">xarray</span>&lt;<span class="kw">double</span>&gt; W = xt::random::<span class="fn">randn</span>&lt;<span class="kw">double</span>&gt;({ <span class="num">5</span>, <span class="num">3</span> });
+  <span class="kw">auto</span> out = xt::<span class="fn">linalg::dot</span>(X, W);   <span class="com">// [10, 3]</span>
+
+  <span class="com">// Filtro booleano</span>
+  xt::<span class="tp">xarray</span>&lt;<span class="kw">double</span>&gt; vals = { <span class="num">1</span>, <span class="num">-2</span>, <span class="num">3</span>, <span class="num">-4</span>, <span class="num">5</span> };
+  <span class="kw">auto</span> positivos = xt::<span class="fn">filter</span>(vals, vals &gt; <span class="num">0</span>);  <span class="com">// [1, 3, 5]</span>
+
+  std::cout &lt;&lt; <span class="str">"c =\n"</span> &lt;&lt; c &lt;&lt; <span class="str">"\n"</span>;
+  std::cout &lt;&lt; <span class="str">"out shape: "</span> &lt;&lt; xt::<span class="fn">adapt</span>(out.<span class="fn">shape</span>()) &lt;&lt; <span class="str">"\n"</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="faiss">Faiss — Busca por Similaridade</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Faiss &mdash; index flat L2, HNSW e GPU index</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;faiss/IndexFlat.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;faiss/IndexHNSW.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;faiss/index_io.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;random&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="kw">const</span> <span class="kw">int</span> d  = <span class="num">128</span>;   <span class="com">// dimensoes dos vetores</span>
+  <span class="kw">const</span> <span class="kw">int</span> nb = <span class="num">10000</span>; <span class="com">// numero de vetores no banco</span>
+  <span class="kw">const</span> <span class="kw">int</span> nq = <span class="num">5</span>;     <span class="com">// queries</span>
+  <span class="kw">const</span> <span class="kw">int</span> k  = <span class="num">4</span>;     <span class="com">// vizinhos mais proximos</span>
+
+  <span class="com">// Gerar vetores aleatorios</span>
+  std::<span class="tp">mt19937</span> rng(<span class="num">42</span>);
+  std::<span class="tp">uniform_real_distribution</span>&lt;<span class="kw">float</span>&gt; dist(<span class="num">0.0f</span>, <span class="num">1.0f</span>);
+  std::<span class="tp">vector</span>&lt;<span class="kw">float</span>&gt; xb(d * nb), xq(d * nq);
+  <span class="kw">for</span> (<span class="kw">auto</span>&amp; v : xb) v = <span class="fn">dist</span>(rng);
+  <span class="kw">for</span> (<span class="kw">auto</span>&amp; v : xq) v = <span class="fn">dist</span>(rng);
+
+  <span class="com">// --- IndexFlatL2: busca exata, sem compressao ---</span>
+  faiss::<span class="tp">IndexFlatL2</span> index_flat(d);
+  index_flat.<span class="fn">add</span>(nb, xb.<span class="fn">data</span>());
+  std::<span class="fn">println</span>(<span class="str">"Flat index: {} vetores"</span>, index_flat.ntotal);
+
+  std::<span class="tp">vector</span>&lt;faiss::<span class="tp">idx_t</span>&gt; I(nq * k);
+  std::<span class="tp">vector</span>&lt;<span class="kw">float</span>&gt;      D(nq * k);
+  index_flat.<span class="fn">search</span>(nq, xq.<span class="fn">data</span>(), k, D.<span class="fn">data</span>(), I.<span class="fn">data</span>());
+
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; nq; ++i) {
+    std::<span class="fn">print</span>(<span class="str">"Query {}: vizinhos = ["</span>, i);
+    <span class="kw">for</span> (<span class="kw">int</span> j = <span class="num">0</span>; j &lt; k; ++j)
+      std::<span class="fn">print</span>(<span class="str">"{}({:.3f}) "</span>, I[i * k + j], D[i * k + j]);
+    std::<span class="fn">println</span>(<span class="str">"]"</span>);
+  }
+
+  <span class="com">// --- IndexHNSW: busca aproximada, alta performance ---</span>
+  faiss::<span class="tp">IndexHNSWFlat</span> index_hnsw(d, <span class="num">32</span>); <span class="com">// M=32 conexoes por no</span>
+  index_hnsw.hnsw.efConstruction = <span class="num">40</span>;
+  index_hnsw.<span class="fn">add</span>(nb, xb.<span class="fn">data</span>());
+  index_hnsw.hnsw.efSearch = <span class="num">64</span>;  <span class="com">// mais alto = mais preciso</span>
+  index_hnsw.<span class="fn">search</span>(nq, xq.<span class="fn">data</span>(), k, D.<span class="fn">data</span>(), I.<span class="fn">data</span>());
+
+  <span class="com">// Persistir index em disco</span>
+  faiss::<span class="fn">write_index</span>(&amp;index_hnsw, <span class="str">"vetores.faiss"</span>);
+
+  <span class="com">// Carregar de disco</span>
+  <span class="kw">auto</span>* loaded = faiss::<span class="fn">read_index</span>(<span class="str">"vetores.faiss"</span>);
+  std::<span class="fn">println</span>(<span class="str">"Carregado {} vetores"</span>, loaded-&gt;ntotal);
+  <span class="kw">delete</span> loaded;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="frameworks">Comparativo de Frameworks</h2>
+
+        <div class="panel">
+          <p class="panel-title">Bibliotecas C++ para Dados e IA</p>
+          <table class="table">
+            <thead><tr><th>Biblioteca</th><th>Foco</th><th>GPU</th><th>Header-only</th></tr></thead>
+            <tbody>
+              <tr><td>OpenCV 4</td><td>Visao computacional, imagem, video, DNN</td><td>CUDA / OpenCL</td><td>Nao</td></tr>
+              <tr><td>LibTorch</td><td>Deep Learning, autograd, TorchScript</td><td>CUDA / ROCm</td><td>Nao</td></tr>
+              <tr><td>ONNX Runtime</td><td>Inferencia multi-framework universal</td><td>CUDA / TensorRT</td><td>Nao</td></tr>
+              <tr><td>xtensor</td><td>Arrays N-D, broadcasting, NumPy semantics</td><td>Via xsimd SIMD</td><td>Sim</td></tr>
+              <tr><td>Faiss</td><td>Busca por similaridade vetorial, ANN</td><td>CUDA</td><td>Nao</td></tr>
+              <tr><td>MLPack</td><td>ML classico, SVM, KNN, RF, clustering</td><td>Nao</td><td>Sim</td></tr>
+              <tr><td>Eigen</td><td>Algebra linear, matrizes, solver numerico</td><td>Via CUDA plugin</td><td>Sim</td></tr>
+              <tr><td>dlib</td><td>Face detection, SVM, deep metric learning</td><td>CUDA</td><td>Parcial</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>OPENCV. <strong>OpenCV 4 C++ API Documentation</strong>. Disponível em: &lt;https://docs.opencv.org/4.x&gt;. Acesso em: 2025.</li>
+            <li>PYTORCH. <strong>LibTorch C++ Frontend</strong>. Disponível em: &lt;https://pytorch.org/cppdocs&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>ONNX Runtime C++ API</strong>. Disponível em: &lt;https://onnxruntime.ai/docs/api/c&gt;. Acesso em: 2025.</li>
+            <li>JOHNSON, J. <strong>Faiss: A library for efficient similarity search</strong>. Facebook Research, 2017. Disponível em: &lt;https://github.com/facebookresearch/faiss&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ e Banco de Dados</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Embedded e IoT</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O ponto forte de C++ em IA nao e substituir Python para treino, mas executar modelos treinados em producao com latencia minima — LibTorch, ONNX Runtime e TensorRT rodam modelos a velocidade nativa sem interpretador.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

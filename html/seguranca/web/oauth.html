@@ -1,0 +1,181 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OAuth 2.0: fluxos Authorization Code, PKCE, Client Credentials, vulnerabilidades (redirect_uri, state bypass) e OpenID Connect." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OAuth 2.0 | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>OAuth 2.0 — Autorização Delegada</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é OAuth 2.0?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>OAuth 2.0 — Autorização Delegada</h1>
+          <p>Acesso a recursos em nome do usuário sem expor credenciais.</p>
+        </div>
+
+        <p class="intro-highlight">OAuth 2.0 é um protocolo de autorização — permite que aplicações obtenham acesso limitado a recursos em nome do usuário, sem expor credenciais. "Faça login com Google/GitHub" usa OAuth 2.0 (+ OpenID Connect para identidade). O protocolo define flows (grant types) para diferentes contextos.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Papel</th><th>Descrição</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Resource Owner</strong></td><td>O usuário dono dos dados</td></tr>
+              <tr><td><strong>Client</strong></td><td>A aplicação que quer acesso (ex: app de terceiro)</td></tr>
+              <tr><td><strong>Authorization Server</strong></td><td>Emite tokens após autenticação do usuário (ex: Google, Auth0)</td></tr>
+              <tr><td><strong>Resource Server</strong></td><td>API que protege os dados — aceita access tokens</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="flows" class="section-title">Flows (Grant Types)</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--success">
+            <h3>Authorization Code + PKCE</h3>
+            <p>Flow recomendado para web apps e SPAs. O código de autorização é trocado por token no backend. PKCE (Proof Key for Code Exchange) protege contra interceptação do código.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+1. App gera code_verifier (aleatório) e code_challenge = SHA256(verifier)
+2. Redireciona: GET /authorize?response_type=code
+   &client_id=...&redirect_uri=...&code_challenge=...
+3. Usuário autentica → server retorna ?code=AUTH_CODE
+4. App troca: POST /token { code, code_verifier, client_id, redirect_uri }
+5. Recebe access_token (+ refresh_token)</pre>
+          </div>
+          <div class="card">
+            <h3>Client Credentials</h3>
+            <p>Comunicação machine-to-machine sem usuário. A aplicação se autentica com client_id + client_secret e recebe token de acesso.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+POST /token
+{ "grant_type": "client_credentials",
+  "client_id": "...", "client_secret": "..." }
+→ { "access_token": "...", "expires_in": 3600 }</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Implicit Flow (Depreciado)</h3>
+            <p>Retornava o access_token diretamente na URL (#fragment). Vulnerável a vazamento via referer/historico/XSS. <strong>Substituído por Authorization Code + PKCE</strong>.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Resource Owner Password</h3>
+            <p>App recebe usuário/senha diretamente e troca por token. Exige confiança total na aplicação — contradiz o objetivo do OAuth. <strong>Evite sempre que possível</strong>.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="vulnerabilidades" class="section-title">Vulnerabilidades Comuns</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Vulnerabilidade</th><th>Como explorar</th><th>Mitigação</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>redirect_uri manipulation</strong></td>
+                <td>Mudar para domínio do atacante: auth code redirecionado para evil.com</td>
+                <td>Whitelist exata de redirect_uri; não aceitar substrings ou wildcards</td>
+              </tr>
+              <tr>
+                <td><strong>state ausente / fraco</strong></td>
+                <td>State não vinculado à sessão — CSRF no fluxo OAuth; account takeover</td>
+                <td>State criptograficamente aleatório, vinculado à sessão do usuário</td>
+              </tr>
+              <tr>
+                <td><strong>Auth code reutilizável</strong></td>
+                <td>Código não invalidado após uso — pode ser reutilizado se interceptado</td>
+                <td>Invalidar código após primeiro uso; expiração curta (< 1 min)</td>
+              </tr>
+              <tr>
+                <td><strong>Token leakage via Referer</strong></td>
+                <td>Access token em URL → vazamento para sites externos via Referer header</td>
+                <td>Nunca colocar tokens em URL; usar Authorization header</td>
+              </tr>
+              <tr>
+                <td><strong>Scope escalation</strong></td>
+                <td>Modificar scope na requisição para obter permissões não concedidas</td>
+                <td>Validar scopes server-side; nunca confiar no scope do request sem validar</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="oidc" class="section-title">OpenID Connect (OIDC)</h2>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p><strong>OpenID Connect</strong> é uma camada de identidade sobre OAuth 2.0. Enquanto OAuth fornece autorização, OIDC adiciona autenticação: o Authorization Server emite um <strong>ID Token</strong> (JWT) com informações do usuário (claims: sub, email, name, etc.).</p>
+        </div>
+
+        <pre class="code-block">
+# ID Token (JWT decodificado):
+{
+  "iss": "https://accounts.google.com",  # issuer
+  "sub": "110169484474386276334",         # unique user ID
+  "aud": "client_id_da_aplicacao",        # audience — deve bater com seu client_id
+  "exp": 1516246110,                      # expiração
+  "iat": 1516242510,
+  "email": "usuario@gmail.com",
+  "email_verified": true,
+  "name": "Fulano de Tal"
+}
+
+# Validação obrigatória no servidor:
+# 1. Verificar assinatura com chave pública do IdP (JWKS endpoint)
+# 2. Verificar iss matches o IdP esperado
+# 3. Verificar aud matches seu client_id
+# 4. Verificar exp não expirou</pre>
+      </section>
+
+      <div class="callout">
+        <p>OAuth 2.0 tem muitas partes móveis — uma misconfiguração pode resultar em account takeover. Ao implementar "login social", valide SEMPRE o ID Token server-side. Nunca confie nos dados vindos do cliente sem verificar a assinatura. PortSwigger Web Security Academy tem labs excelentes de OAuth para praticar.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "OAuth delega autorização — OpenID Connect adiciona identidade. Implemente ambos com rigor matemático."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

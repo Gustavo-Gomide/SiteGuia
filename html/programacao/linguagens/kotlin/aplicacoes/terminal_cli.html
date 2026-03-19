@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Terminal e CLI com Kotlin: Clikt framework, saída colorida com Mordant, processos externos e fat-jar." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Terminal e CLI</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Terminal e CLI</h1>
+					<p>Kotlin é excelente para ferramentas de linha de comando: Clikt oferece um DSL idiomático para argumentos e subcomandos, Mordant adiciona output colorido com tabelas no terminal, e o Shadow JAR gera executáveis fat-jar portáteis.</p>
+				</div>
+				<p class="intro-highlight">Com null safety, sealed classes para modelar estados de saída e coroutines para progresso assíncrono, CLIs em Kotlin são mais seguras e expressivas do que equivalentes em Java ou scripts Shell.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="clikt">Clikt — Framework CLI</h2>
+				<p>Clikt usa delegates Kotlin (<code>by argument()</code>, <code>by option()</code>) para declarar os argumentos de forma type-safe. Subcomandos são classes aninhadas, e o help é gerado automaticamente.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Clikt CLI</div>
+					<pre class="example"><span class="kw">import</span> com.github.ajalt.clikt.core.*
+<span class="kw">import</span> com.github.ajalt.clikt.parameters.arguments.*
+<span class="kw">import</span> com.github.ajalt.clikt.parameters.options.*
+<span class="kw">import</span> com.github.ajalt.clikt.parameters.types.*
+
+<span class="kw">class</span> <span class="fn">MeuCli</span> : <span class="fn">CliktCommand</span>(help = <span class="str">"Ferramenta de processamento de arquivos"</span>) {
+    <span class="kw">val</span> arquivo <span class="kw">by</span> <span class="fn">argument</span>(help = <span class="str">"Arquivo de entrada"</span>).<span class="fn">file</span>(mustExist = <span class="kw">true</span>)
+    <span class="kw">val</span> saida <span class="kw">by</span> <span class="fn">option</span>(<span class="str">"-o"</span>, <span class="str">"--saida"</span>, help = <span class="str">"Arquivo de saída"</span>).<span class="fn">default</span>(<span class="str">"resultado.txt"</span>)
+    <span class="kw">val</span> verbose <span class="kw">by</span> <span class="fn">option</span>(<span class="str">"-v"</span>, <span class="str">"--verbose"</span>).<span class="fn">flag</span>()
+    <span class="kw">val</span> limite <span class="kw">by</span> <span class="fn">option</span>(<span class="str">"-n"</span>).<span class="fn">int</span>().<span class="fn">default</span>(<span class="str">100</span>)
+
+    <span class="kw">override fun</span> <span class="fn">run</span>() {
+        <span class="kw">if</span> (verbose) echo(<span class="str">"Processando: ${arquivo.name} → $saida"</span>)
+        <span class="com">// processamento real aqui</span>
+        echo(<span class="str">"Linhas processadas: $limite"</span>)
+    }
+}
+
+<span class="com">// Subcomandos</span>
+<span class="kw">class</span> <span class="fn">App</span> : <span class="fn">NoOpCliktCommand</span>() {
+    <span class="kw">init</span> { subcommands(<span class="fn">MeuCli</span>(), <span class="fn">OutroComando</span>()) }
+}
+
+<span class="kw">fun</span> <span class="fn">main</span>(args: Array&lt;String&gt;) = <span class="fn">App</span>().<span class="fn">main</span>(args)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="output-colorido">Output Colorido com Mordant</h2>
+				<p>Mordant (da mesma equipe do Clikt) adiciona renderização de texto rich, tabelas, progress bars e detecção automática de capacidades do terminal (cores 16/256/TrueColor, Unicode).</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Mordant terminal rico</div>
+					<pre class="example"><span class="kw">import</span> com.github.ajalt.mordant.rendering.TextColors.*
+<span class="kw">import</span> com.github.ajalt.mordant.rendering.TextStyles.*
+<span class="kw">import</span> com.github.ajalt.mordant.table.table
+<span class="kw">import</span> com.github.ajalt.mordant.terminal.Terminal
+
+<span class="kw">val</span> t = <span class="fn">Terminal</span>()
+
+t.<span class="fn">println</span>(<span class="fn">bold</span>(<span class="fn">green</span>(<span class="str">"Sucesso!"</span>)))
+t.<span class="fn">println</span>(<span class="fn">red</span>(<span class="str">"Erro crítico"</span>))
+t.<span class="fn">println</span>(<span class="fn">yellow</span>(<span class="str">"Aviso: recurso depreciado"</span>))
+t.<span class="fn">println</span>(<span class="fn">cyan</span>(<span class="fn">italic</span>(<span class="str">"Info adicional"</span>)))
+
+<span class="kw">val</span> tabela = <span class="fn">table</span> {
+    header { row(<span class="str">"Nome"</span>, <span class="str">"Versão"</span>, <span class="str">"Status"</span>) }
+    body {
+        row(<span class="str">"Kotlin"</span>, <span class="str">"2.1.0"</span>, <span class="fn">green</span>(<span class="str">"Estável"</span>))
+        row(<span class="str">"Ktor"</span>, <span class="str">"2.3.12"</span>, <span class="fn">green</span>(<span class="str">"Estável"</span>))
+        row(<span class="str">"Exposed"</span>, <span class="str">"0.56"</span>, <span class="fn">yellow</span>(<span class="str">"Beta"</span>))
+    }
+}
+t.<span class="fn">println</span>(tabela)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="processos-externos">Processos Externos</h2>
+				<p>Kotlin usa a API Java <code>ProcessBuilder</code> para executar comandos do sistema. Extension functions tornam a chamada mais concisa. Para pipelines de comandos, coroutines evitam bloqueio da thread principal.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — ProcessBuilder idiomático</div>
+					<pre class="example"><span class="kw">import</span> java.io.File
+
+<span class="com">// Extension function para executar shell command</span>
+<span class="kw">fun</span> String.<span class="fn">runCommand</span>(workDir: File? = <span class="kw">null</span>): String {
+    <span class="kw">val</span> proc = <span class="fn">ProcessBuilder</span>(<span class="str">"bash"</span>, <span class="str">"-c"</span>, <span class="kw">this</span>)
+        .<span class="fn">apply</span> { workDir?.<span class="fn">let</span> { directory(it) } }
+        .<span class="fn">redirectErrorStream</span>(<span class="kw">true</span>)
+        .<span class="fn">start</span>()
+    <span class="kw">val</span> saida = proc.inputStream.<span class="fn">bufferedReader</span>().<span class="fn">readText</span>()
+    <span class="kw">val</span> codigo = proc.<span class="fn">waitFor</span>()
+    <span class="kw">if</span> (codigo != <span class="str">0</span>) <span class="kw">throw</span> <span class="fn">RuntimeException</span>(<span class="str">"Comando falhou ($codigo): $saida"</span>)
+    <span class="kw">return</span> saida.<span class="fn">trim</span>()
+}
+
+<span class="com">// Uso direto</span>
+<span class="kw">val</span> arquivos = <span class="str">"ls -la /tmp"</span>.<span class="fn">runCommand</span>()
+<span class="kw">val</span> gitLog = <span class="str">"git log --oneline -5"</span>.<span class="fn">runCommand</span>(File(<span class="str">"."</span>))
+<span class="kw">val</span> versao = <span class="str">"docker --version"</span>.<span class="fn">runCommand</span>()
+
+println(versao) <span class="com">// Docker version 28.0.1, ...</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="empacotamento">Empacotamento — Shadow JAR</h2>
+				<p>O plugin Shadow Gradle produz um "fat JAR" com todas as dependências embutidas — distribuível como um único arquivo executável com <code>java -jar</code>. Para binários nativos, use GraalVM Native Image.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — build.gradle.kts com Shadow</div>
+					<pre class="example">plugins {
+    <span class="fn">kotlin</span>(<span class="str">"jvm"</span>) version <span class="str">"2.1.0"</span>
+    application
+    <span class="fn">id</span>(<span class="str">"com.github.johnrengelman.shadow"</span>) version <span class="str">"8.1.1"</span>
+}
+
+application {
+    mainClass.<span class="fn">set</span>(<span class="str">"MainKt"</span>)
+}
+
+tasks.<span class="fn">shadowJar</span> {
+    archiveBaseName.<span class="fn">set</span>(<span class="str">"minha-cli"</span>)
+    archiveClassifier.<span class="fn">set</span>(<span class="str">""</span>)
+    archiveVersion.<span class="fn">set</span>(<span class="str">""</span>)
+    mergeServiceFiles()
+}
+
+<span class="com">// Build: ./gradlew shadowJar</span>
+<span class="com">// Run:   java -jar build/libs/minha-cli.jar --help</span></pre>
+				</div>
+				<div class="panel panel--positive">
+					<p><strong>Dica:</strong> adicione um wrapper shell script que invoca <code>java -jar minha-cli.jar "$@"</code> para criar um executável transparente em Linux/Mac.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>AJALT. <strong>Clikt — multiplatform Kotlin CLI library</strong>. Disponível em: <a href="https://ajalt.github.io/clikt/" target="_blank" rel="noopener">ajalt.github.io/clikt</a>. Acesso em: mar. 2026.</li>
+						<li>AJALT. <strong>Mordant — multiplatform terminal text styling</strong>. Disponível em: <a href="https://github.com/ajalt/mordant" target="_blank" rel="noopener">github.com/ajalt/mordant</a>. Acesso em: mar. 2026.</li>
+						<li>GRADLE. <strong>Shadow plugin</strong>. Disponível em: <a href="https://gradleup.com/shadow/" target="_blank" rel="noopener">gradleup.com/shadow</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="web.html">Web com Kotlin</a></li>
+					<li><a href="banco_dados.html">Banco de Dados</a></li>
+					<li><a href="embedded_iot.html">Embedded e IoT</a></li>
+					<li><a href="../guia/projetos_boas_praticas.html">Projetos e Boas Práticas</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Clikt + Mordant + ShadowJAR — a tríade Kotlin para CLIs expressivas, bonitas e distribuíveis como um único arquivo.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

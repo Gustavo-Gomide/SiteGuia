@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para jogos com Flame: FlameGame, Component, mixins de colisao, sistemas de particulas, audio, Tiled maps, camera, efeitos visuais e publicacao Cross-Platform." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — Jogos com Flame | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Jogos com Flame</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — Jogos com Flame Engine</h1>
+          <p><strong>Flame</strong> e o game engine 2D open-source para Flutter/Dart. Usa o canvas Flutter como renderer, roda em <strong>iOS, Android, Web e Desktop</strong> a partir de um unico codebase. Segue o padrao <strong>Component/System</strong>, com mixins composicionais para colisao, input, animacao, camera e audio — semelhante ao ECS mas mais Dart-idiomatico.</p>
+        </div>
+        <p class="intro-highlight">
+          Flame 1.x+ usa o conceito de <code>FlameGame</code> (raiz) + arvore de <code>Component</code>s. Cada componente pode ter filhos, ciclo de vida (<code>onLoad</code>, <code>update</code>, <code>render</code>, <code>onRemove</code>) e mixins como <code>HasCollisionDetection</code>, <code>KeyboardHandler</code>, <code>TapCallbacks</code> e <code>DragCallbacks</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura Basica — FlameGame e Component</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Flame &mdash; FlameGame, PositionComponent e ciclo de vida</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flame/flame.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flame/game.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flame/components.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flame/input.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flutter/material.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:ui'</span>;
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="fn">WidgetsFlutterBinding</span>.<span class="fn">ensureInitialized</span>();
+  <span class="tp">Flame</span>.<span class="fn">device</span>.<span class="fn">fullScreen</span>();
+  <span class="tp">Flame</span>.<span class="fn">device</span>.<span class="fn">setLandscape</span>();
+  <span class="fn">runApp</span>(<span class="tp">GameWidget</span>(game: <span class="tp">MeuJogo</span>()));
+}
+
+<span class="kw">class</span> <span class="tp">MeuJogo</span> <span class="kw">extends</span> <span class="tp">FlameGame</span> <span class="kw">with</span> <span class="tp">HasCollisionDetection</span>, <span class="tp">KeyboardEvents</span> {
+  <span class="kw">late</span> <span class="tp">Player</span>  _player;
+  <span class="kw">late</span> <span class="tp">TextComponent</span> _pontos;
+  <span class="tp">int</span> pontos = <span class="num">0</span>;
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    <span class="kw">await</span> <span class="kw">super</span>.<span class="fn">onLoad</span>();
+
+    <span class="com">// Fundo</span>
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">ParallaxComponent</span>.<span class="fn">load</span>([
+      <span class="tp">ParallaxImageData</span>(<span class="str">'bg_far.png'</span>),
+      <span class="tp">ParallaxImageData</span>(<span class="str">'bg_near.png'</span>),
+    ], baseVelocity: <span class="tp">Vector2</span>(<span class="num">20</span>, <span class="num">0</span>)));
+
+    <span class="com">// Jogador</span>
+    _player = <span class="tp">Player</span>()
+      ..position = size / <span class="num">2</span>
+      ..anchor = <span class="tp">Anchor</span>.center;
+    <span class="kw">await</span> <span class="fn">add</span>(_player);
+
+    <span class="com">// HUD</span>
+    _pontos = <span class="tp">TextComponent</span>(
+      text: <span class="str">'Pontos: 0'</span>,
+      textRenderer: <span class="tp">TextPaint</span>(style: <span class="kw">const</span> <span class="tp">TextStyle</span>(color: <span class="tp">Colors</span>.white, fontSize: <span class="num">18</span>)),
+      position: <span class="tp">Vector2</span>(<span class="num">10</span>, <span class="num">10</span>),
+    );
+    camera.<span class="fn">viewport</span>.<span class="fn">add</span>(_pontos);  <span class="com">// HUD nao se move com camera</span>
+  }
+
+  <span class="kw">void</span> <span class="fn">adicionarPonto</span>() {
+    pontos++;
+    _pontos.text = <span class="str">'Pontos: $pontos'</span>;
+  }
+}
+
+<span class="com">// Componente do jogador</span>
+<span class="kw">class</span> <span class="tp">Player</span> <span class="kw">extends</span> <span class="tp">SpriteAnimationComponent</span>
+    <span class="kw">with</span> <span class="tp">HasGameRef</span>&lt;<span class="tp">MeuJogo</span>&gt;, <span class="tp">CollisionCallbacks</span>, <span class="tp">KeyboardHandler</span> {
+  <span class="kw">static</span> <span class="kw">const</span> _velocidade = <span class="num">200.0</span>;
+  <span class="kw">final</span> _movimento = <span class="tp">Vector2</span>.zero();
+
+  <span class="tp">Player</span>() : <span class="kw">super</span>(size: <span class="tp">Vector2</span>.all(<span class="num">64</span>));
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    animation = <span class="kw">await</span> gameRef.loadSpriteAnimation(
+      <span class="str">'player.png'</span>,
+      <span class="tp">SpriteAnimationData</span>.<span class="fn">sequenced</span>(amount: <span class="num">8</span>, stepTime: <span class="num">0.1</span>, textureSize: <span class="tp">Vector2</span>.all(<span class="num">64</span>)),
+    );
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">RectangleHitbox</span>());
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">update</span>(<span class="tp">double</span> dt) {
+    <span class="kw">super</span>.<span class="fn">update</span>(dt);
+    position.<span class="fn">add</span>(_movimento * (_velocidade * dt));
+    <span class="com">// Clampar dentro da tela</span>
+    position.clamp(
+      <span class="tp">Vector2</span>.zero()     + (size / <span class="num">2</span>),
+      gameRef.size - (size / <span class="num">2</span>),
+    );
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">bool</span> <span class="fn">onKeyEvent</span>(<span class="tp">RawKeyEvent</span> event, <span class="tp">Set</span>&lt;<span class="tp">LogicalKeyboardKey</span>&gt; keysPressed) {
+    _movimento.<span class="fn">setZero</span>();
+    <span class="kw">if</span> (keysPressed.<span class="fn">contains</span>(<span class="tp">LogicalKeyboardKey</span>.arrowLeft))  _movimento.x = -<span class="num">1</span>;
+    <span class="kw">if</span> (keysPressed.<span class="fn">contains</span>(<span class="tp">LogicalKeyboardKey</span>.arrowRight)) _movimento.x =  <span class="num">1</span>;
+    <span class="kw">if</span> (keysPressed.<span class="fn">contains</span>(<span class="tp">LogicalKeyboardKey</span>.arrowUp))    _movimento.y = -<span class="num">1</span>;
+    <span class="kw">if</span> (keysPressed.<span class="fn">contains</span>(<span class="tp">LogicalKeyboardKey</span>.arrowDown))  _movimento.y =  <span class="num">1</span>;
+    <span class="kw">if</span> (_movimento != <span class="tp">Vector2</span>.zero()) _movimento.<span class="fn">normalize</span>();
+    <span class="kw">return</span> <span class="kw">true</span>;
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">onCollisionStart</span>(<span class="tp">Set</span>&lt;<span class="tp">Vector2</span>&gt; pts, <span class="tp">PositionComponent</span> other) {
+    <span class="kw">super</span>.<span class="fn">onCollisionStart</span>(pts, other);
+    <span class="kw">if</span> (other <span class="kw">is</span> <span class="tp">Moeda</span>) {
+      gameRef.<span class="fn">adicionarPonto</span>();
+      other.<span class="fn">removeFromParent</span>();
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="particulas-efeitos">Particulas, Audio e Camera</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Flame &mdash; Particulas, FlameAudio e CameraComponent</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flame/particles.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flame_audio/flame_audio.dart'</span>;
+
+<span class="com">// Sistema de particulas — explosao ao morrer</span>
+<span class="kw">void</span> <span class="fn">explodirParticulas</span>(<span class="tp">FlameGame</span> game, <span class="tp">Vector2</span> posicao) {
+  game.<span class="fn">add</span>(<span class="tp">ParticleSystemComponent</span>(
+    particle: <span class="tp">Particle</span>.<span class="fn">generate</span>(
+      count:    <span class="num">30</span>,
+      lifespan: <span class="num">0.8</span>,
+      generator: (i) => <span class="tp">AcceleratedParticle</span>(
+        acceleration: (<span class="tp">Vector2</span>.<span class="fn">random</span>() - <span class="tp">Vector2</span>.all(<span class="num">0.5</span>)) * <span class="num">400</span>,
+        speed:        <span class="tp">Vector2</span>.<span class="fn">random</span>() * <span class="num">200</span>,
+        child: <span class="tp">CircleParticle</span>(
+          radius: <span class="num">4</span>,
+          paint: <span class="tp">Paint</span>()..color = <span class="tp">Colors</span>.orange,
+        ),
+      ),
+    ),
+    position: posicao,
+  ));
+}
+
+<span class="com">// Audio com FlameAudio</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">carregarAudio</span>() <span class="kw">async</span> {
+  <span class="kw">await</span> <span class="tp">FlameAudio</span>.<span class="fn">audioCache</span>.<span class="fn">loadAll</span>([
+    <span class="str">'sounds/coin.wav'</span>,
+    <span class="str">'sounds/explosion.wav'</span>,
+    <span class="str">'music/theme.mp3'</span>,
+  ]);
+  <span class="tp">FlameAudio</span>.<span class="fn">bgm</span>.<span class="fn">initialize</span>();
+}
+
+<span class="kw">void</span> <span class="fn">iniciarMusica</span>()  => <span class="tp">FlameAudio</span>.bgm.<span class="fn">play</span>(<span class="str">'music/theme.mp3'</span>, volume: <span class="num">0.5</span>);
+<span class="kw">void</span> <span class="fn">tocarSomMoeda</span>() => <span class="tp">FlameAudio</span>.<span class="fn">play</span>(<span class="str">'sounds/coin.wav'</span>);
+
+<span class="com">// CameraComponent — seguir jogador com limites de mundo</span>
+<span class="kw">class</span> <span class="tp">MeuJogoComCamera</span> <span class="kw">extends</span> <span class="tp">FlameGame</span> {
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> mundo  = <span class="tp">World</span>();
+    <span class="kw">final</span> camera = <span class="tp">CameraComponent</span>(world: mundo);
+
+    <span class="com">// Definir limites do mundo (no-scroll alem do mapa)</span>
+    camera.setBounds(<span class="tp">Rectangle</span>.fromLTWH(<span class="num">0</span>, <span class="num">0</span>, <span class="num">3200</span>, <span class="num">1600</span>));
+
+    <span class="kw">final</span> player = <span class="tp">Player</span>()..position = <span class="tp">Vector2</span>(<span class="num">160</span>, <span class="num">600</span>);
+    mundo.<span class="fn">add</span>(player);
+
+    <span class="com">// Seguir o jogador com lerp suave</span>
+    camera.viewfinder.<span class="fn">follow</span>(player, maxSpeed: <span class="num">300</span>, horizontalOnly: <span class="kw">false</span>);
+
+    <span class="kw">await</span> <span class="fn">addAll</span>([mundo, camera]);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tiled">Tiled Maps — Mapas em tile grid</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + flame_tiled &mdash; Carregar TMX, layers e objetos de spawn</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flame_tiled/flame_tiled.dart'</span>;
+
+<span class="kw">class</span> <span class="tp">MapaFase1</span> <span class="kw">extends</span> <span class="tp">Component</span> <span class="kw">with</span> <span class="tp">HasGameRef</span> {
+  <span class="kw">late</span> <span class="tp">RenderableTiledMap</span> _mapa;
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    _mapa = <span class="kw">await</span> <span class="tp">TiledComponent</span>.<span class="fn">load</span>(<span class="str">'fase1.tmx'</span>, <span class="tp">Vector2</span>.all(<span class="num">16</span>));
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">TiledComponent</span>(_mapa));
+
+    <span class="com">// Layer de colisao — gerar hitboxes dos tiles</span>
+    <span class="kw">final</span> colisoes = _mapa.tileMap.<span class="fn">getLayer</span>&lt;<span class="tp">TileLayer</span>&gt;(<span class="str">'colisao'</span>);
+    <span class="kw">if</span> (colisoes != <span class="kw">null</span>) {
+      <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">TiledCollisionComponents</span>.<span class="fn">fromLayer</span>(colisoes, <span class="tp">Vector2</span>.all(<span class="num">16</span>)));
+    }
+
+    <span class="com">// Layer de objetos — spawn de inimigos e power-ups</span>
+    <span class="kw">final</span> objetos = _mapa.tileMap.<span class="fn">getLayer</span>&lt;<span class="tp">ObjectGroup</span>&gt;(<span class="str">'spawn'</span>);
+    <span class="kw">for</span> (<span class="kw">final</span> obj <span class="kw">in</span> objetos!.objects) {
+      <span class="kw">final</span> pos = <span class="tp">Vector2</span>(obj.x.<span class="fn">toDouble</span>(), obj.y.<span class="fn">toDouble</span>());
+      <span class="kw">switch</span> (obj.type) {
+        <span class="kw">case</span> <span class="str">'inimigo'</span>: <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">Inimigo</span>()..position = pos);
+        <span class="kw">case</span> <span class="str">'moeda'</span>:   <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">Moeda</span>()..position = pos);
+        <span class="kw">case</span> <span class="str">'player'</span>:  gameRef.<span class="fn">player</span>.position = pos;
+      }
+    }
+  }
+}
+
+<span class="com">// Inimigo com FSM simples (patrulhar / atacar)</span>
+<span class="kw">class</span> <span class="tp">Inimigo</span> <span class="kw">extends</span> <span class="tp">SpriteAnimationGroupComponent</span>&lt;<span class="tp">EstadoInimigo</span>&gt;
+    <span class="kw">with</span> <span class="tp">HasGameRef</span>, <span class="tp">CollisionCallbacks</span> {
+  <span class="kw">static</span> <span class="kw">const</span> _velPatrulha = <span class="num">60.0</span>, _velAtaque = <span class="num">150.0</span>;
+  <span class="kw">var</span> _estadoAtual = <span class="tp">EstadoInimigo</span>.patrulhando;
+  <span class="kw">var</span> _direcao = <span class="num">1.0</span>;
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">update</span>(<span class="tp">double</span> dt) {
+    <span class="kw">super</span>.<span class="fn">update</span>(dt);
+    <span class="kw">final</span> dist = (position - gameRef.<span class="fn">player</span>.position).<span class="fn">length</span>;
+    <span class="kw">if</span> (dist &lt; <span class="num">120</span>) {
+      _estadoAtual = <span class="tp">EstadoInimigo</span>.atacando;
+      current = _estadoAtual;
+    } <span class="kw">else</span> {
+      _estadoAtual = <span class="tp">EstadoInimigo</span>.patrulhando;
+      current = _estadoAtual;
+    }
+    <span class="kw">final</span> vel = _estadoAtual == <span class="tp">EstadoInimigo</span>.atacando ? _velAtaque : _velPatrulha;
+    position.x += _direcao * vel * dt;
+    <span class="kw">if</span> (position.x &lt; <span class="num">0</span> || position.x &gt; <span class="num">3200</span>) _direcao *= -<span class="num">1</span>;
+  }
+}
+
+<span class="kw">enum</span> <span class="tp">EstadoInimigo</span> { patrulhando, atacando }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estado-jogo">Gerenciamento de Estado do Jogo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Flame &mdash; RouterComponent para telas e overlays Flutter</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flame/components.dart'</span>;
+
+<span class="com">// RouterComponent — gerencia telas do jogo</span>
+<span class="kw">class</span> <span class="tp">JogoCompleto</span> <span class="kw">extends</span> <span class="tp">FlameGame</span> {
+  <span class="kw">late</span> <span class="kw">final</span> <span class="tp">RouterComponent</span> router;
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    router = <span class="tp">RouterComponent</span>(
+      routes: {
+        <span class="str">'menu'</span>:     <span class="tp">Route</span>(<span class="tp">MenuScreen</span>.new),
+        <span class="str">'jogo'</span>:     <span class="tp">Route</span>(<span class="tp">GameScreen</span>.new),
+        <span class="str">'gameOver'</span>: <span class="tp">Route</span>(<span class="tp">GameOverScreen</span>.new),
+        <span class="str">'pause'</span>:    <span class="tp">OverlayRoute</span>(
+          (ctx, game) => <span class="tp">PauseOverlayWidget</span>(game: game),
+        ),
+      },
+      initialRoute: <span class="str">'menu'</span>,
+    );
+    <span class="kw">await</span> <span class="fn">add</span>(router);
+  }
+}
+
+<span class="com">// Overlay Flutter dentro do Flame (HUD com widgets Flutter)</span>
+<span class="tp">GameWidget</span>(
+  game: <span class="tp">JogoCompleto</span>(),
+  overlayBuilderMap: {
+    <span class="str">'joystick'</span>: (ctx, game) => <span class="tp">JoystickWidget</span>(game: game <span class="kw">as</span> <span class="tp">JogoCompleto</span>),
+    <span class="str">'hud'</span>:      (ctx, game) => <span class="tp">HudWidget</span>(game: game <span class="kw">as</span> <span class="tp">JogoCompleto</span>),
+  },
+  initialActiveOverlays: <span class="kw">const</span> [<span class="str">'hud'</span>],
+)
+
+<span class="com">// Save/Load com shared_preferences</span>
+<span class="kw">class</span> <span class="tp">SaveService</span> {
+  <span class="kw">static</span> <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">salvar</span>(<span class="tp">int</span> pontuacao, <span class="tp">int</span> fase) <span class="kw">async</span> {
+    <span class="kw">final</span> prefs = <span class="kw">await</span> <span class="tp">SharedPreferences</span>.<span class="fn">getInstance</span>();
+    <span class="kw">await</span> prefs.<span class="fn">setInt</span>(<span class="str">'pontuacao'</span>, pontuacao);
+    <span class="kw">await</span> prefs.<span class="fn">setInt</span>(<span class="str">'fase'</span>, fase);
+  }
+
+  <span class="kw">static</span> <span class="tp">Future</span>&lt;({<span class="tp">int</span> pontuacao, <span class="tp">int</span> fase})&gt; <span class="fn">carregar</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> prefs = <span class="kw">await</span> <span class="tp">SharedPreferences</span>.<span class="fn">getInstance</span>();
+    <span class="kw">return</span> (
+      pontuacao: prefs.<span class="fn">getInt</span>(<span class="str">'pontuacao'</span>) ?? <span class="num">0</span>,
+      fase:      prefs.<span class="fn">getInt</span>(<span class="str">'fase'</span>)      ?? <span class="num">1</span>,
+    );
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fisica">Fisicas com Forge2D</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + flame_forge2d &mdash; Corpos rigidos, articulacoes e colisao com fisica</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flame_forge2d/flame_forge2d.dart'</span>;
+
+<span class="com">// Jogo com fisica real (Box2D)</span>
+<span class="kw">class</span> <span class="tp">JogoFisica</span> <span class="kw">extends</span> <span class="tp">Forge2DGame</span> {
+  <span class="tp">JogoFisica</span>() : <span class="kw">super</span>(gravity: <span class="tp">Vector2</span>(<span class="num">0</span>, <span class="num">9.8</span>));
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">onLoad</span>() <span class="kw">async</span> {
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">Chao</span>());
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">Caixa</span>(posicao: <span class="tp">Vector2</span>(<span class="num">5</span>, <span class="num">2</span>)));
+    <span class="kw">await</span> <span class="fn">add</span>(<span class="tp">Bola</span>(posicao:  <span class="tp">Vector2</span>(<span class="num">3</span>, <span class="num">0</span>)));
+  }
+}
+
+<span class="kw">class</span> <span class="tp">Caixa</span> <span class="kw">extends</span> <span class="tp">BodyComponent</span> {
+  <span class="kw">final</span> <span class="tp">Vector2</span> posicao;
+  <span class="tp">Caixa</span>({<span class="kw">required</span> <span class="kw">this</span>.posicao});
+
+  <span class="at">@override</span>
+  <span class="tp">Body</span> <span class="fn">createBody</span>() {
+    <span class="kw">final</span> def = <span class="tp">BodyDef</span>()
+      ..type     = <span class="tp">BodyType</span>.dynamic
+      ..position = posicao;
+    <span class="kw">final</span> shape = <span class="tp">PolygonShape</span>()..<span class="fn">setAsBoxXY</span>(<span class="num">0.5</span>, <span class="num">0.5</span>);
+    <span class="kw">final</span> fix   = <span class="tp">FixtureDef</span>(shape)
+      ..restitution = <span class="num">0.3</span>
+      ..friction    = <span class="num">0.5</span>
+      ..density     = <span class="num">1.0</span>;
+    <span class="kw">return</span> world.<span class="fn">createBody</span>(def)..<span class="fn">createFixture</span>(fix);
+  }
+}
+
+<span class="kw">class</span> <span class="tp">Bola</span> <span class="kw">extends</span> <span class="tp">BodyComponent</span> {
+  <span class="kw">final</span> <span class="tp">Vector2</span> posicao;
+  <span class="tp">Bola</span>({<span class="kw">required</span> <span class="kw">this</span>.posicao});
+
+  <span class="at">@override</span>
+  <span class="tp">Body</span> <span class="fn">createBody</span>() {
+    <span class="kw">final</span> def = <span class="tp">BodyDef</span>()
+      ..type     = <span class="tp">BodyType</span>.dynamic
+      ..position = posicao;
+    <span class="kw">final</span> circle = <span class="tp">CircleShape</span>()..radius = <span class="num">0.3</span>;
+    <span class="kw">final</span> fix    = <span class="tp">FixtureDef</span>(circle)
+      ..restitution = <span class="num">0.8</span>  <span class="com">// quicante</span>
+      ..density     = <span class="num">0.5</span>;
+    <span class="kw">return</span> world.<span class="fn">createBody</span>(def)..<span class="fn">createFixture</span>(fix);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FLAME. <strong>Flame documentation</strong>. Disponível em: &lt;https://docs.flame-engine.org&gt;. Acesso em: 2025.</li>
+            <li>FLAME. <strong>flame_tiled — Tiled map loader for Flame</strong>. Disponível em: &lt;https://pub.dev/packages/flame_tiled&gt;. Acesso em: 2025.</li>
+            <li>FLAME. <strong>flame_forge2d — Box2D physics for Flame</strong>. Disponível em: &lt;https://pub.dev/packages/flame_forge2d&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — GUI Desktop</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Terminal e CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O Flame usa <strong>pontos de ancoragem</strong> (<code>anchor</code>) cruciais para posicionamento: <code>Anchor.topLeft</code> (default) posiciona pelo canto superior-esquerdo enquanto <code>Anchor.center</code> centraliza o componente na coordenada dada — sempre defina explicitamente para evitar bugs de posicionamento inesperados.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

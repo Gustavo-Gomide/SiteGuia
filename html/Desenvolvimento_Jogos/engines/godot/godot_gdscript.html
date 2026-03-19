@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Programacao com GDScript: sintaxe, arquitetura e boas praticas para jogos escalaveis." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>GDScript no Godot | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>GDScript no Godot</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">GDScript no Godot 4</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>GDScript: A Linguagem Nativa do Godot</h1>
+        <p>Tipagem opcional, signals e ciclo de vida de nodes — a base para sistemas de jogo robustos.</p>
+      </div>
+      <p class="intro-highlight">GDScript nao e Python para jogos. E uma linguagem projetada em torno do modelo de nodes do Godot: cada script e um tipo, cada node e um objeto. Entender essa relacao e o que separa codigo que "funciona" de codigo que escala.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">GDScript vs Python e Tipagem</h2>
+      <p>GDScript tem sintaxe inspirada em Python mas nao e Python: nao ha pip, nao ha virtualenv, e o modelo de concorrencia e completamente diferente. No Godot 4, a tipagem estatica opcional foi amplamente melhorada — usar <code class="code-inline">: int</code>, <code class="code-inline">: String</code> e <code class="code-inline">: Vector2</code> nos parametros e variaveis permite ao compilador gerar bytecode mais eficiente e ao Godot LSP oferecer autocomplete preciso.</p>
+      <p>A regra pratica: use tipagem em scripts de sistema (character controller, inventory, save/load). Em scripts de one-shot (tweens pontuais, UI callbacks simples), tipagem e opcional. Scripts nao tipados com <code class="code-inline">Variant</code> sao mais lentos em hot paths.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">Ciclo de Vida, Nodes e Cena</h2>
+      <p>No Godot, o script e sempre anexado a um Node. O ciclo de vida segue uma ordem deterministica: <code class="code-inline">_init()</code> ao construir o objeto, <code class="code-inline">_ready()</code> quando o node e toda sua arvore entram na cena, <code class="code-inline">_process(delta)</code> a cada frame de render e <code class="code-inline">_physics_process(delta)</code> no loop de fisica (fixo a 60 Hz por padrao).</p>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">player.gd</div>
+        <pre class="example">extends CharacterBody2D
+
+const SPEED: float = 200.0
+
+@onready var anim: AnimationPlayer = $AnimationPlayer
+
+func _ready() -> void:
+    # Chamado quando o node esta na arvore. Seguro para acessar filhos.
+    anim.play("idle")
+
+func _physics_process(delta: float) -> void:
+    var dir := Input.get_axis("move_left", "move_right")
+    velocity.x = dir * SPEED
+    move_and_slide()
+    if dir != 0:
+        anim.play("run")
+    else:
+        anim.play("idle")</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="signals" class="section-title">Signals e Comunicacao entre Nodes</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Signals Customizados</h3>
+          <p>Signals desacoplam emissor de receptor. O node que emite nao precisa saber quem ouve. Declare com <code class="code-inline">signal nome_do_signal(parametro: Tipo)</code> e emita com <code class="code-inline">nome_do_signal.emit(valor)</code>. Conecte via editor (painel Node) ou via codigo com <code class="code-inline">.connect(metodo)</code>.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Autoloads como Singletons</h3>
+          <p>Autoloads sao nodes persistentes carregados antes de qualquer cena. Sao o Singleton do Godot: use para GameManager, AudioBus, SaveSystem, EventBus. Acesse globalmente pelo nome configurado em Project Settings &gt; Autoload. Nao abuse — autoloads em excesso criam acoplamento global.</p>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">Performance e Boas Praticas</h2>
+      <div class="panel">
+        <p>Em hot paths (physics process, grande numero de inimigos), evite alocacao de novos objetos a cada frame. Prefira <code class="code-inline">@onready</code> para cachear referencias a nodes em vez de chamar <code class="code-inline">get_node()</code> repetidamente. Use <code class="code-inline">StringName</code> (&amp;"nome") para identificadores de animacao e input — comparacao de StringName e O(1), String e O(n).</p>
+        <p>Para sistemas com muitos objetos (particulas customizadas, projectiles em massa), considere usar <code class="code-inline">MultiMeshInstance2D</code> ou <code class="code-inline">TileMap</code> ao inves de instanciar centenas de nodes individuais. O profiler integrado (Debugger &gt; Profiler) mostra o custo real de cada metodo.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>GODOT ENGINE FOUNDATION. <strong>GDScript Reference</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>GODOT ENGINE FOUNDATION. <strong>Best Practices: Godot GDScript</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>NYSTROM, Robert. <strong>Game Programming Patterns</strong>. Genever Benning, 2014.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>GDScript tipado e signals bem projetados sao o que separa um prototipo descartavel de um sistema que sobrevive a 6 meses de iteracao.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"O melhor codigo GDScript e o que diz o que faz sem precisar de comentario."</p>
+    </div>
+  </div></main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

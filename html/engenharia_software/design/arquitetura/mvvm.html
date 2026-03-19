@@ -1,0 +1,169 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="MVVM: Model-View-ViewModel, data binding, quando usar (apps reativos) e como evitar ViewModel gigante.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>MVVM | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Estado reativo entre modelo e interface</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">MVVM</h1>
+          <p class="page-subtitle">Model-View-ViewModel — padrão para UIs reativas e testáveis</p>
+        </div>
+        <p class="intro-highlight">MVVM é muito usado em UIs ricas (mobile, desktop, SPAs). O ViewModel expõe estado e ações prontas para a View consumir via data binding. A View ouve o ViewModel, mas o ViewModel não conhece a View — isso torna a lógica de UI testável sem renderização real.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="componentes" class="section-title">Componentes e responsabilidades</h2>
+        <div class="section-divider"></div>
+        <p>Cada parte tem responsabilidade clara e testabilidade distinta:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Responsabilidade</th>
+                <th>Testabilidade</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td>Dados e regras do domínio. Independente de UI e ViewModel.</td>
+                <td>Unit tests simples sem UI.</td>
+              </tr>
+              <tr>
+                <td><strong>ViewModel</strong></td>
+                <td>Estado derivado para a View + ações/comandos. Não conhece a View.</td>
+                <td>Unit tests; injete fakes dos serviços de domínio.</td>
+              </tr>
+              <tr>
+                <td><strong>View</strong></td>
+                <td>Renderização e captura de eventos. Bind ao ViewModel state.</td>
+                <td>Testes de UI; verificação de binding e interações.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">ViewModel reativo — exemplo</h2>
+        <div class="section-divider"></div>
+        <p>Um ViewModel de login expondo estado e ação sem saber como a View renderiza:</p>
+        <div class="code-container">
+          <pre class="code-block">// VIEWMODEL (não conhece a View)
+class LoginViewModel {
+  // Estado observável
+  email = '';
+  senha = '';
+  carregando = false;
+  erro: string | null = null;
+
+  // Estado derivado
+  get formValido(): boolean {
+    return this.email.includes('@') && this.senha.length >= 6;
+  }
+
+  // Ação
+  async login(): Promise&lt;void&gt; {
+    if (!this.formValido) return;
+
+    this.carregando = true;
+    this.erro = null;
+
+    try {
+      await this.authService.login(this.email, this.senha);
+      this.router.navigate('/dashboard');
+    } catch (e) {
+      this.erro = 'Email ou senha incorretos.';
+    } finally {
+      this.carregando = false;
+    }
+  }
+}
+
+// VIEW (React/Vue/Angular — apenas bind e render)
+// &lt;button disabled={!vm.formValido} onClick={vm.login}&gt;Entrar&lt;/button&gt;
+// &lt;span&gt;{vm.erro}&lt;/span&gt;
+// &lt;input value={vm.email} onChange={e => vm.email = e.target.value} /&gt;
+
+// TESTE do ViewModel (sem renderizar UI)
+test('formValido false quando email inválido', () =&gt; {
+  const vm = new LoginViewModel(fakeAuth, fakeRouter);
+  vm.email = 'invalido';
+  vm.senha = '123456';
+  expect(vm.formValido).toBe(false);
+});</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e armadilhas</h2>
+        <div class="section-divider"></div>
+        <p>MVVM brilha em UIs com muito estado interativo, mas tem anti-padrões conhecidos:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>UIs ricas com muito estado. Testes de lógica de UI importantes. Data binding reduz boilerplate.</p>
+          </div>
+          <div class="card">
+            <h3>ViewModel gigante</h3>
+            <p>Separe por tela ou funcionalidade. Extraia casos de uso para serviços de domínio testados separadamente.</p>
+          </div>
+          <div class="card">
+            <h3>Estado global demais</h3>
+            <p>Estado global dificulta debugging e testes. Prefira estado local ao ViewModel de cada tela.</p>
+          </div>
+          <div class="card">
+            <h3>Binding confuso</h3>
+            <p>Regras de UI escondidas em bindings. Derive estado explicitamente no ViewModel — a View é estúpida.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>MVVM é uma especialização de <a href="/html/engenharia_software/design/arquitetura/mvc.html">MVC</a> para UIs reativas. Combine com <a href="/html/engenharia_software/design/arquitetura/hwexagonal.html">Hexagonal</a> para separar ViewModel de detalhes de infraestrutura.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O ViewModel é o modelo da UI, não do domínio. Esses conceitos devem ser distintos."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

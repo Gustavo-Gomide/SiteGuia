@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para GUI Desktop: Qt6 com QML e Widgets, Dear ImGui para ferramentas, wxWidgets multiplataforma e FLTK para UIs leves." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para GUI Desktop</h1>
+          <p>Desenvolvimento de interfaces graficas desktop em C++: Qt6 com QML (frontend declarativo) e Widgets (API classica), Dear ImGui para paineis de debug e ferramentas internas, wxWidgets para apps nativas multiplataformas, e FLTK para UIs ultra-leves em sistemas com poucos recursos.</p>
+        </div>
+        <p class="intro-highlight">
+          Qt6 e o framework mais abrangente para C++ desktop: suporta Windows, macOS, Linux, iOS, Android e WebAssembly a partir do mesmo codigo. ImGui e o padrao de fato para paineis de depuracao em motores de jogos e editores de ferramentas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="qt6">Qt6 — Widgets e Signals/Slots</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Qt6 Widgets &mdash; MainWindow, actions, model-view, threading</div>
+          <pre class="example"><span class="com">// mainwindow.h</span>
+<span class="kw">#pragma once</span>
+<span class="kw">#include</span> <span class="str">&lt;QMainWindow&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QTableView&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QStandardItemModel&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QPushButton&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QFuture&gt;</span>
+
+<span class="kw">class</span> <span class="tp">MainWindow</span> : <span class="kw">public</span> <span class="tp">QMainWindow</span> {
+  Q_OBJECT
+  <span class="tp">QTableView</span>*         tabela_;
+  <span class="tp">QStandardItemModel</span>* modelo_;
+  <span class="tp">QPushButton</span>*        btnCarregar_;
+
+<span class="kw">public</span>:
+  <span class="kw">explicit</span> <span class="tp">MainWindow</span>(<span class="tp">QWidget</span>* parent = <span class="kw">nullptr</span>);
+
+<span class="kw">private slots</span>:
+  <span class="kw">void</span> <span class="fn">onCarregarClicado</span>();
+  <span class="kw">void</span> <span class="fn">onDadosCarregados</span>(<span class="kw">const</span> <span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt;&amp;);
+};
+
+<span class="com">// mainwindow.cpp</span>
+<span class="kw">#include</span> <span class="str">"mainwindow.h"</span>
+<span class="kw">#include</span> <span class="str">&lt;QVBoxLayout&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QProgressDialog&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QtConcurrent&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QMessageBox&gt;</span>
+
+<span class="tp">MainWindow</span>::<span class="tp">MainWindow</span>(<span class="tp">QWidget</span>* parent) : <span class="tp">QMainWindow</span>(parent) {
+  <span class="kw">auto</span>* central = <span class="kw">new</span> <span class="tp">QWidget</span>(<span class="kw">this</span>);
+  <span class="kw">auto</span>* layout  = <span class="kw">new</span> <span class="tp">QVBoxLayout</span>(central);
+
+  btnCarregar_ = <span class="kw">new</span> <span class="tp">QPushButton</span>(<span class="str">"Carregar dados"</span>, central);
+  tabela_      = <span class="kw">new</span> <span class="tp">QTableView</span>(central);
+  modelo_      = <span class="kw">new</span> <span class="tp">QStandardItemModel</span>(<span class="kw">this</span>);
+
+  tabela_-&gt;<span class="fn">setModel</span>(modelo_);
+  tabela_-&gt;<span class="fn">horizontalHeader</span>()-&gt;<span class="fn">setStretchLastSection</span>(<span class="kw">true</span>);
+  layout-&gt;<span class="fn">addWidget</span>(btnCarregar_);
+  layout-&gt;<span class="fn">addWidget</span>(tabela_);
+  <span class="fn">setCentralWidget</span>(central);
+
+  <span class="com">// Lambda como slot (C++14 lambda em connects)</span>
+  <span class="fn">connect</span>(btnCarregar_, &amp;<span class="tp">QPushButton</span>::<span class="fn">clicked</span>,
+          <span class="kw">this</span>, &amp;<span class="tp">MainWindow</span>::<span class="fn">onCarregarClicado</span>);
+
+  <span class="com">// Ação no menu</span>
+  <span class="kw">auto</span>* menuArq = <span class="fn">menuBar</span>()-&gt;<span class="fn">addMenu</span>(<span class="str">"Arquivo"</span>);
+  <span class="kw">auto</span>* actSair = menuArq-&gt;<span class="fn">addAction</span>(<span class="str">"Sair"</span>, <span class="tp">QKeySequence</span>::<span class="tp">Quit</span>);
+  <span class="fn">connect</span>(actSair, &amp;<span class="tp">QAction</span>::<span class="fn">triggered</span>, <span class="kw">this</span>, &amp;<span class="tp">QWidget</span>::<span class="fn">close</span>);
+}
+
+<span class="kw">void</span> <span class="tp">MainWindow</span>::<span class="fn">onCarregarClicado</span>() {
+  btnCarregar_-&gt;<span class="fn">setEnabled</span>(<span class="kw">false</span>);
+
+  <span class="com">// Carregar CSV em background thread via QtConcurrent::run</span>
+  QFuture&lt;<span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt;&gt; futuro = <span class="tp">QtConcurrent</span>::<span class="fn">run</span>([]() {
+    <span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt; dados;
+    <span class="tp">QFile</span> f(<span class="str">"dados.csv"</span>);
+    <span class="kw">if</span> (f.<span class="fn">open</span>(<span class="tp">QIODevice</span>::<span class="tp">ReadOnly</span>)) {
+      <span class="tp">QTextStream</span> in(&amp;f);
+      <span class="kw">while</span> (!in.<span class="fn">atEnd</span>())
+        dados &lt;&lt; in.<span class="fn">readLine</span>().<span class="fn">split</span>(<span class="str">','</span>);
+    }
+    <span class="kw">return</span> dados;
+  });
+
+  <span class="kw">auto</span>* watcher = <span class="kw">new</span> <span class="tp">QFutureWatcher</span>&lt;<span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt;&gt;(<span class="kw">this</span>);
+  <span class="fn">connect</span>(watcher, &amp;<span class="tp">QFutureWatcher</span>&lt;<span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt;&gt;::<span class="fn">finished</span>, <span class="kw">this</span>,
+    [<span class="kw">this</span>, watcher]() {
+      <span class="fn">onDadosCarregados</span>(watcher-&gt;<span class="fn">result</span>());
+      watcher-&gt;<span class="fn">deleteLater</span>();
+      btnCarregar_-&gt;<span class="fn">setEnabled</span>(<span class="kw">true</span>);
+    });
+  watcher-&gt;<span class="fn">setFuture</span>(futuro);
+}
+
+<span class="kw">void</span> <span class="tp">MainWindow</span>::<span class="fn">onDadosCarregados</span>(<span class="kw">const</span> <span class="tp">QList</span>&lt;<span class="tp">QStringList</span>&gt;&amp; linhas) {
+  modelo_-&gt;<span class="fn">clear</span>();
+  <span class="kw">for</span> (<span class="kw">const auto</span>&amp; linha : linhas) {
+    <span class="tp">QList</span>&lt;<span class="tp">QStandardItem</span>*&gt; items;
+    <span class="kw">for</span> (<span class="kw">const auto</span>&amp; cel : linha)
+      items.<span class="fn">append</span>(<span class="kw">new</span> <span class="tp">QStandardItem</span>(cel));
+    modelo_-&gt;<span class="fn">appendRow</span>(items);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="qml">Qt6 QML — Frontend Declarativo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + QML &mdash; QAbstractListModel exposto para QML, propriedades Q_PROPERTY</div>
+          <pre class="example"><span class="com">// backend.h — Model exposto para QML</span>
+<span class="kw">#pragma once</span>
+<span class="kw">#include</span> <span class="str">&lt;QAbstractListModel&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QQmlEngine&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+
+<span class="kw">struct</span> <span class="tp">Tarefa</span> { <span class="tp">QString</span> titulo; <span class="kw">bool</span> feita; };
+
+<span class="kw">class</span> <span class="tp">TarefaModel</span> : <span class="kw">public</span> <span class="tp">QAbstractListModel</span> {
+  Q_OBJECT
+  QML_ELEMENT  <span class="com">// registra automaticamente para QML (Qt6)</span>
+  <span class="tp">Q_PROPERTY</span>(<span class="kw">int</span> pendentes READ <span class="fn">pendentes</span> NOTIFY pendentesChanged)
+  std::<span class="tp">vector</span>&lt;<span class="tp">Tarefa</span>&gt; tarefas_;
+
+<span class="kw">public</span>:
+  <span class="kw">enum</span> <span class="tp">Roles</span> { <span class="tp">TituloRole</span> = Qt::<span class="tp">UserRole</span> + <span class="num">1</span>, <span class="tp">FeitaRole</span> };
+  <span class="kw">int</span> <span class="fn">rowCount</span>(<span class="kw">const</span> <span class="tp">QModelIndex</span>&amp;) <span class="kw">const override</span> { <span class="kw">return</span> tarefas_.<span class="fn">size</span>(); }
+  <span class="tp">QVariant</span> <span class="fn">data</span>(<span class="kw">const</span> <span class="tp">QModelIndex</span>&amp; index, <span class="kw">int</span> role) <span class="kw">const override</span>;
+  <span class="tp">QHash</span>&lt;<span class="kw">int</span>, <span class="tp">QByteArray</span>&gt; <span class="fn">roleNames</span>() <span class="kw">const override</span>;
+  <span class="kw">int</span> <span class="fn">pendentes</span>() <span class="kw">const</span>;
+
+<span class="kw">public slots</span>:
+  <span class="kw">void</span> <span class="fn">adicionar</span>(<span class="kw">const</span> <span class="tp">QString</span>&amp; titulo);
+  <span class="kw">void</span> <span class="fn">alternarFeita</span>(<span class="kw">int</span> idx);
+
+<span class="kw">signals</span>:
+  <span class="kw">void</span> <span class="fn">pendentesChanged</span>();
+};
+
+<span class="com">// main.cpp</span>
+<span class="kw">#include</span> <span class="str">&lt;QGuiApplication&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;QQmlApplicationEngine&gt;</span>
+<span class="kw">#include</span> <span class="str">"backend.h"</span>
+
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">int</span> argc, <span class="kw">char</span>** argv) {
+  <span class="tp">QGuiApplication</span> app(argc, argv);
+  <span class="tp">QQmlApplicationEngine</span> engine;
+  <span class="fn">qmlRegisterType</span>&lt;<span class="tp">TarefaModel</span>&gt;(
+    <span class="str">"myapp"</span>, <span class="num">1</span>, <span class="num">0</span>, <span class="str">"TarefaModel"</span>);
+  engine.<span class="fn">loadFromModule</span>(<span class="str">"MinhaApp"</span>, <span class="str">"Main"</span>);
+  <span class="kw">return</span> app.<span class="fn">exec</span>();
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">QML &mdash; ListView com delegate, binding e chamadas de slot C++</div>
+          <pre class="example"><span class="com">// Main.qml</span>
+<span class="kw">import</span> QtQuick <span class="num">6.6</span>
+<span class="kw">import</span> QtQuick.Controls <span class="num">6.6</span>
+<span class="kw">import</span> myapp <span class="num">1.0</span>
+
+<span class="tp">ApplicationWindow</span> {
+  title: <span class="str">"Tarefas"</span>; width: <span class="num">400</span>; height: <span class="num">600</span>; visible: <span class="kw">true</span>
+
+  <span class="tp">TarefaModel</span> { <span class="tp">id</span>: modelo }
+
+  <span class="tp">ColumnLayout</span> {
+    anchors.fill: parent; spacing: <span class="num">8</span>; padding: <span class="num">12</span>
+
+    <span class="tp">RowLayout</span> {
+      <span class="tp">TextField</span> {
+        <span class="tp">id</span>: campo; Layout.fillWidth: <span class="kw">true</span>
+        placeholderText: <span class="str">"Nova tarefa..."</span>
+        <span class="fn">Keys.onReturnPressed</span>: {
+          modelo.<span class="fn">adicionar</span>(campo.text)
+          campo.clear()
+        }
+      }
+      <span class="tp">Button</span> { text: <span class="str">"+"</span>; onClicked: { modelo.<span class="fn">adicionar</span>(campo.text); campo.<span class="fn">clear</span>() } }
+    }
+
+    <span class="tp">Label</span> {
+      text: <span class="str">"Pendentes: "</span> + modelo.pendentes
+      color: modelo.pendentes &gt; <span class="num">0</span> ? <span class="str">"#ff6b6b"</span> : <span class="str">"#6bcf7f"</span>
+      font.bold: <span class="kw">true</span>
+    }
+
+    <span class="tp">ListView</span> {
+      Layout.fillWidth: <span class="kw">true</span>; Layout.fillHeight: <span class="kw">true</span>
+      model: modelo; clip: <span class="kw">true</span>; spacing: <span class="num">4</span>
+
+      delegate: <span class="tp">Rectangle</span> {
+        width: ListView.view.width; height: <span class="num">48</span>
+        color: feita ? <span class="str">"#1a2a1a"</span> : <span class="str">"#1a1a2a"</span>
+        radius: <span class="num">6</span>
+
+        <span class="tp">RowLayout</span> {
+          anchors.fill: parent; anchors.margins: <span class="num">8</span>
+          <span class="tp">CheckBox</span> {
+            checked: feita
+            <span class="fn">onToggled</span>: modelo.<span class="fn">alternarFeita</span>(index)
+          }
+          <span class="tp">Label</span> {
+            text: titulo; Layout.fillWidth: <span class="kw">true</span>
+            font.strikeout: feita; opacity: feita ? <span class="num">0.5</span> : <span class="num">1.0</span>
+          }
+        }
+      }
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="imgui">Dear ImGui — UI Imediata</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Dear ImGui + SDL2 + OpenGL3 &mdash; painel de ferramentas completo</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">"imgui.h"</span>
+<span class="kw">#include</span> <span class="str">"imgui_impl_sdl2.h"</span>
+<span class="kw">#include</span> <span class="str">"imgui_impl_opengl3.h"</span>
+<span class="kw">#include</span> <span class="str">&lt;SDL.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="fn">SDL_Init</span>(<span class="tp">SDL_INIT_VIDEO</span>);
+  <span class="tp">SDL_GL_SetAttribute</span>(<span class="tp">SDL_GL_CONTEXT_VERSION_MAJOR</span>, <span class="num">3</span>);
+  <span class="tp">SDL_GL_SetAttribute</span>(<span class="tp">SDL_GL_CONTEXT_VERSION_MINOR</span>, <span class="num">3</span>);
+  <span class="tp">SDL_GL_SetAttribute</span>(<span class="tp">SDL_GL_CONTEXT_PROFILE_MASK</span>,
+    <span class="tp">SDL_GL_CONTEXT_PROFILE_CORE</span>);
+
+  <span class="tp">SDL_Window</span>* win = <span class="fn">SDL_CreateWindow</span>(
+    <span class="str">"Editor"</span>, <span class="tp">SDL_WINDOWPOS_CENTERED</span>, <span class="tp">SDL_WINDOWPOS_CENTERED</span>,
+    <span class="num">1280</span>, <span class="num">720</span>, <span class="tp">SDL_WINDOW_OPENGL</span> | <span class="tp">SDL_WINDOW_RESIZABLE</span>);
+  <span class="tp">SDL_GLContext</span> gl_ctx = <span class="fn">SDL_GL_CreateContext</span>(win);
+
+  IMGUI_CHECKVERSION();
+  ImGui::<span class="fn">CreateContext</span>();
+  <span class="tp">ImGuiIO</span>&amp; io = ImGui::<span class="fn">GetIO</span>();
+  io.ConfigFlags |= <span class="tp">ImGuiConfigFlags_DockingEnable</span>;
+  io.ConfigFlags |= <span class="tp">ImGuiConfigFlags_ViewportsEnable</span>;
+  ImGui::<span class="fn">StyleColorsDark</span>();
+
+  <span class="fn">ImGui_ImplSDL2_InitForOpenGL</span>(win, gl_ctx);
+  <span class="fn">ImGui_ImplOpenGL3_Init</span>(<span class="str">"#version 330"</span>);
+
+  <span class="kw">bool</span> rodando    = <span class="kw">true</span>;
+  <span class="kw">bool</span> show_demo  = <span class="kw">false</span>;
+  <span class="kw">float</span> cor[<span class="num">4</span>]  = { <span class="num">0.26f</span>, <span class="num">0.59f</span>, <span class="num">0.98f</span>, <span class="num">1.0f</span> };
+  <span class="kw">char</span> texto[<span class="num">256</span>] = <span class="str">"Ola ImGui"</span>;
+  <span class="kw">float</span> slider   = <span class="num">0.5f</span>;
+
+  <span class="kw">while</span> (rodando) {
+    <span class="tp">SDL_Event</span> ev;
+    <span class="kw">while</span> (<span class="fn">SDL_PollEvent</span>(&amp;ev)) {
+      <span class="fn">ImGui_ImplSDL2_ProcessEvent</span>(&amp;ev);
+      <span class="kw">if</span> (ev.type == <span class="tp">SDL_QUIT</span>) rodando = <span class="kw">false</span>;
+    }
+    <span class="fn">ImGui_ImplOpenGL3_NewFrame</span>();
+    <span class="fn">ImGui_ImplSDL2_NewFrame</span>();
+    ImGui::<span class="fn">NewFrame</span>();
+
+    <span class="com">// Docking fullscreen</span>
+    ImGui::<span class="fn">DockSpaceOverViewport</span>(ImGui::<span class="fn">GetMainViewport</span>());
+
+    <span class="com">// Painel principal</span>
+    ImGui::<span class="fn">Begin</span>(<span class="str">"Ferramenta"</span>);
+    ImGui::<span class="fn">Text</span>(<span class="str">"FPS: %.1f"</span>, io.Framerate);
+    ImGui::<span class="fn">SameLine</span>();
+    ImGui::<span class="fn">Checkbox</span>(<span class="str">"Demo Window"</span>, &amp;show_demo);
+
+    ImGui::<span class="fn">Separator</span>();
+    ImGui::<span class="fn">InputText</span>(<span class="str">"Texto"</span>, texto, <span class="kw">sizeof</span>(texto));
+    ImGui::<span class="fn">ColorEdit4</span>(<span class="str">"Cor"</span>, cor);
+    ImGui::<span class="fn">SliderFloat</span>(<span class="str">"Valor"</span>, &amp;slider, <span class="num">0.0f</span>, <span class="num">1.0f</span>);
+
+    <span class="kw">if</span> (ImGui::<span class="fn">Button</span>(<span class="str">"Aplicar"</span>))
+      std::<span class="fn">println</span>(<span class="str">"Texto: {} Slider: {:.2f}"</span>, texto, slider);
+    ImGui::<span class="fn">End</span>();
+
+    <span class="kw">if</span> (show_demo) ImGui::<span class="fn">ShowDemoWindow</span>(&amp;show_demo);
+
+    <span class="com">// Plot de linha simples</span>
+    <span class="kw">static float</span> valores[<span class="num">90</span>]{};
+    <span class="kw">static int</span>  offset = <span class="num">0</span>;
+    valores[offset] = io.Framerate;
+    offset = (offset + <span class="num">1</span>) % <span class="num">90</span>;
+    ImGui::<span class="fn">Begin</span>(<span class="str">"Performance"</span>);
+    ImGui::<span class="fn">PlotLines</span>(<span class="str">"FPS"</span>, valores, <span class="num">90</span>, offset,
+      <span class="kw">nullptr</span>, <span class="num">0.0f</span>, <span class="num">120.0f</span>, {<span class="num">0</span>, <span class="num">80</span>});
+    ImGui::<span class="fn">End</span>();
+
+    ImGui::<span class="fn">Render</span>();
+    <span class="fn">glClearColor</span>(<span class="num">0.1f</span>, <span class="num">0.1f</span>, <span class="num">0.1f</span>, <span class="num">1.0f</span>);
+    <span class="fn">glClear</span>(<span class="tp">GL_COLOR_BUFFER_BIT</span>);
+    <span class="fn">ImGui_ImplOpenGL3_RenderDrawData</span>(ImGui::<span class="fn">GetDrawData</span>());
+    <span class="fn">SDL_GL_SwapWindow</span>(win);
+  }
+
+  <span class="fn">ImGui_ImplOpenGL3_Shutdown</span>();
+  <span class="fn">ImGui_ImplSDL2_Shutdown</span>();
+  ImGui::<span class="fn">DestroyContext</span>();
+  <span class="fn">SDL_GL_DeleteContext</span>(gl_ctx);
+  <span class="fn">SDL_DestroyWindow</span>(win);
+  <span class="fn">SDL_Quit</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wxwidgets">wxWidgets — Nativo Multiplataforma</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + wxWidgets &mdash; app completa com frame, menus, sizer e dialogo</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;wx/wx.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;wx/filedlg.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;wx/spinctrl.h&gt;</span>
+
+<span class="kw">class</span> <span class="tp">MeuFrame</span> : <span class="kw">public</span> <span class="tp">wxFrame</span> {
+  <span class="tp">wxTextCtrl</span>* editor_;
+  <span class="tp">wxSpinCtrl</span>* spin_;
+
+<span class="kw">public</span>:
+  <span class="tp">MeuFrame</span>() : <span class="tp">wxFrame</span>(<span class="kw">nullptr</span>, <span class="tp">wxID_ANY</span>, <span class="str">"Editor C++"</span>, 
+      wxDefaultPosition, { <span class="num">800</span>, <span class="num">600</span> }) {
+
+    <span class="com">// Menu bar</span>
+    <span class="kw">auto</span>* mbar = <span class="kw">new</span> <span class="tp">wxMenuBar</span>;
+    <span class="kw">auto</span>* mArq = <span class="kw">new</span> <span class="tp">wxMenu</span>;
+    mArq-&gt;<span class="fn">Append</span>(<span class="tp">wxID_OPEN</span>,  <span class="str">"Abrir\tCtrl+O"</span>);
+    mArq-&gt;<span class="fn">Append</span>(<span class="tp">wxID_SAVE</span>,  <span class="str">"Salvar\tCtrl+S"</span>);
+    mArq-&gt;<span class="fn">AppendSeparator</span>();
+    mArq-&gt;<span class="fn">Append</span>(<span class="tp">wxID_EXIT</span>,  <span class="str">"Sair"</span>);
+    mbar-&gt;<span class="fn">Append</span>(mArq, <span class="str">"Arquivo"</span>);
+    <span class="fn">SetMenuBar</span>(mbar);
+
+    <span class="com">// Layout com BoxSizer</span>
+    <span class="kw">auto</span>* sizer = <span class="kw">new</span> <span class="tp">wxBoxSizer</span>(<span class="tp">wxVERTICAL</span>);
+
+    editor_ = <span class="kw">new</span> <span class="tp">wxTextCtrl</span>(<span class="kw">this</span>, <span class="tp">wxID_ANY</span>, <span class="str">""</span>,
+      wxDefaultPosition, wxDefaultSize,
+      <span class="tp">wxTE_MULTILINE</span> | <span class="tp">wxTE_RICH2</span>);
+    sizer-&gt;<span class="fn">Add</span>(editor_, <span class="num">1</span>, <span class="tp">wxEXPAND</span> | <span class="tp">wxALL</span>, <span class="num">5</span>);
+
+    <span class="kw">auto</span>* row = <span class="kw">new</span> <span class="tp">wxBoxSizer</span>(<span class="tp">wxHORIZONTAL</span>);
+    row-&gt;<span class="fn">Add</span>(<span class="kw">new</span> <span class="tp">wxStaticText</span>(<span class="kw">this</span>, <span class="tp">wxID_ANY</span>, <span class="str">"Tamanho:"</span>), <span class="num">0</span>, <span class="tp">wxALIGN_CENTER</span>);
+    spin_ = <span class="kw">new</span> <span class="tp">wxSpinCtrl</span>(<span class="kw">this</span>, <span class="tp">wxID_ANY</span>, <span class="str">"12"</span>, wxDefaultPosition,
+      { <span class="num">60</span>, -<span class="num">1</span> }, <span class="tp">wxSP_ARROW_KEYS</span>, <span class="num">8</span>, <span class="num">72</span>);
+    row-&gt;<span class="fn">Add</span>(spin_, <span class="num">0</span>, <span class="tp">wxLEFT</span>, <span class="num">5</span>);
+    <span class="kw">auto</span>* btnAplicar = <span class="kw">new</span> <span class="tp">wxButton</span>(<span class="kw">this</span>, <span class="tp">wxID_APPLY</span>, <span class="str">"Aplicar"</span>);
+    row-&gt;<span class="fn">Add</span>(btnAplicar, <span class="num">0</span>, <span class="tp">wxLEFT</span>, <span class="num">5</span>);
+    sizer-&gt;<span class="fn">Add</span>(row, <span class="num">0</span>, <span class="tp">wxALIGN_RIGHT</span> | <span class="tp">wxALL</span>, <span class="num">5</span>);
+
+    <span class="fn">SetSizerAndFit</span>(sizer);
+    <span class="fn">CreateStatusBar</span>(<span class="num">2</span>);
+
+    <span class="com">// Eventos</span>
+    <span class="fn">Bind</span>(<span class="tp">wxEVT_MENU</span>, [<span class="kw">this</span>](<span class="tp">wxCommandEvent</span>&amp;) {
+      <span class="tp">wxFileDialog</span> dlg(<span class="kw">this</span>, <span class="str">"Abrir arquivo"</span>, <span class="str">""</span>, <span class="str">""</span>,
+        <span class="str">"Texto (*.txt)|*.txt"</span>, <span class="tp">wxFD_OPEN</span> | <span class="tp">wxFD_FILE_MUST_EXIST</span>);
+      <span class="kw">if</span> (dlg.<span class="fn">ShowModal</span>() == <span class="tp">wxID_OK</span>)
+        editor_-&gt;<span class="fn">LoadFile</span>(dlg.<span class="fn">GetPath</span>());
+    }, <span class="tp">wxID_OPEN</span>);
+
+    <span class="fn">Bind</span>(<span class="tp">wxEVT_MENU</span>, [<span class="kw">this</span>](<span class="tp">wxCommandEvent</span>&amp;) {
+      editor_-&gt;<span class="fn">SaveFile</span>();
+    }, <span class="tp">wxID_SAVE</span>);
+
+    <span class="fn">Bind</span>(<span class="tp">wxEVT_MENU</span>, [<span class="kw">this</span>](<span class="tp">wxCommandEvent</span>&amp;) { <span class="fn">Close</span>(<span class="kw">true</span>); }, <span class="tp">wxID_EXIT</span>);
+  }
+};
+
+<span class="kw">class</span> <span class="tp">MinhaApp</span> : <span class="kw">public</span> <span class="tp">wxApp</span> {
+<span class="kw">public</span>:
+  <span class="kw">bool</span> <span class="fn">OnInit</span>() <span class="kw">override</span> {
+    (<span class="kw">new</span> <span class="tp">MeuFrame</span>)-&gt;<span class="fn">Show</span>();
+    <span class="kw">return</span> <span class="kw">true</span>;
+  }
+};
+<span class="fn">wxIMPLEMENT_APP</span>(<span class="tp">MinhaApp</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Comparativo de Frameworks GUI</h2>
+
+        <div class="panel">
+          <p class="panel-title">Quando usar cada framework</p>
+          <table class="table">
+            <thead><tr><th>Framework</th><th>Melhor para</th><th>Plataformas</th><th>Licenca</th></tr></thead>
+            <tbody>
+              <tr><td>Qt6</td><td>Apps completas, mobile/desktop/WASM</td><td>Win/Mac/Linux/iOS/Android/Browser</td><td>LGPL3/Commercial</td></tr>
+              <tr><td>Dear ImGui</td><td>Ferramentas internas, debug, editores de engine</td><td>Qualquer com backend (SDL2/GLFW/Vulkan/D3D)</td><td>MIT</td></tr>
+              <tr><td>wxWidgets</td><td>UIs nativas sem look customizado</td><td>Win/Mac/Linux/GTK</td><td>wxWindows (MIT-like)</td></tr>
+              <tr><td>FLTK</td><td>Apps ultraleves (&lt;1MB), sistemas embarcados</td><td>Win/Mac/Linux</td><td>LGPL</td></tr>
+              <tr><td>Nuklear</td><td>Immediate-mode single-header, sem deps</td><td>Qualquer</td><td>Public domain</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>QT GROUP. <strong>Qt 6 Documentation</strong>. Disponível em: &lt;https://doc.qt.io/qt-6&gt;. Acesso em: 2025.</li>
+            <li>CORNUT, O. <strong>Dear ImGui: Bloat-free Graphical User Interface</strong>. Disponível em: &lt;https://github.com/ocornut/imgui&gt;. Acesso em: 2025.</li>
+            <li>WXWIDGETS TEAM. <strong>wxWidgets 3.2 Reference Manual</strong>. Disponível em: &lt;https://docs.wxwidgets.org&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Embedded e IoT</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Jogos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Dear ImGui nao e para usuarios finais — e a ferramenta certa para criar editores, debuggers e profilers dentro do proprio jogo ou aplicativo, com latencia minima e sem dependencias externas.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

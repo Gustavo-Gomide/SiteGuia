@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir e Banco de Dados: Ecto completo, migrations, queries avançadas, transações, prevenção de N+1, raw SQL e multi-tenant com prefixos de schema." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir e Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Banco de Dados</h1>
+          <p>Ecto é a biblioteca de acesso a dados do ecossistema Elixir: não é um ORM clássico, mas um <strong>toolkit composável</strong> de queries, changesets e migrations. A separação entre schema (mapeamento), changeset (validação) e Repo (execução) permite testar cada camada isoladamente e evitar uma classe inteira de bugs existentes em ORMs convencionais.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Ecto, os dados <strong>nunca são salvos implicitamente</strong>. Todo write passa explicitamente por <code>Repo.insert/update/delete</code>. Valide antes com changeset, compose com <code>Multi</code>, execute com Repo — tudo auditável e reversível.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="migrations">Migrations — Controle de Schema</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">mix ecto.gen.migration e estrutura completa</div>
+          <pre class="example"><span class="com"># Criar migration</span>
+$ mix ecto.gen.migration cria_tabela_usuarios
+$ mix ecto.gen.migration adiciona_indice_email
+
+<span class="com"># priv/repo/migrations/20240101_cria_tabela_usuarios.exs</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.Repo.Migrations.CriaTabelaUsuarios</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Ecto.Migration</span>
+
+  <span class="kw">def</span> <span class="fn">change</span> <span class="kw">do</span>
+    <span class="fn">create</span> table(<span class="at">:usuarios</span>, primary_key: false) <span class="kw">do</span>
+      add <span class="at">:id</span>, <span class="at">:binary_id</span>, primary_key: true, default: fragment(<span class="str">"gen_random_uuid()"</span>)
+      add <span class="at">:nome</span>, <span class="at">:string</span>, null: false
+      add <span class="at">:email</span>, <span class="at">:string</span>, null: false
+      add <span class="at">:senha_hash</span>, <span class="at">:string</span>, null: false
+      add <span class="at">:role</span>, <span class="at">:string</span>, default: <span class="str">"user"</span>
+      add <span class="at">:ativo</span>, <span class="at">:boolean</span>, default: true
+      add <span class="at">:ultimo_login</span>, <span class="at">:utc_datetime</span>
+      timestamps(type: <span class="at">:utc_datetime</span>)
+    <span class="kw">end</span>
+
+    create unique_index(<span class="at">:usuarios</span>, [<span class="at">:email</span>])
+    create index(<span class="at">:usuarios</span>, [<span class="at">:role</span>, <span class="at">:ativo</span>])
+
+    <span class="com"># Migration de constraint com check</span>
+    create constraint(<span class="at">:usuarios</span>, <span class="at">:role_valido</span>,
+      check: <span class="str">"role IN ('admin', 'user', 'moderador')"</span>)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Migration com alter_table (reversível)</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.Repo.Migrations.AdicionaCamposBio</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Ecto.Migration</span>
+
+  <span class="kw">def</span> <span class="fn">up</span> <span class="kw">do</span>
+    alter table(<span class="at">:usuarios</span>) <span class="kw">do</span>
+      add <span class="at">:bio</span>, <span class="at">:text</span>
+      add <span class="at">:avatar_url</span>, <span class="at">:string</span>
+      modify <span class="at">:role</span>, <span class="at">:string</span>, from: {<span class="at">:string</span>, null: true}, null: false
+    <span class="kw">end</span>
+    drop constraint(<span class="at">:usuarios</span>, <span class="at">:role_valido</span>)
+    create constraint(<span class="at">:usuarios</span>, <span class="at">:role_valido</span>,
+      check: <span class="str">"role IN ('admin', 'user', 'moderador', 'guest')"</span>)
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">down</span> <span class="kw">do</span>
+    alter table(<span class="at">:usuarios</span>) <span class="kw">do</span>
+      remove <span class="at">:bio</span>
+      remove <span class="at">:avatar_url</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="schemas">Schemas e Changesets</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Schema com associações e changesets para create/update</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MeuApp.Contas.Usuario</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Ecto.Schema</span>
+  import <span class="tp">Ecto.Changeset</span>
+
+  <span class="at">@primary_key</span> {<span class="at">:id</span>, <span class="at">:binary_id</span>, autogenerate: true}
+  <span class="at">@foreign_key_type</span> <span class="at">:binary_id</span>
+
+  schema <span class="str">"usuarios"</span> <span class="kw">do</span>
+    field <span class="at">:nome</span>, <span class="at">:string</span>
+    field <span class="at">:email</span>, <span class="at">:string</span>
+    field <span class="at">:senha</span>, <span class="at">:string</span>, virtual: true  <span class="com"># não persiste</span>
+    field <span class="at">:senha_hash</span>, <span class="at">:string</span>
+    field <span class="at">:role</span>, <span class="at">:string</span>, default: <span class="str">"user"</span>
+    has_many <span class="at">:posts</span>, <span class="tp">MeuApp.Blog.Post</span>, on_delete: <span class="at">:delete_all</span>
+    has_one <span class="at">:perfil</span>, <span class="tp">MeuApp.Contas.Perfil</span>
+    timestamps(type: <span class="at">:utc_datetime</span>)
+  <span class="kw">end</span>
+
+  <span class="at">@permitidos_create</span> ~w(nome email senha role)a
+  <span class="at">@obrigatorios</span> ~w(nome email senha)a
+
+  <span class="kw">def</span> <span class="fn">changeset_create</span>(usuario, attrs) <span class="kw">do</span>
+    usuario
+    |&gt; cast(attrs, <span class="at">@permitidos_create</span>)
+    |&gt; validate_required(<span class="at">@obrigatorios</span>)
+    |&gt; validate_length(<span class="at">:nome</span>, min: <span class="num">2</span>, max: <span class="num">100</span>)
+    |&gt; validate_format(<span class="at">:email</span>, ~r/^[^\s]+@[^\s]+\.[^\s]+$/,
+        message: <span class="str">"formato inválido de email"</span>)
+    |&gt; validate_length(<span class="at">:senha</span>, min: <span class="num">8</span>)
+    |&gt; validate_inclusion(<span class="at">:role</span>, ~w(admin user moderador guest))
+    |&gt; unique_constraint(<span class="at">:email</span>)
+    |&gt; <span class="fn">hash_senha</span>()
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">changeset_update</span>(usuario, attrs) <span class="kw">do</span>
+    usuario
+    |&gt; cast(attrs, ~w(nome bio avatar_url)a)
+    |&gt; validate_required(~w(nome)a)
+    |&gt; validate_length(<span class="at">:nome</span>, min: <span class="num">2</span>, max: <span class="num">100</span>)
+  <span class="kw">end</span>
+
+  defp <span class="fn">hash_senha</span>(changeset) <span class="kw">do</span>
+    <span class="kw">case</span> changeset <span class="kw">do</span>
+      %<span class="tp">Ecto.Changeset</span>{valid?: true, changes: %{senha: senha}} ->
+        <span class="fn">put_change</span>(changeset, <span class="at">:senha_hash</span>, <span class="tp">Bcrypt</span>.<span class="fn">hash_pwd_salt</span>(senha))
+      _ -> changeset
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="queries">Queries Composíveis e Prevenção de N+1</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ecto.Query — composição, preload e agregações</div>
+          <pre class="example"><span class="kw">import</span> <span class="tp">Ecto.Query</span>
+
+<span class="com"># Query base reutilizável</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.Blog.PostQuery</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">base</span>, <span class="kw">do</span>: from(p in <span class="tp">Post</span>, where: p.publicado == true)
+  <span class="kw">def</span> <span class="fn">por_autor</span>(q, id), <span class="kw">do</span>: where(q, [p], p.usuario_id == ^id)
+  <span class="kw">def</span> <span class="fn">recentes</span>(q, dias), <span class="kw">do</span>: where(q, [p], p.inserted_at > ago(^dias, <span class="str">"day"</span>))
+  <span class="kw">def</span> <span class="fn">com_comentarios</span>(q), <span class="kw">do</span>: preload(q, [p], <span class="at">:comentarios</span>)
+<span class="kw">end</span>
+
+<span class="com"># Compondo a query dinamicamente</span>
+posts = <span class="tp">PostQuery</span>.<span class="fn">base</span>()
+        |&gt; <span class="tp">PostQuery</span>.<span class="fn">por_autor</span>(user_id)
+        |&gt; <span class="tp">PostQuery</span>.<span class="fn">recentes</span>(<span class="num">30</span>)
+        |&gt; <span class="tp">PostQuery</span>.<span class="fn">com_comentarios</span>()
+        |&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()
+
+<span class="com"># N+1: ERRADO — cada post gera 1 query para autor</span>
+posts = <span class="tp">Repo</span>.<span class="fn">all</span>(<span class="tp">Post</span>)
+<span class="tp">Enum</span>.<span class="fn">each</span>(posts, fn p -> <span class="tp">IO</span>.<span class="fn">inspect</span>(p.usuario.nome) <span class="kw">end</span>)  <span class="com"># N queries! BUG!</span>
+
+<span class="com"># N+1: CORRETO — preload em 1 query JOIN</span>
+posts = <span class="tp">Post</span> |&gt; preload([<span class="at">:usuario</span>, comentarios: <span class="at">:autor</span>]) |&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()
+
+<span class="com"># Preload condicional com query customizada</span>
+posts = <span class="tp">Repo</span>.<span class="fn">preload</span>(posts,
+  comentarios: from(c in <span class="tp">Comentario</span>, order_by: [desc: c.inserted_at], limit: <span class="num">5</span>))
+
+<span class="com"># JOIN manual + select customizado</span>
+from(u in <span class="tp">Usuario</span>,
+  join: p in assoc(u, <span class="at">:posts</span>),
+  group_by: u.id,
+  select: %{usuario: u, total_posts: count(p.id), views: sum(p.views)})
+|&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()
+
+<span class="com"># Subquery</span>
+posts_populares = from(p in <span class="tp">Post</span>, where: p.views > <span class="num">1000</span>, select: p.usuario_id)
+from(u in <span class="tp">Usuario</span>, where: u.id in subquery(posts_populares)) |&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transactions">Transações com Ecto.Multi</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Multi — operações atômicas composíveis</div>
+          <pre class="example"><span class="kw">alias</span> <span class="tp">Ecto.Multi</span>
+
+<span class="kw">def</span> <span class="fn">transferir_creditos</span>(de_id, para_id, valor) <span class="kw">do</span>
+  <span class="tp">Multi</span>.<span class="fn">new</span>()
+  |&gt; <span class="tp">Multi</span>.<span class="fn">run</span>(<span class="at">:de</span>, fn repo, _ ->
+    <span class="kw">case</span> repo.<span class="fn">get</span>(<span class="tp">Usuario</span>, de_id) <span class="kw">do</span>
+      nil -> {<span class="at">:error</span>, <span class="at">:usuario_nao_encontrado</span>}
+      u <span class="kw">when</span> u.creditos < valor -> {<span class="at">:error</span>, <span class="at">:saldo_insuficiente</span>}
+      u -> {<span class="at">:ok</span>, u}
+    <span class="kw">end</span>
+  end)
+  |&gt; <span class="tp">Multi</span>.<span class="fn">run</span>(<span class="at">:para</span>, fn repo, _ ->
+    <span class="kw">case</span> repo.<span class="fn">get</span>(<span class="tp">Usuario</span>, para_id) <span class="kw">do</span>
+      nil -> {<span class="at">:error</span>, <span class="at">:destinatario_nao_encontrado</span>}
+      u -> {<span class="at">:ok</span>, u}
+    <span class="kw">end</span>
+  end)
+  |&gt; <span class="tp">Multi</span>.<span class="fn">update</span>(<span class="at">:debitar</span>, fn %{de: u} ->
+    <span class="fn">change</span>(u, creditos: u.creditos - valor)
+  end)
+  |&gt; <span class="tp">Multi</span>.<span class="fn">update</span>(<span class="at">:creditar</span>, fn %{para: u} ->
+    <span class="fn">change</span>(u, creditos: u.creditos + valor)
+  end)
+  |&gt; <span class="tp">Multi</span>.<span class="fn">insert</span>(<span class="at">:historico</span>, fn %{de: de, para: para} ->
+    <span class="tp">Transferencia</span>.<span class="fn">changeset</span>(%<span class="tp">Transferencia</span>{},
+      %{de_id: de.id, para_id: para.id, valor: valor})
+  end)
+  |&gt; <span class="tp">Repo</span>.<span class="fn">transaction</span>()
+  |&gt; <span class="kw">case</span> <span class="kw">do</span>
+    {<span class="at">:ok</span>, %{historico: h}} -> {<span class="at">:ok</span>, h}
+    {<span class="at">:error</span>, _op, reason, _changes} -> {<span class="at">:error</span>, reason}
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="raw-sql">Raw SQL e Multi-tenant</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Repo.query!/2 e prefixos de schema</div>
+          <pre class="example"><span class="com"># Raw SQL com parâmetros seguros (sem interpolação)</span>
+{<span class="at">:ok</span>, %{rows: rows}} = <span class="tp">Repo</span>.<span class="fn">query</span>(
+  <span class="str">"SELECT id, nome, SUM(views) FROM posts GROUP BY 1,2 HAVING SUM(views) > $1"</span>,
+  [<span class="num">1000</span>]
+)
+
+<span class="com"># Mapear resultado manualmente</span>
+usuarios = <span class="tp">Repo</span>.<span class="fn">query!</span>(<span class="str">"SELECT id, email FROM usuarios WHERE ativo = $1"</span>, [true])
+|&gt; Map.<span class="fn">get</span>(<span class="at">:rows</span>)
+|&gt; <span class="tp">Enum</span>.<span class="fn">map</span>(fn [id, email] -> %{id: id, email: email} <span class="kw">end</span>)
+
+<span class="com"># Multi-tenant com prefixos de schema PostgreSQL</span>
+<span class="com"># Cada cliente tem seu schema: cliente_abc.usuarios, cliente_xyz.usuarios</span>
+opts_tenant = [prefix: <span class="str">"cliente_#{tenant_id}"</span>]
+
+<span class="tp">Repo</span>.<span class="fn">all</span>(<span class="tp">Usuario</span>, opts_tenant)
+<span class="tp">Repo</span>.<span class="fn">insert</span>(changeset, opts_tenant)
+
+<span class="com"># Criar schema de tenant em migration</span>
+<span class="kw">def</span> <span class="fn">criar_tenant</span>(tenant_id) <span class="kw">do</span>
+  <span class="tp">Repo</span>.<span class="fn">query!</span>(<span class="str">"CREATE SCHEMA IF NOT EXISTS \"cliente_#{tenant_id}\""</span>)
+  <span class="tp">Ecto.Migrator</span>.<span class="fn">run</span>(<span class="tp">Repo</span>, <span class="fn">migrations_path</span>(), <span class="at">:up</span>,
+    all: true, prefix: <span class="str">"cliente_#{tenant_id}"</span>)
+<span class="kw">end</span>
+
+<span class="com"># fragment para funções SQL nativas</span>
+from(p in <span class="tp">Post</span>,
+  where: fragment(<span class="str">"tsv @@ plainto_tsquery('portuguese', ?)"</span>, ^texto),
+  order_by: fragment(<span class="str">"ts_rank(tsv, plainto_tsquery('portuguese', ?)) DESC"</span>, ^texto))
+|&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Plataformatec. <strong>Ecto Documentation</strong>. Disponível em: &lt;https://hexdocs.pm/ecto/Ecto.html&gt;. Acesso em: 2026.</li>
+            <li>THOMAS, D. <strong>Programming Ecto</strong>. The Pragmatic Bookshelf, 2019.</li>
+            <li>PostgreSQL. <strong>Schema-based Multi-tenancy</strong>. Disponível em: &lt;https://www.postgresql.org/docs/current/ddl-schemas.html&gt;. Acesso em: 2026.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/ecto/Ecto.Schema.html" target="_blank" rel="noopener">HEXDOCS. Ecto.Schema.</a></li>
+            <li><a href="https://hexdocs.pm/ecto/Ecto.Changeset.html" target="_blank" rel="noopener">HEXDOCS. Ecto.Changeset.</a></li>
+            <li><a href="https://hexdocs.pm/ecto/Ecto.Multi.html" target="_blank" rel="noopener">HEXDOCS. Ecto.Multi.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecto no contexto de frameworks</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <code>Ecto.Multi</code> não apenas agrupa operações em uma transação — ele <strong>acumula o resultado de cada passo</strong>, permitindo que operações subsequentes usem dados das anteriores. Se qualquer operação retornar <code>{:error, reason}</code>, toda a transação é revertida e o Multi retorna qual operação falhou — sem try/catch, sem surpresas.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

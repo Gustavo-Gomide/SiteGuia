@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly x86-64 (AMD64): registradores extendidos, System V ABI, instrucoes SIMD/AVX, syscalls Linux e exemplos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>x86-64 | Assembly | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="code"></span>
+          <div>
+            <h1 class="page-title">Assembly x86-64 (AMD64)</h1>
+            <p class="page-subtitle">64-bit, System V ABI, SIMD/AVX e syscalls — o assembly mais usado em desktops e servidores</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O x86-64 (AMD64) foi introduzido pela AMD em 2003 e é a extensão de 64 bits da ISA x86.
+          Adicionou 8 novos registradores de propósito geral (R8–R15), aumentou registradores
+          XMM de 8 para 16, e mudou a convenção de chamada: argumentos passam em registradores
+          (RDI, RSI, RDX, RCX, R8, R9) em vez da pilha.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SYSTEM V ABI ═══════════════════ -->
+      <section id="sysv-abi">
+        <h2 id="sysv-abi" class="section-title">System V AMD64 ABI (Linux/macOS)</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Papel</th><th>Registradores inteiros</th><th>Registradores FP</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Argumentos (1º ao 6º)</td><td>RDI, RSI, RDX, RCX, R8, R9</td><td>XMM0–XMM7</td></tr>
+              <tr><td>Valor de retorno</td><td>RAX (e RDX para 128-bit)</td><td>XMM0</td></tr>
+              <tr><td>Caller-saved (você salva)</td><td>RAX, RCX, RDX, RSI, RDI, R8–R11</td><td>XMM0–XMM15</td></tr>
+              <tr><td>Callee-saved (função salva)</td><td>RBX, RBP, R12–R15</td><td>&mdash;</td></tr>
+              <tr><td>Stack pointer</td><td>RSP (alinhado a 16 bytes antes de CALL)</td><td>&mdash;</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — EXEMPLO ═══════════════════ -->
+      <section id="exemplo">
+        <h2 id="exemplo" class="section-title">Exemplo: strlen em x86-64</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 — strlen manual</div>
+          <pre class="code-block">; size_t my_strlen(const char* s)  ; s em RDI (System V ABI)
+my_strlen:
+    xor  rax, rax          ; rax = contador = 0
+.loop:
+    cmp  byte [rdi + rax], 0  ; verifica null terminator
+    je   .done
+    inc  rax
+    jmp  .loop
+.done:
+    ret                    ; retorna comprimento em RAX</pre>
+        </div>
+        <p class="note">Uma versão otimizada usaria <code class="code-inline">PCMPEQB</code> (SSE2) ou <code class="code-inline">VPCMPEQB</code> (AVX2) para comparar 16 ou 32 bytes por vez, acelerando até 32× em pipelines modernos.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — SYSCALLS ═══════════════════ -->
+      <section id="syscalls">
+        <h2 id="syscalls" class="section-title">Syscalls Linux x86-64</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Registrador</th><th>Papel na syscall</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>RAX (entrada)</td><td>Número da syscall (ex: 1 = write, 0 = read, 60 = exit)</td></tr>
+              <tr><td>RDI</td><td>1º argumento</td></tr>
+              <tr><td>RSI</td><td>2º argumento</td></tr>
+              <tr><td>RDX</td><td>3º argumento</td></tr>
+              <tr><td>R10, R8, R9</td><td>4º, 5º, 6º argumentos (differe do ABI de funções: R10 em vez de RCX)</td></tr>
+              <tr><td>RAX (saída)</td><td>Valor de retorno; negativo indica erro (-errno)</td></tr>
+              <tr><td>RCX, R11</td><td>Destruídos pelo kernel durante SYSCALL</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Compare com o assembly 32-bit em
+          <a href="/html/hardware_arquitetura/assembly/x86.html">x86 (32-bit)</a> e veja a arquitetura RISC alternativa em
+          <a href="/html/hardware_arquitetura/assembly/arm.html">Assembly ARM</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"x86-64 é CISC com alma RISC — o legado que se recusa a morrer."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

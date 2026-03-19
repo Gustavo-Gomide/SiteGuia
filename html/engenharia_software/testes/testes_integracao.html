@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Testes de integração: o que são, quando usar, estratégias com DB/serviços e como manter testes estáveis.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Testes de Integração | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Validar o que unitários não conseguem ver</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Testes de Integração</h1>
+          <p class="page-subtitle">Dependências reais, estratégias de ambiente e estabilidade</p>
+        </div>
+        <p class="intro-highlight">
+          Testes de integração verificam se o código funciona corretamente com dependências reais: banco de dados, filas, cache, filesystem e APIs externas.
+          Eles capturam problemas que testes unitários jamais veem — schema errado, query malformada, serialização incorreta, configuração faltando.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando e onde usar</h2>
+        <div class="section-divider"></div>
+        <p>Não é toda camada que precisa de teste de integração, mas estas são as que mais se beneficiam:</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Camada / Componente</th>
+                <th>O que validar</th>
+                <th>Estratégia recomendada</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Repositórios / ORM</td>
+                <td>Queries corretas, índices, migrations, constraints</td>
+                <td>DB real em container efêmero com seed pequeno</td>
+              </tr>
+              <tr>
+                <td>Serialização / Deserialização</td>
+                <td>JSON correto, campos opcionais, tipos, enums</td>
+                <td>Testes com payloads reais (não mocks)</td>
+              </tr>
+              <tr>
+                <td>Contratos de API</td>
+                <td>Status codes, schema de resposta, headers</td>
+                <td>Chamada real ao endpoint em ambiente de teste</td>
+              </tr>
+              <tr>
+                <td>Mensageria (fila / tópico)</td>
+                <td>Publicação, consumo, ack/nack, ordering</td>
+                <td>Broker em container; consumer real no teste</td>
+              </tr>
+              <tr>
+                <td>Cache</td>
+                <td>Expiração, invalidação, fallback ao DB</td>
+                <td>Redis/Memcached em container</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="setup" class="section-title">Setup seguro e reprodutível</h2>
+        <div class="section-divider"></div>
+        <p>Testes de integração instáveis são piores que inúteis — geram alertas falsos e desconfiança no CI. O segredo está no controle do ambiente:</p>
+        <div class="code-container">
+          <pre class="example"># Padrão recomendado: container + seed + cleanup
+
+# 1. Levante dependências com Testcontainers ou docker-compose
+db = PostgreSQLContainer("postgres:15")
+db.start()
+
+# 2. Aplique migração e seed determinístico
+run_migrations(db.connection_url())
+seed_test_data(db.connection_url(), fixtures="base_pequeno")
+
+# 3. Execute o teste com a dependência real
+resultado = UserRepository(db.connection_url()).find_active_users()
+assert len(resultado) == 3
+
+# 4. Cleanup após cada teste (ou use transação com rollback)
+db.stop()  # ou rollback() para isolar sem re-criar
+
+# Regras de ouro:
+#   - Dados pequenos e explícitos (não "carregar o dump de produção")
+#   - Cada teste isola seu estado (sem dependência de ordem de execução)
+#   - Versão da dependência explícita (não "latest")
+#   - Timeouts e retries controlados (não mascarar falhas reais)</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>Testes de integração mal escritos geram mais custo do que valor — e são abandonados rapidamente:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Ambiente compartilhado e mutável</h3>
+            <p>Estado compartilhado entre testes causa falhas dependentes da ordem de execução. Cada teste deve criar e limpar seus próprios dados.</p>
+          </div>
+          <div class="card">
+            <h3>Testes lentos sem necessidade</h3>
+            <p>Subir um banco para testar lógica de cálculo que seria coberta por unitário é desperdício. Use integração apenas para validar a dependência real.</p>
+          </div>
+          <div class="card">
+            <h3>Versão indefinida da dependência</h3>
+            <p>Usar <code>:latest</code> nos containers gera resultados diferentes em máquinas diferentes. Fixe versões explicitamente.</p>
+          </div>
+          <div class="card">
+            <h3>Substituir tudo por integração</h3>
+            <p>Resolver falta de confiança nos unitários com mais integração eleva o custo total da suíte sem ganho proporcional.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Para o nível acima da integração, veja
+          <a href="/html/engenharia_software/testes/testes_sistema.html">testes de sistema (E2E)</a>.
+          Para dublês de dependências, explore
+          <a href="/html/engenharia_software/testes/mocks_stubs.html">Mocks e Stubs</a>.
+        </p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Integração instável é ruído — não é sinal de qualidade."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+
+

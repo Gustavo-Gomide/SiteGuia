@@ -1,0 +1,151 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Observer: padrão comportamental que define dependência 1-para-N; observadores são notificados quando o sujeito muda." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Observer | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Inscritos notificados quando o estado muda</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Observer</h1>
+          <p class="page-subtitle">Comportamental — GoF — base de sistemas reativos e event-driven</p>
+        </div>
+        <p class="intro-highlight">Observer define uma relação um-para-muitos: quando o Subject muda de estado, todos os Observers inscritos são notificados automaticamente. É a base de event listeners, sistemas reativos (RxJS, MobX) e event-driven architecture.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Subject e Observers</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Subject</strong></td>
+                <td>Mantém lista de observers, notifica na mudança.</td>
+                <td>EventEmitter, Store, Sensor</td>
+              </tr>
+              <tr>
+                <td><strong>Observer</strong></td>
+                <td>Recebe <code>update()</code> quando o subject muda.</td>
+                <td>UI Component, Logger, Alert</td>
+              </tr>
+              <tr>
+                <td><strong>Evento/Dado</strong></td>
+                <td>Informação enviada na notificação (<em>push</em>) ou consultada (<em>pull</em>).</td>
+                <td>novo valor, tipo de evento</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — EventEmitter simples</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">type Listener&lt;T&gt; = (data: T) =&gt; void;
+
+class EventEmitter&lt;Events extends Record&lt;string, unknown&gt;&gt; {
+  private listeners: Partial&lt;Record&lt;keyof Events, Listener&lt;unknown&gt;[]&gt;&gt; = {};
+
+  on&lt;K extends keyof Events&gt;(evento: K, fn: Listener&lt;Events[K]&gt;): void {
+    if (!this.listeners[evento]) this.listeners[evento] = [];
+    (this.listeners[evento] as Listener&lt;unknown&gt;[]).push(fn as Listener&lt;unknown&gt;);
+  }
+
+  off&lt;K extends keyof Events&gt;(evento: K, fn: Listener&lt;Events[K]&gt;): void {
+    this.listeners[evento] = (this.listeners[evento] ?? []).filter(l => l !== fn) as Listener&lt;unknown&gt;[];
+  }
+
+  emit&lt;K extends keyof Events&gt;(evento: K, data: Events[K]): void {
+    (this.listeners[evento] ?? []).forEach(fn => fn(data));
+  }
+}
+
+// Uso tipado
+type PedidoEvents = { confirmado: { pedidoId: string }; cancelado: { pedidoId: string; motivo: string } };
+
+const emitter = new EventEmitter&lt;PedidoEvents&gt;();
+emitter.on('confirmado', ({ pedidoId }) => console.log(`Pedido ${pedidoId} confirmado`));
+emitter.emit('confirmado', { pedidoId: '123' });</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e cuidados</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Um objeto muda e outros precisam reagir sem acoplamento direto. Event listeners, state management, notificações.</p>
+          </div>
+          <div class="card">
+            <h3>Memory leak</h3>
+            <p>Observers que não fazem <code>off()</code> ficam retidos. Sempre cancele subscriptions quando o componente for destruído.</p>
+          </div>
+          <div class="card">
+            <h3>Ordem de notificação</h3>
+            <p>A ordem em que os observers são notificados geralmente não deve importar. Se importar, use Mediator.</p>
+          </div>
+          <div class="card">
+            <h3>Debugging</h3>
+            <p>Fluxos com muitos observers podem ser difíceis de rastrear. Use nomes de eventos descritivos e logging estruturado.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Observer é o padrão por trás de React state, RxJS Observables e event-driven architecture. Veja <a href="/html/engenharia_software/design/arquitetura/event_driven.html">Event-Driven Architecture</a> para a versão distribuída.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Observer inverte o controle: o producer não precisa saber quem vai reagir — quem quer reagir se inscreve."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

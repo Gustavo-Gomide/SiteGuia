@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Zig em banco de dados: SQLite, PostgreSQL, pooling, transacoes e desenho de persistencia previsivel." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Zig em Banco de Dados | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Zig em Banco de Dados</strong></p>
+			</div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="zig" aria-hidden="true"></span></div>
+					<h1>Persistencia com baixo overhead e contratos bem definidos</h1>
+					<p>SQLite, PostgreSQL e bibliotecas nativas entram em Zig por bindings enxutos e uso cuidadoso de recursos.</p>
+				</div>
+				<p class="intro-highlight">Trabalhar com banco de dados em Zig exige mais responsabilidade sobre conexoes, buffers e ownership, mas entrega uma pilha de persistencia com menos magia e mais previsibilidade.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="bindings" class="section-title">SQLite, PostgreSQL e a logica dos bindings</h2>
+				<p>O caminho mais comum em Zig e integrar bibliotecas nativas ja maduras. SQLite e uma escolha natural para persistencia local ou embarcada; PostgreSQL entra melhor em servicos de rede e sistemas transacionais maiores. Em ambos os casos, o programador precisa entender nao apenas a query, mas tambem o ciclo de vida da conexao e dos buffers associados.</p>
+				<p>Essa proximidade pode parecer mais manual do que em ORMs convencionais, mas tambem evita uma camada de comportamento implicito. Em sistemas onde latencia, observabilidade e consistencia importam, esse controle compensa.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="transacoes-pooling" class="section-title">Pooling, transacoes e tratamento de falhas</h2>
+				<p>Quando o acesso ao banco acontece em um servidor, pooling de conexoes passa a ser tema arquitetural. A decisao nao e apenas "quantas conexoes abrir", mas tambem quem as gerencia, quando sao recicladas e como o sistema reage a falhas de rede ou lock contention.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">
+						<span>Zig</span>
+						<span>Esqueleto de operacao transacional</span>
+					</div>
+					<pre class="example"><code><span class="kw">const</span> std = @import(<span class="str">"std"</span>);
+
+<span class="kw">fn</span> <span class="fn">salvarPedido</span>(db: anytype) !<span class="kw">void</span> {
+		<span class="kw">try</span> db.exec(<span class="str">"BEGIN"</span>);
+		<span class="kw">errdefer</span> db.exec(<span class="str">"ROLLBACK"</span>) <span class="kw">catch</span> {};
+
+		<span class="kw">try</span> db.exec(<span class="str">"INSERT INTO pedidos VALUES (1, 'aberto')"</span>);
+		<span class="kw">try</span> db.exec(<span class="str">"COMMIT"</span>);
+		<span class="com">// Em producao, parametros e erros devem ser tipados com mais rigor</span>
+}</code></pre>
+				</div>
+				<p>Observe o uso de <strong>errdefer</strong>: se algo falhar apos o inicio da transacao, o rollback ainda acontece. Esse estilo combina bem com recursos escopados e falhas explicitamente modeladas.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="casos-de-uso" class="section-title">Quando Zig faz sentido na camada de dados</h2>
+				<div class="grid grid--auto">
+					<div class="card">
+						<h3>Faz sentido</h3>
+						<p>Servicos de alto desempenho, persistencia local embutida, sistemas edge, gateways e workloads onde FFI com engines nativas ja e parte do problema.</p>
+					</div>
+					<div class="card">
+						<h3>Menos indicado</h3>
+						<p>Produtos que dependem fortemente de ORMs ricos, migrations sofisticadas e ecossistema corporativo muito padronizado.</p>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="avancado" class="section-title">Mapeamento de dados, blobs e desempenho</h2>
+				<p>Em cenarios avancados, Zig se destaca ao tratar blobs binarios, buffers de serializacao, compressao e formatos proprietarios sem atravessar camadas pesadas. Tambem facilita encapsular APIs C existentes do banco ou do driver com custo pequeno de adaptacao.</p>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> O perigo mais comum nao e a query em si, e sim ownership mal desenhado entre resultados, buffers temporarios e estruturas da aplicacao. Se os limites nao estiverem claros, bugs de lifetime aparecem rapido.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<ul>
+					<li>SQLite. <a href="https://www.sqlite.org/docs.html" target="_blank" rel="noopener">Documentacao oficial do SQLite</a>.</li>
+					<li>PostgreSQL Global Development Group. <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">Documentacao oficial do PostgreSQL</a>.</li>
+					<li>Karl Seguin. <a href="https://github.com/karlseguin/pg.zig" target="_blank" rel="noopener">pg.zig</a>.</li>
+					<li>vrischmann. <a href="https://github.com/vrischmann/zig-sqlite" target="_blank" rel="noopener">zig-sqlite</a>.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><span data-svg="estrela" aria-hidden="true"></span> Persistencia em Zig vale a pena quando o desenho da camada de dados precisa ser tao auditavel quanto o resto do sistema.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/web.html">Integrar banco com APIs web</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/projetos_boas_praticas.html">Boas praticas de arquitetura</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/dados_ia.html">Pipelines de dados e inferencia</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

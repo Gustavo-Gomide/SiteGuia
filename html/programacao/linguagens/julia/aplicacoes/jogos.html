@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Jogos com Julia: engines e bibliotecas, game loop, física simples, visualização e prototipagem." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Julia — Jogos | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Jogos</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+					<h1>Julia — Desenvolvimento de Jogos</h1>
+					<p>Julia não é o stack mais comum para jogos comerciais AAA, mas é uma opção relevante para prototipagem de mecânicas, simulações físicas, AI de gameplay e ferramentas internas de geração procedural.</p>
+				</div>
+				<p class="intro-highlight">O valor de Julia em games aparece quando o jogo depende fortemente de matemática, simulação e otimização. Nesse cenário, linguagem e motor analítico podem ser a mesma coisa.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="loop">Game Loop e Estado</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Estrutura clássica update/render em Julia</div>
+					<pre class="example">mutable struct Player
+		x::Float64
+		y::Float64
+		vx::Float64
+		vy::Float64
+end
+
+mutable struct GameState
+		player::Player
+		gravity::Float64
+		dt::Float64
+end
+
+function update!(s::GameState, input)
+		if input == :left
+				s.player.vx = -120.0
+		elseif input == :right
+				s.player.vx = 120.0
+		else
+				s.player.vx = 0.0
+		end
+
+		s.player.vy += s.gravity * s.dt
+		s.player.x += s.player.vx * s.dt
+		s.player.y += s.player.vy * s.dt
+
+		if s.player.y &gt; 0.0
+				s.player.y = 0.0
+				s.player.vy = 0.0
+		end
+end
+
+function render(s::GameState)
+		println("Player em ($(round(s.player.x, digits=2)), $(round(s.player.y, digits=2)))")
+end
+
+<span class="com"># Loop simplificado</span>
+estado = GameState(Player(0.0, 0.0, 0.0, 0.0), 980.0, 1 / 60)
+for frame in 1:120
+		update!(estado, frame % 40 &lt; 20 ? :right : :left)
+		render(estado)
+end</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="bibliotecas">Bibliotecas e Ferramentas</h2>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Ferramenta</th><th>Foco</th><th>Uso</th></tr></thead>
+						<tbody>
+							<tr><td>GameZero.jl</td><td>2D educacional</td><td>Jogos simples, aprendizado e protótipos</td></tr>
+							<tr><td>SDL2.jl</td><td>Binding baixo nível</td><td>Input, janela, áudio e renderização manual</td></tr>
+							<tr><td>GLMakie</td><td>Renderização acelerada</td><td>Visualização 2D/3D com interação</td></tr>
+							<tr><td>Julia + Godot (interop)</td><td>Ferramentas e lógica auxiliar</td><td>Pipelines híbridos com engine consolidada</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Exemplo com GameZero.jl (conceitual)</div>
+					<pre class="example">using GameZero
+
+player = Rect(100, 100, 32, 32)
+vx = 0
+
+function update(g)
+		global vx
+		if keyboard.LEFT
+				vx = -4
+		elseif keyboard.RIGHT
+				vx = 4
+		else
+				vx = 0
+		end
+		player.x += vx
+end
+
+function draw(g)
+		clear()
+		draw(player, color = "deepskyblue")
+end
+
+go()
+
+<span class="com"># API exata pode variar por versão, mas o padrão update/draw permanece.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="ia-jogos">IA e Simulação para Gameplay</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Árvores de decisão e ajuste numérico de comportamento</div>
+					<pre class="example">using Statistics
+
+struct NPC
+		hp::Float64
+		distancia::Float64
+		agressividade::Float64
+end
+
+function decidir_acao(n::NPC)
+		if n.hp &lt; 20
+				return :fugir
+		elseif n.distancia &lt; 5 &amp;&amp; n.agressividade &gt; 0.7
+				return :atacar
+		elseif n.distancia &lt; 12
+				return :aproximar
+		else
+				return :patrulhar
+		end
+end
+
+npcs = [
+		NPC(80, 3, 0.9),
+		NPC(15, 2, 0.4),
+		NPC(50, 20, 0.2),
+]
+
+acoes = map(decidir_acao, npcs)
+println(acoes)
+
+<span class="com"># Julia facilita tuning de parâmetros via otimização/estatística.</span></pre>
+				</div>
+				<div class="logic-grid">
+					<div class="panel panel--positive">
+						<p class="panel-title">Onde Julia ajuda muito</p>
+						<ul>
+							<li>Prototipagem rápida de mecânicas e física</li>
+							<li>Geração procedural baseada em algoritmos</li>
+							<li>Ferramentas de balanceamento e telemetria</li>
+							<li>Simulações para AI de NPC e sistemas econômicos</li>
+						</ul>
+					</div>
+					<div class="panel panel--negative">
+						<p class="panel-title">Limites atuais</p>
+						<ul>
+							<li>Ecossistema de engines menor que C#/C++</li>
+							<li>Poucos pipelines comerciais prontos para Julia</li>
+							<li>Integração multiplataforma exige mais engenharia própria</li>
+						</ul>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>GAMEZERO.JL. <strong>GameZero Documentation</strong>. Disponível em: &lt;https://github.com/aviks/GameZero.jl&gt;. Acesso em: 2026.</li>
+						<li>SDL2.JL. <strong>Bindings for SDL2</strong>. Disponível em: &lt;https://github.com/JuliaMultimedia/SimpleDirectMediaLayer.jl&gt;. Acesso em: 2026.</li>
+						<li>GREGORY, Jason. <strong>Game Engine Architecture</strong>. 3. ed. CRC Press, 2018.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI Desktop com Julia</a></li>
+					<li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Julia</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Para jogos comerciais de grande escala, Julia ainda é nicho. Para <strong>ferramentas de gameplay, simulação e pesquisa</strong>, ela pode acelerar muito o ciclo de experimento sem sacrificar desempenho.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

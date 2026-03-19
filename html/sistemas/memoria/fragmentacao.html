@@ -1,0 +1,204 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fragmentação interna e externa: causas, impacto no desempenho, compactação, slab allocator e estratégias para minimizar a fragmentação em SOs modernos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fragmentação de Memória | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Fragmentação de Memória</h1>
+            <p class="page-subtitle">Como a memória disponível torna-se inutilizável — causas, consequências e soluções</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Fragmentação desperdiça memória disponível tornando-a inacessível. Há dois tipos fundamentais: <strong>fragmentação externa</strong>, onde existem blocos livres suficientes no total mas nenhum bloco contíguo é grande o suficiente para atender uma requisição; e <strong>fragmentação interna</strong>, onde espaço é desperdiçado dentro de uma alocação porque o bloco fornecido é maior que o necessário.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="interna-vs-externa">
+        <h2>Fragmentação Interna vs Externa</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Critério</th>
+                <th>Fragmentação Interna</th>
+                <th>Fragmentação Externa</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Definição</td>
+                <td>Espaço desperdiçado dentro de um bloco alocado</td>
+                <td>Espaço livre total suficiente mas não contíguo para atender a requisição</td>
+              </tr>
+              <tr>
+                <td>Causa Principal</td>
+                <td>Alocação em blocos de tamanho fixo ou alinhados por potência de 2</td>
+                <td>Alocações e liberações frequentes de tamanhos variáveis deixam "buracos"</td>
+              </tr>
+              <tr>
+                <td>Exemplo Concreto</td>
+                <td>Buddy system: requisição de 33 KB aloca bloco de 64 KB — 31 KB perdidos</td>
+                <td>Alocação variável: livre 10+10+10 KB = 30 KB total, mas requisição de 20 KB falha</td>
+              </tr>
+              <tr>
+                <td>Como Medir</td>
+                <td>(bloco_alocado - bytes_requisitados) / bloco_alocado</td>
+                <td>Maior bloco livre / total de memória livre</td>
+              </tr>
+              <tr>
+                <td>Impacto</td>
+                <td>Desperdício previsível e limitado (no máximo 50% no buddy system)</td>
+                <td>Pode tornar sistema incapaz de alocar memória mesmo com RAM "livre"</td>
+              </tr>
+              <tr>
+                <td>Solução Principal</td>
+                <td>Slab/SLUB allocator para objetos de tamanho fixo</td>
+                <td>Paginação (elimina fragmentação externa), compactação (custosa)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="compactacao">
+        <h2>Compactação</h2>
+        <p>Compactação resolve a fragmentação externa realocando processos ou blocos na memória para reunir os espaços livres dispersos em um único bloco contíguo. É a abordagem mais direta — mas de custo altíssimo.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Custo da Compactação</h3>
+            <p>Copiar gigabytes de dados na RAM leva dezenas de milissegundos a segundos. Durante a compactação, todos os endereços de ponteiros devem ser atualizados — impossível em C/C++ com ponteiros diretos sem reescrever todo o código.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Compactação em GC</h3>
+            <p>Java (G1GC, ZGC), Go, e .NET usam compactação durante a coleta de lixo. O GC controla todos os ponteiros, podendo atualizá-los atomicamente durante a compactação. ZGC compacta concorrentemente sem pausar a aplicação.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Compactação em Discos</h3>
+            <p>Sistemas de arquivos como ext4, Btrfs, e ZFS enfrentam fragmentação em disco. O <code>e4defrag</code> compacta arquivos fragmentados inativos. SSDs sofrem menos com fragmentação mas beneficiam do TRIM para reorganização interna.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Por Que Paginação Resolve</h3>
+            <p>Paginação elimina fragmentação externa para alocações baseadas em páginas: não importa onde os frames estão na RAM física — o mapeamento virtual cria a ilusão de contiguidade. Sobra apenas a fragmentação interna da última página.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="slab-allocator">
+        <h2>Slab Allocator</h2>
+        <p>O Slab Allocator é a solução definitiva para fragmentação de objetos do kernel. Em vez de alocar e liberar individualmente cada inode, PCB (task_struct) ou dentry, o slab mantém <strong>caches de objetos pré-alocados e pré-inicializados</strong>.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Princípio de Funcionamento</h3>
+            <p>Um slab é um conjunto de uma ou mais páginas contendo objetos do mesmo tipo. Objetos liberados voltam ao cache em estado já construído (sem zerar memória). Próxima alocação é O(1) — sem inicialização, sem fragmentação.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Objetos Comuns no Kernel</h3>
+            <p>task_struct (PCB de cada processo), inode, dentry (cache de nomes de arquivos), socket, file, pipe — todos gerenciados pelo slab. Em um sistema com milhares de processos e arquivos, o benefício é enorme.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">SLUB — Padrão no Linux</h3>
+            <p>SLUB (Simplified SLUB) é o allocator padrão do Linux desde 2.6.23. Metadados inline no objeto, sem arrays separados de descritores. Mais simples, melhor debugging via <code>CONFIG_SLUB_DEBUG</code>. Detecta corrupção de objetos automaticamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">SLOB — Para Embarcados</h3>
+            <p>SLOB (Simple List Of Blocks) é a versão minimalista para sistemas com pouquíssima RAM (roteadores, microcontroladores). Menor footprint de código e memória às custas de performance — aceita mais fragmentação.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="monitoramento">
+        <h2>Monitoramento e Diagnóstico</h2>
+        <p>O Linux expõe informações detalhadas sobre fragmentação via <code>/proc</code>. Monitorar esses arquivos é essencial em sistemas de longa duração ou com alta alocação dinâmica:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/proc/buddyinfo — Fragmentação de Páginas por Ordem</div>
+          <pre class="code-block">
+$ cat /proc/buddyinfo
+Node 0, zone      DMA      1      0      1      0      2      1      1      0      1      1      3
+Node 0, zone   DMA32    759    572    440    243    115     34      6      2      2      1    208
+Node 0, zone  Normal   1122    847    612    348    180     72     28      8      3      2    156
+
+Interpretação das colunas — número de blocos livres para cada ordem:
+  Ordem 0 = 1  página  (4 KB)   → 1122 blocos livres na zona Normal
+  Ordem 1 = 2  páginas (8 KB)   → 847  blocos livres
+  Ordem 2 = 4  páginas (16 KB)  → 612  blocos livres
+  Ordem 3 = 8  páginas (32 KB)  → 348  blocos livres
+  ...
+  Ordem 10= 1024 páginas (4 MB) → 156  blocos livres
+
+Sistema saudável: bastantes blocos em ordens altas (5+)
+Sistema fragmentado: muitos blocos em ordem 0 e 1, poucos em ordens altas
+Sintoma: alocações de DMA ou huge pages falham mesmo com memória "livre"</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/proc/slabinfo — Uso do Slab Allocator</div>
+          <pre class="code-block">
+$ sudo cat /proc/slabinfo | head -20
+slabinfo - version: 2.1
+# name            &lt;active_objs&gt; &lt;num_objs&gt; &lt;objsize&gt; &lt;objperslab&gt; &lt;pagesperslab&gt;
+kmalloc-8k              24     24   8192    4    8
+kmalloc-4k             112    112   4096    8    8
+kmalloc-2k             512    512   2048   16    8
+kmalloc-1k            1024   1024   1024   32    8
+kmalloc-512           2048   2048    512   32    4
+task_struct             387    420   7424    4    8  ← PCBs dos processos
+mm_struct               387    416   1216   26    8  ← Estruturas de memória
+inode_cache           45321  45600    672   48    8  ← Inodes em cache
+dentry               187432 189600    192   42    2  ← Cache de nomes de arquivo
+ext4_inode_cache      24512  24576   1128   29    8
+sock_inode_cache        512    528    832   39    8
+
+Colunas:
+  active_objs  = objetos atualmente alocados
+  num_objs     = capacidade total do cache
+  objsize      = tamanho de cada objeto em bytes
+  objperslab   = quantos objetos cabem em um slab</pre>
+        </div>
+        <p>Quando o sistema está sob pressão de memória extrema, o kernel ativa o <strong>OOM Killer (Out-of-Memory Killer)</strong>. Ele pontua processos por uso de memória e sacrifica o processo com maior pontuação para liberar RAM. A pontuação pode ser ajustada por processo via <code>/proc/PID/oom_score_adj</code> (de -1000 a +1000).</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja como estratégias de alocação influenciam diretamente a fragmentação em <a href="/html/sistemas/memoria/alocacao.html">Alocação de Memória</a> e como a paginação elimina fragmentação externa em <a href="/html/sistemas/memoria/paginacao.html">Paginação</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Fragmentação é a entropia da memória — o estado para o qual todo sistema tende com o tempo, e contra o qual o alocador luta constantemente."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

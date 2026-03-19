@@ -1,0 +1,259 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Processos no Linux: ps, top, htop, nice, renice, kill, signals, /proc/PID, fork/exec no shell e monitoramento avançado com pidstat e perf." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Processos no Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Processos no Linux</h1>
+            <p class="page-subtitle">Ciclo de vida, monitoramento, sinais e controle de prioridade</p>
+          </div>
+        </div>
+        <p class="intro-highlight">No Linux, tudo é processo. Desde o primeiro programa executado pelo kernel (PID 1) até cada comando que você digita no terminal, o sistema operacional gerencia execução por meio de processos. Entender como listá-los, monitorá-los em tempo real, enviar sinais e controlar sua prioridade é habilidade essencial para administração de sistemas e debugging.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — LISTANDO PROCESSOS ═══════════════════ -->
+      <section id="listando-processos">
+        <h2>Listando Processos</h2>
+        <p>O comando <code>ps</code> (process status) exibe um instantâneo dos processos em execução. A combinação <code>ps aux</code> é a mais usada no dia a dia.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ps — exemplos de uso</div>
+          <pre class="code-block"># Todos os processos de todos os usuários com terminal virtual
+ps aux
+# USER       PID  %CPU  %MEM    VSZ   RSS  TTY   STAT  START   TIME  COMMAND
+# root         1   0.0   0.1  168656  9240  ?     Ss   jan01   0:12  /sbin/init
+
+# Formato personalizado: PID, PPID, estado, nome e comando completo
+ps -eo pid,ppid,stat,comm,cmd
+
+# Ordenar por uso de CPU (decrescente)
+ps aux --sort=-%cpu | head -20
+
+# Ordenar por uso de memória
+ps aux --sort=-%mem | head -20
+
+# Exibir hierarquia de processos em árvore
+pstree -p
+
+# Ver processos de um usuário específico
+ps -u www-data
+
+# Ver threads de um processo
+ps -eLf | grep nginx</pre>
+        </div>
+
+        <p>Entender as colunas é fundamental para interpretar a saída do <code>ps aux</code>:</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Coluna</th>
+                <th>Significado</th>
+                <th>Detalhe</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>USER</td><td>Proprietário do processo</td><td>UID efetivo que executa o processo</td></tr>
+              <tr><td>PID</td><td>Process ID</td><td>Identificador único; herdado pelo filho via fork()</td></tr>
+              <tr><td>%CPU</td><td>Uso de CPU</td><td>Média desde o início; pode ultrapassar 100% em multicore</td></tr>
+              <tr><td>%MEM</td><td>Uso de memória física</td><td>RSS dividido pela RAM total</td></tr>
+              <tr><td>VSZ</td><td>Virtual Size (KB)</td><td>Todo o espaco de endereço virtual reservado, incluindo mmap e bibliotecas</td></tr>
+              <tr><td>RSS</td><td>Resident Set Size (KB)</td><td>Paginas realmente na RAM; exclui swap e pages ainda nao carregadas</td></tr>
+              <tr><td>TTY</td><td>Terminal controlador</td><td>? = sem terminal (daemon)</td></tr>
+              <tr><td>STAT</td><td>Estado do processo</td><td>S=sleeping, R=running, Z=zombie, T=stopped, D=uninterruptible I/O</td></tr>
+              <tr><td>TIME</td><td>Tempo de CPU acumulado</td><td>Tempo total de CPU consumido desde o inicio</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p><strong>VSZ vs RSS vs SHR:</strong> VSZ e o total de espaco virtual reservado (inclui regioes nao carregadas); RSS e o que esta fisicamente na RAM; SHR e a parcela compartilhada com outros processos (bibliotecas dinamicas). Um processo com VSZ alto mas RSS baixo apenas reservou espaco — nao consumiu RAM de fato.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — TOP, HTOP ═══════════════════ -->
+      <section id="monitoramento-tempo-real">
+        <h2>top, htop e Monitoramento em Tempo Real</h2>
+        <p>Ferramentas interativas oferencem uma visao ao vivo dos processos, atualizando periodicamente as metricas de CPU, memoria e I/O.</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Ferramenta</th>
+                <th>Recursos exibidos</th>
+                <th>Interatividade</th>
+                <th>Instalacao</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>top</td><td>CPU, MEM, load average, processos</td><td>Basica (k=kill, r=renice, q=sair)</td><td>Incluso no procps-ng</td></tr>
+              <tr><td>htop</td><td>CPU por nucleo, mem, swap, uptime, arvore</td><td>Avancada com mouse, menus, filtros</td><td>apt install htop / dnf install htop</td></tr>
+              <tr><td>atop</td><td>CPU, mem, disco, rede, processos historicos</td><td>Media; permite rebobinar historico</td><td>apt install atop</td></tr>
+              <tr><td>glances</td><td>CPU, mem, disco, rede, containers, alertas</td><td>Web UI e API REST disponiveis</td><td>pip install glances</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Atalhos importantes no <strong>htop</strong>:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">F5 — Tree View</h3>
+            <p>Exibe a hierarquia pai/filho dos processos, equivalente ao <code>pstree</code> mas com metricas ao vivo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">F9 — Kill</h3>
+            <p>Abre um menu de sinais para enviar ao processo selecionado (SIGTERM, SIGKILL, etc.).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">F7 / F8 — Nice</h3>
+            <p>Diminui ou aumenta a prioridade nice do processo. F7 diminui (mais prioritario), F8 aumenta.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Barra de espaco — Filtro</h3>
+            <p>Filtra processos por nome em tempo real. Util para focar em um servico especifico em servidores movimentados.</p>
+          </div>
+        </div>
+
+        <p>Na cabecalho do htop, as colunas de processos incluem <strong>VIRT</strong> (virtual), <strong>RES</strong> (resident), <strong>SHR</strong> (shared), <strong>%CPU</strong>, <strong>%MEM</strong> e <strong>TIME+</strong> (tempo de CPU com resolucao de decimos de segundo).</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — SINAIS E KILL ═══════════════════ -->
+      <section id="sinais-kill">
+        <h2>Sinais e kill</h2>
+        <p>Sinais sao notificacoes assincronas enviadas a processos. O comando <code>kill</code> envia um sinal ao processo identificado pelo PID. Apesar do nome, nao e exclusivo para encerrar processos.</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Sinal</th>
+                <th>Numero</th>
+                <th>Capturavel?</th>
+                <th>Descricao</th>
+                <th>Uso comum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>SIGHUP</td><td>1</td><td>Sim</td><td>Hangup — terminal fechou ou pedido de reload</td><td>Recarregar configuracao de daemon sem reiniciar</td></tr>
+              <tr><td>SIGINT</td><td>2</td><td>Sim</td><td>Interrupt — Ctrl+C no terminal</td><td>Encerrar processo interativo</td></tr>
+              <tr><td>SIGQUIT</td><td>3</td><td>Sim</td><td>Quit — Ctrl+\ gera core dump</td><td>Diagnostico de travamento</td></tr>
+              <tr><td>SIGKILL</td><td>9</td><td>Nao</td><td>Kill incondicional pelo kernel</td><td>Forcado quando SIGTERM falha; nao permite limpeza</td></tr>
+              <tr><td>SIGTERM</td><td>15</td><td>Sim</td><td>Terminate — encerramento gracioso</td><td>Padrao de kill sem argumento</td></tr>
+              <tr><td>SIGSTOP</td><td>19</td><td>Nao</td><td>Suspende execucao (Ctrl+Z)</td><td>Pausar processo; retomar com SIGCONT</td></tr>
+              <tr><td>SIGCONT</td><td>18</td><td>Sim</td><td>Continua processo suspenso</td><td>Retomar processo pausado por SIGSTOP</td></tr>
+              <tr><td>SIGUSR1</td><td>10</td><td>Sim</td><td>Sinal definido pelo usuario</td><td>Logrotate usa para pedir reabertura de arquivos de log</td></tr>
+              <tr><td>SIGUSR2</td><td>12</td><td>Sim</td><td>Sinal definido pelo usuario</td><td>Nginx usa para atualizacao binaria a quente</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kill, killall, pkill — exemplos</div>
+          <pre class="code-block"># Enviar SIGTERM (gracioso) a um PID
+kill -SIGTERM 1234
+kill -15 1234
+kill 1234          # SIGTERM e o padrao
+
+# Forcado — nao pode ser ignorado
+kill -SIGKILL 1234
+kill -9 1234
+
+# Matar todos os processos com um determinado nome
+killall nginx
+killall -9 python3
+
+# Matar por padrao de nome (suporta regex)
+pkill -f "backup_script.py"
+pkill -u www-data
+
+# Listar sinais disponíveis
+kill -l
+
+# Matar janela grafica clicando nela
+xkill</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — NICE E PRIORIDADE ═══════════════════ -->
+      <section id="nice-prioridade">
+        <h2>nice, renice e Prioridade</h2>
+        <p>O valor <strong>nice</strong> vai de <strong>-20</strong> (prioridade maxima) a <strong>+19</strong> (prioridade minima). O valor padrao e 0. Apenas root pode definir valores negativos (aumentar prioridade acima do padrao).</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nice e renice — exemplos</div>
+          <pre class="code-block"># Iniciar processo com prioridade reduzida (mais amigavel ao sistema)
+nice -n 10 ./backup.sh
+
+# Iniciar com prioridade elevada (requer root)
+sudo nice -n -10 ./processo_critico.sh
+
+# Alterar prioridade de processo em execucao
+renice -n -5 -p 2345
+
+# Alterar prioridade de todos os processos de um usuario
+renice -n 5 -u www-data
+
+# Ver prioridade atual com ps
+ps -eo pid,ni,pri,comm | grep backup
+# PID  NI PRI COMMAND
+# 2345  10  10 backup.sh
+
+# Prioridade de tempo real (requer root)
+# SCHED_FIFO: nao preemptivel ate bloquear ou ceder
+chrt -f 50 ./processo_rt
+
+# SCHED_RR: round-robin de tempo real
+chrt -r 20 ./processo_rt
+
+# Ver politica de escalonamento de um processo
+chrt -p 2345</pre>
+        </div>
+
+        <p>A prioridade de escalonamento exibida pelo kernel (<code>PRI</code> no ps) relaciona-se ao nice mas inclui ajustes dinamicos. Para tarefas de tempo real (audio, controle industrial), use <code>chrt</code> com politicas <code>SCHED_FIFO</code> ou <code>SCHED_RR</code> que garantem preempcao deterministica.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Explore tambem <a href="/html/sistemas/linux/servicos_systemd.html">Servicos e systemd</a> para entender como processos sao gerenciados como units, e <a href="/html/sistemas/processos/estados_processo.html">Estados do Processo</a> para aprofundar o ciclo de vida completo.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"No Linux, entender processos e entender o proprio sistema — tudo o que roda e um processo com PID, pai e estado."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

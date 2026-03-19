@@ -1,0 +1,197 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="O PCB (Process Control Block): estrutura de dados que representa um processo no kernel — campos, uso no escalonamento e contexto de troca." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>PCB — Bloco de Controle de Processo | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">PCB — Bloco de Controle de Processo</h1>
+            <p class="page-subtitle">A estrutura de dados que representa um processo no kernel: identidade, estado, memória, arquivos e credenciais em um único registro.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O <strong>PCB (Process Control Block)</strong> é o "cartão de identidade" de um processo dentro do kernel. Sem ele, o escalonador não saberia preservar o estado de um processo ao tirá-lo da CPU, nem restaurá-lo ao colocá-lo de volta. Cada processo ativo no sistema possui exatamente um PCB — no Linux, implementado pela estrutura <code class="code-inline">task_struct</code>, que contém aproximadamente 700 campos.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CAMPOS ═══════════════════ -->
+      <section id="campos">
+        <h2>Campos do PCB</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Campo / Grupo</th><th>Conteúdo</th><th>Para que serve</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>PID / PPID</strong></td><td>Identificadores do processo e do pai</td><td>Referência única; base para relacionamento pai-filho</td></tr>
+              <tr><td><strong>Estado</strong></td><td>New, Ready, Running, Blocked, Zombie</td><td>Escalonador decide quem pode receber a CPU</td></tr>
+              <tr><td><strong>Program Counter</strong></td><td>Endereço da próxima instrução a executar</td><td>Retomar execução exatamente de onde parou</td></tr>
+              <tr><td><strong>Registradores de CPU</strong></td><td>Valores de RAX..R15, flags, segmentos (x86-64)</td><td>Salvo no context switch; restaurado no dispatch</td></tr>
+              <tr><td><strong>Ponteiros de pilha</strong></td><td>RSP (stack pointer), RBP (base pointer)</td><td>Delimitar o frame de chamada atual</td></tr>
+              <tr><td><strong>Prioridade / nice</strong></td><td>Valor de nice (-20..+19) e prioridade dinâmica</td><td>Critério de escalonamento pelo CFS</td></tr>
+              <tr><td><strong>Limites de tempo</strong></td><td>Quantum restante, vruntime acumulado</td><td>Controle de fairness do CFS</td></tr>
+              <tr><td><strong>Tabela de páginas</strong></td><td>Ponteiro para o descritor de memória (mm_struct)</td><td>Mapear endereços virtuais para físicos</td></tr>
+              <tr><td><strong>Tabela de FDs</strong></td><td>Array de ponteiros para file descriptors abertos</td><td>Cada processo acessa arquivos/sockets por índice</td></tr>
+              <tr><td><strong>Credenciais (cred)</strong></td><td>UID, GID, effective UID/GID, capabilities</td><td>Controle de acesso e permissões</td></tr>
+              <tr><td><strong>Threads</strong></td><td>Lista de task_struct das threads do grupo (tgid)</td><td>Agrupar threads de um mesmo processo</td></tr>
+              <tr><td><strong>Estatísticas</strong></td><td>Tempo de CPU (utime/stime), contadores de I/O</td><td>Relatórios de /proc, contabilidade de recursos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — CONTEXT SWITCH ═══════════════════ -->
+      <section id="context-switch">
+        <h2>Troca de Contexto (Context Switch)</h2>
+        <p>Quando o escalonador decide substituir o processo atual por outro, a CPU executa uma sequência precisa de passos para salvar e restaurar o estado:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pseudocode — sequência do context switch</div>
+          <pre class="code-block">/* Chamado pelo escalonador quando o quantum expira ou
+   o processo bloqueia voluntariamente */
+void context_switch(Process *atual, Process *proximo) {
+
+    /* 1. Salvar estado do processo atual no seu PCB */
+    atual-&gt;pc         = cpu.program_counter;
+    atual-&gt;registradores = cpu.registradores;   /* RAX..R15, flags */
+    atual-&gt;sp         = cpu.stack_pointer;
+    atual-&gt;estado     = PRONTO;  /* ou BLOQUEADO, se esperando I/O */
+
+    /* 2. Salvar ponteiro para tabela de páginas atual */
+    atual-&gt;mm         = cpu.cr3;  /* registrador CR3 no x86 */
+
+    /* 3. Carregar tabela de páginas do próximo processo → flush de TLB */
+    cpu.cr3           = proximo-&gt;mm;
+
+    /* 4. Restaurar estado do próximo processo */
+    cpu.program_counter = proximo-&gt;pc;
+    cpu.registradores   = proximo-&gt;registradores;
+    cpu.stack_pointer   = proximo-&gt;sp;
+    proximo-&gt;estado     = EXECUTANDO;
+
+    /* 5. Atualizar PCB do próximo com CPU atual */
+    proximo-&gt;cpu_id   = this_cpu_id();
+}
+
+/* Custo típico: 1–10 µs por troca
+   Fontes de overhead:
+     - Flush de TLB (Translation Lookaside Buffer)
+     - Cache pollution (dados do processo anterior no L1/L2)
+     - Execução das instruções de save/restore            */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — TASK_STRUCT ═══════════════════ -->
+      <section id="task-struct">
+        <h2>PCB no Linux: task_struct</h2>
+        <p>No Linux, o PCB é a estrutura <code class="code-inline">task_struct</code> definida em <code class="code-inline">include/linux/sched.h</code>. O trecho a seguir mostra os campos mais relevantes de forma simplificada:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — task_struct simplificada (Linux kernel)</div>
+          <pre class="code-block">struct task_struct {
+    /* Identificação */
+    pid_t              pid;       /* identificador único do processo/thread */
+    pid_t              tgid;      /* thread group ID = PID do processo principal */
+
+    /* Estado */
+    volatile long      state;     /* TASK_RUNNING, TASK_INTERRUPTIBLE, TASK_ZOMBIE … */
+
+    /* Memória */
+    struct mm_struct  *mm;        /* descritor do espaço de endereçamento virtual */
+    struct mm_struct  *active_mm; /* mm ativo (NULL para threads de kernel) */
+
+    /* Arquivos */
+    struct files_struct *files;   /* tabela de file descriptors abertos */
+    struct fs_struct    *fs;      /* contexto de filesystem (cwd, root) */
+
+    /* Credenciais */
+    const struct cred  *cred;     /* UID, GID, capabilities efetivos */
+
+    /* Escalonamento */
+    int                prio;      /* prioridade dinâmica */
+    int                static_prio;
+    u64                se.vruntime; /* virtual runtime para o CFS */
+
+    /* Sinais */
+    struct signal_struct *signal;
+    sigset_t           blocked;   /* máscara de sinais bloqueados */
+
+    /* Parentes */
+    struct task_struct *parent;   /* ponteiro para o processo pai */
+    struct list_head    children; /* lista de filhos */
+
+    /* Estatísticas */
+    u64                utime;    /* tempo de CPU em modo usuário */
+    u64                stime;    /* tempo de CPU em modo kernel */
+    /* ... ~700 campos no total ... */
+};</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — FILE DESCRIPTORS ═══════════════════ -->
+      <section id="fds">
+        <h2>File Descriptors e Tabela de Arquivos</h2>
+        <p>Cada processo possui uma tabela de file descriptors (FDs) — um array de índices inteiros. Os primeiros três são padrão:</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>FD</th><th>Nome simbólico</th><th>Destino padrão</th><th>Como redirecionar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>stdin</td><td>Terminal (teclado)</td><td><code class="code-inline">execve</code> + <code class="code-inline">dup2(fd, 0)</code></td></tr>
+              <tr><td>1</td><td>stdout</td><td>Terminal (tela)</td><td><code class="code-inline">dup2(fd, 1)</code> ou <code class="code-inline">&gt; arquivo</code> no shell</td></tr>
+              <tr><td>2</td><td>stderr</td><td>Terminal (tela)</td><td><code class="code-inline">dup2(fd, 2)</code> ou <code class="code-inline">2&gt; arquivo</code></td></tr>
+              <tr><td>3+</td><td>Livre</td><td>Qualquer arquivo, socket, pipe</td><td>Retornado por open(), socket(), pipe(), accept()</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Quando <code class="code-inline">fork()</code> é chamado, a tabela de FDs do filho é uma <strong>cópia</strong> da do pai — ambos apontam para as mesmas entradas na tabela global de arquivos abertos do kernel (struct file), com o contador de referências incrementado. Fechar um FD no filho não afeta o pai, mas ambos compartilham o mesmo offset de arquivo.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja como os estados do PCB direcionam o escalonador em
+          <a href="/html/sistemas/processos/estados_processo.html">Estados de Processo</a> e
+          <a href="/html/sistemas/processos/processos.html">Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O PCB é a diferença entre um programa e um processo — tudo que o kernel sabe sobre uma execução em andamento."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

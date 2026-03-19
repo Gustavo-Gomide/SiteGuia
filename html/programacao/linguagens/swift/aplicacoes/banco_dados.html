@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Swift com banco de dados usando Fluent, PostgreSQL e migrations no ecossistema Vapor." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Swift - Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Swift - Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="swift" aria-hidden="true"></span></div>
+          <h1>Swift com banco de dados</h1>
+          <p>Persistencia relacional com Fluent, PostgreSQL, modelagem tipada e migrations reproduziveis.</p>
+        </div>
+        <p class="intro-highlight">Em Swift servidor, acesso a dados nao precisa ser improvisado. O pacote Fluent oferece uma camada de modelos, queries e migracoes que organiza a evolucao do schema sem abandonar a clareza SQL nem o controle operacional.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Fluent e o papel do ORM</h2>
+        <p>Pense no banco de dados como o arquivo mestre do sistema. Um ORM nao substitui esse arquivo; ele age como um tradutor disciplinado entre tabelas e estruturas da linguagem. Em Swift, o <strong>Fluent</strong> cumpre esse papel com modelos, relacionamentos e query builder.</p>
+        <p>O ponto forte do Fluent esta em integrar <strong>schema versionado</strong>, conexoes configuradas por driver e uma API coerente com o resto do ecossistema Vapor. O ponto de atencao e o mesmo de qualquer ORM: entender quando gerar queries simples, quando usar eager loading e quando recorrer a SQL manual.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="postgresql">PostgreSQL como banco principal</h2>
+        <p>PostgreSQL e a combinacao mais comum com Swift servidor porque entrega consistencia ACID, tipos ricos, otima documentacao e ecossistema consolidado. Para APIs e backends transacionais, ele costuma ser a escolha padrao antes de considerar alternativas mais especializadas.</p>
+        <div class="panel">
+          <h3 class="panel-title">Por que a dupla funciona bem</h3>
+          <ul>
+            <li>Driver maduro para conexao com Vapor.</li>
+            <li>Boa compatibilidade com UUID, JSONB, datas e constraints.</li>
+            <li>Migrations reproduziveis facilitam CI, staging e rollback controlado.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="modelagem">Modelagem e queries com Fluent</h2>
+        <p>Modelos representam entidades persistentes. Propriedades mapeiam colunas; wrappers como <strong>@ID</strong>, <strong>@Field</strong> e <strong>@Parent</strong> descrevem o contrato entre codigo e tabela.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">swift - modelo Fluent com relacionamento e migration</div>
+          <pre class="example"><span class="kw">import</span> <span class="tp">Fluent</span>
+
+<span class="kw">final</span> <span class="kw">class</span> <span class="fn">Article</span>: <span class="tp">Model</span>, <span class="tp">Content</span> {
+    <span class="kw">static let</span> schema = <span class="str">"articles"</span>
+
+    @ID(key: .id)
+    <span class="kw">var</span> id: <span class="tp">UUID</span>?
+
+    @Field(key: <span class="str">"title"</span>)
+    <span class="kw">var</span> title: <span class="tp">String</span>
+
+    @Parent(key: <span class="str">"author_id"</span>)
+    <span class="kw">var</span> author: <span class="tp">User</span>
+
+    <span class="kw">init</span>() { }
+}
+
+<span class="kw">struct</span> <span class="fn">CreateArticle</span>: <span class="tp">AsyncMigration</span> {
+    <span class="kw">func</span> <span class="fn">prepare</span>(on db: <span class="tp">Database</span>) <span class="kw">async throws</span> {
+        <span class="kw">try await</span> db.schema(<span class="str">"articles"</span>)
+            .id()
+            .field(<span class="str">"title"</span>, .string, .required)
+            .field(<span class="str">"author_id"</span>, .uuid, .required, .references(<span class="str">"users"</span>, <span class="str">"id"</span>))
+            .create()
+    }
+}</pre>
+        </div>
+        <p>O ganho pedagogico aqui e claro: o leitor consegue ver schema e modelo na mesma linguagem, com menos salto mental entre camada de aplicacao e camada de persistencia.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="migrations">Migrations e evolucao segura do schema</h2>
+        <p>Migracao e um registro programavel da historia do banco. Em vez de editar tabelas manualmente em cada ambiente, a equipe descreve alteracoes como codigo versionado. Isso reduz divergencia entre desenvolvimento, homologacao e producao.</p>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> A migration deve ser tratada como artefato de release. Alterar uma migration antiga depois de publicada costuma quebrar reproducao de ambientes e dificulta auditoria.</p>
+        </div>
+        <p>Para grandes sistemas, vale separar migrations de <strong>schema</strong> e scripts de <strong>backfill</strong>. Uma muda a estrutura; a outra corrige ou recalcula dados. Misturar as duas tarefas torna rollback muito mais arriscado.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Desempenho, consistencia e limites do ORM</h2>
+        <p>Fluent resolve boa parte do CRUD, mas um engenheiro senior precisa identificar quando o modelo abstrato atrapalha. Relatorios pesados, agregacoes complexas, janela analitica e tuning fino de indices quase sempre exigem SQL explicito e leitura de plano de execucao.</p>
+        <div class="panel">
+          <ul>
+            <li>Use eager loading para evitar N+1 queries.</li>
+            <li>Prefira transacoes explicitas em operacoes multi-etapa.</li>
+            <li>Meça consultas lentas e revise indices antes de culpar a linguagem.</li>
+            <li>Quando necessario, combine Fluent com SQL bruto para pontos criticos.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel"><ul>
+          <li>VAPOR TEAM. <a href="https://docs.vapor.codes/fluent/overview/" target="_blank" rel="noopener">Fluent Overview</a>.</li>
+          <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <a href="https://www.postgresql.org/docs/current/index.html" target="_blank" rel="noopener">PostgreSQL Documentation</a>.</li>
+          <li>VAPOR TEAM. <a href="https://docs.vapor.codes/fluent/migration/" target="_blank" rel="noopener">Fluent Migrations</a>.</li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/swift/aplicacoes/web.html">Swift para web e APIs</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/swift/guia/projetos_boas_praticas.html">Boas praticas em projetos Swift</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Persistencia boa nao e a que esconde o banco, e sim a que torna schema, evolucao e custo de consulta explicitamente compreensiveis.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

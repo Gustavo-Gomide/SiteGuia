@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Mocks e stubs: diferenças, quando usar, como evitar testes frágeis e exemplos de uso em unitários.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Mocks e Stubs | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Controlar dependências sem perder confiança</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Mocks e Stubs</h1>
+          <p class="page-subtitle">Dublês de teste: tipos, quando usar e como evitar acoplamento</p>
+        </div>
+        <p class="intro-highlight">
+          Dependências externas — banco de dados, HTTP, filas, relógio — tornam testes lentos e instáveis.
+          Stubs, mocks e fakes permitem isolar a unidade testada sem depender da infra real. Mas usados em excesso, acoplam o teste à implementação e criam confiança falsa.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="definicoes" class="section-title">Tipos de dublê de teste</h2>
+        <div class="section-divider"></div>
+        <p>Cada tipo de dublê tem um papel específico. Escolher o errado torna o teste frágil ou inútil:</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Dublê</th>
+                <th>O que faz</th>
+                <th>Quando usar</th>
+                <th>Cuidado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Stub</strong></td>
+                <td>Retorna valores fixos pré-definidos</td>
+                <td>Controlar cenário sem verificar interação</td>
+                <td>Não valida se foi chamado ou com quais argumentos</td>
+              </tr>
+              <tr>
+                <td><strong>Mock</strong></td>
+                <td>Retorna valores + verifica chamadas e argumentos</td>
+                <td>Quando a interação em si é o comportamento a testar</td>
+                <td>Excesso de mock acopla teste à implementação</td>
+              </tr>
+              <tr>
+                <td><strong>Fake</strong></td>
+                <td>Implementação funcional simplificada</td>
+                <td>Repositório em memória, relógio controlável, e-mail fake</td>
+                <td>Precisa manter paridade de comportamento com o real</td>
+              </tr>
+              <tr>
+                <td><strong>Spy</strong></td>
+                <td>Chama implementação real + registra chamadas</td>
+                <td>Verificar comportamento sem substituir toda a dependência</td>
+                <td>Introduz dependência na real — lento se o real faz I/O</td>
+              </tr>
+              <tr>
+                <td><strong>Dummy</strong></td>
+                <td>Valor vazio passado para satisfazer assinatura</td>
+                <td>Parâmetro obrigatório que não tem impacto no teste</td>
+                <td>Não use se o valor pode impactar o comportamento</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="aaa" class="section-title">Padrão AAA com dublês</h2>
+        <div class="section-divider"></div>
+        <p>O padrão Arrange-Act-Assert organiza como configurar e usar dublês sem transformar o teste em código confuso:</p>
+        <div class="code-container">
+          <pre class="example"># Exemplo: testar serviço de pedido com repositório stub
+
+class PedidoRepositorioStub:
+    """Fake — implementação em memória para teste"""
+    def __init__(self):
+        self._pedidos = []
+
+    def salvar(self, pedido):
+        self._pedidos.append(pedido)
+
+    def buscar(self, pedido_id):
+        return next((p for p in self._pedidos if p.id == pedido_id), None)
+
+def deve_registrar_pedido_com_status_pendente():
+    # ARRANGE — preparar dados e configurar dublê
+    repositorio = PedidoRepositorioStub()
+    servico = PedidoService(repositorio=repositorio)
+    carrinho = Carrinho(items=[Item("prod-1", preco=50)])
+
+    # ACT — executar comportamento
+    pedido_id = servico.criar_pedido(carrinho, usuario_id="u-42")
+
+    # ASSERT — validar resultado de negócio
+    pedido = repositorio.buscar(pedido_id)
+    assert pedido is not None
+    assert pedido.status == "pendente"
+    assert pedido.usuario_id == "u-42"
+
+# Regras de uso:
+#   - Assert no COMPORTAMENTO (status, valor, evento)
+#   - NÃO no detalhe (quantas vezes salvar() foi chamado)
+#   - Preferir Fake a Mock quando possível — menos frágil</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>Dublês mal usados geram uma suíte que passa no CI mas não detecta regressões reais:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Mock de tudo (over-mocking)</h3>
+            <p>Quando cada dependência é mockada, o teste valida a simulação — não o código real. Qualquer mudança de implementação quebra o teste sem que o comportamento mude.</p>
+          </div>
+          <div class="card">
+            <h3>Mock de detalhes internos</h3>
+            <p>Verificar que um método privado foi chamado 2 vezes acopla o teste à implementação. Qualquer refatoração quebrará o teste, mesmo sem mudar comportamento externo.</p>
+          </div>
+          <div class="card">
+            <h3>Esquecer serialização e timeouts</h3>
+            <p>Stub de HTTP que retorna objeto já parseado esconde problemas reais de serialização, encoding e timeout. Use contrato real ou teste de integração para isso.</p>
+          </div>
+          <div class="card">
+            <h3>Não controlar tempo e aleatoriedade</h3>
+            <p>Codigo que usa <code>new Date()</code> ou <code>Math.random()</code> sem injeção de dependência é impossível de testar de forma determinista — o teste fica flakey.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Para contexto sobre onde aplicar dublês,  veja
+          <a href="/html/engenharia_software/testes/testes_unitarios.html">testes unitários</a>.
+          Para a técnica que usa testes para guiar o design, explore
+          <a href="/html/engenharia_software/testes/tdd.html">TDD</a>.
+        </p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Mock o suficiente para isolar — não tanto que você esteja testando o mock."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+
+
+
+
+

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript para Embedded e IoT: Johnny-Five com @types, MQTT.js com tipos de evento e Node-RED personalizado." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript para Embedded e IoT</h1>
+          <p>Johnny-Five com @types/johnny-five para componentes de hardware tipados, MQTT.js com eventos e payloads tipados e estruturacoes de mensagens IoT com Zod.</p>
+        </div>
+        <p class="intro-highlight">
+          IoT em TypeScript garante que payloads de sensores, topicos MQTT e comandos de atuadores sejam verificados. Zod valida mensagens recebidas da rede antes de passar para logica de negocio tipada.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="johnnyfive">Johnny-Five com Tipos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Johnny-Five &mdash; Sensores e atuadores tipados</div>
+          <pre class="example"><span class="kw">import</span> j5, { <span class="tp">Board</span>, <span class="tp">Led</span>, <span class="tp">Button</span>, <span class="tp">Sensor</span>, <span class="tp">Servo</span>, <span class="tp">Thermometer</span> } <span class="kw">from</span> <span class="str">"johnny-five"</span>;
+<span class="com">// npm i johnny-five @types/johnny-five</span>
+
+<span class="kw">interface</span> <span class="tp">LeituraTemperatura</span> {
+  celsius:    <span class="kw">number</span>;
+  fahrenheit: <span class="kw">number</span>;
+  kelvin:     <span class="kw">number</span>;
+  timestamp:  <span class="kw">number</span>;
+}
+
+<span class="kw">interface</span> <span class="tp">EstadoSistema</span> {
+  alertaAtivo:    <span class="kw">boolean</span>;
+  temperatura:    <span class="tp">LeituraTemperatura</span> | <span class="kw">null</span>;
+  posicaoServo:   <span class="kw">number</span>;
+  luzLigada:      <span class="kw">boolean</span>;
+}
+
+<span class="kw">const</span> estado: <span class="tp">EstadoSistema</span> = {
+  alertaAtivo:  <span class="kw">false</span>,
+  temperatura:  <span class="kw">null</span>,
+  posicaoServo: <span class="num">90</span>,
+  luzLigada:    <span class="kw">false</span>,
+};
+
+<span class="kw">const</span> board = <span class="kw">new</span> <span class="tp">Board</span>({ port: process.env.ARDUINO_PORT ?? <span class="str">"/dev/ttyUSB0"</span> });
+
+board.<span class="fn">on</span>(<span class="str">"ready"</span>, () => {
+  console.<span class="fn">log</span>(<span class="str">"Board pronta"</span>);
+
+  <span class="com">// LED de alerta — tipo Led e completamente tipado</span>
+  <span class="kw">const</span> ledAlerta = <span class="kw">new</span> <span class="tp">Led</span>(<span class="num">13</span>);
+
+  <span class="com">// Botao com debounce</span>
+  <span class="kw">const</span> botaoReset = <span class="kw">new</span> <span class="tp">Button</span>({ pin: <span class="num">2</span>, isPullup: <span class="kw">true</span> });
+  botaoReset.<span class="fn">on</span>(<span class="str">"press"</span>, () => {
+    console.<span class="fn">log</span>(<span class="str">"Reset pressionado"</span>);
+    estado.alertaAtivo = <span class="kw">false</span>;
+    ledAlerta.<span class="fn">stop</span>().<span class="fn">off</span>();
+  });
+
+  <span class="com">// Sensor analogico (potenciometro)</span>
+  <span class="kw">const</span> potenciometro = <span class="kw">new</span> <span class="tp">Sensor</span>({ pin: <span class="str">"A0"</span>, freq: <span class="num">250</span> });
+  potenciometro.<span class="fn">on</span>(<span class="str">"change"</span>, <span class="kw">function</span>(<span class="kw">this</span>: <span class="tp">Sensor</span>) {
+    <span class="com">// scaleTo normaliza 0..1023 para 0..180</span>
+    estado.posicaoServo = <span class="kw">this</span>.<span class="fn">scaleTo</span>(<span class="num">0</span>, <span class="num">180</span>);
+    servo.<span class="fn">to</span>(estado.posicaoServo);
+  });
+
+  <span class="com">// Servo motor tipado</span>
+  <span class="kw">const</span> servo = <span class="kw">new</span> <span class="tp">Servo</span>({ pin: <span class="num">9</span>, startAt: <span class="num">90</span>, range: [<span class="num">0</span>, <span class="num">180</span>] });
+
+  <span class="com">// Termometro LM35</span>
+  <span class="kw">const</span> termometro = <span class="kw">new</span> <span class="tp">Thermometer</span>({
+    controller: <span class="str">"LM35"</span>,
+    pin:        <span class="str">"A1"</span>,
+    freq:       <span class="num">1000</span>,
+  });
+
+  termometro.<span class="fn">on</span>(<span class="str">"change"</span>, <span class="kw">function</span>(<span class="kw">this</span>: <span class="tp">Thermometer</span>) {
+    <span class="kw">const</span> leitura: <span class="tp">LeituraTemperatura</span> = {
+      celsius:    <span class="kw">this</span>.celsius,
+      fahrenheit: <span class="kw">this</span>.fahrenheit,
+      kelvin:     <span class="kw">this</span>.kelvin,
+      timestamp:  <span class="tp">Date</span>.<span class="fn">now</span>(),
+    };
+    estado.temperatura = leitura;
+
+    <span class="kw">if</span> (leitura.celsius &gt; <span class="num">35</span> &amp;&amp; !estado.alertaAtivo) {
+      estado.alertaAtivo = <span class="kw">true</span>;
+      ledAlerta.<span class="fn">blink</span>(<span class="num">250</span>);
+      console.<span class="fn">error</span>(<span class="str">`ALERTA: Temperatura alta </span><span class="str">${leitura.celsius.toFixed(1)}</span><span class="str">°C`</span>);
+    }
+  });
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT.js com Tipos de Evento</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + MQTT.js &mdash; Topicos e payloads tipados com Zod</div>
+          <pre class="example"><span class="kw">import</span> mqtt <span class="kw">from</span> <span class="str">"mqtt"</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+<span class="kw">import</span> { readFileSync } <span class="kw">from</span> <span class="str">"node:fs"</span>;
+
+<span class="com">// ---- Schemas de mensagens IoT ----</span>
+<span class="kw">const</span> <span class="tp">MsgTemperaturaSchema</span> = z.<span class="fn">object</span>({
+  deviceId:  z.<span class="fn">string</span>().<span class="fn">uuid</span>(),
+  celsius:   z.<span class="fn">number</span>().<span class="fn">min</span>(-<span class="num">273.15</span>).<span class="fn">max</span>(<span class="num">200</span>),
+  umidade:   z.<span class="fn">number</span>().<span class="fn">min</span>(<span class="num">0</span>).<span class="fn">max</span>(<span class="num">100</span>),
+  timestamp: z.<span class="fn">number</span>().<span class="fn">int</span>().<span class="fn">positive</span>(),
+});
+
+<span class="kw">const</span> <span class="tp">MsgComandoSchema</span> = z.<span class="fn">discriminatedUnion</span>(<span class="str">"tipo"</span>, [
+  z.<span class="fn">object</span>({ tipo: z.<span class="fn">literal</span>(<span class="str">"ligar"</span>),    dispositivo: z.<span class="fn">string</span>() }),
+  z.<span class="fn">object</span>({ tipo: z.<span class="fn">literal</span>(<span class="str">"desligar"</span>), dispositivo: z.<span class="fn">string</span>() }),
+  z.<span class="fn">object</span>({ tipo: z.<span class="fn">literal</span>(<span class="str">"config"</span>),   parametros: z.<span class="fn">record</span>(z.<span class="fn">unknown</span>()) }),
+]);
+
+<span class="kw">type</span> <span class="tp">MsgTemperatura</span> = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">MsgTemperaturaSchema</span>&gt;;
+<span class="kw">type</span> <span class="tp">MsgComando</span>     = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">MsgComandoSchema</span>&gt;;
+
+<span class="com">// ---- Mapa de topicos para schemas ----</span>
+<span class="kw">const</span> topicosSchema = {
+  <span class="str">"sensores/+/temperatura"</span>: <span class="tp">MsgTemperaturaSchema</span>,
+  <span class="str">"comandos/+"</span>:             <span class="tp">MsgComandoSchema</span>,
+} <span class="kw">as const</span>;
+
+<span class="kw">type</span> <span class="tp">Topico</span> = keyof <span class="kw">typeof</span> topicosSchema;
+
+<span class="com">// ---- Cliente MQTT tipado ----</span>
+<span class="kw">const</span> client = mqtt.<span class="fn">connect</span>(<span class="str">"mqtts://broker.interno:8883"</span>, {
+  clientId:  <span class="str">`gateway-</span><span class="str">${crypto.randomUUID()}</span><span class="str">`</span>,
+  ca:        <span class="fn">readFileSync</span>(<span class="str">"./certs/ca.crt"</span>),
+  cert:      <span class="fn">readFileSync</span>(<span class="str">"./certs/client.crt"</span>),
+  key:       <span class="fn">readFileSync</span>(<span class="str">"./certs/client.key"</span>),
+  will: {
+    topic:   <span class="str">"status/gateway"</span>,
+    payload: <span class="tp">JSON</span>.<span class="fn">stringify</span>({ status: <span class="str">"offline"</span>, timestamp: <span class="tp">Date</span>.<span class="fn">now</span>() }),
+    qos:     <span class="num">1</span>,
+    retain:  <span class="kw">true</span>,
+  },
+});
+
+<span class="kw">const</span> handlers: <span class="tp">Partial</span>&lt;{
+  [K <span class="kw">in</span> <span class="tp">Topico</span>]: (msg: z.<span class="tp">infer</span>&lt;(<span class="kw">typeof</span> topicosSchema)[K]&gt;) => <span class="kw">void</span>;
+}&gt; = {
+  <span class="str">"sensores/+/temperatura"</span>: (msg: <span class="tp">MsgTemperatura</span>) => {
+    console.<span class="fn">log</span>(<span class="str">`Sensor </span><span class="str">${msg.deviceId}</span><span class="str">: </span><span class="str">${msg.celsius.toFixed(1)}</span><span class="str">°C, </span><span class="str">${msg.umidade.toFixed(0)}</span><span class="str">% UR`</span>);
+  },
+  <span class="str">"comandos/+"</span>: (msg: <span class="tp">MsgComando</span>) => {
+    <span class="kw">if</span> (msg.tipo === <span class="str">"ligar"</span>)    console.<span class="fn">log</span>(<span class="str">`Ligar: </span><span class="str">${msg.dispositivo}</span><span class="str">`</span>);
+    <span class="kw">if</span> (msg.tipo === <span class="str">"desligar"</span>) console.<span class="fn">log</span>(<span class="str">`Desligar: </span><span class="str">${msg.dispositivo}</span><span class="str">`</span>);
+  },
+};
+
+client.<span class="fn">on</span>(<span class="str">"connect"</span>, () => {
+  <span class="kw">for</span> (<span class="kw">const</span> topico <span class="kw">of</span> <span class="tp">Object</span>.<span class="fn">keys</span>(topicosSchema)) {
+    client.<span class="fn">subscribe</span>(topico, { qos: <span class="num">1</span> });
+  }
+});
+
+client.<span class="fn">on</span>(<span class="str">"message"</span>, (topico: <span class="kw">string</span>, payload: <span class="tp">Buffer</span>) => {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> dados = <span class="tp">JSON</span>.<span class="fn">parse</span>(payload.<span class="fn">toString</span>());
+    <span class="kw">for</span> (<span class="kw">const</span> [padrao, schema] <span class="kw">of</span> <span class="tp">Object</span>.<span class="fn">entries</span>(topicosSchema)) {
+      <span class="kw">if</span> (mqtt.<span class="fn">match</span>(padrao, topico)) {
+        <span class="kw">const</span> resultado = schema.<span class="fn">safeParse</span>(dados);
+        <span class="kw">if</span> (resultado.success) {
+          handlers[padrao <span class="kw">as</span> <span class="tp">Topico</span>]?.(resultado.data <span class="kw">as</span> <span class="kw">never</span>);
+        } <span class="kw">else</span> {
+          console.<span class="fn">warn</span>(<span class="str">`Mensagem invalida em </span><span class="str">${topico}</span><span class="str">`</span>, resultado.error.<span class="fn">flatten</span>());
+        }
+      }
+    }
+  } <span class="kw">catch</span> { console.<span class="fn">error</span>(<span class="str">"Payload JSON invalido"</span>); }
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>JOHNNY-FIVE. <strong>Johnny-Five — The JavaScript Robotics and IoT Platform</strong>. Disponível em: &lt;https://Johnny-Five.io/&gt;. Acesso em: 2025.</li>
+            <li>MQTT.JS. <strong>MQTT.js — MQTT client for Node.js and browser</strong>. Disponível em: &lt;https://github.com/mqttjs/MQTT.js&gt;. Acesso em: 2025.</li>
+            <li>ZOD. <strong>Zod — TypeScript-first schema validation</strong>. Disponível em: &lt;https://zod.dev/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Mobile</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas Praticas TypeScript</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Validar payloads MQTT com Zod na borda do sistema garante que dados malformados de sensores nunca corrompem o estado da aplicacao</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

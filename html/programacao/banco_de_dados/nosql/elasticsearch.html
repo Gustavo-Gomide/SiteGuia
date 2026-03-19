@@ -1,0 +1,394 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elasticsearch: motor de busca distribuido com índice invertido, busca full-text e stack ELK." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elasticsearch | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Elasticsearch</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Elasticsearch</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Elasticsearch</h1>
+          <p>Motor de busca distribuído — busca full-text, relevância e análise de logs em tempo real</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Elasticsearch</strong> é um motor de busca e análise distribuído construído
+          sobre o Apache Lucene, em produção em Netflix, Wikipedia, GitHub, Uber, LinkedIn e
+          Microsoft. Ele não é um banco de dados convencional — é uma engine que indexa documentos
+          JSON e os torna pesquisáveis em milissegundos com <strong>relevância, fuzzy search,
+          autocompletar e análise estatística</strong>, suportando petabytes de dados em centenas
+          de servidores.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é o Elasticsearch?</h2>
+        <p>
+          O Elasticsearch é um banco de dados NoSQL do tipo <strong>full-text search</strong>
+          que combina armazenamento de documentos JSON com indexação invertida automática.
+          Cada documento indexado se torna instantaneamente pesquisável — sem precisar definir
+          índices manualmente.
+        </p>
+        <p>
+          A analogia perfeita é o índice de um livro: em vez de percorrer todas as páginas
+          procurando uma palavra (o que um <code class="code-inline">LIKE '%palavra%'</code>
+          faz em SQL), o índice invertido vai diretamente à lista de páginas que contêm
+          aquela palavra. O Elasticsearch é esse índice — mas para bilhões de documentos,
+          completamente distribuído.
+        </p>
+        <p>
+          Segundo <strong>Hinman, Robinson e Lee (Elasticsearch in Action, 2021)</strong>,
+          <em>"Elasticsearch is a near real-time search and analytics engine. It processes
+          data as JSON documents and makes them searchable through a distributed inverted
+          index maintained across a cluster of nodes."</em>
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Para iniciantes:</strong> Elastic não é um substituto de PostgreSQL para
+            seu banco transacional. O padrão correto é usar os dois juntos: PostgreSQL ou
+            MongoDB como <em>source of truth</em> para escrita/leitura transacional, e
+            Elasticsearch como motor de busca para as queries de texto, filtros facetados
+            e análise.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">Como Funciona: Lucene e o Índice Invertido</h2>
+        <p>
+          Ao indexar um documento, o Elasticsearch aplica uma cadeia de transformações chamada
+          <strong>análise de texto</strong> antes de armazenar no índice invertido:
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pipeline-analise.txt</div>
+          <pre class="example"><span class="com">── Pipeline de análise do texto "Os Melhores Smartphones iPhone" ─</span>
+
+<span class="kw">1. Character Filter</span>  → remove HTML, normaliza acentos
+   <span class="str">"Os Melhores Smartphones iPhone"</span>
+
+<span class="kw">2. Tokenizer</span>         → divide em tokens
+   [<span class="str">"Os"</span>, <span class="str">"Melhores"</span>, <span class="str">"Smartphones"</span>, <span class="str">"iPhone"</span>]
+
+<span class="kw">3. Token Filters</span>     → lowercase + stopwords + stemming
+   [<span class="str">"melhores"</span>, <span class="str">"smartphone"</span>, <span class="str">"iphon"</span>]
+   <span class="com">//      ↑ stopword "os" removida</span>
+   <span class="com">//      ↑ stemming: "smartphones" → "smartphone"</span>
+
+<span class="kw">4. Índice Invertido</span>  → mapeia tokens para documentos:
+   <span class="str">"smartphone"</span>  →  [ Doc<span class="num">1</span>(freq:<span class="num">2</span>), Doc<span class="num">5</span>(freq:<span class="num">1</span>), Doc<span class="num">9</span>(freq:<span class="num">3</span>) ]
+   <span class="str">"iphon"</span>       →  [ Doc<span class="num">1</span>(freq:<span class="num">1</span>), Doc<span class="num">7</span>(freq:<span class="num">2</span>) ]
+   <span class="str">"melhor"</span>      →  [ Doc<span class="num">1</span>(freq:<span class="num">1</span>), Doc<span class="num">3</span>(freq:<span class="num">1</span>) ]
+
+<span class="kw">5. BM25 Scoring</span>      → relevância = TF × IDF × field norms
+   <span class="com">// Score alto = termo aparece frequentemente no doc (TF)</span>
+   <span class="com">// Score alto = termo raro no corpus inteiro (IDF)</span></pre>
+        </div>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-lg)">Arquitetura Distribuída</h3>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Índice e Shards</h3>
+            <p>
+              Um índice Elasticsearch é dividido em <strong>shards primários</strong>
+              (unidades de armazenamento Lucene) distribuídos pelo cluster.
+              Cada shard é um índice Lucene completo e independente.
+              Por default: 1 shard primário (ES 7.x+).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Réplicas</h3>
+            <p>
+              Cada shard primário tem cópias (<em>replica shards</em>)
+              em outros nodes. Réplicas servem leituras em paralelo —
+              quanto mais réplicas, maior o throughput de leitura.
+              Se o node primário cair, uma réplica promovida vira primário automaticamente.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Near Real-Time</h3>
+            <p>
+              Documentos indexados ficam pesquisáveis em ~1 segundo (o intervalo
+              de <em>refresh</em>). Internamente, novos documentos ficam em buffer na
+              memória (<em>in-memory buffer</em>) antes de serem escritos em segmentos
+              Lucene no disco.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ÍNDICE INVERTIDO -->
+      <section>
+        <h2 id="indice-invertido" class="section-title">Busca Full-Text vs SQL LIKE</h2>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Critério</th>
+                  <th>SQL LIKE '%termo%'</th>
+                  <th>Elasticsearch</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Mecanismo</td><td>Scan linha a linha — O(n)</td><td>Lookup no índice invertido — O(1) aproximado</td></tr>
+                <tr><td>Tolerância a erros</td><td>Não — "ipbone" não acha "iPhone"</td><td>Fuzzy search via distância de Levenshtein</td></tr>
+                <tr><td>Relevância</td><td>Não — todos os matches são iguais</td><td>Score BM25 — resultados mais relevantes primeiro</td></tr>
+                <tr><td>Idioma</td><td>Não entende morfologia</td><td>Stemmers por idioma (pt, en, es, fr...)</td></tr>
+                <tr><td>Escalabilidade</td><td>Degrada com volume</td><td>Horizontal por shards e nodes</td></tr>
+                <tr><td>Highlighting</td><td>Não nativo</td><td>Retorna o trecho exato que deu match com destaque HTML</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- API REST -->
+      <section>
+        <h2 id="api-rest" class="section-title">Query DSL: A Linguagem de Busca</h2>
+        <p>
+          Toda comunicação com o Elasticsearch é via HTTP + JSON. O <strong>Query DSL</strong>
+          é a linguagem de consulta — mais expressiva que SQL para busca textual, com
+          composição de queries por booleanos.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">elastic-queries.http</div>
+          <pre class="example"><span class="com">// ─── Indexar documento com mapeamento explícito ─────────────</span>
+<span class="kw">PUT</span> <span class="tp">/produtos</span>
+{
+  <span class="str">"mappings"</span>: {
+    <span class="str">"properties"</span>: {
+      <span class="str">"nome"</span>:      { <span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"analyzer"</span>: <span class="str">"portuguese"</span> },
+      <span class="str">"preco"</span>:     { <span class="str">"type"</span>: <span class="str">"float"</span> },
+      <span class="str">"categoria"</span>: { <span class="str">"type"</span>: <span class="str">"keyword"</span> },
+      <span class="str">"estoque"</span>:   { <span class="str">"type"</span>: <span class="str">"integer"</span> }
+    }
+  }
+}
+
+<span class="com">// ─── Query booleana: full-text + filtros + sorting ──────────</span>
+<span class="kw">POST</span> <span class="tp">/produtos/_search</span>
+{
+  <span class="str">"query"</span>: {
+    <span class="str">"bool"</span>: {
+      <span class="str">"must"</span>:   [{ <span class="str">"match"</span>: { <span class="str">"nome"</span>: <span class="str">"smartphone"</span> } }],
+      <span class="str">"filter"</span>: [
+        { <span class="str">"range"</span>:  { <span class="str">"preco"</span>:   { <span class="str">"lte"</span>: <span class="num">3000</span> } } },
+        { <span class="str">"range"</span>:  { <span class="str">"estoque"</span>: { <span class="str">"gt"</span>: <span class="num">0</span>    } } },
+        { <span class="str">"term"</span>:   { <span class="str">"categoria"</span>: <span class="str">"eletronicos"</span> } }
+      ]
+    }
+  },
+  <span class="str">"sort"</span>:      [{ <span class="str">"preco"</span>: { <span class="str">"order"</span>: <span class="str">"asc"</span> } }],
+  <span class="str">"highlight"</span>: { <span class="str">"fields"</span>: { <span class="str">"nome"</span>: {} } },  <span class="com">// destaca o match</span>
+  <span class="str">"size"</span>: <span class="num">20</span>, <span class="str">"from"</span>: <span class="num">0</span>   <span class="com">// paginação</span>
+}
+
+<span class="com">// ─── Fuzzy: tolerante a erros de digitação ──────────────────</span>
+<span class="kw">GET</span> <span class="tp">/produtos/_search</span>
+{ <span class="str">"query"</span>: { <span class="str">"fuzzy"</span>: { <span class="str">"nome"</span>: { <span class="str">"value"</span>: <span class="str">"ipbone"</span>, <span class="str">"fuzziness"</span>: <span class="str">"AUTO"</span> } } } }
+
+<span class="com">// ─── Aggregations: analytics sobre os resultados ────────────</span>
+<span class="kw">POST</span> <span class="tp">/produtos/_search</span>
+{
+  <span class="str">"size"</span>: <span class="num">0</span>,
+  <span class="str">"aggs"</span>: {
+    <span class="str">"por_categoria"</span>: { <span class="str">"terms"</span>: { <span class="str">"field"</span>: <span class="str">"categoria"</span> } },
+    <span class="str">"preco_medio"</span>:   { <span class="str">"avg"</span>:   { <span class="str">"field"</span>: <span class="str">"preco"</span> } }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Casos de Uso</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+              Use Elasticsearch quando...
+            </h3>
+            <ul>
+              <li>Busca full-text no catálogo de produtos de e-commerce</li>
+              <li>Observabilidade: indexar e pesquisar logs de aplicação (ELK)</li>
+              <li>Busca em documentos, contratos, wikis corporativos</li>
+              <li>Autocompletar e sugestões em tempo real</li>
+              <li>Análise de métricas e dashboards com Kibana</li>
+              <li>Detecção de anomalias em séries temporais de logs</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+              Evite Elasticsearch quando...
+            </h3>
+            <ul>
+              <li>Source of truth transacional (use PostgreSQL/MongoDB)</li>
+              <li>Queries JOIN complexas e relacionamentos entre entidades</li>
+              <li>Dados financeiros que exigem ACID rigoroso</li>
+              <li>Writes muito frequentes no mesmo documento (custo de reindex)</li>
+              <li>Equipe sem capacidade de operar cluster Lucene em produção</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANÇADO -->
+      <section>
+        <h2 id="avancado" class="section-title">Avançado: Otimizações e Arquitetura</h2>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-md)">Mappings: keyword vs text</h3>
+        <p>
+          A decisão mais crítica no Elasticsearch é o tipo de campo. Usar
+          <code class="code-inline">text</code> onde deveria ser <code class="code-inline">keyword</code>
+          causa bugs sutis — aggregations e sorting falham silenciosamente com campos <code class="code-inline">text</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">mapping-tipos.json</div>
+          <pre class="example"><span class="com">// text: analisado, pesquisável por partes — bom para descrições</span>
+<span class="str">"descricao"</span>: { <span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"analyzer"</span>: <span class="str">"portuguese"</span> }
+
+<span class="com">// keyword: valor exato, não analisado — bom para filtros e aggregations</span>
+<span class="str">"status"</span>: { <span class="str">"type"</span>: <span class="str">"keyword"</span> }
+
+<span class="com">// multi-field: texto + keyword juntos no mesmo campo</span>
+<span class="str">"nome"</span>: {
+  <span class="str">"type"</span>: <span class="str">"text"</span>, <span class="str">"analyzer"</span>: <span class="str">"portuguese"</span>,
+  <span class="str">"fields"</span>: {
+    <span class="str">"raw"</span>: { <span class="str">"type"</span>: <span class="str">"keyword"</span> }  <span class="com">// nome.raw para sort/aggregation</span>
+  }
+}
+
+<span class="com">// dense_vector: para buscas semânticas (KNN / Vector Search)</span>
+<span class="str">"embedding"</span>: { <span class="str">"type"</span>: <span class="str">"dense_vector"</span>, <span class="str">"dims"</span>: <span class="num">1536</span> }</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Mapping explosion:</strong> o Elasticsearch cria campos dinamicamente
+            por padrão. Em logs não estruturados com centenas de campos únicos, isso pode
+            criar million-field mappings que degradam o cluster inteiro. Defina
+            <code class="code-inline">"dynamic": "strict"</code> no mapping de produção e
+            declare todos os campos explicitamente.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema: ELK Stack e Além</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Kibana</h3>
+            <p>
+              Interface visual do Elastic Stack: dashboards interativos, gráficos de séries
+              temporais, mapas geoespaciais, alertas, Machine Learning e Discover
+              (busca ad-hoc em logs). Acesso em <code class="code-inline">localhost:5601</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Logstash e Beats</h3>
+            <p>
+              <strong>Logstash</strong>: pipeline ETL para ingestão e transformação flexível
+              de logs (input → filter → output). <strong>Beats</strong>: agentes leves
+              por categoria — Filebeat (logs), Metricbeat (métricas), Packetbeat (rede).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Elastic Cloud / OpenSearch</h3>
+            <p>
+              <strong>Elastic Cloud</strong>: cluster gerenciado na AWS/GCP/Azure.
+              <strong>OpenSearch</strong> (fork AWS): alternativa open-source mantida
+              pela Amazon após mudança de licença do Elastic em 2021.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Vector Search (KNN)</h3>
+            <p>
+              Desde ES 8.0, suporte nativo a busca por vetores de alta dimensão
+              (<strong>ANN / KNN</strong>) via HNSW. Permite buscas semânticas com
+              embeddings de modelos de linguagem (OpenAI, BERT, Sentence Transformers)
+              — searchando por <em>significado</em>, não apenas palavras.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ELASTIC N.V. <strong>Elasticsearch Reference</strong>. Disponível em: <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/" target="_blank" rel="noopener">elastic.co/guide</a>. Acesso em: 2026.</li>
+            <li>HINMAN, Roy; ROBINSON, Dave; LEE, Matthew. <strong>Elasticsearch in Action</strong>. 2. ed. Manning Publications, 2021.</li>
+            <li>APACHE SOFTWARE FOUNDATION. <strong>Apache Lucene</strong>. Disponível em: <a href="https://lucene.apache.org/" target="_blank" rel="noopener">lucene.apache.org</a>. Acesso em: 2026.</li>
+            <li>ELASTIC N.V. <strong>ELK Stack Documentation</strong>. Disponível em: <a href="https://www.elastic.co/guide/" target="_blank" rel="noopener">elastic.co</a>. Acesso em: 2026.</li>
+            <li>GORMLEY, Clinton; TONG, Zachary. <strong>Elasticsearch: The Definitive Guide</strong>. O'Reilly Media, 2015.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>O Elasticsearch vai além do banco de dados — é um motor que encontra agulhas em palheiros de petabytes com relevância e velocidade.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/hbase.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>HBase — Família de Colunas</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/cassandra.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Cassandra — Escala Massiva</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "You know, for search." — Shay Banon, creator of Elasticsearch
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

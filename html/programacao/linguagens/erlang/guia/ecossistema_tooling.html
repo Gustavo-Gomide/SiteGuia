@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang Ecossistema e Tooling: rebar3, erl shell, Dialyzer, Observer, release assembly, Hex.pm e principais bibliotecas OTP." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Ecossistema e Tooling</h1>
+          <p>O ecossistema Erlang gira em torno do rebar3 como gerenciador de projetos, do shell interativo <code>erl</code> para exploração e depuração, Dialyzer para análise estática de tipos, Observer para visualização gráfica de processos e o sistema de releases para empacotamento de aplicações autossuficientes.</p>
+        </div>
+        <p class="intro-highlight">
+          Dialyzer usa <strong>Success Typings</strong> — em vez de exigir anotações de tipo completas, ele infere o que <em>pode</em> funcionar e aponta inconsistências. Diferente de sistemas de tipos tradicionais, nunca causa falso positivo: se Dialyzer reclama, é um bug real.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rebar3">rebar3 — Gerenciador de Projetos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criação, compilação, testes e release</div>
+          <pre class="example"><span class="com"># Criar novo projeto</span>
+rebar3 new app meu_app          <span class="com"># aplicação OTP</span>
+rebar3 new lib minha_lib        <span class="com"># biblioteca</span>
+rebar3 new release meu_sistema  <span class="com"># release completo</span>
+rebar3 new escript meu_script   <span class="com"># executável standalone</span>
+
+<span class="com"># Compilar</span>
+rebar3 compile
+
+<span class="com"># Testes com EUnit</span>
+rebar3 eunit                    <span class="com"># rodar todos os testes</span>
+rebar3 eunit --module=contador  <span class="com"># só um módulo</span>
+
+<span class="com"># Testes com Common Test</span>
+rebar3 ct                       <span class="com"># testes de integração mais completos</span>
+
+<span class="com"># Análise estática</span>
+rebar3 dialyzer                 <span class="com"># rodar Dialyzer (lento na 1ª vez — cria PLT)</span>
+
+<span class="com"># Shell interativo com dependências carregadas</span>
+rebar3 shell
+
+<span class="com"># Release</span>
+rebar3 release                  <span class="com"># gera _build/default/rel/</span>
+rebar3 tar                      <span class="com"># gera tarball para deploy</span>
+
+<span class="com"># Executável escript</span>
+rebar3 escriptize               <span class="com"># gera binário standalone</span>
+
+<span class="com"># Dependências (rebar.config)</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">rebar.config — configuração do projeto</div>
+          <pre class="example">{erl_opts, [debug_info]}.
+
+{deps, [
+    {cowboy, <span class="str">"2.10.0"</span>},
+    {jsx, <span class="str">"3.1.0"</span>},
+    {lager, <span class="str">"3.9.2"</span>}
+]}.
+
+{relx, [
+    {release, {meu_app, <span class="str">"1.0.0"</span>}, [meu_app, sasl]},
+    {mode, dev},               <span class="com">% dev = symlinks; prod = cópia</span>
+    {extended_start_script, true}
+]}.
+
+{profiles, [
+    {prod, [{relx, [{mode, prod}]}]},
+    {test, [{deps, [{proper, <span class="str">"1.4.0"</span>}]}]}
+]}.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="erl-shell">Shell erl — REPL e Depuração</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Comandos essenciais do shell Erlang</div>
+          <pre class="example"><span class="com">% Iniciar o shell</span>
+erl
+erl -name no1@localhost -setcookie myCookie  <span class="com">% com nome de nó distribuído</span>
+
+<span class="com">% Comandos do shell</span>
+help().          <span class="com">% lista comandos disponíveis</span>
+q().             <span class="com">% sair (quit)</span>
+halt().          <span class="com">% parar VM imediatamente</span>
+
+<span class="com">% Compilar e carregar módulos</span>
+c(modulo).       <span class="com">% compila modulo.erl e carrega</span>
+c(modulo, [debug_info, {outdir, <span class="str">"ebin"</span>}]).
+l(modulo).       <span class="com">% carregar .beam sem compilar</span>
+m().             <span class="com">% listar módulos carregados</span>
+m(modulo).       <span class="com">% informações de um módulo</span>
+
+<span class="com">% Histórico de expressões</span>
+v(1).            <span class="com">% valor da expressão 1</span>
+e(3).            <span class="com">% re-executar expressão 3</span>
+f().             <span class="com">% limpar todas as bindigs</span>
+f(X).            <span class="com">% limpar binding de X</span>
+
+<span class="com">% Listar e inspecionar processos</span>
+i().             <span class="com">% list processos ativos (como top)</span>
+i(Pid).          <span class="com">% info do PID</span>
+regs().          <span class="com">% processos com nome registrado</span>
+
+<span class="com">% Documentação inline</span>
+h(lists, sort).  <span class="com">% doc da função (OTP 23+)</span>
+h(io).           <span class="com">% doc do módulo</span>
+
+<span class="com">% Conectar ao nó remoto</span>
+net_adm:ping('outro@host').     <span class="com">% conectar</span>
+nodes().                         <span class="com">% listar nós conectados</span>
+rpc:call('outro@host', io, format, [<span class="str">"olá~n"</span>]).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dialyzer">Dialyzer e Especificações de Tipo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">-spec e -type para análise estática</div>
+          <pre class="example">-module(calculadora).
+-export([somar/2, dividir/2]).
+
+<span class="com">%% Definir tipos customizados</span>
+-type positivo() :: pos_integer().
+-type resultado(T) :: {ok, T} | {erro, atom()}.
+
+<span class="com">%% -spec: especificação de tipo da função</span>
+-spec somar(number(), number()) -&gt; number().
+somar(A, B) -&gt; A + B.
+
+-spec dividir(number(), number()) -&gt; resultado(float()).
+dividir(_, 0) -&gt; {erro, divisao_por_zero};
+dividir(A, B) -&gt; {ok, A / B}.
+
+<span class="com">%% Tipos compostos</span>
+-type usuario() :: #{
+    id    := pos_integer(),
+    nome  := binary(),
+    email := binary(),
+    ativo := boolean()
+}.
+
+-spec criar_usuario(pos_integer(), binary(), binary()) -&gt; usuario().
+criar_usuario(Id, Nome, Email) -&gt;
+    #{id =&gt; Id, nome =&gt; Nome, email =&gt; Email, ativo =&gt; true}.
+
+<span class="com">%% Tipos de OTP comuns</span>
+<span class="com">%% -spec init(Args) -&gt; {ok, State} | {stop, Reason}</span>
+<span class="com">%% -spec handle_call(Request, From, State) -&gt;</span>
+<span class="com">%%         {reply, Reply, State} | {noreply, State} | {stop, Reason, State}</span>
+
+<span class="com">%% Rodando Dialyzer</span>
+<span class="com">%% dialyzer --build_plt --apps erts stdlib kernel</span>
+<span class="com">%% dialyzer --plt ~/.dialyzer_plt src/*.erl</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="observer">Observer — Monitor Visual em Tempo Real</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Iniciar Observer e navegar pelo sistema vivo</div>
+          <pre class="example"><span class="com">%% Iniciar Observer (GUI wxWidgets)</span>
+observer:start().
+
+<span class="com">%% Abas disponíveis:</span>
+<span class="com">%% System   — CPU, memória, processos ativos, uptime</span>
+<span class="com">%% Load chart — uso de cada scheduler em tempo real</span>
+<span class="com">%% Memory   — heap, binaries, ETS, código, sistema</span>
+<span class="com">%% Applications — árvore de supervisão visual interativa</span>
+<span class="com">%% Processes — tabela ordenável (memória, reductions, msg queue)</span>
+<span class="com">%% Ports    — sockets, arquivos, drivers C abertos</span>
+<span class="com">%% ETS      — todas as tabelas com size e memory</span>
+<span class="com">%% Mnesia   — tabelas e fragmentos (se Mnesia rodando)</span>
+<span class="com">%% Trace overview — interface gráfica para dbg</span>
+
+<span class="com">%% Clicar em um processo: ver estado, dicionário, stack trace,</span>
+<span class="com">%% links, monitors, heap, binaries — tudo sem reiniciar</span>
+
+<span class="com">%% Alternativa textual — etop (como top do Unix)</span>
+etop:start([{output, text}, {interval, 2}, {lines, 20}]).
+etop:stop().
+
+<span class="com">%% Métricas via código</span>
+erlang:memory().                 <span class="com">% [{total, N}, {processes, N}, ...]</span>
+erlang:statistics(run_queue).    <span class="com">% processos aguardando CPU</span>
+erlang:statistics(wall_clock).   <span class="com">% tempo real desde start</span>
+erlang:statistics(reductions).   <span class="com">% reduções desde start</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bibliotecas">Principais Bibliotecas do Ecossistema</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Cowboy</h3>
+            <p>Servidor HTTP/WebSocket puro Erlang. Base do Phoenix (Elixir). Suporta HTTP/1.1, HTTP/2 e WebSocket com handlers roteados.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>RabbitMQ</h3>
+            <p>Broker AMQP escrito em Erlang. Um dos sistemas de mensageria mais usados em produção, aproveitando a robustez do OTP.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>jiffy / thoas</h3>
+            <p>Parsers JSON. jiffy usa NIF C para máxima velocidade; thoas é pure Erlang, sem dependência de compilador C.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>hackney</h3>
+            <p>Cliente HTTP assíncrono Erlang com suporte a streaming, connection pools e SSL — muito usado via HTTPoison no Elixir.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>lager / logger</h3>
+            <p>lager é o logger histórico Erlang. OTP 21+ inclui o módulo logger nativo com formatters e handlers configuráveis.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>PropEr / QuickCheck</h3>
+            <p>Property-based testing: geram casos de teste aleatórios baseados em propriedades — muito mais cobertura que testes manuais.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>rebar3 Team. <strong>rebar3 Documentation</strong>. Disponível em: &lt;https://rebar3.org/docs/&gt;. Acesso em: 2026.</li>
+            <li>Erlang/OTP. <strong>Dialyzer — A DIscrepancy AnaLYZer for ERlang programs</strong>. Disponível em: &lt;https://www.erlang.org/doc/man/dialyzer.html&gt;. Acesso em: 2026.</li>
+            <li>HEBERT, F. <strong>Learn You Some Erlang — Building OTP Applications</strong>. No Starch Press, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/alta_disponibilidade.html"><span data-svg="seta-direita" aria-hidden="true"></span> Alta Disponibilidade com OTP</a></li>
+          <li><a href="../aplicacoes/sistemas_distribuidos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Sistemas Distribuídos em Erlang</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O Observer é a ferramenta mais subestimada do ecossistema: conectar-se a um nó Erlang em produção e visualizar <strong>em tempo real</strong> a árvore de supervisão completa, memória por processo e reductions por scheduler — tudo sem instrumentação prévia e sem reiniciar — é algo que pouquíssimas linguagens oferecem nativamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

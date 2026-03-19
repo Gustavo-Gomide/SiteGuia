@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir para IA e Data Science: Nx tensors, Axon redes neurais, Bumblebee com modelos pré-treinados (BERT, GPT), Explorer DataFrames e integração com Python via Pythonx." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir para Dados e IA</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Dados e IA</h1>
+          <p>O ecossistema Nx (Numerical Elixir) traz computação numérica de alta performance para a plataforma BEAM: tensors com aceleração por GPU (EXLA/XLA, CUDA, Metal), redes neurais com Axon, modelos pré-treinados com Bumblebee e DataFrames com Explorer. Toda a cadeia de ML pode rodar dentro de um servidor Phoenix — inferência em tempo real via LiveView.</p>
+        </div>
+        <p class="intro-highlight">
+          O que torna o stack Nx único: você pode fazer <strong>inferência de ML em processos Elixir supervisionados</strong>. Se o processo de inferência crasha, o Supervisor reinicia. Se a demanda aumenta, você escala processos. Nenhum "modelo server" separado necessário.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nx-tensors">Nx — Computação Numérica com Tensors</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Nx.tensor, operações e defn para JIT compilation</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:nx, <span class="str">"~> 0.9"</span>},
+{:exla, <span class="str">"~> 0.9"</span>}  <span class="com"># backend XLA (CPU/GPU/TPU)</span>
+
+<span class="com"># Configurar backend</span>
+<span class="tp">Nx</span>.<span class="fn">default_backend</span>(<span class="tp">EXLA.Backend</span>)
+
+<span class="com"># Criar tensors</span>
+a = <span class="tp">Nx</span>.<span class="fn">tensor</span>([[<span class="num">1</span>, <span class="num">2</span>], [<span class="num">3</span>, <span class="num">4</span>]], type: <span class="at">:f32</span>)
+b = <span class="tp">Nx</span>.<span class="fn">tensor</span>([[<span class="num">5</span>, <span class="num">6</span>], [<span class="num">7</span>, <span class="num">8</span>]], type: <span class="at">:f32</span>)
+
+<span class="com"># Operações elementares e álgebra linear</span>
+soma   = <span class="tp">Nx</span>.<span class="fn">add</span>(a, b)              <span class="com"># [[6,8],[10,12]]</span>
+produto = <span class="tp">Nx</span>.<span class="fn">dot</span>(a, b)             <span class="com"># multiplicação de matrizes</span>
+norma  = <span class="tp">Nx</span>.<span class="fn">LinAlg</span>.<span class="fn">norm</span>(a)
+inv    = <span class="tp">Nx</span>.<span class="fn">LinAlg</span>.<span class="fn">invert</span>(a)
+softmax = <span class="tp">Nx</span>.<span class="fn">softmax</span>(a)
+
+<span class="com"># defn — compilado por JIT para CPU/GPU</span>
+<span class="kw">defmodule</span> <span class="tp">MinhasOps</span> <span class="kw">do</span>
+  import <span class="tp">Nx.Defn</span>
+
+  defn <span class="fn">sigmoid</span>(x) <span class="kw">do</span>
+    <span class="tp">Nx</span>.<span class="fn">divide</span>(<span class="num">1.0</span>, <span class="tp">Nx</span>.<span class="fn">add</span>(<span class="num">1.0</span>, <span class="tp">Nx</span>.<span class="fn">exp</span>(<span class="tp">Nx</span>.<span class="fn">negate</span>(x))))
+  <span class="kw">end</span>
+
+  defn <span class="fn">relu</span>(x), <span class="kw">do</span>: <span class="tp">Nx</span>.<span class="fn">max</span>(<span class="num">0.0</span>, x)
+
+  defn <span class="fn">mse_loss</span>(y_pred, y_true) <span class="kw">do</span>
+    diff = <span class="tp">Nx</span>.<span class="fn">subtract</span>(y_pred, y_true)
+    diff |&gt; <span class="tp">Nx</span>.<span class="fn">pow</span>(<span class="num">2</span>) |&gt; <span class="tp">Nx</span>.<span class="fn">mean</span>()
+  <span class="kw">end</span>
+
+  defn <span class="fn">grad_descida</span>(params, grads, lr) <span class="kw">do</span>
+    <span class="tp">Nx</span>.<span class="fn">subtract</span>(params, <span class="tp">Nx</span>.<span class="fn">multiply</span>(lr, grads))
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Grad automático</span>
+grad_fn = <span class="tp">Nx</span>.<span class="fn">Defn</span>.<span class="fn">jit</span>(fn x -> <span class="tp">Nx</span>.<span class="fn">grad</span>(x, fn x -> <span class="tp">Nx</span>.<span class="fn">sum</span>(<span class="tp">Nx</span>.<span class="fn">pow</span>(x, <span class="num">2</span>)) <span class="kw">end</span>) <span class="kw">end</span>)
+grad_fn.(<span class="tp">Nx</span>.<span class="fn">tensor</span>([<span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>]))  <span class="com"># [2.0, 4.0, 6.0]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="axon">Axon — Redes Neurais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Definição, treinamento e predição com Axon</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:axon, <span class="str">"~> 0.7"</span>}
+
+<span class="com"># Definir modelo MLP para classificação binária</span>
+model = <span class="tp">Axon</span>.<span class="fn">input</span>(<span class="str">"input"</span>, shape: {nil, <span class="num">784</span>})
+        |&gt; <span class="tp">Axon</span>.<span class="fn">dense</span>(<span class="num">256</span>, activation: <span class="at">:relu</span>)
+        |&gt; <span class="tp">Axon</span>.<span class="fn">dropout</span>(rate: <span class="num">0.3</span>)
+        |&gt; <span class="tp">Axon</span>.<span class="fn">dense</span>(<span class="num">128</span>, activation: <span class="at">:relu</span>)
+        |&gt; <span class="tp">Axon</span>.<span class="fn">dropout</span>(rate: <span class="num">0.2</span>)
+        |&gt; <span class="tp">Axon</span>.<span class="fn">dense</span>(<span class="num">10</span>, activation: <span class="at">:softmax</span>)
+
+<span class="com"># CNN para imagens</span>
+cnn = <span class="tp">Axon</span>.<span class="fn">input</span>(<span class="str">"imagem"</span>, shape: {nil, <span class="num">28</span>, <span class="num">28</span>, <span class="num">1</span>})
+      |&gt; <span class="tp">Axon</span>.<span class="fn">conv</span>(<span class="num">32</span>, kernel_size: {<span class="num">3</span>, <span class="num">3</span>}, activation: <span class="at">:relu</span>)
+      |&gt; <span class="tp">Axon</span>.<span class="fn">max_pool</span>(kernel_size: {<span class="num">2</span>, <span class="num">2</span>})
+      |&gt; <span class="tp">Axon</span>.<span class="fn">conv</span>(<span class="num">64</span>, kernel_size: {<span class="num">3</span>, <span class="num">3</span>}, activation: <span class="at">:relu</span>)
+      |&gt; <span class="tp">Axon</span>.<span class="fn">flatten</span>()
+      |&gt; <span class="tp">Axon</span>.<span class="fn">dense</span>(<span class="num">10</span>, activation: <span class="at">:softmax</span>)
+
+<span class="com"># Treinar modelo</span>
+loop = model
+       |&gt; <span class="tp">Axon</span>.<span class="fn">Loop</span>.<span class="fn">trainer</span>(<span class="at">:categorical_cross_entropy</span>, <span class="tp">Polaris.Optimizers</span>.<span class="fn">adam</span>(learning_rate: <span class="num">1.0e-3</span>))
+       |&gt; <span class="tp">Axon</span>.<span class="fn">Loop</span>.<span class="fn">metric</span>(<span class="at">:accuracy</span>)
+       |&gt; <span class="tp">Axon</span>.<span class="fn">Loop</span>.<span class="fn">run</span>(train_data, %{}, epochs: <span class="num">10</span>, compiler: <span class="tp">EXLA</span>)
+
+<span class="com"># Predição</span>
+{init_fn, predict_fn} = <span class="tp">Axon</span>.<span class="fn">build</span>(model)
+params = init_fn.(<span class="tp">Nx</span>.<span class="fn">template</span>({<span class="num">1</span>, <span class="num">784</span>}, <span class="at">:f32</span>), %{})
+entrada = <span class="tp">Nx</span>.<span class="fn">tensor</span>([pixels])
+resultado = predict_fn.(loop, entrada)  <span class="com"># resultado treinado</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bumblebee">Bumblebee — Modelos Pré-treinados (BERT, GPT-2)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Inferência com modelos HuggingFace via Serving</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:bumblebee, <span class="str">"~> 0.6"</span>},
+{:nx, <span class="str">"~> 0.9"</span>},
+{:exla, <span class="str">"~> 0.9"</span>}
+
+<span class="com"># Classificação de sentimentos com BERT</span>
+{<span class="at">:ok</span>, model_info} = <span class="tp">Bumblebee</span>.<span class="fn">load_model</span>({<span class="at">:hf</span>, <span class="str">"distilbert-base-uncased-finetuned-sst-2-english"</span>})
+{<span class="at">:ok</span>, tokenizer}   = <span class="tp">Bumblebee</span>.<span class="fn">load_tokenizer</span>({<span class="at">:hf</span>, <span class="str">"distilbert-base-uncased-finetuned-sst-2-english"</span>})
+
+serving = <span class="tp">Bumblebee.Text</span>.<span class="fn">text_classification</span>(model_info, tokenizer,
+            compile: [batch_size: <span class="num">4</span>, sequence_length: <span class="num">128</span>],
+            defn_options: [compiler: <span class="tp">EXLA</span>])
+
+resultado = <span class="tp">Nx.Serving</span>.<span class="fn">run</span>(serving, <span class="str">"Este produto é incrível!"</span>)
+<span class="com"># %{predictions: [%{label: "POSITIVE", score: 0.998}]}</span>
+
+<span class="com"># Integrar como GenServer supervisionado na aplicação</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.IAServer</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Supervisor</span>
+
+  <span class="kw">def</span> <span class="fn">start_link</span>(_), <span class="kw">do</span>: <span class="tp">Supervisor</span>.<span class="fn">start_link</span>(__MODULE__, [], name: __MODULE__)
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">init</span>(_) <span class="kw">do</span>
+    {<span class="at">:ok</span>, model} = <span class="tp">Bumblebee</span>.<span class="fn">load_model</span>({<span class="at">:hf</span>, <span class="str">"distilbert-base-uncased-finetuned-sst-2-english"</span>})
+    {<span class="at">:ok</span>, tokenizer} = <span class="tp">Bumblebee</span>.<span class="fn">load_tokenizer</span>({<span class="at">:hf</span>, <span class="str">"distilbert-base-uncased-finetuned-sst-2-english"</span>})
+    serving = <span class="tp">Bumblebee.Text</span>.<span class="fn">text_classification</span>(model, tokenizer)
+
+    children = [
+      {<span class="tp">Nx.Serving</span>, serving: serving, name: <span class="tp">MeuApp.Serving</span>, batch_size: <span class="num">8</span>, batch_timeout: <span class="num">100</span>}
+    ]
+    <span class="tp">Supervisor</span>.<span class="fn">init</span>(children, strategy: <span class="at">:one_for_one</span>)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Chamar de qualquer processo</span>
+<span class="tp">Nx.Serving</span>.<span class="fn">batched_run</span>(<span class="tp">MeuApp.Serving</span>, texto)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="explorer">Explorer — DataFrames</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Manipulação de dados com Explorer.DataFrame</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:explorer, <span class="str">"~> 0.10"</span>}
+
+<span class="kw">alias</span> <span class="tp">Explorer.DataFrame</span>, <span class="kw">as</span>: <span class="tp">DF</span>
+<span class="kw">alias</span> <span class="tp">Explorer.Series</span>, <span class="kw">as</span>: <span class="tp">S</span>
+
+<span class="com"># Carregar dados</span>
+df = <span class="tp">DF</span>.<span class="fn">from_csv!</span>(<span class="str">"vendas.csv"</span>)
+df_parquet = <span class="tp">DF</span>.<span class="fn">from_parquet!</span>(<span class="str">"dados.parquet"</span>)
+
+<span class="com"># Explorar</span>
+<span class="tp">DF</span>.<span class="fn">shape</span>(df)       <span class="com"># {linhas, colunas}</span>
+<span class="tp">DF</span>.<span class="fn">dtypes</span>(df)      <span class="com"># %{"preco" => :float, "produto" => :string, ...}</span>
+<span class="tp">DF</span>.<span class="fn">describe</span>(df)    <span class="com"># estatísticas: mean, std, min, max</span>
+
+<span class="com"># Filtrar, selecionar e transformar</span>
+resultado = df
+  |&gt; <span class="tp">DF</span>.<span class="fn">filter</span>(col(<span class="str">"preco"</span>) > <span class="num">100</span>)
+  |&gt; <span class="tp">DF</span>.<span class="fn">select</span>([<span class="str">"produto"</span>, <span class="str">"preco"</span>, <span class="str">"categoria"</span>])
+  |&gt; <span class="tp">DF</span>.<span class="fn">mutate</span>(preco_com_iva: col(<span class="str">"preco"</span>) * <span class="num">1.17</span>)
+  |&gt; <span class="tp">DF</span>.<span class="fn">sort_by</span>([{<span class="at">:desc</span>, col(<span class="str">"preco"</span>)}])
+
+<span class="com"># Agrupamento e agregação</span>
+por_categoria = df
+  |&gt; <span class="tp">DF</span>.<span class="fn">group_by</span>(<span class="str">"categoria"</span>)
+  |&gt; <span class="tp">DF</span>.<span class="fn">summarise</span>(
+      total_vendas: sum(col(<span class="str">"preco"</span>)),
+      qtd: count(col(<span class="str">"id"</span>)),
+      media: mean(col(<span class="str">"preco"</span>)))
+
+<span class="com"># Join entre DataFrames</span>
+df_joined = <span class="tp">DF</span>.<span class="fn">join</span>(df_vendas, df_clientes,
+  on: [{<span class="str">"cliente_id"</span>, <span class="str">"id"</span>}], how: <span class="at">:left</span>)
+
+<span class="com"># Exportar</span>
+<span class="tp">DF</span>.<span class="fn">to_csv!</span>(resultado, <span class="str">"resultado.csv"</span>)
+<span class="tp">DF</span>.<span class="fn">to_parquet!</span>(resultado, <span class="str">"resultado.parquet"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Elixir Nx Team. <strong>Nx Documentation</strong>. Disponível em: &lt;https://hexdocs.pm/nx/Nx.html&gt;. Acesso em: 2026.</li>
+            <li>Elixir Nx Team. <strong>Axon: Deep Learning in Elixir</strong>. Disponível em: &lt;https://hexdocs.pm/axon&gt;. Acesso em: 2026.</li>
+            <li>VALIM, J. <strong>Machine Learning in Elixir</strong>. The Pragmatic Bookshelf, 2023.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/nx/Nx.html" target="_blank" rel="noopener">HEXDOCS. Nx.</a></li>
+            <li><a href="https://hexdocs.pm/axon/readme.html" target="_blank" rel="noopener">HEXDOCS. Axon.</a></li>
+            <li><a href="https://hexdocs.pm/bumblebee/readme.html" target="_blank" rel="noopener">HEXDOCS. Bumblebee.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir e Banco de Dados</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Com <code>Nx.Serving</code> e <code>Bumblebee</code>, um servidor Phoenix pode fazer <strong>batch inference automático</strong>: múltiplas requisições HTTP chegam em paralelo, são agrupadas em um batch eficiente e processadas juntas na GPU — tudo sem código extra, apenas configurando <code>batch_size</code> e <code>batch_timeout</code> no Serving supervisionado.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

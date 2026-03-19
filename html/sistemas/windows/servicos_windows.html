@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Serviços do Windows: tipos, estados, gerenciamento via services.msc e PowerShell, conta de serviço, dependências e troubleshooting de serviços com falha." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Serviços do Windows | Windows | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — SERVIÇOS DO WINDOWS ═══════════════════ -->
+      <section>
+        <h2 id="servicos" class="section-title">Serviços do Windows</h2>
+        <div class="section-divider"></div>
+        <p class="intro-highlight">
+          Serviços são processos de longa duração que rodam em segundo plano, geralmente sem interface gráfica. Podem ser iniciados automaticamente no boot, executados sob contas privilegiadas e gerenciados via SCM (Service Control Manager). São os equivalentes Windows dos daemons Unix.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — TIPOS E ESTADOS DE SERVIÇOS ═══════════════════ -->
+      <section>
+        <h2 id="tipos-estados" class="section-title">Tipos e Estados de Serviços</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Estado/Tipo</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Running</td><td>Serviço em execução normal</td></tr>
+              <tr><td>Stopped</td><td>Serviço parado; não está consumindo recursos</td></tr>
+              <tr><td>Paused</td><td>Suspenso temporariamente (nem todos suportam)</td></tr>
+              <tr><td>StartPending / StopPending</td><td>Transição entre estados</td></tr>
+              <tr><td>Automatic</td><td>Inicia no boot automaticamente</td></tr>
+              <tr><td>Automatic (Delayed Start)</td><td>Inicia no boot depois de outros serviços críticos</td></tr>
+              <tr><td>Manual</td><td>Inicia apenas quando solicitado por app ou usuário</td></tr>
+              <tr><td>Disabled</td><td>Não pode ser iniciado, mesmo manualmente</td></tr>
+              <tr><td>Win32OwnProcess</td><td>Processo dedicado ao serviço (svchost.exe ou processo próprio)</td></tr>
+              <tr><td>Win32ShareProcess</td><td>Compartilha processo svchost.exe com outros serviços (economia de memória)</td></tr>
+              <tr><td>Kernel Driver</td><td>Driver de dispositivo (ex: NTFS, Tcpip, filtros de segurança)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — GERENCIAMENTO VIA POWERSHELL ═══════════════════ -->
+      <section>
+        <h2 id="gerenciamento-powershell" class="section-title">Gerenciamento via PowerShell</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PowerShell — Gerenciamento de Serviços</div>
+          <pre class="code-block"># Listar todos os serviços
+Get-Service | Sort-Object Status, Name | Format-Table -AutoSize
+
+# Filtrar por estado
+Get-Service | Where-Object {$_.Status -eq 'Running'} | Measure-Object
+
+# Iniciar/parar/reiniciar serviço
+Start-Service -Name "wuauserv"    # Windows Update
+Stop-Service  -Name "wuauserv"
+Restart-Service -Name "Spooler"   # Print Spooler
+
+# Configurar tipo de inicialização
+Set-Service -Name "wuauserv" -StartupType Manual
+
+# Ver dependências
+(Get-Service -Name "Spooler").DependentServices
+(Get-Service -Name "Spooler").ServicesDependedOn
+
+# Detalhes de um serviço (incluindo usuário e executável)
+Get-CimInstance -ClassName Win32_Service -Filter "Name='Spooler'" |
+  Select-Object Name, PathName, StartName, StartMode, State
+
+# Módulo SC.EXE (legado, útil em scripts batch)
+sc query type= all state= all
+sc start wuauserv
+sc config "wuauserv" start= disabled</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — CONTAS DE SERVIÇO ═══════════════════ -->
+      <section>
+        <h2 id="contas-de-servico" class="section-title">Contas de Serviço</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">SYSTEM (LocalSystem)</h3>
+            <p>Conta mais privilegiada; acesso irrestrito ao sistema local; não tem senha; não acessa rede como usuário de domínio; evitar para serviços de terceiros.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">LOCAL SERVICE</h3>
+            <p>Privilégios mínimos locais; acessa rede como conta anônima; equivale a conta de usuário comum para recursos locais.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">NETWORK SERVICE</h3>
+            <p>Similar ao LOCAL SERVICE, mas acessa rede com credenciais do computador (conta de máquina no domínio); usado por IIS, RPC.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Managed Service Account (gMSA)</h3>
+            <p>Conta AD com senha rotacionada automaticamente pelo AD; ideal para serviços em cluster sem precisar gerenciar senhas manualmente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Conta de domínio dedicada</h3>
+            <p>Máximo controle sobre permissões; exige gerenciamento de senha manual ou via LAPS.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — TROUBLESHOOTING DE SERVIÇOS ═══════════════════ -->
+      <section>
+        <h2 id="troubleshooting" class="section-title">Troubleshooting de Serviços</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PowerShell — Diagnóstico de Serviços</div>
+          <pre class="code-block"># Ver eventos relacionados a um serviço
+Get-WinEvent -LogName System | Where-Object {$_.Message -like "*Spooler*"} | Select-Object -First 20 TimeCreated, Message
+
+# Verificar por que um serviço falhou
+sc qfailure Spooler    # política de recuperação em falha
+
+# Configurar recuperação automática
+sc failure Spooler reset= 86400 actions= restart/5000/restart/10000/reboot/20000
+
+# Dependências que impedem inicialização
+(Get-Service "MSDependentService").ServicesDependedOn | Get-Service
+
+# Verificar EXE do serviço no Registro
+Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Services\Spooler" | Select-Object ImagePath, ObjectName, Start
+
+# Listar todos os serviços do svchost.exe (agrupamentos)
+Get-CimInstance Win32_Service | Where-Object {$_.PathName -like "*svchost*"} | Group-Object {($_.PathName -split '-k ')[1]} | Sort-Object Count -Descending</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <a href="/html/sistemas/windows/arquitetura_windows.html">Arquitetura do Windows</a>
+        <a href="/html/sistemas/windows/powershell.html">PowerShell</a>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"svchost.exe não é vírus — mas sim, os vírus adoram se disfarçar como ele."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

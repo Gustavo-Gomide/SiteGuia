@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Haskell avançado: type classes, Functor/Applicative/Monad, monoid, transformadores de monad e STM." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Avançado</h1>
+          <p>Os tópicos avançados de Haskell incluem a hierarquia <code>Functor → Applicative → Monad</code>, criação de type classes personalizadas, transformadores de monad (<code>ReaderT</code>/<code>StateT</code>/<code>ExceptT</code>), <strong>Software Transactional Memory (STM)</strong> para concorrência e extensões de linguagem do GHC.</p>
+        </div>
+        <p class="intro-highlight">
+          A abstração <strong>Monad Transformer</strong> permite combinar múltiplos efeitos: <code>ReaderT config (ExceptT Erro IO)</code> é um efeito que lê configuração somente leitura, pode falhar com <code>Erro</code>, e executa operações de I/O — tudo composto de forma type-safe. Este padrão é a base de frameworks como <em>Servant</em> e <em>Yesod</em>.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="typeclasses" class="section-title">Type Classes — Definir e Instanciar</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Polimorfismo ad-hoc: criar e implementar type classes</div>
+          <pre class="example"><span class="com">-- Definir type class</span>
+class Serializable a where
+    serializar   :: a -> String
+    deserializar :: String -> Maybe a
+
+<span class="com">-- Implementar para tipos concretos</span>
+data Ponto = Ponto Double Double
+
+instance Serializable Ponto where
+    serializar (Ponto x y) = show x ++ "," ++ show y
+    deserializar s = case break (==',') s of
+        (xs, _:ys) -> Just (Ponto (read xs) (read ys))
+        _          -> Nothing
+
+<span class="com">-- Type class com default methods</span>
+class Container f where
+    vazio    :: f a
+    inserir  :: a -> f a -> f a
+    remover  :: f a -> Maybe (a, f a)
+    tamanho  :: f a -> Int
+    tamanho c = case remover c of     <span class="com">-- default usando outros métodos</span>
+        Nothing    -> 0
+        Just (_, r) -> 1 + tamanho r
+
+<span class="com">-- Hierarquia de type classes</span>
+<span class="com">-- Eq     → Ord</span>
+<span class="com">-- Functor → Applicative → Monad</span>
+
+class (Applicative m) => Monad m where
+    (>>=)  :: m a -> (a -> m b) -> m b
+    return :: a -> m a
+    return = pure    <span class="com">-- default implementation</span>
+
+<span class="com">-- Functor — mapear sobre estruturas</span>
+<span class="com">-- class Functor f where</span>
+<span class="com">--   fmap :: (a -> b) -> f a -> f b</span>
+
+<span class="com">-- Instância de Functor personalizada</span>
+data Arvore a = Folha | No a (Arvore a) (Arvore a)
+
+instance Functor Arvore where
+    fmap _ Folha      = Folha
+    fmap f (No x l r) = No (f x) (fmap f l) (fmap f r)
+
+<span class="com">-- Derivação automática de type classes comuns</span>
+data Cor = Vermelho | Verde | Azul
+    deriving (Show, Read, Eq, Ord, Enum, Bounded)
+
+minCor = minBound :: Cor    <span class="com">-- Vermelho</span>
+maxCor = maxBound :: Cor    <span class="com">-- Azul</span>
+cores  = [minBound..maxBound] :: [Cor]  <span class="com">-- [Vermelho, Verde, Azul]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="applicative-monad" class="section-title">Functor, Applicative e Monad</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">A hierarquia central do Haskell e suas leis</div>
+          <pre class="example"><span class="com">-- FUNCTOR: fmap / &lt;$&gt;</span>
+fmap (+1) (Just 5)          <span class="com">-- Just 6</span>
+fmap (+1) Nothing           <span class="com">-- Nothing</span>
+fmap (*2) [1,2,3]           <span class="com">-- [2,4,6]</span>
+fmap length (Right "abc")   <span class="com">-- Right 3</span>
+(*2) &lt;$&gt; [1,2,3]            <span class="com">-- [2,4,6]  (&lt;$&gt; é operador infix para fmap)</span>
+
+<span class="com">-- APPLICATIVE: pure / &lt;*&gt;</span>
+<span class="com">-- Funções TAMBÉM dentro do contexto</span>
+Just (+3) &lt;*&gt; Just 5        <span class="com">-- Just 8</span>
+Nothing   &lt;*&gt; Just 5        <span class="com">-- Nothing</span>
+[(+1),(+10)] &lt;*&gt; [1,2]      <span class="com">-- [2,3,11,12]  (produto cartesiano)</span>
+
+<span class="com">-- liftA2 — aplicar função binária dentro de contexto</span>
+import Control.Applicative (liftA2)
+liftA2 (+) (Just 3) (Just 5)    <span class="com">-- Just 8</span>
+liftA2 (+) Nothing  (Just 5)    <span class="com">-- Nothing</span>
+
+<span class="com">-- MONAD: >>= / do notation</span>
+<span class="com">-- Maybe como monad (short-circuit em Nothing)</span>
+safeDiv :: Int -> Int -> Maybe Int
+safeDiv _ 0 = Nothing
+safeDiv a b = Just (a `div` b)
+
+calcular :: Int -> Int -> Int -> Maybe Int
+calcular a b c = do
+    x &lt;- safeDiv a b
+    y &lt;- safeDiv x c
+    return (x + y)
+
+<span class="com">-- List como monad (não-determinismo)</span>
+combinacoes :: [(Int, Int)]
+combinacoes = do
+    x &lt;- [1..3]
+    y &lt;- [1..3]
+    if x /= y then return (x, y) else []
+<span class="com">-- [(1,2),(1,3),(2,1),(2,3),(3,1),(3,2)]</span>
+
+<span class="com">-- Estado com State monad</span>
+import Control.Monad.State
+
+contar :: State Int [Int]
+contar = do
+    forM [1..5] $ \i -> do
+        modify (+1)        <span class="com">-- incrementa estado</span>
+        n &lt;- get           <span class="com">-- lê estado atual</span>
+        return (i * n)
+
+resultado = runState contar 0    <span class="com">-- ([1,4,9,16,25], 5)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="monad-transformers" class="section-title">Monad Transformers — Combinar Efeitos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ReaderT + ExceptT + IO — padrão de aplicações reais</div>
+          <pre class="example"><span class="com">-- Stack de monad transformers</span>
+import Control.Monad.Reader
+import Control.Monad.Except
+
+data Config = Config
+    { dbURL    :: String
+    , maxConns :: Int
+    } deriving Show
+
+data AppError
+    = BancoDadosErr String
+    | ValidacaoErr String
+    deriving Show
+
+<span class="com">-- AppM combina: Reader Config + Either AppError + IO</span>
+type AppM a = ReaderT Config (ExceptT AppError IO) a
+
+<span class="com">-- Funções que usam o stack</span>
+buscarConexao :: AppM String
+buscarConexao = do
+    config &lt;- ask                  <span class="com">-- lê Config (from ReaderT)</span>
+    let url = dbURL config
+    liftIO $ putStrLn $ "Conectando a: " ++ url
+    when (null url) $ throwError (BancoDadosErr "URL vazia")
+    return url
+
+processar :: String -> AppM String
+processar input = do
+    when (null input) $ throwError (ValidacaoErr "input vazio")
+    conn &lt;- buscarConexao
+    liftIO $ putStrLn $ "Processando via " ++ conn
+    return $ map toUpper input
+
+runApp :: Config -> AppM a -> IO (Either AppError a)
+runApp config action = runExceptT (runReaderT action config)
+
+main :: IO ()
+main = do
+    let config = Config { dbURL = "postgres://localhost/db", maxConns = 10 }
+    resultado &lt;- runApp config (processar "hello")
+    case resultado of
+        Right val -> putStrLn $ "Resultado: " ++ val
+        Left err  -> putStrLn $ "Erro: " ++ show err</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="stm" class="section-title">STM — Concorrência Transacional</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Software Transactional Memory — sem locks, sem deadlocks</div>
+          <pre class="example"><span class="com">-- STM: transações compostas atomicamente</span>
+import Control.Concurrent.STM
+import Control.Concurrent (forkIO, threadDelay)
+
+<span class="com">-- TVar: variável transacional mutável</span>
+transferir :: TVar Int -> TVar Int -> Int -> STM ()
+transferir origem destino valor = do
+    saldo &lt;- readTVar origem
+    when (saldo &lt; valor) $ retry   <span class="com">-- retry: bloqueia até condição mudar</span>
+    writeTVar origem   (saldo - valor)
+    modifyTVar destino (+valor)
+
+main :: IO ()
+main = do
+    contaA &lt;- newTVarIO 1000
+    contaB &lt;- newTVarIO 500
+
+    <span class="com">-- atomically garante que a transação é atômica</span>
+    atomically $ transferir contaA contaB 200
+
+    saldoA &lt;- readTVarIO contaA
+    saldoB &lt;- readTVarIO contaB
+    putStrLn $ "A: " ++ show saldoA ++ " B: " ++ show saldoB
+
+<span class="com">-- TQueue: fila transacional</span>
+produtor :: TQueue String -> IO ()
+produtor q = do
+    atomically $ writeTQueue q "mensagem 1"
+    atomically $ writeTQueue q "mensagem 2"
+
+consumidor :: TQueue String -> IO ()
+consumidor q = do
+    msg &lt;- atomically $ readTQueue q    <span class="com">-- bloqueia se vazia</span>
+    putStrLn $ "Recebido: " ++ msg
+
+<span class="com">-- Async / Concorrência de alto nível</span>
+import Control.Concurrent.Async
+
+paralelo :: IO ()
+paralelo = do
+    (r1, r2) &lt;- concurrently calcular1 calcular2
+    print (r1, r2)
+
+comTimeout :: IO (Maybe String)
+comTimeout = race (threadDelay 1000000 >> return "timeout") buscarDados >>= \case
+    Left timeout -> return Nothing
+    Right dados  -&gt; return (Just dados)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="engenharia-sistemas" class="section-title">Engenharia de Sistemas em Haskell</h2>
+        <p>No nivel avancado, a pergunta principal deixa de ser "como compilar" e passa a ser "como operar com seguranca em producao". Para isso, combine modelagem tipada com politicas de timeout, retry com backoff, idempotencia em comandos e rastreabilidade de eventos.</p>
+        <ul>
+          <li><strong>APIs e servidores:</strong> contratos tipados, validacao exaustiva e observabilidade por endpoint.</li>
+          <li><strong>Bancos e filas:</strong> transacoes curtas, limites de concorrencia e tratamento consistente de falha parcial.</li>
+          <li><strong>Dados e IA:</strong> pipelines deterministas e controle de versao de datasets/modelos.</li>
+          <li><strong>IoT e edge:</strong> protocolos explicitos e reconexao resiliente em redes instaveis.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MARLOW, Simon. <strong>Parallel and Concurrent Programming in Haskell</strong>. O'Reilly, 2013.</li>
+            <li>O'SULLIVAN, B.; STEWART, D.; GOERZEN, J. <strong>Real World Haskell</strong>. Disponível em: &lt;http://book.realworldhaskell.org&gt;. Acesso em: 2026.</li>
+            <li>GHC TEAM. <strong>Control.Concurrent.STM Documentation</strong>. Disponível em: &lt;https://hackage.haskell.org/package/stm&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos Haskell</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> STM do Haskell é a implementação de referência de <strong>memória transacional em software</strong>: você escreve transações compostas que se comportam como transações de banco de dados — atômicas, isoladas e consistentes. A primitiva <code>retry</code> bloqueia a thread até que alguma TVar lida na transação mude, sem espera ativa e sem locks manuais. É a forma mais segura conhecida de programação concorrente com estado compartilhado.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

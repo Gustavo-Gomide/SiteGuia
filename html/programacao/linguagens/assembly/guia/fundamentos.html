@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos de Assembly x86-64: instrucoes aritmeticas, logicas, comparacao, saltos condicionais e incondicionais, pilha, sub-rotinas, modos de enderecamento e flags." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Fundamentos</h1>
+          <p>Os fundamentos do Assembly cobrem o conjunto completo de instruções essenciais: movimentação de dados, aritmética inteira e de ponto flutuante, operações lógicas, flags de status, comparações, saltos condicionais, estruturas de controle, a pilha e a mecânica de chamada de sub-rotinas através de <strong>CALL/RET</strong> e convenções de chamada.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Assembly, não existem <em>if</em>, <em>for</em> ou funções no sentido de linguagens de alto nível. Tudo é construído com <strong>CMP + Jcc</strong> (jump condicional), <strong>CALL</strong> e manipulação explícita da pilha via <strong>PUSH/POP</strong>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mov-dados">Movimentacao de Dados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; MOV, LEA e movimentacao com memoria</div>
+          <pre class="example"><span class="com">; MOV: copia valor de src para dst</span>
+<span class="kw">mov</span>  rax, <span class="num">100</span>         <span class="com">; rax = 100 (imediato)</span>
+<span class="kw">mov</span>  rbx, rax         <span class="com">; rbx = rax (reg → reg)</span>
+<span class="kw">mov</span>  rax, [var]       <span class="com">; rax = *var (memória → reg)</span>
+<span class="kw">mov</span>  [var], rbx       <span class="com">; *var = rbx (reg → memória)</span>
+<span class="kw">mov</span>  [rbx + rcx*8], rax  <span class="com">; enderecamento indexado: base + índice*escala</span>
+
+<span class="com">; MOV não pode: mem → mem diretamente  (usar reg como intermediário)</span>
+<span class="kw">mov</span>  rax, [src]
+<span class="kw">mov</span>  [dst], rax
+
+<span class="com">; LEA: Load Effective Address — calcula endereço sem acessar memória</span>
+<span class="kw">lea</span>  rdi, [rbp - <span class="num">16</span>]   <span class="com">; rdi = rbp - 16  (endereço de variável local)</span>
+<span class="kw">lea</span>  rax, [rax*<span class="num">4</span> + rax] <span class="com">; rax = rax*5  (truque para multiplicar)</span>
+<span class="kw">lea</span>  rsi, [rip + msg]   <span class="com">; RIP-relative: endereço de msg (código independente)</span>
+
+<span class="com">; MOVZX / MOVSX: estender com zero ou sinal</span>
+<span class="kw">movzx</span> rax, <span class="kw">byte</span> [buf]  <span class="com">; zero-extend: rax = (uint8_t) *buf</span>
+<span class="kw">movsx</span> rax, <span class="kw">dword</span> [n]  <span class="com">; sign-extend: rax = (int32_t) *n</span>
+
+<span class="com">; XCHG: troca atômica</span>
+<span class="kw">xchg</span>  rax, rbx         <span class="com">; troca rax ↔ rbx</span>
+
+<span class="com">; CMOV: move condicional (sem branch)</span>
+<span class="kw">cmp</span>   rax, rbx
+<span class="kw">cmovg</span> rcx, rdx         <span class="com">; if (rax > rbx): rcx = rdx  (sem salto)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="aritmetica">Aritmetica Inteira</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; ADD, SUB, MUL, DIV, operacoes de bit</div>
+          <pre class="example"><span class="com">; Adição e subtração</span>
+<span class="kw">add</span>   rax, <span class="num">10</span>      <span class="com">; rax += 10  (seta CF, OF, SF, ZF, PF)</span>
+<span class="kw">add</span>   rax, rbx     <span class="com">; rax += rbx</span>
+<span class="kw">sub</span>   rcx, <span class="num">1</span>       <span class="com">; rcx -= 1</span>
+<span class="kw">inc</span>   rdx          <span class="com">; rdx++  (mais eficiente, não seta CF)</span>
+<span class="kw">dec</span>   rdx          <span class="com">; rdx--</span>
+<span class="kw">neg</span>   rax          <span class="com">; rax = -rax (complemento de dois)</span>
+<span class="kw">adc</span>   rax, rbx     <span class="com">; add with carry: rax += rbx + CF  (big-int)</span>
+<span class="kw">sbb</span>   rax, rbx     <span class="com">; sub with borrow: rax -= rbx + CF</span>
+
+<span class="com">; Multiplicação sem sinal — RESULTADO em RDX:RAX (128 bits)</span>
+<span class="kw">mov</span>   rax, <span class="num">1000</span>
+<span class="kw">mov</span>   rbx, <span class="num">2000</span>
+<span class="kw">mul</span>   rbx           <span class="com">; rdx:rax = rax * rbx (unsigned)</span>
+<span class="com">; IMUL — assinada, versão de 2/3 operandos é mais simples</span>
+<span class="kw">imul</span>  rax, rbx, <span class="num">5</span>  <span class="com">; rax = rbx * 5  (truncado em 64-bit)</span>
+<span class="kw">imul</span>  rax, rcx      <span class="com">; rax *= rcx</span>
+
+<span class="com">; Divisão — DIVIDENDO em RDX:RAX, divisor no operando</span>
+<span class="kw">xor</span>   rdx, rdx      <span class="com">; limpar RDX (parte alta do dividendo)</span>
+<span class="kw">mov</span>   rax, <span class="num">100</span>
+<span class="kw">mov</span>   rbx, <span class="num">7</span>
+<span class="kw">div</span>   rbx           <span class="com">; rax = 100 / 7 = 14  (quociente), rdx = 100 % 7 = 2 (resto)</span>
+<span class="kw">idiv</span>  rbx           <span class="com">; versão assinada — cuidado: rdx deve ter extensao de sinal de rax</span>
+
+<span class="com">; Operações de bit</span>
+<span class="kw">and</span>   rax, <span class="num">0xFF</span>     <span class="com">; rax &= 0xFF  (mascarar byte baixo)</span>
+<span class="kw">or</span>    rax, <span class="num">0x80</span>     <span class="com">; setar bit 7</span>
+<span class="kw">xor</span>   rax, rax      <span class="com">; rax = 0  (idioma mais rápido para zerar)</span>
+<span class="kw">xor</span>   rax, <span class="num">1</span>        <span class="com">; toggle bit 0</span>
+<span class="kw">not</span>   rax           <span class="com">; bitwise NOT</span>
+
+<span class="com">; Shifts</span>
+<span class="kw">shl</span>   rax, <span class="num">1</span>        <span class="com">; shift left 1 = multiplicar por 2 (rápido)</span>
+<span class="kw">shr</span>   rax, <span class="num">3</span>        <span class="com">; shift right lógico 3 = dividir por 8 (unsigned)</span>
+<span class="kw">sar</span>   rax, <span class="num">1</span>        <span class="com">; shift right ARITMÉTICO = divide por 2 (preserva sinal)</span>
+<span class="kw">rol</span>   rax, <span class="num">1</span>        <span class="com">; rotate left</span>
+<span class="kw">ror</span>   rbx, <span class="num">4</span>        <span class="com">; rotate right (nibble swap)</span>
+<span class="kw">bswap</span> rax           <span class="com">; byte swap: big-endian ↔ little-endian</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="flags-jumps">FLAGS e Saltos Condicionais</h2>
+        <div class="panel">
+          <p class="panel-title">RFLAGS — principais flags de status</p>
+          <table class="table">
+            <thead><tr><th>Flag</th><th>Bit</th><th>Nome</th><th>Quando é 1</th></tr></thead>
+            <tbody>
+              <tr><td>CF</td><td>0</td><td>Carry Flag</td><td>Overflow sem sinal / borrow em subtração</td></tr>
+              <tr><td>ZF</td><td>6</td><td>Zero Flag</td><td>Resultado foi zero</td></tr>
+              <tr><td>SF</td><td>7</td><td>Sign Flag</td><td>Resultado negativo (bit 63 = 1)</td></tr>
+              <tr><td>OF</td><td>11</td><td>Overflow Flag</td><td>Overflow em aritmética com sinal</td></tr>
+              <tr><td>PF</td><td>2</td><td>Parity Flag</td><td>Byte baixo do resultado tem paridade par</td></tr>
+              <tr><td>DF</td><td>10</td><td>Direction Flag</td><td>Instrucoes de string decrementam SI/DI</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; CMP, TEST e instruções de salto condicional</div>
+          <pre class="example"><span class="com">; CMP: subtrai dst - src sem salvar resultado (só atualiza flags)</span>
+<span class="com">; TEST: AND dst & src sem salvar (só atualiza SF, ZF, PF)</span>
+
+<span class="com">; ── if (rax == 0) ──────────────────────────────</span>
+    <span class="kw">test</span>  rax, rax    <span class="com">; equivalente a cmp rax, 0 (mais rápido)</span>
+    <span class="kw">jz</span>    .eh_zero    <span class="com">; jump if zero (ZF=1)</span>
+    <span class="kw">jnz</span>   .nao_zero   <span class="com">; jump if not zero (ZF=0)</span>
+
+<span class="com">; ── if (rax == rbx) ────────────────────────────</span>
+    <span class="kw">cmp</span>   rax, rbx
+    <span class="kw">je</span>    .iguais     <span class="com">; jump if equal</span>
+    <span class="kw">jne</span>   .diferentes <span class="com">; jump if not equal</span>
+
+<span class="com">; ── Saltos com sinal (signed comparisons) ──────</span>
+    <span class="kw">cmp</span>   rax, rbx
+    <span class="kw">jl</span>    .menor      <span class="com">; jump if less  (SF ≠ OF)</span>
+    <span class="kw">jle</span>   .menor_ig   <span class="com">; jump if less or equal</span>
+    <span class="kw">jg</span>    .maior      <span class="com">; jump if greater</span>
+    <span class="kw">jge</span>   .maior_ig   <span class="com">; jump if greater or equal</span>
+
+<span class="com">; ── Saltos sem sinal (unsigned) ─────────────────</span>
+    <span class="kw">cmp</span>   rax, rbx
+    <span class="kw">jb</span>    .abaixo     <span class="com">; jump if below  (CF=1)</span>
+    <span class="kw">jbe</span>   .abaixo_ig  <span class="com">; jump if below or equal</span>
+    <span class="kw">ja</span>    .acima      <span class="com">; jump if above  (CF=0 e ZF=0)</span>
+    <span class="kw">jae</span>   .acima_ig   <span class="com">; jump if above or equal</span>
+
+<span class="com">; ── if/else em assembly ─────────────────────────</span>
+    <span class="kw">cmp</span>   rcx, <span class="num">10</span>
+    <span class="kw">jge</span>   .else_branch
+    <span class="com">; bloco then: rcx < 10</span>
+    <span class="kw">imul</span>  rcx, rcx, <span class="num">2</span>
+    <span class="kw">jmp</span>   .end_if
+.else_branch:
+    <span class="com">; bloco else: rcx >= 10</span>
+    <span class="kw">sub</span>   rcx, <span class="num">5</span>
+.end_if:
+
+<span class="com">; ── Loop for equivalente a  for(rcx=10; rcx>0; rcx--) ─</span>
+    <span class="kw">mov</span>   rcx, <span class="num">10</span>
+.loop_inicio:
+    <span class="kw">dec</span>   rcx
+    <span class="kw">jnz</span>   .loop_inicio  <span class="com">; ou usar LOOP (lento em CPUs modernas)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pilha">Pilha e Sub-rotinas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; PUSH, POP, CALL, RET e prologo/epilogo</div>
+          <pre class="example"><span class="com">; A pilha cresce para BAIXO em x86-64 (RSP decrementa)</span>
+<span class="com">; PUSH rax  ≡  sub rsp, 8  ;  mov [rsp], rax</span>
+<span class="com">; POP  rax  ≡  mov rax, [rsp]  ;  add rsp, 8</span>
+
+<span class="com">; CALL: empurra endereço de retorno e salta</span>
+<span class="com">; RET:  desempilha endereço e salta (retorna)</span>
+
+<span class="com">; ────────────────────────────────────────────────</span>
+<span class="com">; Função: soma(a, b) -> rax = a + b</span>
+<span class="com">; System V ABI: args em rdi, rsi, rdx, rcx, r8, r9</span>
+<span class="com">; ────────────────────────────────────────────────</span>
+soma:
+    <span class="com">; Prólogo — salvar frame pointer</span>
+    <span class="kw">push</span>  rbp
+    <span class="kw">mov</span>   rbp, rsp
+    <span class="com">; Sub rsp, N para alocar variáveis locais (deve ser alinhado a 16)</span>
+    <span class="kw">sub</span>   rsp, <span class="num">16</span>
+
+    <span class="com">; Corpo</span>
+    <span class="kw">mov</span>   rax, rdi    <span class="com">; rax = a (1° arg)</span>
+    <span class="kw">add</span>   rax, rsi    <span class="com">; rax += b (2° arg)</span>
+
+    <span class="com">; Epílogo — restaurar frame e retornar</span>
+    <span class="kw">mov</span>   rsp, rbp
+    <span class="kw">pop</span>   rbp
+    <span class="kw">ret</span>              <span class="com">; retorna com resultado em rax</span>
+
+<span class="com">; Chamar a função</span>
+_start:
+    <span class="kw">mov</span>   rdi, <span class="num">3</span>     <span class="com">; a = 3</span>
+    <span class="kw">mov</span>   rsi, <span class="num">4</span>     <span class="com">; b = 4</span>
+    <span class="kw">call</span>  soma        <span class="com">; rax = 7</span>
+
+<span class="com">; Salvar/restaurar registradores callee-saved (rbx, rbp, r12-r15)</span>
+minha_funcao:
+    <span class="kw">push</span>  rbx
+    <span class="kw">push</span>  r12
+    <span class="kw">push</span>  r13
+    <span class="com">; ... usa rbx, r12, r13 livremente ...</span>
+    <span class="kw">pop</span>   r13
+    <span class="kw">pop</span>   r12
+    <span class="kw">pop</span>   rbx
+    <span class="kw">ret</span>
+
+<span class="com">; Alinhamento de pilha: em x86-64, ao entrar em uma função</span>
+<span class="com">; (após o CALL que empurrou 8 bytes), RSP deve ser ≡ 0 mod 16.</span>
+<span class="com">; O prólogo push rbp adiciona 8 bytes → RSP ≡ 0 mod 16 ✓</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="enderecamento">Modos de Enderecamento</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Todos os modos de enderecamento</div>
+          <pre class="example"><span class="com">; Formato geral: [base + índice*escala + deslocamento]</span>
+<span class="com">; escala: 1, 2, 4 ou 8</span>
+
+<span class="com">; 1. Imediato</span>
+<span class="kw">mov</span>  rax, <span class="num">42</span>
+
+<span class="com">; 2. Registrador</span>
+<span class="kw">mov</span>  rax, rbx
+
+<span class="com">; 3. Direto (absolute address)</span>
+<span class="kw">mov</span>  rax, [<span class="num">0x404000</span>]
+
+<span class="com">; 4. Indireto por registrador</span>
+<span class="kw">mov</span>  rax, [rsi]           <span class="com">; rax = *rsi</span>
+
+<span class="com">; 5. Base + deslocamento</span>
+<span class="kw">mov</span>  rax, [rbp - <span class="num">8</span>]       <span class="com">; var local no stack frame</span>
+<span class="kw">mov</span>  rax, [rdi + <span class="num">16</span>]      <span class="com">; campo de struct com offset 16</span>
+
+<span class="com">; 6. Base + índice*escala</span>
+<span class="kw">mov</span>  rax, [rbx + rcx*<span class="num">8</span>]   <span class="com">; array de int64: rbx=base, rcx=índice</span>
+<span class="kw">mov</span>  eax, [rbx + rcx*<span class="num">4</span>]   <span class="com">; array de int32</span>
+
+<span class="com">; 7. Base + índice*escala + deslocamento</span>
+<span class="kw">mov</span>  rax, [rbx + rcx*<span class="num">8</span> + <span class="num">32</span>]  <span class="com">; elemento de array com offset</span>
+
+<span class="com">; 8. RIP-relative (código independente de posição, PIC)</span>
+<span class="kw">lea</span>  rdi, [rel mensagem]   <span class="com">; endereço relativo ao RIP</span>
+<span class="kw">mov</span>  rax, [rel variavel]   <span class="com">; acesso a varíavel global</span>
+
+<span class="com">; Tamanho explícito quando ambíguo:</span>
+<span class="kw">mov</span>  <span class="kw">byte</span>  [rdi], <span class="num">0</span>    <span class="com">; escreve 1 byte</span>
+<span class="kw">mov</span>  <span class="kw">word</span>  [rdi], <span class="num">0</span>    <span class="com">; escreve 2 bytes</span>
+<span class="kw">mov</span>  <span class="kw">dword</span> [rdi], <span class="num">0</span>    <span class="com">; escreve 4 bytes</span>
+<span class="kw">mov</span>  <span class="kw">qword</span> [rdi], <span class="num">0</span>    <span class="com">; escreve 8 bytes</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>INTEL. <strong>Intel 64 and IA-32 Architectures Software Developer's Manual Vol. 2</strong>. Santa Clara: Intel Corporation, 2024.</li>
+            <li>BRYANT, R.; O'HALLARON, D. <strong>Computer Systems: A Programmer's Perspective</strong>. 3. ed. Pearson, 2015.</li>
+            <li>KUSSWURM, D. <strong>Modern X86 Assembly Language Programming</strong>. 3. ed. Apress, 2023.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Introdução</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Avançado (SIMD, syscalls, inline)</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>alinhamento de pilha a 16 bytes</strong> é mandatório pela ABI System V antes de qualquer CALL. Se RSP não for múltiplo de 16 ao entrar em uma função que use SSE/AVX, a instrução <code>movaps</code> gerará uma falha de segmentação — erro clássico para quem escreve assembly manualmente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

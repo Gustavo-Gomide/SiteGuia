@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="BFS em Grafos: caminho mais curto em grafos não ponderados, rastreamento de caminho com dicionário pai, Python. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>BFS em Grafos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>BFS em Grafos</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">BFS em Grafos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>BFS em Grafos: garantindo o caminho de menos saltos</h1>
+          <p>A BFS aplicada a grafos com ciclos garante o caminho mais curto  mas só em grafos não ponderados.</p>
+        </div>
+        <p class="intro-highlight">
+          Enquanto a BFS básica visita nós em ordem de distância crescente, a aplicação em grafos com ciclos exige o conjunto <code class="code-inline">visitados</code> para evitar revisitas. A propriedade mágica permanece: o primeiro momento em que você alcança qualquer nó, o caminho percorrido é o de menor número de saltos a partir da origem.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">Expansão em camadas</h2>
+        <p>
+          BFS processa o grafo em "anéis" de distância a partir da origem. Todos os nós a distância 1 são visitados antes dos de distância 2, que por sua vez precedem os de distância 3. Essa ordem de visita é a chave para garantir que, ao encontrar o alvo, o caminho acumulado é o mais curto.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Propriedade fundamental:</strong> Quando um nó é retirado da fila BFS pela primeira vez, a distância registrada até ele é definitiva  não existe caminho mais curto que aquele. Isso distingue BFS do DFS, que pode chegar ao mesmo nó por caminhos mais longos primeiro.
+          </p>
+        </div>
+
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 520 240" role="img" aria-label="BFS em grafo com ciclo: camadas de distância 0, 1 e 2 a partir de I, caminho mais curto para ALVO destacado">
+            <defs>
+              <style>
+                .gbfs-nd  { fill: var(--card-bg-primary); stroke: var(--border); stroke-width: 1.5; }
+                .gbfs-l0  { fill: rgba(var(--accent-rgb), 0.3); stroke: var(--accent); stroke-width: 2; }
+                .gbfs-l1  { fill: rgba(var(--danger-rgb), 0.15); stroke: var(--danger); stroke-width: 1.5; }
+                .gbfs-l2  { fill: rgba(var(--warn-rgb, 234,179,8), 0.15); stroke: rgba(var(--warn-rgb,234,179,8),0.7); stroke-width: 1.5; }
+                .gbfs-fnd { fill: rgba(var(--accent-rgb), 0.5); stroke: var(--accent); stroke-width: 2.5; }
+                .gbfs-eg  { stroke: var(--border); stroke-width: 1.5; }
+                .gbfs-pth { stroke: var(--accent); stroke-width: 2.5; }
+                .gbfs-txt { fill: var(--text-primary); font-size: 12px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+                .gbfs-lbl { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+                .gbfs-dst { fill: var(--text-secondary); font-size: 9px; text-anchor: middle; }
+              </style>
+            </defs>
+
+            <!-- Edges -->
+            <line x1="260" y1="50"  x2="150" y2="120" class="gbfs-eg"/>
+            <line x1="260" y1="50"  x2="260" y2="120" class="gbfs-eg"/>
+            <line x1="260" y1="50"  x2="370" y2="120" class="gbfs-eg"/>
+            <line x1="150" y1="120" x2="90"  y2="190" class="gbfs-eg"/>
+            <line x1="150" y1="120" x2="210" y2="190" class="gbfs-eg"/>
+            <line x1="370" y1="120" x2="430" y2="190" class="gbfs-eg"/>
+
+            <!-- Path highlight: I  C  ALVO -->
+            <line x1="260" y1="68"  x2="370" y2="102" class="gbfs-pth"/>
+            <line x1="370" y1="138" x2="430" y2="172" class="gbfs-pth"/>
+
+            <!-- Layer rings (decorative ellipses) -->
+            <ellipse cx="260" cy="50" rx="50" ry="35" fill="none" stroke="var(--accent)" stroke-width="1" stroke-dasharray="4" opacity="0.4"/>
+            <ellipse cx="260" cy="50" rx="140" ry="100" fill="none" stroke="var(--danger)" stroke-width="1" stroke-dasharray="4" opacity="0.3"/>
+            <ellipse cx="260" cy="50" rx="230" ry="165" fill="none" stroke="rgba(234,179,8,0.5)" stroke-width="1" stroke-dasharray="4" opacity="0.25"/>
+
+            <!-- Nodes -->
+            <circle cx="260" cy="50"  r="22" class="gbfs-l0"/>
+            <text x="260" y="50"  class="gbfs-txt">I</text>
+            <text x="260" y="22"  class="gbfs-dst">dist: 0</text>
+
+            <circle cx="150" cy="120" r="20" class="gbfs-l1"/>
+            <text x="150" y="120" class="gbfs-txt">A</text>
+            <text x="100" y="120" class="gbfs-dst">dist: 1</text>
+
+            <circle cx="260" cy="120" r="20" class="gbfs-l1"/>
+            <text x="260" y="120" class="gbfs-txt">B</text>
+            <text x="260" y="148" class="gbfs-dst">dist: 1</text>
+
+            <circle cx="370" cy="120" r="20" class="gbfs-l1"/>
+            <text x="370" y="120" class="gbfs-txt">C</text>
+            <text x="420" y="120" class="gbfs-dst">dist: 1</text>
+
+            <circle cx="90"  cy="190" r="20" class="gbfs-l2"/>
+            <text x="90"  y="190" class="gbfs-txt">D</text>
+            <text x="48"  y="190" class="gbfs-dst">dist: 2</text>
+
+            <circle cx="210" cy="190" r="20" class="gbfs-l2"/>
+            <text x="210" y="190" class="gbfs-txt">E</text>
+            <text x="210" y="218" class="gbfs-dst">dist: 2</text>
+
+            <circle cx="430" cy="190" r="22" class="gbfs-fnd"/>
+            <text x="430" y="190" class="gbfs-txt">T</text>
+            <text x="475" y="190" class="gbfs-dst">dist: 2 </text>
+
+            <text x="260" y="232" class="gbfs-lbl">Caminho mais curto: I  C  T (2 saltos)</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação com rastreamento de caminho</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bfs_caminho.py</div>
+          <pre class="example"><span class="kw">from</span> collections <span class="kw">import</span> deque
+
+<span class="kw">def</span> <span class="tp">bfs_caminho</span>(grafo, inicio, alvo):
+    <span class="str">"""Retorna o caminho mais curto (em saltos) de inicio até alvo."""</span>
+    visitados = {inicio}
+    fila = deque([inicio])
+    pai = {inicio: <span class="kw">None</span>}   <span class="com"># rastreia de onde viemos</span>
+
+    <span class="kw">while</span> fila:
+        no = fila.popleft()
+
+        <span class="kw">if</span> no == alvo:
+            <span class="kw">return</span> _reconstruir(pai, inicio, alvo)
+
+        <span class="kw">for</span> vizinho <span class="kw">in</span> grafo[no]:
+            <span class="kw">if</span> vizinho <span class="kw">not in</span> visitados:
+                visitados.add(vizinho)
+                pai[vizinho] = no
+                fila.append(vizinho)
+
+    <span class="kw">return</span> []   <span class="com"># caminho não existe</span>
+
+
+<span class="kw">def</span> <span class="tp">_reconstruir</span>(pai, inicio, alvo):
+    <span class="str">"""Reconstrói o caminho do alvo até o início e inverte."""</span>
+    caminho = []
+    atual = alvo
+    <span class="kw">while</span> atual <span class="kw">is not</span> <span class="kw">None</span>:
+        caminho.append(atual)
+        atual = pai[atual]
+    caminho.reverse()
+    <span class="kw">return</span> caminho
+
+
+<span class="com"># --- Exemplo de uso ---</span>
+grafo = {
+    <span class="str">'I'</span>: [<span class="str">'A'</span>, <span class="str">'B'</span>, <span class="str">'C'</span>],
+    <span class="str">'A'</span>: [<span class="str">'D'</span>, <span class="str">'E'</span>],
+    <span class="str">'B'</span>: [],
+    <span class="str">'C'</span>: [<span class="str">'T'</span>],
+    <span class="str">'D'</span>: [], <span class="str">'E'</span>: [], <span class="str">'T'</span>: []
+}
+<span class="tp">print</span>(bfs_caminho(grafo, <span class="str">'I'</span>, <span class="str">'T'</span>))  <span class="com"># ['I', 'C', 'T']</span></pre>
+        </div>
+        <p>Pontos importantes:</p>
+        <ul>
+          <li>O dicionário <code class="code-inline">pai</code> registra "de onde viemos" para cada nó  permite reconstruir o caminho ao final.</li>
+          <li>Marcar como visitado no momento de <em>enfileirar</em> (não de processar) evita que o mesmo nó seja enfileirado múltiplas vezes.</li>
+          <li>A reconstrução percorre o dicionário <code class="code-inline">pai</code> do alvo até a origem e inverte o resultado.</li>
+          <li>BFS não funciona com grafos ponderados  para esses, use Dijkstra.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table class="trace-table">
+            <thead>
+              <tr><th>Recurso</th><th>Complexidade</th><th>Observação</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Tempo</td><td>O(V + E)</td><td>V = vértices, E = arestas. Cada nó e aresta são processados uma vez.</td></tr>
+              <tr><td>Espaço (fila + visitados + pai)</td><td>O(V)</td><td>Três estruturas crescem com o número de vértices alcançáveis.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando usar</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Menor caminho não ponderado</h3>
+            <p>GPS simplificado (sem distâncias), graus de separação em redes sociais, menor número de movimentos em puzzles de grade.</p>
+          </div>
+          <div class="card">
+            <h3>Verificação de alcançabilidade</h3>
+            <p>Determinar se existe qualquer caminho entre dois nós, ou quais nós são alcançáveis a partir de uma origem.</p>
+          </div>
+          <div class="card">
+            <h3>Nível em grafos</h3>
+            <p>Calcular a distância em saltos de todos os nós a partir de uma origem  útil em análise de difusão e epidemiologia.</p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Limitação crucial:</strong> BFS assume que 1 salto = 1 custo. Em um grafo onde uma aresta custa 1 e outra custa 1000, BFS pode escolher o caminho com 2 saltos e custo 1000 em vez do caminho com 3 saltos e custo 3. Para grafos com pesos, utilize Dijkstra.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Cormen, T. H. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Seção 20.2.</li>
+            <li>Sedgewick, R.; Wayne, K. <em>Algorithms</em>, 4ª ed. Addison-Wesley, 2011. Cap. 4.1.</li>
+            <li>Skiena, S. S. <em>The Algorithm Design Manual</em>, 3ª ed. Springer, 2020. Seção 7.6.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>BFS com rastreamento de pai transforma a travessia em busca de caminho mínimo. É a fundação sobre a qual Dijkstra e A* constroem suas otimizações para grafos ponderados.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A garantia de optimalidade da BFS não é magia  é consequência direta da fila FIFO processar nós em ordem de distância crescente."  análise de algoritmos de grafos
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

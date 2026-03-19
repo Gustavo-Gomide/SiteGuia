@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure em desenvolvimento de jogos: modelagem ECS, loop funcional, ClojureScript com Canvas/WebGL e integracao com motores JVM." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Aplicacoes em Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure: Aplicacoes em Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Jogos com estado funcional e simulacao previsivel</h1>
+          <p>Clojure e ClojureScript permitem tratar o estado do jogo como dados imutaveis, tornando replay, debug e determinismo mais simples.</p>
+        </div>
+        <p class="intro-highlight">Em jogos, a arquitetura importa: um loop puro de simulacao combinado com render separado reduz bugs de sincronizacao e facilita otimizar partes quentes.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Conceitos base</h2>
+        <p>Pense no jogo como um simulador: cada frame aplica uma funcao <code class="code-inline">update(state, input, dt)</code> e produz um novo estado. O renderer so desenha esse estado, sem regra oculta.</p>
+        <div class="panel">
+          <h3 class="panel-title">Modelos comuns</h3>
+          <ul>
+            <li>ECS (Entity Component System) com componentes em mapas indexados.</li>
+            <li>Game loop fixo para simulacao, interpolacao para render.</li>
+            <li>Pipeline de eventos para input, colisao e scripting.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Loop de jogo funcional</h2>
+        <pre class="example"><code><span class="kw">(defn</span> step [state input dt]
+  (<span class="kw">let</span> [state1 (systems/input state input)
+        state2 (systems/physics state1 dt)
+        state3 (systems/collision state2)
+        state4 (systems/rules state3)]
+    state4))
+
+(<span class="kw">defn</span> game-loop [initial-state]
+  (<span class="kw">loop</span> [state initial-state
+         last-ts (System/nanoTime)]
+    (<span class="kw">let</span> [now (System/nanoTime)
+          dt (/ (- now last-ts) 1e9)
+          input (poll-input)
+          new-state (step state input dt)]
+      (render! new-state)
+      (recur new-state now))))</code></pre>
+        <p>Separar simulacao e render permite reproduzir bugs por seed e sequence de input, tecnica valiosa em jogos com fisica.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Stacks por tipo de jogo</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>2D no browser</h3><p>ClojureScript + Canvas/WebGL com Figwheel e hot reload.</p></div>
+          <div class="card"><h3>Desktop JVM</h3><p>LibGDX via interop Java para render e audio.</p></div>
+          <div class="card"><h3>Ferramentas de conteudo</h3><p>Editores internos em cljfx para level design e tuning.</p></div>
+          <div class="card"><h3>Servidor de jogo</h3><p>Clojure backend para matchmaking, ranking e regras autoritativas.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Quando Clojure em jogos e estrategico</h2>
+        <ul>
+          <li>Prototipacao rapida de mecanicas com REPL.</li>
+          <li>Jogos de simulacao e estrategia com regras complexas.</li>
+          <li>Backends de jogos multiplayer com alta concorrencia.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos avancados</h2>
+        <div class="panel">
+          <h3 class="panel-title">Determinismo e rollback netcode</h3>
+          <p>Guardar estado em snapshots periodicos + log de input permite re-simular frames para corrigir divergencia entre clientes em multiplayer competitivo.</p>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite alocacao excessiva no hot path do frame. Mesmo com estruturas persistentes, crie perfis de memoria e mova partes criticas para estruturas transientes quando necessario.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao com abordagens tradicionais</h2>
+        <table class="table">
+          <thead><tr><th>Abordagem</th><th>Vantagem</th><th>Desafio</th></tr></thead>
+          <tbody>
+            <tr><td>Clojure funcional</td><td>Debug e replay previsiveis</td><td>Menos ferramentas prontas de engine</td></tr>
+            <tr><td>C# em engine mainstream</td><td>Pipeline completo</td><td>Arquitetura pode virar acoplada rapido</td></tr>
+            <tr><td>C++ custom engine</td><td>Controle maximo</td><td>Custo alto de desenvolvimento</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>LIBGDX. Documentation. Disponivel em: <a href="https://libgdx.com/" target="_blank" rel="noopener">https://libgdx.com/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>CLOJURESCRIPT. Official Site. Disponivel em: <a href="https://clojurescript.org/" target="_blank" rel="noopener">https://clojurescript.org/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>GREGORY, J. Game Engine Architecture. 3. ed. CRC Press, 2018.</li>
+          <li>FIGWHEEL MAIN. Docs. Disponivel em: <a href="https://figwheel.org/" target="_blank" rel="noopener">https://figwheel.org/</a>. Acesso em: 13 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> Jogos em Clojure valorizam clareza de simulacao: regras transparentes hoje economizam semanas de depuracao amanha.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/gui_desktop.html">Aplicacoes GUI Desktop</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/mobile.html">Aplicacoes Mobile</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/avancado.html">Clojure Avancado</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

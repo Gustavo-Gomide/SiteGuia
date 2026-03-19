@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Delphi com banco de dados: FireDAC, conexões ADO/ODBC, SQLite, PostgreSQL, MySQL, queries parametrizadas, DataSet, Live Bindings e TDataModule." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Delphi — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Delphi &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="delphi_object_pascal" aria-hidden="true"></span></div>
+          <h1>Delphi — Banco de Dados</h1>
+          <p>Delphi tem um dos modelos de acesso a banco mais maduros do mundo: o <strong>FireDAC</strong> (antigo AnyDAC) suporta mais de 20 SGBDs com uma API consistente. A arquitetura <strong>DataSet → DataSource → controles visuais</strong> permite uma grade de dados completamente funcional sem uma linha de código. Para acesso programático, <strong>TFDQuery</strong> com parâmetros previne injeção SQL.</p>
+        </div>
+        <p class="intro-highlight">
+          A conexão <strong>data-aware</strong> do Delphi: um <code>TFDQuery</code> conectado a um <code>TDataSource</code>, que está ligado a um <code>TDBGrid</code> — ao mudar o SQL ou os dados, a grade atualiza automaticamente. É MVVM aplicado a componentes visuais, décadas antes do React.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="firedac">FireDAC — Conexão e Queries</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Conectar ao banco e executar queries</div>
+          <pre class="example"><span class="kw">uses</span>
+  FireDAC.Stan.Intf, FireDAC.Stan.Option,
+  FireDAC.Phys.PG,              <span class="com">// driver PostgreSQL</span>
+  FireDAC.Phys.SQLite,          <span class="com">// driver SQLite</span>
+  FireDAC.Comp.Client;          <span class="com">// TFDConnection, TFDQuery</span>
+
+<span class="kw">var</span>
+  conn:   TFDConnection;
+  query:  TFDQuery;
+
+<span class="kw">begin</span>
+  conn := TFDConnection.Create(nil);
+  <span class="kw">try</span>
+    <span class="com">// PostgreSQL</span>
+    conn.DriverName := <span class="str">'PG'</span>;
+    conn.Params.Values[<span class="str">'Server'</span>]   := <span class="str">'localhost'</span>;
+    conn.Params.Values[<span class="str">'Port'</span>]     := <span class="str">'5432'</span>;
+    conn.Params.Values[<span class="str">'Database'</span>] := <span class="str">'meubd'</span>;
+    conn.Params.Values[<span class="str">'User_Name'</span>]:= <span class="str">'user'</span>;
+    conn.Params.Values[<span class="str">'Password'</span>] := <span class="str">'senha'</span>;
+    conn.Open;
+
+    <span class="com">// Query com parâmetro — previne SQL Injection</span>
+    query := TFDQuery.Create(nil);
+    <span class="kw">try</span>
+      query.Connection := conn;
+      query.SQL.Text := <span class="str">'SELECT * FROM clientes WHERE cidade = :cidade'</span>;
+      query.ParamByName(<span class="str">'cidade'</span>).AsString := <span class="str">'São Paulo'</span>;
+      query.Open;   <span class="com">// SELECT → Open</span>
+
+      <span class="kw">while not</span> query.EOF <span class="kw">do</span>
+      <span class="kw">begin</span>
+        Writeln(query.FieldByName(<span class="str">'nome'</span>).AsString);
+        query.Next;
+      <span class="kw">end</span>;
+    <span class="kw">finally</span>
+      query.Free;
+    <span class="kw">end</span>;
+  <span class="kw">finally</span>
+    conn.Free;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">INSERT, UPDATE, DELETE e transações</div>
+          <pre class="example"><span class="com">// INSERT com parâmetros</span>
+<span class="kw">procedure</span> InserirCliente(AConn: TFDConnection; const ANome, AEmail: <span class="tp">string</span>);
+<span class="kw">var</span>
+  qry: TFDQuery;
+<span class="kw">begin</span>
+  qry := TFDQuery.Create(nil);
+  <span class="kw">try</span>
+    qry.Connection := AConn;
+    qry.SQL.Text :=
+      <span class="str">'INSERT INTO clientes (nome, email, criado_em) VALUES (:nome, :email, NOW())'</span>;
+    qry.ParamByName(<span class="str">'nome'</span>).AsString  := ANome;
+    qry.ParamByName(<span class="str">'email'</span>).AsString := AEmail;
+    qry.ExecSQL;   <span class="com">// DML → ExecSQL (não Open)</span>
+  <span class="kw">finally</span>
+    qry.Free;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="com">// Transação</span>
+<span class="kw">procedure</span> TransferirSaldo(AConn: TFDConnection; DeId, ParaId: <span class="tp">Integer</span>; AValor: <span class="tp">Currency</span>);
+<span class="kw">begin</span>
+  AConn.StartTransaction;
+  <span class="kw">try</span>
+    ExecutarSQL(AConn,
+      <span class="str">'UPDATE contas SET saldo = saldo - :v WHERE id = :id'</span>,
+      [<span class="str">'v'</span>, <span class="str">'id'</span>], [AValor, DeId]);
+
+    ExecutarSQL(AConn,
+      <span class="str">'UPDATE contas SET saldo = saldo + :v WHERE id = :id'</span>,
+      [<span class="str">'v'</span>, <span class="str">'id'</span>], [AValor, ParaId]);
+
+    AConn.Commit;
+  <span class="kw">except</span>
+    AConn.Rollback;
+    <span class="kw">raise</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite">SQLite Embutido</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">SQLite — banco embutido perfeito para desktop/mobile</div>
+          <pre class="example"><span class="kw">uses</span>
+  FireDAC.Phys.SQLite,
+  FireDAC.Comp.Client;
+
+<span class="kw">function</span> CriarConexaoSQLite(const ACaminho: <span class="tp">string</span>): TFDConnection;
+<span class="kw">begin</span>
+  Result := TFDConnection.Create(nil);
+  Result.DriverName := <span class="str">'SQLite'</span>;
+  Result.Params.Values[<span class="str">'Database'</span>] := ACaminho;
+  Result.Params.Values[<span class="str">'OpenMode'</span>] := <span class="str">'CreateUTF8'</span>;  <span class="com">// criar se não existir</span>
+  Result.Open;
+<span class="kw">end</span>;
+
+<span class="com">// Criar tabela e migração</span>
+<span class="kw">procedure</span> MigrarBanco(AConn: TFDConnection);
+<span class="kw">begin</span>
+  AConn.ExecSQL(
+    <span class="str">'CREATE TABLE IF NOT EXISTS clientes ('</span> +
+    <span class="str">'  id      INTEGER PRIMARY KEY AUTOINCREMENT,'</span> +
+    <span class="str">'  nome    TEXT NOT NULL,'</span> +
+    <span class="str">'  email   TEXT UNIQUE NOT NULL,'</span> +
+    <span class="str">'  ativo   INTEGER DEFAULT 1'</span> +
+    <span class="str">')'</span>);
+
+  <span class="com">// Índice para busca por email</span>
+  AConn.ExecSQL(
+    <span class="str">'CREATE INDEX IF NOT EXISTS idx_email ON clientes(email)'</span>);
+<span class="kw">end</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dataset">DataSet, DataSource e Componentes Data-Aware</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TDataModule com componentes data-aware</div>
+          <pre class="example"><span class="com">// DmClientes.pas — DataModule com componentes configurados no designer</span>
+<span class="kw">unit</span> DmClientes;
+
+<span class="kw">interface</span>
+<span class="kw">uses</span>
+  System.Classes,
+  FireDAC.Comp.Client,
+  Data.DB;               <span class="com">// TDataSource</span>
+
+<span class="kw">type</span>
+  TDmClientes = <span class="kw">class</span>(TDataModule)
+    FDConn:        TFDConnection;
+    QryClientes:   TFDQuery;
+    DsClientes:    TDataSource;   <span class="com">// DataSource conecta Query ↔ controles visuais</span>
+  <span class="kw">private</span>
+    <span class="kw">procedure</span> ConfigurarConexao;
+  <span class="kw">public</span>
+    <span class="kw">procedure</span> Abrir;
+    <span class="kw">procedure</span> Buscar(const ANome: <span class="tp">string</span>);
+  <span class="kw">end</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">procedure</span> TDmClientes.ConfigurarConexao;
+<span class="kw">begin</span>
+  <span class="com">// No designer visual, isso está em propriedades</span>
+  FDConn.DriverName := <span class="str">'SQLite'</span>;
+  FDConn.Params.Values[<span class="str">'Database'</span>] := <span class="str">'clientes.db'</span>;
+  QryClientes.Connection := FDConn;
+  DsClientes.DataSet := QryClientes;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TDmClientes.Abrir;
+<span class="kw">begin</span>
+  FDConn.Open;
+  QryClientes.SQL.Text := <span class="str">'SELECT * FROM clientes ORDER BY nome'</span>;
+  QryClientes.Open;
+<span class="kw">end</span>;
+
+<span class="com">// No Form: TDBGrid.DataSource = DmClientes.DsClientes</span>
+<span class="com">// A grade aparece automaticamente com os dados — zero código no form!</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Embarcadero. <strong>FireDAC Developer Guide</strong>. Disponível em: &lt;https://docwiki.embarcadero.com/RADStudio/en/FireDAC&gt;. Acesso em: 2025.</li>
+            <li>SQLITE.org. <strong>SQLite Documentation</strong>. Disponível em: &lt;https://www.sqlite.org/docs.html&gt;. Acesso em: 2025.</li>
+            <li>CANTU, Marco. <strong>Delphi Database Access Guide</strong>. Marco Cantu Consulting, 2018.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI Desktop com VCL</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Mobile com FMX</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Sempre use parâmetros nas queries: <code>WHERE nome = :nome</code> com <code>ParamByName('nome').AsString := valor</code> — NUNCA concatene strings. Além de prevenir injeção SQL, os parâmetros são pré-compilados pelo SGBD, acelerando execuções repetidas. E com FireDAC, o tipo do parâmetro é inferido automaticamente — sem cast manual.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

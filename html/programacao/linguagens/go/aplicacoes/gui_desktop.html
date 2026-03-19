@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="GUI e aplicações desktop com Go: Fyne toolkit, systray e distribuição cross-platform." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — GUI e Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; GUI e Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — GUI e Desktop</h1>
+          <p><strong>Fyne</strong> é o toolkit GUI cross-platform mais popular em Go: compila para Windows, macOS, Linux e mobile com um único codebase. Produz binários nativos sem dependências de runtime externas. Para apps utilitários, <code>systray</code> adiciona ícone na bandeja do sistema.</p>
+        </div>
+        <p class="intro-highlight">
+          Fyne usa <strong>OpenGL como backend de renderização</strong>, portanto requer drivers gráficos. Em servidores headless, use <code>fyne_test</code> ou <code>test.NewApp()</code> para testes. A API segue o padrão <strong>widgets declarativos</strong> com binding de dados bidirecional — semelhante ao Flutter conceitualmente, mas em Go.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fyne-basico">Fyne — Janelas e Widgets</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">go get fyne.io/fyne/v2 — Widgets fundamentais</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fyne.io/fyne/v2/app"</span>
+    <span class="str">"fyne.io/fyne/v2/container"</span>
+    <span class="str">"fyne.io/fyne/v2/widget"</span>
+    <span class="str">"fyne.io/fyne/v2/layout"</span>
+    <span class="str">"fyne.io/fyne/v2/data/binding"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    a := app.New()
+    w := a.NewWindow(<span class="str">"Calculadora IMC"</span>)
+    w.Resize(fyne.NewSize(400, 300))
+
+    <span class="com">// Widgets básicos</span>
+    labelTitulo := widget.NewLabel(<span class="str">"Calculadora de IMC"</span>)
+    labelTitulo.TextStyle = fyne.TextStyle{Bold: true}
+
+    entradaPeso := widget.NewEntry()
+    entradaPeso.SetPlaceHolder(<span class="str">"Peso (kg)"</span>)
+
+    entradaAltura := widget.NewEntry()
+    entradaAltura.SetPlaceHolder(<span class="str">"Altura (m)"</span>)
+
+    resultado := widget.NewLabel(<span class="str">""</span>)
+
+    botao := widget.NewButton(<span class="str">"Calcular"</span>, <span class="kw">func</span>() {
+        peso, _ := strconv.ParseFloat(entradaPeso.Text, 64)
+        altura, _ := strconv.ParseFloat(entradaAltura.Text, 64)
+        imc := peso / (altura * altura)
+        resultado.SetText(fmt.Sprintf(<span class="str">"IMC: %.1f"</span>, imc))
+    })
+
+    <span class="com">// Layout VBox</span>
+    w.SetContent(container.NewVBox(
+        labelTitulo,
+        widget.NewSeparator(),
+        entradaPeso,
+        entradaAltura,
+        botao,
+        resultado,
+    ))
+
+    w.ShowAndRun()
+}
+
+<span class="com">// Data Binding — atualização automática de UI</span>
+<span class="kw">func</span> <span class="fn">comBinding</span>(w fyne.Window) {
+    contador := binding.NewInt()
+    contador.Set(0)
+
+    label := widget.NewLabelWithData(binding.IntToString(contador))
+
+    btn := widget.NewButton(<span class="str">"+"</span>, <span class="kw">func</span>() {
+        v, _ := contador.Get()
+        contador.Set(v + 1)
+    })
+
+    w.SetContent(container.NewVBox(label, btn))
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fyne-avancado">Fyne — Forms, Menus e Canvas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Formulários, menus nativos e desenho vetorial</div>
+          <pre class="example"><span class="kw">import</span> (
+    <span class="str">"fyne.io/fyne/v2/canvas"</span>
+    <span class="str">"fyne.io/fyne/v2/dialog"</span>
+    <span class="str">"image/color"</span>
+)
+
+<span class="com">// Form com validação</span>
+nomeEntry := widget.NewEntry()
+emailEntry := widget.NewEntry()
+
+form := &amp;widget.Form{
+    Items: []*widget.FormItem{
+        {Text: <span class="str">"Nome"</span>, Widget: nomeEntry, HintText: <span class="str">"Nome completo"</span>},
+        {Text: <span class="str">"Email"</span>, Widget: emailEntry},
+    },
+    OnSubmit: <span class="kw">func</span>() {
+        <span class="kw">if</span> !strings.Contains(emailEntry.Text, <span class="str">"@"</span>) {
+            dialog.ShowError(fmt.Errorf(<span class="str">"email inválido"</span>), w)
+            <span class="kw">return</span>
+        }
+        dialog.ShowInformation(<span class="str">"Sucesso"</span>, <span class="str">"Formulário enviado!"</span>, w)
+    },
+}
+
+<span class="com">// Menu nativo da aplicação</span>
+menuArquivo := fyne.NewMenu(<span class="str">"Arquivo"</span>,
+    fyne.NewMenuItem(<span class="str">"Abrir"</span>, <span class="kw">func</span>() {
+        dialog.ShowFileOpen(<span class="kw">func</span>(r fyne.URIReadCloser, _ error) {
+            <span class="kw">if</span> r != nil { fmt.Println(<span class="str">"Arquivo:"</span>, r.URI()) }
+        }, w)
+    }),
+    fyne.NewMenuItem(<span class="str">"Salvar"</span>, <span class="kw">func</span>() {
+        dialog.ShowFileSave(<span class="kw">func</span>(w fyne.URIWriteCloser, _ error) {}, w)
+    }),
+    fyne.NewMenuItemSeparator(),
+    fyne.NewMenuItem(<span class="str">"Sair"</span>, a.Quit),
+)
+w.SetMainMenu(fyne.NewMainMenu(menuArquivo))
+
+<span class="com">// Canvas — desenho vetorial</span>
+rect := canvas.NewRectangle(color.NRGBA{R: 0, G: 120, B: 255, A: 255})
+circle := canvas.NewCircle(color.NRGBA{R: 255, G: 60, B: 0, A: 200})
+text := canvas.NewText(<span class="str">"Go GUI"</span>, color.White)
+text.TextSize = 24
+
+w.SetContent(container.NewWithoutLayout(rect, circle, text))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="systray">Systray — Bandeja do Sistema</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ícone na bandeja + app rodando em background</div>
+          <pre class="example"><span class="com">// go get github.com/getlantern/systray</span>
+<span class="kw">import</span> <span class="str">"github.com/getlantern/systray"</span>
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    systray.Run(onReady, onExit)
+}
+
+<span class="kw">func</span> <span class="fn">onReady</span>() {
+    <span class="com">// Ícone PNG em bytes (ex: arquivo embutido com //go:embed)</span>
+    systray.SetIcon(iconData)
+    systray.SetTitle(<span class="str">"Monitor"</span>)
+    systray.SetTooltip(<span class="str">"Monitor de sistema em Go"</span>)
+
+    mStatus := systray.AddMenuItem(<span class="str">"Status: OK"</span>, <span class="str">"Exibir status"</span>)
+    mAbrir := systray.AddMenuItem(<span class="str">"Abrir Dashboard"</span>, <span class="str">"Abre janela principal"</span>)
+    systray.AddSeparator()
+    mSair := systray.AddMenuItem(<span class="str">"Sair"</span>, <span class="str">"Encerrar aplicação"</span>)
+
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        <span class="kw">for</span> {
+            <span class="kw">select</span> {
+            <span class="kw">case</span> &lt;-mStatus.ClickedCh:
+                dialog.ShowInformation(<span class="str">"Status"</span>, obterStatus(), nil)
+            <span class="kw">case</span> &lt;-mAbrir.ClickedCh:
+                abrirJanelaFyne()
+            <span class="kw">case</span> &lt;-mSair.ClickedCh:
+                systray.Quit()
+            }
+        }
+    }()
+
+    <span class="com">// Atualizar tooltip periodicamente</span>
+    ticker := time.NewTicker(5 * time.Second)
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        <span class="kw">for</span> range ticker.C {
+            uso := obterUSOCPU()
+            systray.SetTooltip(fmt.Sprintf(<span class="str">"CPU: %.0f%%"</span>, uso))
+        }
+    }()
+}
+
+<span class="kw">func</span> <span class="fn">onExit</span>() {
+    fmt.Println(<span class="str">"Encerrando..."</span>)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FYNE.IO. <strong>Fyne Toolkit — Cross Platform GUI in Go</strong>. Disponível em: &lt;https://fyne.io&gt;. Acesso em: 2026.</li>
+            <li>GETLANTERN. <strong>systray — Cross-platform system tray in Go</strong>. Disponível em: &lt;https://github.com/getlantern/systray&gt;. Acesso em: 2026.</li>
+            <li>FYNE.IO. <strong>Fyne Developer Documentation</strong>. Disponível em: &lt;https://developer.fyne.io&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Jogos com Go (Ebiten)</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Mobile com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Fyne compila o mesmo código para Windows, macOS e Linux usando <code>fyne package</code> — gera <code>.exe</code>, <code>.app</code> e binário Linux respectivamente. Para distribuição, use <code>fyne-cross</code> para compilação cruzada a partir de qualquer plataforma. O resultado é um único executável portável sem instalação de runtime, o que é incomum no ecossistema de GUIs cross-platform.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

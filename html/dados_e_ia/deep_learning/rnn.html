@@ -1,0 +1,278 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Redes Neurais Recorrentes (RNNs): Processamento de sequências, séries temporais e NLP. Entenda o loop de recorrência e o problema do Vanishing Gradient.">
+    
+    <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/card.css" />
+    
+    <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+    <link rel="preload" href="/js/main.js" as="script" />
+    <script src="/js/main.js" defer></script>
+    <title>RNNs (Recorrentes) | Site Guia</title>
+    
+    <!--
+        .theory-header {
+            /* Purple/Violet Gradient - Time/Memory */
+            background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            border-bottom: 4px solid #a78bfa;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Fundo de Relógio/Tempo abstrato */
+        .theory-header::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px; opacity: 0.5; animation: rotateBg 60s linear infinite;
+        }
+        @keyframes rotateBg { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .rnn-icon { 
+            font-size: 4rem; margin-bottom: 10px; display: block; 
+            filter: drop-shadow(0 0 10px rgba(167, 139, 250, 0.8));
+            animation: swing 3s ease-in-out infinite;
+        }
+        @keyframes swing { 0%, 100% { transform: rotate(-10deg); } 50% { transform: rotate(10deg); } }
+
+        /* Container Gráfico: O Loop Temporal */
+        .rnn-container {
+            background: #0f172a;
+            border: 1px solid #7c3aed;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 16/9;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* Elementos SVG */
+        .rnn-cell { fill: #2e1065; stroke: #a78bfa; stroke-width: 2; }
+        .hidden-state { fill: #8b5cf6; stroke: #c4b5fd; stroke-width: 1; }
+        .input-node { fill: #4c1d95; stroke: #8b5cf6; }
+        .output-node { fill: #4c1d95; stroke: #8b5cf6; }
+
+        .time-arrow { stroke: #a78bfa; stroke-width: 2; marker-end: url(#arrowhead); opacity: 0.5; }
+        
+        /* Loop Animation */
+        .loop-path { 
+            fill: none; stroke: #c4b5fd; stroke-width: 2; stroke-dasharray: 5;
+            animation: dash 20s linear infinite;
+        }
+        @keyframes dash { to { stroke-dashoffset: -1000; } }
+
+        /* Unroll Animation elements */
+        .unroll-group { opacity: 0; animation: fadeInSlide 4s infinite; }
+        
+        .u-1 { animation-delay: 0s; }
+        .u-2 { animation-delay: 1.5s; }
+        .u-3 { animation-delay: 3s; }
+
+        @keyframes fadeInSlide {
+            0% { opacity: 0; transform: translateX(-20px); }
+            20% { opacity: 1; transform: translateX(0); }
+            80% { opacity: 1; transform: translateX(0); }
+            100% { opacity: 0; transform: translateX(20px); }
+        }
+
+        /* Memória viajando */
+        .memory-packet {
+            fill: #fff; filter: drop-shadow(0 0 5px #fff);
+            animation: memoryTravel 4.5s linear infinite;
+        }
+        @keyframes memoryTravel {
+            0% { cx: 100; opacity: 0; }
+            10% { opacity: 1; }
+            33% { cx: 250; }
+            66% { cx: 400; }
+            90% { opacity: 1; }
+            100% { cx: 500; opacity: 0; }
+        }
+
+        /* Comparação LSTM/GRU */
+        .gate-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px;
+        }
+        .gate-card {
+            background: #1e1b4b; padding: 15px; border-radius: 8px; border: 1px solid #5b21b6;
+        }
+
+        /* Code Block */
+        .code-block {
+            font-family: 'Consolas', monospace;
+            background: #020617;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #5b21b6;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .kw { color: #a78bfa; } /* Violet keyword */
+        .func { color: #c4b5fd; } /* Light violet */
+        .str { color: #ddd6fe; } 
+        .com { color: #64748b; font-style: italic; }
+
+    -->
+</head>
+<body>
+
+    <div class="nav-overlay"></div>
+    <div class="nav-interno-overlay"></div>
+    <button class="menu-toggle"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+    <button class="menu-interno-toggle"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+
+    <div data-include="/html/Site/partials/header.html"></div>
+
+    <main class="main-content">
+        <div class="content-area animacao-entrada">
+            <div class="Colored_border_anim_card_box"><p><strong>RNN</strong></p></div>
+            <h2 class="section-title">Visao Geral</h2>
+
+            <div class="theory-header">
+                <span class="rnn-icon">⏳</span>
+                <h1 class="m-0">RNNs</h1>
+                <p class="m-0 opacity-90">Redes Neurais Recorrentes: Quando a ordem importa.</p>
+            </div>
+
+            <section id="conceito" class="mt-4">
+                <h2 id="h2-intro">1. O Contexto é Tudo</h2>
+                <div class="card-standard">
+                    <p>Redes comuns (MLP, CNN) não têm noção de tempo. Para elas, uma foto de hoje e uma de ontem são eventos isolados.</p>
+                    <p class="mt-2 text-gray-300">
+                        Mas para ler um texto ou prever o preço de uma ação, a ordem é crucial. As RNNs têm um <strong>Estado Oculto (Hidden State)</strong>: uma "memória de curto prazo" que passa de um passo para o outro.
+                    </p>
+                    <div class="mt-3 p-3 bg-purple-900 rounded text-center text-sm text-purple-200">
+                        Output = Função(Input Atual + Memória Anterior)
+                    </div>
+                </div>
+            </section>
+
+            <section id="visualizacao" class="mt-5">
+                <h2 id="h2-viz">2. Desenrolando o Tempo</h2>
+                <p>Veja como o mesmo neurônio (A) processa a sequência palavra por palavra, passando a memória para si mesmo no futuro.</p>
+
+                <div class="rnn-container">
+                    <svg width="100%" height="100%" viewBox="0 0 600 300">
+                        <defs>
+                            <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                                <polygon points="0 0, 10 3.5, 0 7" fill="#a78bfa" />
+                            </marker>
+                        </defs>
+
+                        <line x1="50" y1="250" x2="550" y2="250" stroke="#334155" stroke-width="2" />
+                        <text x="300" y="270" fill="#64748b" font-size="12" text-anchor="middle">Tempo (t)</text>
+
+                        <g class="unroll-group u-1" transform="translate(100, 100)">
+                            <circle cx="0" cy="100" r="15" class="input-node" />
+                            <text x="0" y="130" fill="#a78bfa" font-size="10" text-anchor="middle">"Eu"</text>
+                            
+                            <rect x="-25" y="-25" width="50" height="50" rx="8" class="rnn-cell" />
+                            <text x="0" y="5" fill="#fff" font-size="14" text-anchor="middle">A</text>
+
+                            <line x1="0" y1="-25" x2="0" y2="-60" class="time-arrow" />
+                            <circle cx="0" cy="-70" r="10" class="output-node" />
+                        </g>
+
+                        <line x1="125" y1="100" x2="225" y2="100" class="time-arrow u-1" />
+
+                        <g class="unroll-group u-2" transform="translate(250, 100)">
+                            <circle cx="0" cy="100" r="15" class="input-node" />
+                            <text x="0" y="130" fill="#a78bfa" font-size="10" text-anchor="middle">"amo"</text>
+                            
+                            <rect x="-25" y="-25" width="50" height="50" rx="8" class="rnn-cell" />
+                            <text x="0" y="5" fill="#fff" font-size="14" text-anchor="middle">A</text>
+
+                            <line x1="0" y1="-25" x2="0" y2="-60" class="time-arrow" />
+                            <circle cx="0" cy="-70" r="10" class="output-node" />
+                        </g>
+
+                        <line x1="275" y1="100" x2="375" y2="100" class="time-arrow u-2" />
+
+                        <g class="unroll-group u-3" transform="translate(400, 100)">
+                            <circle cx="0" cy="100" r="15" class="input-node" />
+                            <text x="0" y="130" fill="#a78bfa" font-size="10" text-anchor="middle">"IA"</text>
+                            
+                            <rect x="-25" y="-25" width="50" height="50" rx="8" class="rnn-cell" />
+                            <text x="0" y="5" fill="#fff" font-size="14" text-anchor="middle">A</text>
+
+                            <line x1="0" y1="-25" x2="0" y2="-60" class="time-arrow" />
+                            <circle cx="0" cy="-70" r="10" class="output-node" />
+                        </g>
+
+                        <circle r="4" class="memory-packet" cy="100" />
+
+                        <text x="300" y="40" fill="#c4b5fd" font-size="12" text-anchor="middle">
+                            O estado oculto carrega o contexto "Eu amo" para entender "IA"
+                        </text>
+
+                    </svg>
+                </div>
+            </section>
+
+            <section id="problema" class="mt-5">
+                <h2 id="h2-prob">3. O Problema da Memória Curta</h2>
+                <p>RNNs simples sofrem de amnésia em frases longas. O gradiente (sinal de aprendizado) desaparece ao viajar muito para trás no tempo.</p>
+                <p class="text-sm text-gray-400 mt-2">Soluções Modernas:</p>
+                
+                <div class="gate-grid">
+                    <div class="gate-card">
+                        <strong class="text-violet-400">LSTM (Long Short-Term Memory)</strong>
+                        <p class="text-xs mt-2 text-gray-300">
+                            Possui uma "estrada expressa" para a memória e portões (gates) que aprendem o que esquecer e o que lembrar.
+                        </p>
+                    </div>
+                    <div class="gate-card">
+                        <strong class="text-violet-400">GRU (Gated Recurrent Unit)</strong>
+                        <p class="text-xs mt-2 text-gray-300">
+                            Uma versão simplificada e mais rápida da LSTM. Frequentemente usada hoje em dia.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="codigo" class="mt-5 mb-4">
+                <h2 id="h2-code">4. Keras (SimpleRNN vs LSTM)</h2>
+                
+                <div class="code-block">
+                    <span class="kw">from</span> tensorflow.keras <span class="kw">import</span> layers, models<br><br>
+
+                    model = models.<span class="func">Sequential</span>([<br>
+                        <span class="com"># A entrada deve ser (TimeSteps, Features)</span><br>
+                        <span class="com"># Ex: 10 dias de preço, 1 valor por dia</span><br>
+                        layers.<span class="cls">Input</span>(shape=(10, 1)),<br><br>
+                        
+                        <span class="com"># Tente trocar SimpleRNN por LSTM ou GRU</span><br>
+                        layers.<span class="kw">SimpleRNN</span>(32, return_sequences=<span class="kw">False</span>),<br><br>
+                        
+                        <span class="com"># Previsão final</span><br>
+                        layers.<span class="kw">Dense</span>(1)<br>
+                    ])
+                </div>
+
+            </section>
+
+            <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>ELMAN, Jeffrey L. <strong>Finding structure in time</strong>. 1990.</li><li>GOODFELLOW, Ian; BENGIO, Yoshua; COURVILLE, Aaron. <strong>Deep Learning</strong>. MIT Press, 2016.</li><li>MIKOLOV, Tomas et al. <strong>Recurrent neural network based language model</strong>. Interspeech, 2010.</li></ul></div></section>
+            <div class="callout"><p>RNNs tratam sequencias, mas podem sofrer com gradientes que desaparecem.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Modelos sequenciais exigem cuidado com dependencia de longo prazo.</p></div>
+        </div>
+    </main>
+
+    <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

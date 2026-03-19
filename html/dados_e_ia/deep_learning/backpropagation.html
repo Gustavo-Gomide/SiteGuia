@@ -1,0 +1,238 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="Backpropagation: O algoritmo fundamental de treinamento de Redes Neurais. Entenda o gradiente, a regra da cadeia e a atualização de pesos.">
+    
+    <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/card.css" />
+    
+    <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+    <link rel="preload" href="/js/main.js" as="script" />
+    <script src="/js/main.js" defer></script>
+    <title>Backpropagation | Site Guia</title>
+    
+    <!--
+        .theory-header {
+            /* Magenta/Pink Gradient - Reverse Flow/Correction */
+            background: linear-gradient(135deg, #be185d 0%, #831843 100%);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            border-bottom: 4px solid #f472b6;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(190, 24, 93, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .backprop-icon { 
+            font-size: 4rem; margin-bottom: 10px; display: block; 
+            filter: drop-shadow(0 0 10px rgba(244, 114, 182, 0.8));
+            transform: scaleX(-1); /* Espelhado para indicar "voltar" */
+        }
+
+        /* Container Gráfico */
+        .network-container {
+            background: #0f172a;
+            border: 1px solid #831843;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            aspect-ratio: 16/9;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* Elementos da Rede */
+        .neuron { fill: #1e293b; stroke: #334155; stroke-width: 2; r: 8; z-index: 10; }
+        .neuron.output { fill: #831843; stroke: #f472b6; }
+        .neuron.input { fill: #1e3a8a; stroke: #60a5fa; }
+        
+        .synapse { stroke: #334155; stroke-width: 1; opacity: 0.3; }
+
+        /* O Gradiente (Erro) viajando de volta */
+        .gradient-pulse {
+            fill: #f472b6; r: 4;
+            filter: drop-shadow(0 0 6px #f472b6);
+            animation: backFlow 2s linear infinite;
+        }
+
+        @keyframes backFlow {
+            0% { offset-distance: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { offset-distance: 100%; opacity: 0; }
+        }
+
+        /* Destaque de atualização de peso */
+        .weight-update {
+            animation: flashWeight 2s infinite;
+        }
+        @keyframes flashWeight {
+            0%, 40% { stroke: #334155; stroke-width: 1; }
+            50% { stroke: #f472b6; stroke-width: 3; opacity: 1; } /* Brilho Rosa */
+            60%, 100% { stroke: #334155; stroke-width: 1; }
+        }
+
+        /* Math Box */
+        .math-step {
+            background: #1e293b;
+            border-left: 3px solid #f472b6;
+            padding: 15px;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        .math-symbol { color: #f472b6; font-weight: bold; font-family: 'Times New Roman', serif; font-size: 1.1rem; }
+
+        /* Code Block */
+        .code-block {
+            font-family: 'Consolas', monospace;
+            background: #020617;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #831843;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .kw { color: #f472b6; } 
+        .func { color: #e879f9; } 
+        .com { color: #64748b; font-style: italic; }
+
+    -->
+</head>
+<body>
+
+    <div class="nav-overlay"></div>
+    <div class="nav-interno-overlay"></div>
+    <button class="menu-toggle"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+    <button class="menu-interno-toggle"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+
+    <div data-include="/html/Site/partials/header.html"></div>
+
+    <main class="main-content">
+        <div class="content-area animacao-entrada">
+            <div class="Colored_border_anim_card_box"><p><strong>Backpropagation</strong></p></div>
+            <h2 class="section-title">Visao Geral</h2>
+
+            <div class="theory-header">
+                <span class="backprop-icon">🔥↩️</span>
+                <h1 class="m-0">Backpropagation</h1>
+                <p class="m-0 opacity-90">Como a rede aprende com os seus próprios erros.</p>
+            </div>
+
+            <section id="conceito" class="mt-4">
+                <h2 id="h2-def">1. A Culpa é de Quem?</h2>
+                <div class="card-standard border-l-4 border-pink-600">
+                    <p>
+                        Imagine que a rede neural chutou que uma foto de cachorro era um "gato".
+                        O <strong>Backpropagation</strong> é o gerente irritado que entra na sala e pergunta: 
+                        <em>"Quem foi o responsável por esse erro?"</em>.
+                    </p>
+                    <p class="mt-2 text-sm text-gray-300">
+                        Ele percorre a rede de trás para frente, calculando a contribuição (gradiente) de cada neurônio para o erro final e ajustando os pesos para que o erro diminua na próxima vez.
+                    </p>
+                </div>
+            </section>
+
+            <section id="visualizacao" class="mt-5">
+                <h2 id="h2-viz">2. O Fluxo do Erro (Backward Pass)</h2>
+                <p>O erro (pulso rosa) sai do final e viaja para o início, atualizando as conexões.</p>
+
+                <div class="network-container">
+                    <svg width="100%" height="100%" viewBox="0 0 600 300">
+                        
+                        <text x="50" y="30" fill="#60a5fa" font-size="12" text-anchor="middle">Input</text>
+                        <text x="550" y="30" fill="#f472b6" font-size="12" text-anchor="middle">Output (Erro)</text>
+
+                        <line x1="550" y1="150" x2="400" y2="80" class="synapse weight-update" />
+                        <line x1="550" y1="150" x2="400" y2="150" class="synapse weight-update" />
+                        <line x1="550" y1="150" x2="400" y2="220" class="synapse weight-update" />
+
+                        <line x1="400" y1="80" x2="200" y2="150" class="synapse weight-update" />
+                        <line x1="400" y1="150" x2="200" y2="150" class="synapse weight-update" />
+                        <line x1="400" y1="220" x2="200" y2="150" class="synapse weight-update" />
+
+                        <line x1="200" y1="150" x2="50" y2="100" class="synapse weight-update" />
+                        <line x1="200" y1="150" x2="50" y2="200" class="synapse weight-update" />
+
+                        <circle cx="550" cy="150" class="neuron output" />
+                        
+                        <circle cx="400" cy="80" class="neuron" />
+                        <circle cx="400" cy="150" class="neuron" />
+                        <circle cx="400" cy="220" class="neuron" />
+
+                        <circle cx="200" cy="150" class="neuron" />
+
+                        <circle cx="50" cy="100" class="neuron input" />
+                        <circle cx="50" cy="200" class="neuron input" />
+
+                        <circle r="4" class="gradient-pulse">
+                            <animateMotion path="M 550 150 L 400 80 L 200 150 L 50 100" dur="3s" repeatCount="indefinite" />
+                        </circle>
+                        <circle r="4" class="gradient-pulse">
+                            <animateMotion path="M 550 150 L 400 220 L 200 150 L 50 200" dur="3s" repeatCount="indefinite" />
+                        </circle>
+
+                    </svg>
+                    <p class="text-center text-xs text-gray-500 mt-2">Os pesos piscam quando são atualizados pelo gradiente.</p>
+                </div>
+            </section>
+
+            <section id="chainrule" class="mt-5">
+                <h2 id="h2-math">3. A Regra da Cadeia (Chain Rule)</h2>
+                <p>Como calculamos a "culpa" de um neurônio lá no início da rede? Usando cálculo derivativo composto.</p>
+                
+                <div class="mt-3">
+                    <div class="math-step">
+                        <span class="math-symbol">∂Erro / ∂Peso</span> = 
+                        (Como o Erro muda com a Saída) × 
+                        (Como a Saída muda com a Ativação) × 
+                        (Como a Ativação muda com o Peso)
+                    </div>
+                    <p class="text-sm text-gray-400 mt-2">
+                        Basicamente, multiplicamos as derivadas locais de trás para frente até chegar no peso que queremos ajustar.
+                    </p>
+                </div>
+            </section>
+
+            <section id="codigo" class="mt-5 mb-4">
+                <h2 id="h2-code">4. A Magia no PyTorch</h2>
+                <p>Frameworks modernos escondem a matemática difícil.</p>
+
+                <div class="code-block">
+                    <span class="kw">import</span> torch<br><br>
+
+                    <span class="com"># 1. Forward Pass (Previsão)</span><br>
+                    predicao = modelo(dados_entrada)<br>
+                    perda = calcular_erro(predicao, real)<br><br>
+
+                    <span class="com"># 2. Backward Pass (A mágica acontece aqui)</span><br>
+                    <span class="com"># O PyTorch calcula todos os gradientes automaticamente</span><br>
+                    perda.<span class="func">backward</span>()<br><br>
+
+                    <span class="com"># 3. Atualizar Pesos (Otimizador)</span><br>
+                    <span class="com"># Dá um passinho na direção oposta ao erro</span><br>
+                    otimizador.<span class="func">step</span>()<br>
+                    otimizador.<span class="func">zero_grad</span>()
+                </div>
+
+            </section>
+
+            <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>RUMELHART, D. E.; HINTON, G. E.; WILLIAMS, R. J. <strong>Learning representations by back-propagating errors</strong>. 1986.</li><li>GOODFELLOW, Ian; BENGIO, Yoshua; COURVILLE, Aaron. <strong>Deep Learning</strong>. MIT Press, 2016.</li><li>HECHT-NIELSEN, Robert. <strong>Theory of the backpropagation neural network</strong>. 1989.</li></ul></div></section>
+            <div class="callout"><p>Backpropagation e o mecanismo central que ajusta pesos para reduzir o erro.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Entender gradiente e essencial para treinar redes com estabilidade.</p></div>
+        </div>
+    </main>
+
+    <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

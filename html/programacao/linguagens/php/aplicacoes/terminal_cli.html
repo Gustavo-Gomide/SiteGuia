@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="PHP no Terminal e CLI: argv, stdin/stdout, Symfony Console, progress bars, scripts de cron, deploy e otimizações de memória — Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>PHP — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>PHP — Terminal e CLI</strong></p></div>
+
+      <!-- HERO -->
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="php" aria-hidden="true"></span></div>
+          <h1>PHP no Terminal e CLI</h1>
+          <p>Scripts PHP-CLI, Symfony Console, cron, deploy e otimizações para execuções longas</p>
+        </div>
+        <p class="intro-highlight">
+          PHP não vive apenas no servidor web. Via <code class="code-inline">php-cli</code> pode ser usado para scripts de automação, ferramentas administrativas, pipelines de ETL, migrações de dados e muito mais — com total acesso ao sistema de arquivos, stdin/stdout e execução de processos. O Symfony Console eleva isso ao nível profissional com suporte a subcomandos, flags, barras de progresso e formatação colorida.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PHP CLI BÁSICO -->
+      <section>
+        <h2 class="section-title" id="php-cli-basico">PHP-CLI Básico — argv, stdin e stdout</h2>
+        <p>
+          Quando executado via linha de comando, o PHP recebe os argumentos em <code class="code-inline">$argv</code> (array) e <code class="code-inline">$argc</code> (contagem). A entrada padrão é acessível via <code class="code-inline">fgets(STDIN)</code> e a saída via <code class="code-inline">echo</code> ou <code class="code-inline">fwrite(STDOUT, ...)</code>.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — script CLI: saudacao.php</div>
+          <pre class="example">#!/usr/bin/env php
+<span class="kw">&lt;?php</span>
+
+<span class="com">// $argv[0] = nome do script, $argv[1..n] = argumentos</span>
+<span class="kw">if</span> (<span class="tp">$argc</span> < <span class="num">2</span>) {
+    <span class="fn">fprintf</span>(<span class="tp">STDERR</span>, <span class="str">"Uso: %s &lt;nome&gt;\n"</span>, <span class="tp">$argv</span>[<span class="num">0</span>]);
+    <span class="fn">exit</span>(<span class="num">1</span>); <span class="com">// código de saída não-zero = erro</span>
+}
+
+<span class="tp">$nome</span> = <span class="tp">$argv</span>[<span class="num">1</span>];
+<span class="fn">echo</span> <span class="str">"Olá, {$nome}!\n"</span>;
+
+<span class="com">// Leitura interativa do stdin</span>
+<span class="fn">echo</span> <span class="str">"Digite sua cidade: "</span>;
+<span class="tp">$cidade</span> = <span class="fn">trim</span>(<span class="fn">fgets</span>(<span class="tp">STDIN</span>));
+<span class="fn">echo</span> <span class="str">"Você é de {$cidade}.\n"</span>;</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — executar o script</div>
+          <pre class="example">chmod +x saudacao.php
+./saudacao.php Maria
+<span class="com"># ou</span>
+php saudacao.php Maria</pre>
+        </div>
+
+        <h3>Constantes e superglobais úteis no CLI</h3>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Constante / Variável</th><th>Descrição</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code class="code-inline">$argv</code></td><td>Array com os argumentos do script</td></tr>
+              <tr><td><code class="code-inline">$argc</code></td><td>Número de argumentos (incluindo o nome do script)</td></tr>
+              <tr><td><code class="code-inline">STDIN</code></td><td>Stream de entrada padrão</td></tr>
+              <tr><td><code class="code-inline">STDOUT</code></td><td>Stream de saída padrão</td></tr>
+              <tr><td><code class="code-inline">STDERR</code></td><td>Stream de saída de erros</td></tr>
+              <tr><td><code class="code-inline">PHP_SAPI</code></td><td>Retorna <code class="code-inline">'cli'</code> quando rodando via linha de comando</td></tr>
+              <tr><td><code class="code-inline">PHP_EOL</code></td><td>Quebra de linha do sistema operacional</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SYMFONY CONSOLE -->
+      <section>
+        <h2 class="section-title" id="symfony-console">Symfony Console — CLI Profissional</h2>
+        <p>
+          O componente <a href="https://symfony.com/doc/current/components/console.html" target="_blank" rel="noopener">Symfony Console</a> é o padrão ouro para CLIs em PHP. Usado internamente pelo Laravel (Artisan), Composer e dezenas de ferramentas PHP. Oferece subcomandos nomeados, argumentos e opções tipadas, barra de progresso, saída colorida e tabelas.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — instalar standalone</div>
+          <pre class="example">composer require symfony/console</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — comando com barra de progresso e table</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">Symfony\Component\Console\Command\Command</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Input\InputInterface</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Input\InputArgument</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Input\InputOption</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Output\OutputInterface</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Helper\ProgressBar</span>;
+<span class="kw">use</span> <span class="tp">Symfony\Component\Console\Helper\Table</span>;
+
+<span class="kw">class</span> <span class="tp">ImportarProdutosCommand</span> <span class="kw">extends</span> <span class="tp">Command</span>
+{
+    <span class="kw">protected static</span> <span class="tp">$defaultName</span> = <span class="str">'produto:importar'</span>;
+
+    <span class="kw">protected function</span> <span class="fn">configure</span>(): <span class="kw">void</span>
+    {
+        <span class="tp">$this</span>
+            -><span class="fn">setDescription</span>(<span class="str">'Importa produtos de um arquivo CSV'</span>)
+            -><span class="fn">addArgument</span>(<span class="str">'arquivo'</span>, <span class="tp">InputArgument</span>::<span class="tp">REQUIRED</span>, <span class="str">'Caminho para o CSV'</span>)
+            -><span class="fn">addOption</span>(<span class="str">'dry-run'</span>, <span class="kw">null</span>, <span class="tp">InputOption</span>::<span class="tp">VALUE_NONE</span>, <span class="str">'Simular sem salvar'</span>)
+            -><span class="fn">addOption</span>(<span class="str">'batch'</span>, <span class="str">'b'</span>, <span class="tp">InputOption</span>::<span class="tp">VALUE_OPTIONAL</span>, <span class="str">'Tamanho do lote'</span>, <span class="num">100</span>);
+    }
+
+    <span class="kw">protected function</span> <span class="fn">execute</span>(<span class="tp">InputInterface</span> <span class="tp">$input</span>, <span class="tp">OutputInterface</span> <span class="tp">$output</span>): <span class="kw">int</span>
+    {
+        <span class="tp">$arquivo</span> = <span class="tp">$input</span>-><span class="fn">getArgument</span>(<span class="str">'arquivo'</span>);
+        <span class="tp">$dryRun</span>  = <span class="tp">$input</span>-><span class="fn">getOption</span>(<span class="str">'dry-run'</span>);
+        <span class="tp">$batch</span>   = (int) <span class="tp">$input</span>-><span class="fn">getOption</span>(<span class="str">'batch'</span>);
+
+        <span class="kw">if</span> (!<span class="fn">file_exists</span>(<span class="tp">$arquivo</span>)) {
+            <span class="tp">$output</span>-><span class="fn">writeln</span>(<span class="str">"&lt;error&gt;Arquivo não encontrado: {$arquivo}&lt;/error&gt;"</span>);
+            <span class="kw">return</span> <span class="tp">Command</span>::<span class="tp">FAILURE</span>;
+        }
+
+        <span class="tp">$linhas</span>  = <span class="fn">count</span>(<span class="fn">file</span>(<span class="tp">$arquivo</span>)) - <span class="num">1</span>; <span class="com">// descontar header</span>
+        <span class="tp">$progress</span> = <span class="kw">new</span> <span class="tp">ProgressBar</span>(<span class="tp">$output</span>, <span class="tp">$linhas</span>);
+        <span class="tp">$progress</span>-><span class="fn">start</span>();
+
+        <span class="tp">$resumo</span> = []; <span class="tp">$ok</span> = <span class="num">0</span>; <span class="tp">$erros</span> = <span class="num">0</span>;
+
+        <span class="kw">foreach</span> (<span class="fn">extrairCsvChunks</span>(<span class="tp">$arquivo</span>, <span class="tp">$batch</span>) <span class="kw">as</span> <span class="tp">$lote</span>) {
+            <span class="kw">foreach</span> (<span class="tp">$lote</span> <span class="kw">as</span> <span class="tp">$linha</span>) {
+                <span class="kw">if</span> (!<span class="tp">$dryRun</span>) <span class="fn">salvarProduto</span>(<span class="tp">$linha</span>);
+                <span class="tp">$ok</span>++;
+                <span class="tp">$progress</span>-><span class="fn">advance</span>();
+            }
+        }
+
+        <span class="tp">$progress</span>-><span class="fn">finish</span>();
+        <span class="tp">$output</span>-><span class="fn">writeln</span>(<span class="str">''</span>);
+
+        <span class="com">// Tabela de resumo</span>
+        (<span class="kw">new</span> <span class="tp">Table</span>(<span class="tp">$output</span>))
+            -><span class="fn">setHeaders</span>([<span class="str">'Métrica'</span>, <span class="str">'Valor'</span>])
+            -><span class="fn">setRows</span>([
+                [<span class="str">'Importados'</span>, <span class="tp">$ok</span>],
+                [<span class="str">'Erros'</span>,      <span class="tp">$erros</span>],
+                [<span class="str">'Dry Run'</span>,    <span class="tp">$dryRun</span> ? <span class="str">'Sim'</span> : <span class="str">'Não'</span>],
+            ])
+            -><span class="fn">render</span>();
+
+        <span class="kw">return</span> <span class="tp">Command</span>::<span class="tp">SUCCESS</span>;
+    }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — registrar e executar o comando</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">Symfony\Component\Console\Application</span>;
+
+<span class="tp">$app</span> = <span class="kw">new</span> <span class="tp">Application</span>(<span class="str">'MinhaFerramenta'</span>, <span class="str">'1.0.0'</span>);
+<span class="tp">$app</span>-><span class="fn">add</span>(<span class="kw">new</span> <span class="tp">ImportarProdutosCommand</span>());
+<span class="tp">$app</span>-><span class="fn">run</span>();</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — usar o comando</div>
+          <pre class="example">php ferramenta.php produto:importar dados.csv --batch=500
+php ferramenta.php produto:importar dados.csv --dry-run
+php ferramenta.php produto:importar --help</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ARTISAN COMMANDS -->
+      <section>
+        <h2 class="section-title" id="artisan-commands">Artisan Commands no Laravel</h2>
+        <p>
+          Laravel usa o Symfony Console internamente. Comandos Artisan customizados são a forma idiomática de escrever CLIs em projetos Laravel — com acesso completo ao container de dependências.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — criar novo comando Artisan</div>
+          <pre class="example">php artisan make:command LimparCacheExpiradoCommand</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — comando Artisan com agendamento</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">LimparCacheExpiradoCommand</span> <span class="kw">extends</span> <span class="tp">Command</span>
+{
+    <span class="kw">protected</span> <span class="tp">$signature</span>   = <span class="str">'cache:limpar-expirado {--force : Não pedir confirmação}'</span>;
+    <span class="kw">protected</span> <span class="tp">$description</span> = <span class="str">'Remove entradas de cache expiradas do banco de dados'</span>;
+
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="tp">CacheService</span> <span class="tp">$cache</span>): <span class="kw">int</span>
+    {
+        <span class="kw">if</span> (!<span class="tp">$this</span>-><span class="fn">option</span>(<span class="str">'force'</span>) && !<span class="tp">$this</span>-><span class="fn">confirm</span>(<span class="str">'Confirmar limpeza?'</span>)) {
+            <span class="tp">$this</span>-><span class="fn">info</span>(<span class="str">'Operação cancelada.'</span>);
+            <span class="kw">return</span> <span class="tp">self</span>::<span class="tp">SUCCESS</span>;
+        }
+
+        <span class="tp">$removidos</span> = <span class="tp">$cache</span>-><span class="fn">limparExpirados</span>();
+        <span class="tp">$this</span>-><span class="fn">info</span>(<span class="str">"{$removidos} entradas removidas."</span>);
+        <span class="kw">return</span> <span class="tp">self</span>::<span class="tp">SUCCESS</span>;
+    }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — agendamento em app/Console/Kernel.php</div>
+          <pre class="example"><span class="kw">protected function</span> <span class="fn">schedule</span>(<span class="tp">Schedule</span> <span class="tp">$schedule</span>): <span class="kw">void</span>
+{
+    <span class="tp">$schedule</span>-><span class="fn">command</span>(<span class="str">'cache:limpar-expirado --force'</span>)-><span class="fn">daily</span>()-><span class="fn">at</span>(<span class="str">'03:00'</span>);
+    <span class="tp">$schedule</span>-><span class="fn">command</span>(<span class="str">'queue:restart'</span>)-><span class="fn">hourly</span>();
+    <span class="tp">$schedule</span>-><span class="fn">command</span>(<span class="str">'backup:run'</span>)-><span class="fn">weekly</span>()-><span class="fn">sundays</span>()-><span class="fn">at</span>(<span class="str">'01:00'</span>);
+}</pre>
+        </div>
+
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> Adicione um único cron job que chama o agendador do Laravel a cada minuto:<br><code class="code-inline">* * * * * cd /var/www && php artisan schedule:run >> /dev/null 2>&1</code></p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- OTIMIZAÇÕES MEMÓRIA -->
+      <section>
+        <h2 class="section-title" id="otimizacoes-memoria">Otimizações para Scripts de Longa Duração</h2>
+        <p>
+          Scripts CLI que processam grandes volumes de dados ou rodam por horas precisam de cuidado especial com consumo de memória e ciclos de garbage collection.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — processamento em lotes sem estourar memória</div>
+          <pre class="example"><span class="com">// Configurar antes de iniciar</span>
+<span class="fn">ini_set</span>(<span class="str">'memory_limit'</span>, <span class="str">'512M'</span>);
+
+<span class="com">// Processar em chunks — não carregar tudo para memória</span>
+<span class="tp">Produto</span>::<span class="fn">query</span>()
+    -><span class="fn">where</span>(<span class="str">'processado'</span>, <span class="kw">false</span>)
+    -><span class="fn">chunkById</span>(<span class="num">200</span>, <span class="kw">function</span>(<span class="tp">Collection</span> <span class="tp">$produtos</span>) {
+        <span class="kw">foreach</span> (<span class="tp">$produtos</span> <span class="kw">as</span> <span class="tp">$produto</span>) {
+            <span class="fn">processarProduto</span>(<span class="tp">$produto</span>);
+        }
+
+        <span class="com">// Forçar GC a cada lote para liberar memória de ciclos</span>
+        <span class="fn">gc_collect_cycles</span>();
+    });
+
+<span class="com">// Para processos muito longos (daemons), monitorar memória</span>
+<span class="kw">if</span> (<span class="fn">memory_get_usage</span>(<span class="kw">true</span>) > <span class="num">400</span> * <span class="num">1024</span> * <span class="num">1024</span>) { <span class="com">// > 400 MB</span>
+    <span class="fn">error_log</span>(<span class="str">'Aviso: consumo de memória alto, reiniciando worker...'</span>);
+    <span class="fn">exit</span>(<span class="num">0</span>); <span class="com">// supervisor/systemd reinicia automaticamente</span>
+}</pre>
+        </div>
+
+        <div class="panel">
+          <h3 class="panel-title">Boas práticas para scripts CLI de longa duração</h3>
+          <ul>
+            <li>Use <code class="code-inline">chunkById()</code> ou <code class="code-inline">cursor()</code> em vez de <code class="code-inline">get()</code> para grandes queries.</li>
+            <li>Evite acumular modelos Eloquent em arrays — desreferencie (<code class="code-inline">unset()</code>) após processar.</li>
+            <li>Use <code class="code-inline">gc_collect_cycles()</code> periodicamente para liberar referências circulares.</li>
+            <li>Monitore <code class="code-inline">memory_get_peak_usage()</code> no final para ajustar o limit.</li>
+            <li>Para daemons, use <strong>Supervisor</strong> ou <strong>systemd</strong> para reiniciar o processo se ele encerrar.</li>
+            <li>Feche conexões PDO/Redis explicitamente se o script não precisar mais delas.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SYMFONY. <strong>The Console Component</strong>. Symfony Documentation, 2024. Disponível em: <a href="https://symfony.com/doc/current/components/console.html" target="_blank" rel="noopener">symfony.com/doc/current/components/console</a></li>
+            <li>PHP DOCUMENTATION GROUP. <strong>PHP CLI SAPI</strong>. PHP Group, 2024. Disponível em: <a href="https://www.php.net/manual/en/features.commandline.php" target="_blank" rel="noopener">php.net/features.commandline</a></li>
+            <li>OTWELL, Taylor. <strong>Laravel Artisan Console</strong>. Laravel LLC, 2024. Disponível em: <a href="https://laravel.com/docs/artisan" target="_blank" rel="noopener">laravel.com/docs/artisan</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/php/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling PHP</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP para Embedded e IoT</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas Práticas e CI/CD</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "The console component allows you to create command-line commands. Your console commands can be used for any recurring task, such as cronjobs, imports, or other batch jobs." — Symfony Docs</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

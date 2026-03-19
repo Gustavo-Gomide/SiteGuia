@@ -1,0 +1,292 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Segurança de redes: firewalls, iptables, ACLs, IDS/IPS, segmentação, DMZ, VPN e Zero Trust." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Segurança de Redes | Administração | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Administração de Redes</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="seguranca"></span>
+          <div>
+            <h1 class="page-title">Segurança de Redes</h1>
+            <p class="page-subtitle">Firewalls, iptables, nftables, <abbr title="Access Control List">ACL</abbr>s, IDS/IPS, segmentação, <abbr title="Virtual Private Network">VPN</abbr> e Zero Trust</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          A segurança de redes é uma disciplina multicamada: controle de acesso no perímetro,
+          segmentação interna, detecção de intrusões e proteção de comunicações.
+          Não existe uma única solução — a defesa em profundidade combina múiltiplas camadas.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — FIREWALLS ═══════════════════ -->
+      <section id="firewalls">
+        <h2 id="firewalls" class="section-title">Firewalls — Tipos</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Tipo</th><th>Inspeção</th><th>Estado</th><th>Layer</th><th>Exemplos</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Packet Filter</td><td>IP/porta (por pacote)</td><td>Stateless</td><td>L3/L4</td><td>iptables (regras simples), ACLs de roteador</td></tr>
+              <tr><td>Stateful Inspection</td><td>Rastrea conexões TCP/UDP (tabela de estado)</td><td>Stateful</td><td>L3/L4</td><td>iptables conntrack, pfSense, Cisco ASA</td></tr>
+              <tr><td>Application Proxy (Proxy FW)</td><td>Conteúdo da aplicação</td><td>Stateful</td><td>L7</td><td>Squid, NGINX, mitmproxy</td></tr>
+              <tr><td>NGFW (Next-Gen)</td><td>DPI + IPS + App ID + URL</td><td>Stateful</td><td>L2–7</td><td>Palo Alto, Fortinet, Cisco Firepower</td></tr>
+              <tr><td>WAF</td><td>HTTP/S (SQLi, XSS, OWASP Top 10)</td><td>L7</td><td>L7</td><td>ModSecurity, AWS WAF, Cloudflare WAF</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — IPTABLES ═══════════════════ -->
+      <section id="iptables">
+        <h2 id="iptables" class="section-title">iptables — Configuração</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Regras iptables (Linux)</div>
+          <pre class="code-block"># Ver regras ativas
+iptables -L -v -n
+iptables -t nat -L -v -n
+
+# Política padrão restritiva (whitelist)
+iptables -P INPUT   DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT  ACCEPT
+
+# Permitir loopback
+iptables -A INPUT -i lo -j ACCEPT
+
+# Permitir conexões estabelecidas/relacionadas (stateful)
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Permitir SSH (com rate limiting contra brute force)
+iptables -A INPUT -p tcp --dport 22 \
+  -m conntrack --ctstate NEW \
+  -m recent --set --name SSH
+iptables -A INPUT -p tcp --dport 22 \
+  -m recent --update --seconds 60 --hitcount 4 --name SSH \
+  -j DROP
+iptables -A INPUT -p tcp --dport 22 -j ACCEPT
+
+# Permitir HTTP e HTTPS
+iptables -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+
+# ICMP (ping)
+iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+
+# Salvar regras (Debian)
+iptables-save > /etc/iptables/rules.v4
+
+# Restaurar
+iptables-restore &lt; /etc/iptables/rules.v4</pre>
+        </div>
+        <p class="note">iptables está sendo substituído pelo <strong>nftables</strong> nas distribuições modernas.
+        nftables tem melhor performance, sintaxe unificada (sem tabelas separadas para IPv4/IPv6/ARP)
+        e é o padrão no Debian&nbsp;10+, RHEL&nbsp;8+.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — NFTABLES ═══════════════════ -->
+      <section id="nftables">
+        <h2 id="nftables" class="section-title">nftables — Substituto Moderno</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/nftables.conf</div>
+          <pre class="code-block">#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+
+    iif lo accept
+    ct state established,related accept
+
+    # ICMP
+    ip protocol icmp accept
+    ip6 nexthdr icmpv6 accept
+
+    # SSH com rate limit
+    tcp dport 22 ct state new \
+      limit rate 4/minute accept
+
+    # HTTP + HTTPS
+    tcp dport { 80, 443 } accept
+  }
+
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+
+  chain output {
+    type filter hook output priority 0; policy accept;
+  }
+}
+
+# Aplicar
+# nft -f /etc/nftables.conf
+# nft list ruleset</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — SEGMENTAÇÃO ═══════════════════ -->
+      <section id="segmentacao">
+        <h2 id="segmentacao" class="section-title">Segmentação de Rede e DMZ</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">DMZ (Demilitarized Zone)</h3>
+            <p>Sub-rede entre a internet e a rede interna que hospeda serviços públicos
+            (web servers, servidores de email). Uma breach na DMZ não dá acesso direto
+            à rede interna.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">Internet → [Firewall ext] → DMZ
+           Web / Mail / DNS
+           [Firewall int] → Rede Interna
+           App Servers / DB / AD</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">VLANs</h3>
+            <p>Segmentação lógica na camada 2 (switch). Cada VLAN é um domínio de broadcast
+            separado. O tráfego entre VLANs passa por roteamento (inter-VLAN routing)
+            que pode ser inspecionado por firewall.</p>
+            <ul>
+              <li>VLAN 10 — Servidores</li>
+              <li>VLAN 20 — Usuários</li>
+              <li>VLAN 30 — Wi-Fi</li>
+              <li>VLAN 40 — IoT</li>
+              <li>VLAN 99 — Gerenciamento</li>
+            </ul>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Micro-segmentação</h3>
+            <p>Controle de tráfego leste-oeste (entre VMs/containers na mesma rede).
+            Implementado por firewalls de host, SDN, ou Network Policies no Kubernetes.
+            Limita movimento lateral de atacantes.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 6 — IDS/IPS ═══════════════════ -->
+      <section id="ids-ips">
+        <h2 id="ids-ips" class="section-title"><abbr title="Intrusion Detection System">IDS</abbr> / <abbr title="Intrusion Prevention System">IPS</abbr></h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Tipo</th><th>Posição</th><th>Ação</th><th>Exemplos</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>NIDS (Network IDS)</td><td>Span/mirror port, passivo</td><td>Detecta, gera alertas</td><td>Snort, Suricata, Zeek</td></tr>
+              <tr><td>NIPS (Network IPS)</td><td>Inline (no caminho do tráfego)</td><td>Detecta E bloqueia</td><td>Suricata inline, Snort inline</td></tr>
+              <tr><td>HIDS (Host IDS)</td><td>Agente no host</td><td>Detecta alterações em arquivos/log</td><td>OSSEC, Wazuh, Samhain</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 7 — VPN ═══════════════════ -->
+      <section id="vpn">
+        <h2 id="vpn" class="section-title"><abbr title="Virtual Private Network">VPN</abbr> — Virtual Private Network</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Tipo</th><th>Caso de Uso</th><th>Protocolos</th><th>Exemplos</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Site-to-Site</td><td>Conectar duas redes corporativas via internet</td><td>IPSec IKEv2, OpenVPN</td><td>Cisco ASA, pfSense, AWS Site-to-Site VPN</td></tr>
+              <tr><td>Client VPN (Remote Access)</td><td>Usuário remoto acessar rede corporativa</td><td>IPSec IKEv2, OpenVPN, WireGuard</td><td>OpenVPN, WireGuard, Cisco AnyConnect</td></tr>
+              <tr><td>SSL/TLS VPN</td><td>Acesso via navegador (sem cliente)</td><td>TLS</td><td>OpenVPN (TCP 443), Pulse Secure</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">WireGuard — configuração mínima (servidor)</div>
+          <pre class="code-block"># Gerar chaves
+wg genkey | tee privkey | wg pubkey > pubkey
+
+# /etc/wireguard/wg0.conf
+[Interface]
+PrivateKey = &lt;SERVER_PRIVATE_KEY&gt;
+Address    = 10.0.0.1/24
+ListenPort = 51820
+
+# Habilitar NAT para internet access
+PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]  # cliente
+PublicKey  = &lt;CLIENT_PUBLIC_KEY&gt;
+AllowedIPs = 10.0.0.2/32
+
+# Iniciar
+wg-quick up wg0
+systemctl enable wg-quick@wg0</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 8 — ZERO TRUST ═══════════════════ -->
+      <section id="zero-trust">
+        <h2 id="zero-trust" class="section-title">Zero Trust Network Access (ZTNA)</h2>
+        <div class="section-divider"></div>
+        <div class="card">
+          <p>Zero Trust abandona o modelo “confiar em tudo dentro do perímetro”. Em vez disso:</p>
+          <ul>
+            <li><strong>Never trust, always verify:</strong> toda requisição deve ser autenticada, autorizada e criptografada — independente da origem</li>
+            <li><strong>Least privilege:</strong> acesso mínimo necessário, revisado continuamente</li>
+            <li><strong>Micro-segmentação:</strong> isolar workloads para limitar movimento lateral</li>
+            <li><strong>Device trust:</strong> verificar postura do dispositivo (OS atualizado, antivirus, compliance)</li>
+            <li><strong>Continuous monitoring:</strong> logar e analisar todo o tráfego</li>
+          </ul>
+          <p><strong>Exemplos:</strong> Cloudflare Access, Google BeyondCorp, Zscaler ZPA, HashiCorp Boundary</p>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aplique segurança com visibilidade:
+          <a href="/html/rede_e_comunicacao/administracao/monitoramento.html">Monitoramento de Redes</a> e
+          <a href="/html/rede_e_comunicacao/administracao/ferramentas_rede.html">Ferramentas de Rede</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Segurança é um processo, não um produto — defesa em profundidade é a única estratégia real."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

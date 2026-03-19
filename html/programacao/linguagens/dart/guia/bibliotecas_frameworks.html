@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e frameworks Dart: Flutter SDK, Shelf para APIs REST, Riverpod para gerenciamento de estado, http, dio, drift (SQLite type-safe), RxDart e Bloc pattern." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Bibliotecas e Frameworks Dart | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Bibliotecas e Frameworks Dart</h1>
+          <p>O ecossistema Dart e centrado no <strong>Flutter</strong> para UI cross-platform, mas conta tambem com uma suite de bibliotecas especializadas: <strong>Shelf</strong> para servidores HTTP minimalistas, <strong>Riverpod</strong> para gerenciamento de estado reativo, <strong>Drift</strong> para banco de dados SQLite type-safe, <strong>Dio</strong> para requisicoes HTTP com interceptors, <strong>RxDart</strong> para extensoes reativas e <strong>Bloc</strong> para arquitetura baseada em eventos.</p>
+        </div>
+        <p class="intro-highlight">
+          Todas as bibliotecas Dart sao distribuidas via <strong>pub.dev</strong> — o repositorio oficial de pacotes. O arquivo <code>pubspec.yaml</code> gerencia dependencias e o comando <code>dart pub get</code> instala os pacotes listados.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="http-dio">HTTP: http e Dio</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; package:http para requisicoes simples</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:convert'</span>;
+<span class="kw">import</span> <span class="str">'package:http/http.dart'</span> <span class="kw">as</span> http;
+
+<span class="kw">class</span> <span class="tp">ApiClient</span> {
+  <span class="kw">final</span> http.<span class="tp">Client</span> _client;
+  <span class="kw">final</span> <span class="tp">String</span> _baseUrl;
+
+  <span class="tp">ApiClient</span>(<span class="kw">this</span>._baseUrl, [http.<span class="tp">Client</span>? client])
+    : _client = client ?? http.<span class="tp">Client</span>();
+
+  <span class="tp">Future</span>&lt;<span class="tp">T</span>&gt; <span class="fn">get</span>&lt;<span class="tp">T</span>&gt;(<span class="tp">String</span> path, <span class="tp">T</span> <span class="fn">Function</span>(<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;) parse) <span class="kw">async</span> {
+    <span class="kw">final</span> uri = <span class="tp">Uri</span>.<span class="fn">parse</span>(<span class="str">'$_baseUrl$path'</span>);
+    <span class="kw">final</span> resp = <span class="kw">await</span> _client.<span class="fn">get</span>(uri, headers: {<span class="str">'Accept'</span>: <span class="str">'application/json'</span>});
+
+    <span class="kw">if</span> (resp.statusCode &gt;= <span class="num">400</span>) {
+      <span class="kw">throw</span> <span class="tp">HttpException</span>(<span class="str">'HTTP ${resp.statusCode}: ${resp.body}'</span>, uri: uri);
+    }
+    <span class="kw">return</span> <span class="fn">parse</span>(jsonDecode(resp.body) <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;);
+  }
+
+  <span class="tp">Future</span>&lt;<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;&gt; <span class="fn">post</span>(<span class="tp">String</span> path, <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt; body) <span class="kw">async</span> {
+    <span class="kw">final</span> resp = <span class="kw">await</span> _client.<span class="fn">post</span>(
+      <span class="tp">Uri</span>.<span class="fn">parse</span>(<span class="str">'$_baseUrl$path'</span>),
+      headers: {<span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>},
+      body: jsonEncode(body),
+    );
+    <span class="kw">if</span> (resp.statusCode &gt;= <span class="num">400</span>) <span class="kw">throw</span> <span class="tp">HttpException</span>(<span class="str">'${resp.statusCode}'</span>);
+    <span class="kw">return</span> jsonDecode(resp.body) <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;;
+  }
+
+  <span class="kw">void</span> <span class="fn">dispose</span>() => _client.<span class="fn">close</span>();
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Dio &mdash; interceptors, retry, upload com FormData e cancelamento</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dio/dio.dart'</span>;
+
+<span class="kw">final</span> dio = <span class="tp">Dio</span>(<span class="tp">BaseOptions</span>(
+  baseUrl:        <span class="str">'https://api.exemplo.com/v1'</span>,
+  connectTimeout: <span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">10</span>),
+  receiveTimeout: <span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">30</span>),
+  headers: {<span class="str">'Accept'</span>: <span class="str">'application/json'</span>},
+));
+
+<span class="com">// Interceptor de autenticacao</span>
+dio.interceptors.<span class="fn">add</span>(<span class="tp">InterceptorsWrapper</span>(
+  onRequest: (opts, handler) {
+    opts.headers[<span class="str">'Authorization'</span>] = <span class="str">'Bearer ${tokenStorage.get()}'</span>;
+    handler.<span class="fn">next</span>(opts);
+  },
+  onError: (<span class="tp">DioException</span> e, handler) <span class="kw">async</span> {
+    <span class="kw">if</span> (e.response?.statusCode == <span class="num">401</span>) {
+      <span class="kw">await</span> <span class="fn">renovarToken</span>();
+      <span class="kw">final</span> re = <span class="kw">await</span> dio.<span class="fn">request</span>(e.requestOptions.path,
+        options: <span class="tp">Options</span>(method: e.requestOptions.method));
+      handler.<span class="fn">resolve</span>(re);
+    } <span class="kw">else</span> {
+      handler.<span class="fn">next</span>(e);
+    }
+  },
+));
+
+<span class="com">// Requisicao simples com tipo generico</span>
+<span class="kw">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">buscarProdutos</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> res = <span class="kw">await</span> dio.<span class="fn">get</span>&lt;<span class="tp">List</span>&gt;(<span class="str">'/produtos'</span>);
+  <span class="kw">return</span> res.data!.<span class="fn">map</span>((j) => <span class="tp">Produto</span>.<span class="fn">fromJson</span>(j <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;)).<span class="fn">toList</span>();
+}
+
+<span class="com">// Upload multipart</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">enviarFoto</span>(<span class="tp">String</span> caminho) <span class="kw">async</span> {
+  <span class="kw">final</span> form = <span class="tp">FormData</span>.<span class="fn">fromMap</span>({
+    <span class="str">'foto'</span>: <span class="kw">await</span> <span class="tp">MultipartFile</span>.<span class="fn">fromFile</span>(caminho, filename: <span class="str">'foto.jpg'</span>),
+    <span class="str">'descricao'</span>: <span class="str">'Imagem de perfil'</span>,
+  });
+  <span class="kw">await</span> dio.<span class="fn">post</span>(<span class="str">'/upload'</span>, data: form,
+    onSendProgress: (sent, total) => print(<span class="str">'${(sent/total*100).toInt()}%'</span>));
+}
+
+<span class="com">// Cancelamento</span>
+<span class="kw">final</span> cancelToken = <span class="tp">CancelToken</span>();
+<span class="kw">try</span> {
+  <span class="kw">final</span> res = <span class="kw">await</span> dio.<span class="fn">get</span>(<span class="str">'/lento'</span>, cancelToken: cancelToken);
+} <span class="kw">on</span> <span class="tp">DioException</span> <span class="kw">catch</span> (e) {
+  <span class="kw">if</span> (<span class="tp">CancelToken</span>.<span class="fn">isCancel</span>(e)) print(<span class="str">'Cancelado!'</span>);
+}
+cancelToken.<span class="fn">cancel</span>(<span class="str">'usuario saiu da tela'</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shelf">Shelf — Servidor HTTP</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Shelf &mdash; API REST com roteamento, middleware e JSON</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:convert'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+<span class="kw">import</span> <span class="str">'package:shelf/shelf.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:shelf/shelf_io.dart'</span> <span class="kw">as</span> io;
+<span class="kw">import</span> <span class="str">'package:shelf_router/shelf_router.dart'</span>;
+
+<span class="com">// Middleware de logging</span>
+<span class="tp">Middleware</span> <span class="fn">logger</span>() => (handler) => (request) <span class="kw">async</span> {
+  <span class="kw">final</span> sw = <span class="tp">Stopwatch</span>()..<span class="fn">start</span>();
+  <span class="kw">final</span> resp = <span class="kw">await</span> handler(request);
+  print(<span class="str">'${request.method} ${request.url} ${resp.statusCode} ${sw.elapsedMilliseconds}ms'</span>);
+  <span class="kw">return</span> resp;
+};
+
+<span class="com">// Helper de resposta JSON</span>
+<span class="tp">Response</span> <span class="fn">jsonResponse</span>(<span class="kw">dynamic</span> data, {<span class="tp">int</span> status = <span class="num">200</span>}) => <span class="tp">Response</span>(
+  status,
+  body: jsonEncode(data),
+  headers: {<span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>},
+);
+
+<span class="com">// Service</span>
+<span class="kw">class</span> <span class="tp">ProdutosService</span> {
+  <span class="kw">final</span> _dados = &lt;<span class="tp">String</span>, <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;&gt;{
+    <span class="str">'1'</span>: {<span class="str">'id'</span>: <span class="str">'1'</span>, <span class="str">'nome'</span>: <span class="str">'Mouse'</span>, <span class="str">'preco'</span>: <span class="num">89.9</span>},
+    <span class="str">'2'</span>: {<span class="str">'id'</span>: <span class="str">'2'</span>, <span class="str">'nome'</span>: <span class="str">'Teclado'</span>, <span class="str">'preco'</span>: <span class="num">249.0</span>},
+  };
+  <span class="tp">List</span>&lt;<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;&gt; listar()           => _dados.<span class="fn">values</span>.<span class="fn">toList</span>();
+  <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;?  buscar(<span class="tp">String</span> id)    => _dados[id];
+}
+
+<span class="com">// Handler com Router</span>
+<span class="tp">Handler</span> <span class="fn">criarApp</span>(<span class="tp">ProdutosService</span> svc) {
+  <span class="kw">final</span> router = <span class="tp">Router</span>();
+
+  router.<span class="fn">get</span>(<span class="str">'/produtos'</span>, (req) => <span class="fn">jsonResponse</span>(svc.<span class="fn">listar</span>()));
+
+  router.<span class="fn">get</span>(<span class="str">'/produtos/&lt;id&gt;'</span>, (req, <span class="tp">String</span> id) {
+    <span class="kw">final</span> p = svc.<span class="fn">buscar</span>(id);
+    <span class="kw">return</span> p != <span class="kw">null</span>
+      ? <span class="fn">jsonResponse</span>(p)
+      : <span class="tp">Response</span>.notFound(<span class="str">'{"erro":"nao encontrado"}'</span>);
+  });
+
+  router.<span class="fn">post</span>(<span class="str">'/produtos'</span>, (req) <span class="kw">async</span> {
+    <span class="kw">final</span> body = jsonDecode(<span class="kw">await</span> req.<span class="fn">readAsString</span>()) <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;;
+    <span class="kw">return</span> <span class="fn">jsonResponse</span>(body, status: <span class="num">201</span>);
+  });
+
+  <span class="kw">return</span> <span class="tp">Pipeline</span>()
+    .<span class="fn">addMiddleware</span>(<span class="fn">logRequests</span>())
+    .<span class="fn">addMiddleware</span>(<span class="fn">logger</span>())
+    .<span class="fn">addHandler</span>(router.call);
+}
+
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">main</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> app    = <span class="fn">criarApp</span>(<span class="tp">ProdutosService</span>());
+  <span class="kw">final</span> server = <span class="kw">await</span> io.<span class="fn">serve</span>(app, <span class="tp">InternetAddress</span>.anyIPv4, <span class="num">8080</span>);
+  print(<span class="str">'Servidor em http://localhost:${server.port}'</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="riverpod">Riverpod — Gerenciamento de Estado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Riverpod &mdash; providers, AsyncNotifier e Ref</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flutter_riverpod/flutter_riverpod.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:riverpod_annotation/riverpod_annotation.dart'</span>;
+<span class="kw">part</span> <span class="str">'providers.g.dart'</span>;
+
+<span class="com">// Provider simples (valor imutavel)</span>
+<span class="kw">final</span> baseUrlProvider = <span class="tp">Provider</span>((ref) => <span class="str">'https://api.exemplo.com'</span>);
+
+<span class="com">// FutureProvider — async automatico</span>
+<span class="kw">final</span> produtosProvider = <span class="tp">FutureProvider</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt;((ref) <span class="kw">async</span> {
+  <span class="kw">final</span> client = ref.<span class="fn">watch</span>(apiClientProvider);
+  <span class="kw">return</span> client.<span class="fn">buscarProdutos</span>();
+});
+
+<span class="com">// Anotacao @riverpod — gera produtosProvider automaticamente</span>
+<span class="at">@riverpod</span>
+<span class="kw">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">produtos</span>(<span class="tp">ProdutosRef</span> ref) <span class="kw">async</span> {
+  <span class="kw">final</span> client = ref.<span class="fn">watch</span>(apiClientProvider);
+  ref.<span class="fn">keepAlive</span>(); <span class="com">// nao descarta mesmo sem listener</span>
+  <span class="kw">return</span> client.<span class="fn">buscarProdutos</span>();
+}
+
+<span class="com">// StateNotifier para estado mutavel complexo</span>
+<span class="kw">class</span> <span class="tp">CarrinhoNotifier</span> <span class="kw">extends</span> <span class="tp">Notifier</span>&lt;<span class="tp">List</span>&lt;<span class="tp">ItemCarrinho</span>&gt;&gt; {
+  <span class="kw">@override</span>
+  <span class="tp">List</span>&lt;<span class="tp">ItemCarrinho</span>&gt; <span class="fn">build</span>() => [];
+
+  <span class="kw">void</span> <span class="fn">adicionar</span>(<span class="tp">Produto</span> p) {
+    <span class="kw">final</span> idx = state.<span class="fn">indexWhere</span>((i) => i.produto.id == p.id);
+    <span class="kw">if</span> (idx &gt;= <span class="num">0</span>) {
+      state = [
+        <span class="kw">for</span> (<span class="kw">final</span> (i, item) <span class="kw">in</span> state.<span class="fn">indexed</span>)
+          <span class="kw">if</span> (i == idx) item.<span class="fn">copyWith</span>(qtd: item.qtd + <span class="num">1</span>) <span class="kw">else</span> item,
+      ];
+    } <span class="kw">else</span> {
+      state = [...state, <span class="tp">ItemCarrinho</span>(produto: p, qtd: <span class="num">1</span>)];
+    }
+  }
+
+  <span class="kw">void</span> <span class="fn">remover</span>(<span class="tp">String</span> produtoId) =>
+    state = state.<span class="fn">where</span>((i) => i.produto.id != produtoId).<span class="fn">toList</span>();
+
+  <span class="tp">double</span> <span class="kw">get</span> total =>
+    state.<span class="fn">fold</span>(<span class="num">0</span>, (acc, i) => acc + i.produto.preco * i.qtd);
+}
+
+<span class="kw">final</span> carrinhoProvider = <span class="tp">NotifierProvider</span>&lt;<span class="tp">CarrinhoNotifier</span>, <span class="tp">List</span>&lt;<span class="tp">ItemCarrinho</span>&gt;&gt;(
+  <span class="tp">CarrinhoNotifier</span>.new,
+);
+
+<span class="com">// No widget</span>
+<span class="kw">class</span> <span class="tp">ProdutosPage</span> <span class="kw">extends</span> <span class="tp">ConsumerWidget</span> {
+  <span class="kw">@override</span>
+  <span class="tp">Widget</span> <span class="fn">build</span>(<span class="tp">BuildContext</span> context, <span class="tp">WidgetRef</span> ref) {
+    <span class="kw">final</span> state = ref.<span class="fn">watch</span>(produtosProvider);
+    <span class="kw">return</span> state.<span class="fn">when</span>(
+      loading: () => <span class="kw">const</span> <span class="tp">CircularProgressIndicator</span>(),
+      error:   (e, st) => <span class="tp">Text</span>(<span class="str">'Erro: $e'</span>),
+      data:    (lista) => <span class="tp">ListView</span>.<span class="fn">builder</span>(
+        itemCount: lista.length,
+        itemBuilder: (ctx, i) => <span class="tp">ListTile</span>(title: <span class="tp">Text</span>(lista[i].nome)),
+      ),
+    );
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bloc">Bloc — Arquitetura Baseada em Eventos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + flutter_bloc &mdash; BLoC com events, states e Cubit</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flutter_bloc/flutter_bloc.dart'</span>;
+
+<span class="com">// --- Cubit (BLoC simplificado sem eventos explícitos) ---</span>
+<span class="kw">class</span> <span class="tp">ContadorCubit</span> <span class="kw">extends</span> <span class="tp">Cubit</span>&lt;<span class="tp">int</span>&gt; {
+  <span class="tp">ContadorCubit</span>() : <span class="kw">super</span>(<span class="num">0</span>);
+  <span class="kw">void</span> <span class="fn">incrementar</span>() => <span class="fn">emit</span>(state + <span class="num">1</span>);
+  <span class="kw">void</span> <span class="fn">decrementar</span>() => <span class="fn">emit</span>(state - <span class="num">1</span>);
+  <span class="kw">void</span> <span class="fn">resetar</span>()     => <span class="fn">emit</span>(<span class="num">0</span>);
+}
+
+<span class="com">// --- BLoC completo com eventos ---</span>
+<span class="com">// Eventos</span>
+<span class="kw">sealed class</span> <span class="tp">AuthEvent</span> {}
+<span class="kw">class</span> <span class="tp">LoginRequested</span> <span class="kw">extends</span> <span class="tp">AuthEvent</span> {
+  <span class="kw">final</span> <span class="tp">String</span> email, senha;
+  <span class="tp">LoginRequested</span>(<span class="kw">this</span>.email, <span class="kw">this</span>.senha);
+}
+<span class="kw">class</span> <span class="tp">LogoutRequested</span> <span class="kw">extends</span> <span class="tp">AuthEvent</span> {}
+
+<span class="com">// Estados</span>
+<span class="kw">sealed class</span> <span class="tp">AuthState</span> {}
+<span class="kw">class</span> <span class="tp">AuthInitial</span>      <span class="kw">extends</span> <span class="tp">AuthState</span> {}
+<span class="kw">class</span> <span class="tp">AuthLoading</span>      <span class="kw">extends</span> <span class="tp">AuthState</span> {}
+<span class="kw">class</span> <span class="tp">AuthAuthenticated</span> <span class="kw">extends</span> <span class="tp">AuthState</span> { <span class="kw">final</span> <span class="tp">Usuario</span> user; <span class="tp">AuthAuthenticated</span>(<span class="kw">this</span>.user); }
+<span class="kw">class</span> <span class="tp">AuthError</span>         <span class="kw">extends</span> <span class="tp">AuthState</span> { <span class="kw">final</span> <span class="tp">String</span> msg;   <span class="tp">AuthError</span>(<span class="kw">this</span>.msg);  }
+
+<span class="com">// BLoC</span>
+<span class="kw">class</span> <span class="tp">AuthBloc</span> <span class="kw">extends</span> <span class="tp">Bloc</span>&lt;<span class="tp">AuthEvent</span>, <span class="tp">AuthState</span>&gt; {
+  <span class="kw">final</span> <span class="tp">AuthService</span> _authService;
+
+  <span class="tp">AuthBloc</span>(<span class="kw">this</span>._authService) : <span class="kw">super</span>(<span class="tp">AuthInitial</span>()) {
+    <span class="fn">on</span>&lt;<span class="tp">LoginRequested</span>&gt;(<span class="fn">_onLogin</span>);
+    <span class="fn">on</span>&lt;<span class="tp">LogoutRequested</span>&gt;(<span class="fn">_onLogout</span>);
+  }
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_onLogin</span>(<span class="tp">LoginRequested</span> event, <span class="tp">Emitter</span>&lt;<span class="tp">AuthState</span>&gt; emit) <span class="kw">async</span> {
+    <span class="fn">emit</span>(<span class="tp">AuthLoading</span>());
+    <span class="kw">try</span> {
+      <span class="kw">final</span> user = <span class="kw">await</span> _authService.<span class="fn">login</span>(event.email, event.senha);
+      <span class="fn">emit</span>(<span class="tp">AuthAuthenticated</span>(user));
+    } <span class="kw">catch</span> (e) {
+      <span class="fn">emit</span>(<span class="tp">AuthError</span>(e.<span class="fn">toString</span>()));
+    }
+  }
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_onLogout</span>(<span class="tp">LogoutRequested</span> _, <span class="tp">Emitter</span>&lt;<span class="tp">AuthState</span>&gt; emit) <span class="kw">async</span> {
+    <span class="kw">await</span> _authService.<span class="fn">logout</span>();
+    <span class="fn">emit</span>(<span class="tp">AuthInitial</span>());
+  }
+}
+
+<span class="com">// No widget BlocBuilder</span>
+<span class="tp">BlocBuilder</span>&lt;<span class="tp">AuthBloc</span>, <span class="tp">AuthState</span>&gt;(
+  builder: (ctx, state) => <span class="kw">switch</span> (state) {
+    <span class="tp">AuthInitial</span>()             => <span class="kw">const</span> <span class="tp">LoginScreen</span>(),
+    <span class="tp">AuthLoading</span>()             => <span class="kw">const</span> <span class="tp">CircularProgressIndicator</span>(),
+    <span class="tp">AuthAuthenticated</span>(:var user) => <span class="tp">HomeScreen</span>(user: user),
+    <span class="tp">AuthError</span>(:var msg)       => <span class="tp">ErrorScreen</span>(msg: msg),
+  },
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo-estado">Comparativo: Solucoes de Estado</h2>
+        <div class="panel">
+          <p class="panel-title">setState vs Provider vs Riverpod vs BLoC</p>
+          <table class="table">
+            <thead>
+              <tr><th>Solucao</th><th>Complexidade</th><th>Testabilidade</th><th>Escala</th><th>Curva</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>setState</td><td>Minima</td><td>Baixa</td><td>Pequeno</td><td>Nula</td></tr>
+              <tr><td>InheritedWidget</td><td>Baixa</td><td>Media</td><td>Pequeno/Medio</td><td>Baixa</td></tr>
+              <tr><td>Provider</td><td>Baixa</td><td>Alta</td><td>Medio</td><td>Baixa</td></tr>
+              <tr><td>Riverpod</td><td>Media</td><td>Muito alta</td><td>Grande</td><td>Media</td></tr>
+              <tr><td>BLoC/Cubit</td><td>Alta</td><td>Muito alta</td><td>Grande/Enterprise</td><td>Alta</td></tr>
+              <tr><td>GetX</td><td>Baixa</td><td>Media</td><td>Medio</td><td>Baixa</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>NAPOLI, R. <strong>Flutter Complete Reference</strong>. 2. ed. Independently Published, 2023.</li>
+            <li>RIVERPOD. <strong>Documentacao oficial Riverpod</strong>. Disponível em: &lt;https://riverpod.dev/&gt;. Acesso em: 2025.</li>
+            <li>BLOCLIBRARY. <strong>flutter_bloc documentation</strong>. Disponível em: &lt;https://bloclibrary.dev/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart Avancado</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Prefira <strong>Riverpod</strong> para novos projetos Flutter — elimina o <code>BuildContext</code> obrigatorio para acessar providers, melhora testabilidade e suporta providers fora da arvore de widgets (ex: em Isolates).</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="COBOL Projetos e Boas Práticas: copybooks, convenções de nomenclatura, estrutura de projeto, paragráfos pequenos, evitar GOTO, modularização com CALL e manutenção de código legado." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Projetos e Boas Práticas</h1>
+          <p>Programas COBOL corporativos vivem décadas. O código escrito em 1985 ainda processa transações bancárias hoje. As boas práticas estabelecidas pela indústria — <strong>copybooks</strong> compartilhados, <strong>naming conventions</strong>, parágrafos curtos — existem exatamente para que esse código seja compreendido e mantido por gerações de programadores.</p>
+        </div>
+        <p class="intro-highlight">
+          A regra de ouro do COBOL corporativo: <em>"If it's not broken, don't fix it."</em> — mas quando é preciso mudar, o código precisa ser legível. Copybooks, nomes descritivos e parágrafos bem delimitados são a diferença entre manutenção simples e meses de investigação.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="copybooks">Copybooks — Reutilização de Definições</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CLIENTE.CPY — copybook de layout de registro</div>
+          <pre class="example"><span class="com">      *-----------------------------------------------------------------</span>
+<span class="com">      * CLIENTE.CPY — Layout do registro de cliente</span>
+<span class="com">      * Versão: 3.2   Data: 2024-01-15   Autor: Equipe Cadastro</span>
+<span class="com">      *-----------------------------------------------------------------</span>
+       01 WS-CLIENTE.
+         05 WS-CLI-ID          PIC 9(8).
+         05 WS-CLI-CPF         PIC X(11).
+         05 WS-CLI-NOME        PIC X(50).
+         05 WS-CLI-EMAIL       PIC X(80).
+         05 WS-CLI-LIMITE      PIC 9(10)V99.
+         05 WS-CLI-STATUS      PIC X.
+           88 CLI-ATIVO        VALUE 'A'.
+           88 CLI-INATIVO      VALUE 'I'.
+           88 CLI-BLOQUEADO    VALUE 'B'.
+         05 WS-CLI-DT-CADAS    PIC 9(8).
+         05 WS-CLI-DT-ULT-TRN  PIC 9(8).</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Usando COPY em programas</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+       COPY CLIENTE.                       <span class="com">*> inclui WS-CLIENTE</span>
+       COPY SQLCA.                         <span class="com">*> Communication Area DB2 (IBM)</span>
+       COPY MENSAGENS.                     <span class="com">*> textos de erro/sucesso</span>
+
+<span class="com">      *> COPY com REPLACING — personalizar prefixos</span>
+       COPY CLIENTE REPLACING ==WS-CLI== BY ==HD-CLI==.
+<span class="com">      *> Gera HD-CLI-ID, HD-CLI-CPF, etc — ideal para header de relatório</span>
+
+       01 WS-AREA-TRABALHO.
+         05 WS-COD-RETORNO    PIC 9(4).
+         05 WS-MSG-RETORNO    PIC X(80).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nomenclatura">Convenções de Nomenclatura</h2>
+        <div class="panel">
+          <div class="panel-title">Prefixos padrão para campos WORKING-STORAGE</div>
+          <table class="table">
+            <thead><tr><th>Prefixo</th><th>Seção / Uso</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td><code>WS-</code></td><td>WORKING-STORAGE (variáveis gerais)</td><td><code>WS-TOTAL-REGISTROS</code></td></tr>
+              <tr><td><code>LS-</code></td><td>LINKAGE SECTION (parâmetros)</td><td><code>LS-COD-CLIENTE</code></td></tr>
+              <tr><td><code>FS-</code></td><td>FILE SECTION (registros de arquivo)</td><td><code>FS-REG-ENTRADA</code></td></tr>
+              <tr><td><code>SW-</code></td><td>Switches / flags booleanas</td><td><code>SW-FIM-ARQUIVO</code></td></tr>
+              <tr><td><code>CT-</code></td><td>Contadores</td><td><code>CT-LINHAS-RELATORIO</code></td></tr>
+              <tr><td><code>AC-</code></td><td>Acumuladores / totalizadores</td><td><code>AC-TOTAL-DEBITO</code></td></tr>
+              <tr><td><code>WK-</code></td><td>Work area temporária</td><td><code>WK-AUX-CALCULO</code></td></tr>
+              <tr><td><code>TB-</code></td><td>Tabelas internas (OCCURS)</td><td><code>TB-ALIQUOTAS</code></td></tr>
+              <tr><td><code>HD-</code></td><td>Header de relatório</td><td><code>HD-TITULO-RELATORIO</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Nomenclatura de parágrafos</div>
+          <table class="table">
+            <thead><tr><th>Padrão</th><th>Significado</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td><code>0000-INIT</code></td><td>Inicialização do programa</td><td><code>0000-ABRIR-ARQUIVOS</code></td></tr>
+              <tr><td><code>1000-MAIN</code></td><td>Loop principal</td><td><code>1000-PROCESSAR-REGISTROS</code></td></tr>
+              <tr><td><code>2000-PROCESS-X</code></td><td>Processar entidade X</td><td><code>2000-VALIDAR-CLIENTE</code></td></tr>
+              <tr><td><code>3000-CALC-X</code></td><td>Cálculos específicos</td><td><code>3000-CALCULAR-IMPOSTO</code></td></tr>
+              <tr><td><code>8000-RPT-X</code></td><td>Relatórios</td><td><code>8000-IMPRIMIR-TOTAIS</code></td></tr>
+              <tr><td><code>9000-TERM</code></td><td>Encerramento</td><td><code>9000-FECHAR-ARQUIVOS</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de diretórios — projeto COBOL corporativo</div>
+          <pre class="example">meu-sistema/
+├── src/                    ← programas principais .cob
+│   ├── CALCPENS.cob        ← cálculo de pensão
+│   ├── RELCDAS.cob         ← relatório de cadastros
+│   └── UPDCLI.cob          ← atualização de clientes
+├── copybooks/              ← .cpy compartilhados
+│   ├── CLIENTE.cpy
+│   ├── CONTRATO.cpy
+│   ├── MENSAGENS.cpy
+│   └── SQLCA.cpy           ← DB2 Communication Area
+├── jcl/                    ← jobs JCL (mainframe)
+│   ├── COMPILE.jcl
+│   ├── RUNCALC.jcl
+│   └── BACKUP.jcl
+├── tests/
+│   ├── TSTCALC.cob         ← testes unitários (GnuCOBOL)
+│   └── testdata/
+│       ├── entrada01.dat
+│       └── saida01.dat.expected
+└── Makefile</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="paragrafos">Parágrafos Curtos — Regra das 20 Linhas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ruim vs. bom — parágrafo monolítico vs. decomposto</div>
+          <pre class="example"><span class="com">      *> ── RUIM: parágrafo de 100 linhas ───────────────────────</span>
+       PROCESSAR.
+           OPEN INPUT ARQ-CLIENTES.
+           PERFORM UNTIL EOF-CLI
+               READ ARQ-CLIENTES AT END MOVE 'S' TO SW-EOF-CLI
+               NOT AT END
+                   IF FS-CLI-STATUS = 'A'
+                       COMPUTE WS-IMPOSTO ROUNDED =
+                           FS-CLI-RENDA * 0.275
+                       IF WS-IMPOSTO > 50000
+                           ... <span class="com">*> mais 80 linhas aqui</span>
+                       END-IF
+                   END-IF
+               END-READ
+           END-PERFORM.
+           CLOSE ARQ-CLIENTES.
+
+<span class="com">      *> ── BOM: parágrafos delimitados, PERFORM claro ──────────</span>
+       1000-PROCESSAR-CLIENTES.
+           OPEN INPUT ARQ-CLIENTES.
+           PERFORM 1100-LER-E-PROCESSAR
+               UNTIL SW-FIM-ARQUIVO = 'S'.
+           CLOSE ARQ-CLIENTES.
+
+       1100-LER-E-PROCESSAR.
+           READ ARQ-CLIENTES
+               AT END MOVE 'S' TO SW-FIM-ARQUIVO
+               NOT AT END PERFORM 1200-VALIDAR-CLIENTE
+           END-READ.
+
+       1200-VALIDAR-CLIENTE.
+           IF CLI-ATIVO
+               PERFORM 1300-CALCULAR-IMPOSTO
+               PERFORM 1400-GRAVAR-RESULTADO
+           END-IF.
+
+       1300-CALCULAR-IMPOSTO.
+           COMPUTE WS-IMPOSTO ROUNDED =
+               FS-CLI-RENDA * WS-ALIQUOTA-IRPF.
+           IF WS-IMPOSTO > WS-LIMITE-ADICIONAL
+               PERFORM 1310-CALCULAR-ADICIONAL
+           END-IF.
+
+       1400-GRAVAR-RESULTADO.
+           MOVE WS-IMPOSTO TO FS-SAIDA-IMPOSTO.
+           WRITE REG-SAIDA.</pre>
+        </div>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <div class="panel-title">Boas Práticas</div>
+            <ul>
+              <li>Parágrafos com no máximo 20 linhas</li>
+              <li>Nomes de parágrafos descritivos e numerados</li>
+              <li>PERFORM em vez de GOTO</li>
+              <li>Copybooks para todos os layouts de registro</li>
+              <li>Level-88 para todos os valores de switch</li>
+              <li>ON SIZE ERROR em todo COMPUTE/DIVIDE</li>
+              <li>FILE STATUS em todos os arquivos</li>
+              <li>Comentários de cabeçalho com versão e autor</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <div class="panel-title">Evitar</div>
+            <ul>
+              <li>GOTO (cria spaghetti code inauditável)</li>
+              <li>ALTER GOTO (altera o destino de um GO TO — obsoleto)</li>
+              <li>Parágrafos com centenas de linhas</li>
+              <li>Nomes genéricos: PROCESS, LOOP, TEMP</li>
+              <li>Magic numbers sem nomes de nível-88</li>
+              <li>COMPUTE sem ON SIZE ERROR em campos críticos</li>
+              <li>Ignorar FILE STATUS após READ/WRITE</li>
+              <li>Copiar código (copy-paste) em vez de CALL</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="file-status">FILE STATUS — Tratamento de Erros de Arquivo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Verificação completa de FILE STATUS</div>
+          <pre class="example">       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+         FILE-CONTROL.
+           SELECT ARQ-CLIENTES ASSIGN TO 'CLIENTES.DAT'
+               ORGANIZATION IS SEQUENTIAL
+               FILE STATUS IS WS-STATUS-CLIENTE.
+
+       WORKING-STORAGE SECTION.
+         01 WS-STATUS-CLIENTE PIC XX.
+
+       01 WS-STATUS-TABLE.
+         05 FILLER PIC XX VALUE '00'. 88 FS-OK VALUE '00'.
+         05 FILLER PIC XX VALUE '10'. 88 FS-EOF VALUE '10'.
+         05 FILLER PIC XX VALUE '23'. 88 FS-NOT-FOUND VALUE '23'.
+         05 FILLER PIC XX VALUE '35'. 88 FS-NO-FILE VALUE '35'.
+         05 FILLER PIC XX VALUE '39'. 88 FS-ATTR-CONFLICT VALUE '39'.
+         05 FILLER PIC XX VALUE '41'. 88 FS-ALREADY-OPEN VALUE '41'.
+
+       PROCEDURE DIVISION.
+           OPEN INPUT ARQ-CLIENTES.
+           EVALUATE WS-STATUS-CLIENTE
+               WHEN '00' CONTINUE
+               WHEN '35' DISPLAY 'Arquivo não existe'
+                         STOP RUN
+               WHEN OTHER DISPLAY 'Erro OPEN: ' WS-STATUS-CLIENTE
+                          STOP RUN
+           END-EVALUATE.
+
+           READ ARQ-CLIENTES
+               AT END MOVE 'S' TO SW-FIM-ARQUIVO.
+
+           EVALUATE WS-STATUS-CLIENTE
+               WHEN '00' PERFORM PROCESSAR-REGISTRO
+               WHEN '10' MOVE 'S' TO SW-FIM-ARQUIVO
+               WHEN OTHER DISPLAY 'Erro READ: ' WS-STATUS-CLIENTE
+                          PERFORM 9000-ENCERRAR-ERRO
+           END-EVALUATE.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ARANDA, F. <strong>COBOL Best Practices: Naming Conventions and Paragraph Rules</strong>. IBM Developer, 2022. Disponível em: &lt;https://developer.ibm.com/articles/cobol-naming-conventions&gt;. Acesso em: 2025.</li>
+            <li>STERN, N.; STERN, R.A. <strong>COBOL for the 21st Century</strong>. 11. ed. Wiley, 2011. Cap. 2 — Program Structure and Style.</li>
+            <li>GnuCOBOL. <strong>Copybooks and COPY Statement</strong>. GnuCOBOL Programmers Guide, 2023. Disponível em: &lt;https://gnucobol.sourceforge.io&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a href="../aplicacoes/batch_mainframe.html"><span data-svg="seta-direita" aria-hidden="true"></span> COBOL em Batch e Mainframe</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>COPY ... REPLACING</strong> é uma das ferramentas mais poderosas do COBOL para reutilização: um único copybook de layout de cliente pode ser incluído com prefixos diferentes (<code>WS-CLI</code>, <code>HD-CLI</code>, <code>LS-CLI</code>) em diferentes seções do mesmo programa sem conflito de nomes — algo que linguagens modernas resolvem com escopos mas que o COBOL resolve de forma elegante e auditável.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

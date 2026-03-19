@@ -1,0 +1,259 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="GTK em C: o toolkit do GNOME. Widgets, GObject, signals, GtkBuilder e GLib para interfaces graficas nativas Linux." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C GTK | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>C &mdash; GTK</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">GTK em C</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>GTK &mdash; O Toolkit do GNOME</h1>
+          <p>O mesmo toolkit que roda GIMP, GNOME Shell e Inkscape &mdash; direto em C, sem abstrações.</p>
+        </div>
+        <p class="intro-highlight">
+          GTK (GIMP Toolkit) nasceu em 1996 criado por Spencer Kimball, Peter Mattis e Josh MacDonald
+          para o GIMP &mdash; frustrados com as licencas do Motif. Hoje, na versao GTK4, e o
+          toolkit padrao do ambiente GNOME e de centenas de aplicacoes Linux. Construido sobre
+          <strong>GObject</strong> &mdash; um sistema de objetos em C puro com heranca, signals e
+          gerenciamento de memoria &mdash; GTK e tecnicamente orientado a objetos mesmo em C.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="hello-world" class="section-title">1. Hello World com GTK4</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; janela GTK4 minima</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;gtk/gtk.h&gt;</span>
+
+<span class="kw">static void</span> <span class="fn">activate</span>(GtkApplication *app, gpointer user_data)
+{
+    GtkWidget *window = gtk_application_window_new(app);
+    gtk_window_set_title(GTK_WINDOW(window), <span class="str">"GTK4 Hello"</span>);
+    gtk_window_set_default_size(GTK_WINDOW(window), <span class="num">400</span>, <span class="num">300</span>);
+
+    GtkWidget *label = gtk_label_new(<span class="str">"Ola, GTK4!"</span>);
+    gtk_window_set_child(GTK_WINDOW(window), label);
+
+    gtk_widget_set_visible(window, <span class="kw">TRUE</span>);
+}
+
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">int</span> argc, <span class="kw">char</span> **argv)
+{
+    GtkApplication *app = gtk_application_new(
+        <span class="str">"org.exemplo.MeuApp"</span>,
+        G_APPLICATION_DEFAULT_FLAGS
+    );
+    g_signal_connect(app, <span class="str">"activate"</span>, G_CALLBACK(activate), <span class="kw">NULL</span>);
+    <span class="kw">int</span> status = g_application_run(G_APPLICATION(app), argc, argv);
+    g_object_unref(app);
+    <span class="kw">return</span> status;
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">shell &mdash; compilar com pkg-config</div>
+          <pre class="example">gcc `pkg-config --cflags --libs gtk4` -o meu_app main.c</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="gobject" class="section-title">2. GObject e Sistema de Signals</h2>
+        <p>
+          GObject e o sistema de tipos em C que sustenta o GTK. Todo widget e um GObject;
+          o sistema de <strong>signals</strong> do GObject e equivalente ao Observer pattern:
+          emita um signal e todos os handlers conectados sao chamados.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; conectar signal de botao</div>
+          <pre class="example"><span class="kw">static void</span> <span class="fn">on_button_clicked</span>(GtkButton *btn, gpointer user_data)
+{
+    GtkLabel *label = GTK_LABEL(user_data);
+    gtk_label_set_text(label, <span class="str">"Clicado!"</span>);
+}
+
+<span class="com">/* dentro de activate(): */</span>
+GtkWidget *box   = gtk_box_new(GTK_ORIENTATION_VERTICAL, <span class="num">10</span>);
+GtkWidget *btn   = gtk_button_new_with_label(<span class="str">"Clique aqui"</span>);
+GtkWidget *label = gtk_label_new(<span class="str">"Aguardando..."</span>);
+
+<span class="com">/* conecta o signal "clicked" ao callback */</span>
+g_signal_connect(btn, <span class="str">"clicked"</span>, G_CALLBACK(on_button_clicked), label);
+
+gtk_box_append(GTK_BOX(box), label);
+gtk_box_append(GTK_BOX(box), btn);
+gtk_window_set_child(GTK_WINDOW(window), box);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="layouts" class="section-title">3. Containers e Layouts</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>GtkBox</h3>
+            <p>
+              Container linear: <code class="code-inline">GTK_ORIENTATION_HORIZONTAL</code> ou
+              <code class="code-inline">GTK_ORIENTATION_VERTICAL</code>. Use
+              <code class="code-inline">gtk_box_append()</code> para adicionar filhos.
+              Propriedade <code class="code-inline">spacing</code> controla o espaco entre filhos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>GtkGrid</h3>
+            <p>
+              Layout tabular com linhas e colunas variaveis. Suporta widgets com
+              <code class="code-inline">width</code> e <code class="code-inline">height</code>
+              em celulas (colspan/rowspan). Mais flexivel que GtkBox para formularios.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>GtkScrolledWindow</h3>
+            <p>
+              Adiciona barras de rolagem a qualquer widget filho. Usado para conteudo maior que
+              a janela: listas, editores de texto (<code class="code-inline">GtkTextView</code>),
+              imagens grandes.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>GtkHeaderBar</h3>
+            <p>
+              Barra de titulo customizavel do GNOME com botoes de acao integrados. Substituiu
+              <code class="code-inline">GtkToolbar</code> no GTK4 para apps GNOME modernas.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="gtkbuilder" class="section-title">4. GtkBuilder e Glade</h2>
+        <p>
+          <strong>GtkBuilder</strong> carrega interfaces definidas em arquivos XML (<code class="code-inline">.ui</code>).
+          <strong>Glade</strong> e o editor visual que gera esses arquivos &mdash; equivalente ao
+          Qt Designer para GTK. Isso separa UI de logica, facilita a colaboracao de designers e
+          programadores no mesmo projeto.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; carregar UI de arquivo XML</div>
+          <pre class="example">GtkBuilder *builder = gtk_builder_new_from_file(<span class="str">"janela.ui"</span>);
+
+<span class="com">/* obter widgets pelo id definido no XML */</span>
+GtkWidget *window = GTK_WIDGET(gtk_builder_get_object(builder, <span class="str">"main_window"</span>));
+GtkWidget *btn    = GTK_WIDGET(gtk_builder_get_object(builder, <span class="str">"btn_salvar"</span>));
+
+g_signal_connect(btn, <span class="str">"clicked"</span>, G_CALLBACK(on_salvar), <span class="kw">NULL</span>);
+gtk_window_present(GTK_WINDOW(window));
+
+g_object_unref(builder);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">5. Quando Usar GTK em C</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Aplicacoes nativas Linux/GNOME com maxima integracao ao sistema</li>
+              <li>Apps que precisam de desempenho C puro com UI rica</li>
+              <li>Ferramentas que serao distribuidas como pacotes nativos no sistema</li>
+              <li>Projetos que ja usam GLib (daemons, servicos) e precisam adicionar GUI</li>
+              <li>Aprender o funcionamento interno de toolkits GUI em baixo nivel</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>App multiplataforma (Windows/macOS) &mdash; GTK no Windows e complicado de distribuir</li>
+              <li>Prototipagem rapida &mdash; C/GTK tem muito boilerplate; use Python+GTK ou C++/Qt</li>
+              <li>Equipe sem experiencia em C e gerenciamento de memoria</li>
+              <li>App mobile &mdash; GTK nao tem suporte mobile oficial</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ecossistema" class="section-title">6. Ecossistema GTK</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>GLib / GIO</h3>
+            <p>Bibliotecas base do GTK: tipos fundamentais (GList, GHashTable), operacoes de arquivo async (GFile), threads (GThread), mainloop (GMainLoop) e muito mais.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Glade</h3>
+            <p>Editor visual de interfaces GTK que gera arquivos .ui (XML). Permite desenhar janelas sem escrever codigo de layout &mdash; semelhante ao Qt Designer.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Cairo / Pango</h3>
+            <p>Cairo: renderizacao 2D vetorial (linhas, curvas, texto, imagens) usada internamente pelo GTK. Pango: layout e renderizacao de texto Unicode com suporte a RTL.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>GTK Inspector</h3>
+            <p>Debugger integrado (ativado com Ctrl+Shift+D): inspeciona a arvore de widgets em tempo real, mede FPS e exibe propriedades CSS &mdash; vital para depuracao de UI.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>GTK TEAM. <strong>GTK 4 Reference Manual</strong>. Disponivel em: <a href="https://docs.gtk.org/gtk4/" target="_blank" rel="noopener">docs.gtk.org/gtk4</a>. Acesso em: 2026.</li>
+            <li>GLIB TEAM. <strong>GLib Reference Manual</strong>. Disponivel em: <a href="https://docs.gtk.org/glib/" target="_blank" rel="noopener">docs.gtk.org/glib</a>. Acesso em: 2026.</li>
+            <li>HARLOW, Eric. <strong>Developing Linux Applications with GTK+ and GDK</strong>. Indianapolis: New Riders, 1999.</li>
+            <li>GNOME DOCS. <strong>GNOME Developer Documentation</strong>. Disponivel em: <a href="https://developer.gnome.org/" target="_blank" rel="noopener">developer.gnome.org</a>. Acesso em: 2026.</li>
+            <li>CAIRO. <strong>Cairo Graphics Library</strong>. Disponivel em: <a href="https://www.cairographics.org/documentation/" target="_blank" rel="noopener">cairographics.org</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/c/c_ncurses.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>ncurses &mdash; UI em terminal com C</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/cpp/cpp_qt.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Qt em C++ &mdash; multiplataforma profissional</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/introducao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Panorama geral de frameworks GUI</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "GTK surgiu da frustração com licenças — e se tornou a liberdade do desktop Linux." &mdash; Historia do GIMP
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

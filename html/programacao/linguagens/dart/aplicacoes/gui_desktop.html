@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para GUI Desktop com Flutter: janelas nativas no Windows, macOS e Linux, window_manager, flutter_acrylic, menus, atalhos, tray icon e empacotamento com Inno Setup e DMG." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — GUI Desktop com Flutter</h1>
+          <p>Flutter Desktop permite criar aplicativos nativos para <strong>Windows</strong>, <strong>macOS</strong> e <strong>Linux</strong> com a mesma codebase Dart. O engine Impeller renderiza via DirectX 11 (Windows), Metal (macOS) e Vulkan (Linux) — sem Electron, sem WebView, widgets nativos desenhados pelo engine com pixel-perfect fidelidade.</p>
+        </div>
+        <p class="intro-highlight">
+          Flutter Desktop e <strong>estavel desde Flutter 3.0</strong> (2022). O plugin <strong>window_manager</strong> controla título, tamanho, posicao, bordas e focus da janela nativa. <strong>flutter_acrylic</strong> adiciona efeitos visuais do OS (Acrylic no Windows 11, NSVisualEffectView no macOS).
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="configuracao">Configuracao e Setup</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Habilitar plataformas desktop e build de release</div>
+          <pre class="example"><span class="com"># Habilitar plataformas</span>
+flutter config --enable-windows-desktop
+flutter config --enable-macos-desktop
+flutter config --enable-linux-desktop
+
+<span class="com"># Criar projeto com suporte desktop</span>
+flutter create --platforms=windows,macos,linux meu_app_desktop
+
+<span class="com"># Rodar em debug</span>
+flutter run -d windows
+flutter run -d macos
+flutter run -d linux
+
+<span class="com"># Build de release</span>
+flutter build windows --release   <span class="com"># gera build/windows/runner/Release/</span>
+flutter build macos   --release   <span class="com"># gera build/macos/Build/Products/Release/*.app</span>
+flutter build linux   --release   <span class="com"># gera build/linux/x64/release/bundle/</span>
+
+<span class="com"># Verificar dispositivos disponiveis</span>
+flutter devices</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="window-manager">window_manager — Controle da Janela</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + window_manager &mdash; Configuracao de janela, frameless e always on top</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flutter/material.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:window_manager/window_manager.dart'</span>;
+
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">main</span>() <span class="kw">async</span> {
+  <span class="fn">WidgetsFlutterBinding</span>.<span class="fn">ensureInitialized</span>();
+
+  <span class="kw">await</span> windowManager.<span class="fn">ensureInitialized</span>();
+
+  <span class="kw">final</span> opcoes = <span class="tp">WindowOptions</span>(
+    size:            <span class="kw">const</span> <span class="tp">Size</span>(<span class="num">1280</span>, <span class="num">720</span>),
+    minimumSize:     <span class="kw">const</span> <span class="tp">Size</span>(<span class="num">800</span>, <span class="num">600</span>),
+    center:          <span class="kw">true</span>,
+    title:           <span class="str">'Meu App Desktop'</span>,
+    titleBarStyle:   <span class="tp">TitleBarStyle</span>.normal,
+    backgroundColor: <span class="tp">Colors</span>.transparent,
+    skipTaskbar:     <span class="kw">false</span>,
+  );
+
+  <span class="kw">await</span> windowManager.<span class="fn">waitUntilReadyToShow</span>(opcoes, () <span class="kw">async</span> {
+    <span class="kw">await</span> windowManager.<span class="fn">show</span>();
+    <span class="kw">await</span> windowManager.<span class="fn">focus</span>();
+  });
+
+  <span class="fn">runApp</span>(<span class="kw">const</span> <span class="tp">App</span>());
+}
+
+<span class="com">// Mixin para interceptar fechamento da janela</span>
+<span class="kw">class</span> <span class="tp">AppState</span> <span class="kw">extends</span> <span class="tp">State</span>&lt;<span class="tp">App</span>&gt; <span class="kw">with</span> <span class="tp">WindowListener</span> {
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">initState</span>() {
+    <span class="kw">super</span>.<span class="fn">initState</span>();
+    windowManager.<span class="fn">addListener</span>(<span class="kw">this</span>);
+    windowManager.<span class="fn">setPreventClose</span>(<span class="kw">true</span>);  <span class="com">// interceptar Alt+F4</span>
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">onWindowClose</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> confirmar = <span class="kw">await</span> <span class="fn">showDialog</span>&lt;<span class="kw">bool</span>&gt;(
+      context: context,
+      builder: (_) => <span class="tp">AlertDialog</span>(
+        title:   <span class="kw">const</span> <span class="tp">Text</span>(<span class="str">'Sair?'</span>),
+        content: <span class="kw">const</span> <span class="tp">Text</span>(<span class="str">'Deseja fechar o aplicativo?'</span>),
+        actions: [
+          <span class="tp">TextButton</span>(onPressed: () => <span class="tp">Navigator</span>.<span class="fn">pop</span>(context, <span class="kw">false</span>), child: <span class="kw">const</span> <span class="tp">Text</span>(<span class="str">'Cancelar'</span>)),
+          <span class="tp">TextButton</span>(onPressed: () => <span class="tp">Navigator</span>.<span class="fn">pop</span>(context, <span class="kw">true</span>),  child: <span class="kw">const</span> <span class="tp">Text</span>(<span class="str">'Sair'</span>)),
+        ],
+      ),
+    ) ?? <span class="kw">false</span>;
+    <span class="kw">if</span> (confirmar) <span class="kw">await</span> windowManager.<span class="fn">destroy</span>();
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">dispose</span>() {
+    windowManager.<span class="fn">removeListener</span>(<span class="kw">this</span>);
+    <span class="kw">super</span>.<span class="fn">dispose</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="menu-atalhos">Menus Nativos e Atalhos de Teclado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Flutter &mdash; MenuBar nativo, PlatformMenuBar e SingleActivator</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flutter/material.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:flutter/services.dart'</span>;
+
+<span class="kw">class</span> <span class="tp">MainWindow</span> <span class="kw">extends</span> <span class="tp">StatelessWidget</span> {
+  <span class="kw">const</span> <span class="tp">MainWindow</span>({<span class="kw">super</span>.key});
+
+  <span class="at">@override</span>
+  <span class="tp">Widget</span> <span class="fn">build</span>(<span class="tp">BuildContext</span> _) => <span class="tp">PlatformMenuBar</span>(
+    menus: [
+      <span class="tp">PlatformMenu</span>(label: <span class="str">'Arquivo'</span>, menus: [
+        <span class="tp">PlatformMenuItem</span>(
+          label:       <span class="str">'Novo'</span>,
+          shortcut:    <span class="kw">const</span> <span class="tp">SingleActivator</span>(<span class="tp">LogicalKeyboardKey</span>.keyN, meta: <span class="kw">true</span>),
+          onSelected: () => print(<span class="str">'Novo arquivo'</span>),
+        ),
+        <span class="tp">PlatformMenuItem</span>(
+          label:       <span class="str">'Abrir...'</span>,
+          shortcut:    <span class="kw">const</span> <span class="tp">SingleActivator</span>(<span class="tp">LogicalKeyboardKey</span>.keyO, meta: <span class="kw">true</span>),
+          onSelected: () => <span class="fn">_abrirArquivo</span>(),
+        ),
+        <span class="kw">const</span> <span class="tp">PlatformMenuDivider</span>(),
+        <span class="tp">PlatformMenuItem</span>(
+          label:       <span class="str">'Sair'</span>,
+          shortcut:    <span class="kw">const</span> <span class="tp">SingleActivator</span>(<span class="tp">LogicalKeyboardKey</span>.keyQ, meta: <span class="kw">true</span>),
+          onSelected: () => <span class="tp">SystemNavigator</span>.<span class="fn">pop</span>(),
+        ),
+      ]),
+      <span class="tp">PlatformMenu</span>(label: <span class="str">'Editar'</span>, menus: [
+        <span class="tp">PlatformMenuItemGroup</span>(members: [
+          <span class="tp">PlatformMenuItem</span>(
+            label:    <span class="str">'Copiar'</span>,
+            shortcut: <span class="kw">const</span> <span class="tp">SingleActivator</span>(<span class="tp">LogicalKeyboardKey</span>.keyC, meta: <span class="kw">true</span>),
+            onSelected: () {},
+          ),
+          <span class="tp">PlatformMenuItem</span>(
+            label:    <span class="str">'Colar'</span>,
+            shortcut: <span class="kw">const</span> <span class="tp">SingleActivator</span>(<span class="tp">LogicalKeyboardKey</span>.keyV, meta: <span class="kw">true</span>),
+            onSelected: () {},
+          ),
+        ]),
+      ]),
+    ],
+    child: <span class="kw">const</span> <span class="tp">AppBody</span>(),
+  );
+
+  <span class="kw">void</span> <span class="fn">_abrirArquivo</span>() { <span class="com">/* usar file_picker */</span> }
+}
+
+<span class="com">// Atalhos globais com Shortcuts + Actions (funciona em qualquer OS)</span>
+<span class="kw">class</span> <span class="tp">AppBody</span> <span class="kw">extends</span> <span class="tp">StatelessWidget</span> {
+  <span class="kw">const</span> <span class="tp">AppBody</span>({<span class="kw">super</span>.key});
+  <span class="at">@override</span>
+  <span class="tp">Widget</span> <span class="fn">build</span>(<span class="tp">BuildContext</span> ctx) => <span class="tp">Shortcuts</span>(
+    shortcuts: {
+      <span class="tp">LogicalKeySet</span>(<span class="tp">LogicalKeyboardKey</span>.control, <span class="tp">LogicalKeyboardKey</span>.keyS):
+        <span class="kw">const</span> <span class="tp">SalvarIntent</span>(),
+      <span class="tp">LogicalKeySet</span>(<span class="tp">LogicalKeyboardKey</span>.f5):
+        <span class="kw">const</span> <span class="tp">AtualizarIntent</span>(),
+    },
+    child: <span class="tp">Actions</span>(
+      actions: {
+        <span class="tp">SalvarIntent</span>:    <span class="tp">CallbackAction</span>&lt;<span class="tp">SalvarIntent</span>&gt;(onInvoke: (_) => <span class="fn">_salvar</span>(ctx)),
+        <span class="tp">AtualizarIntent</span>: <span class="tp">CallbackAction</span>&lt;<span class="tp">AtualizarIntent</span>&gt;(onInvoke: (_) => <span class="fn">_atualizar</span>(ctx)),
+      },
+      child: <span class="tp">Focus</span>(autofocus: <span class="kw">true</span>, child: <span class="kw">const</span> <span class="tp">ConteudoPrincipal</span>()),
+    ),
+  );
+  <span class="kw">void</span> <span class="fn">_salvar</span>(<span class="tp">BuildContext</span> _) => print(<span class="str">'Salvar Ctrl+S'</span>);
+  <span class="kw">void</span> <span class="fn">_atualizar</span>(<span class="tp">BuildContext</span> _) => print(<span class="str">'Atualizar F5'</span>);
+}
+
+<span class="kw">class</span> <span class="tp">SalvarIntent</span>   <span class="kw">extends</span> <span class="tp">Intent</span> { <span class="kw">const</span> <span class="tp">SalvarIntent</span>(); }
+<span class="kw">class</span> <span class="tp">AtualizarIntent</span> <span class="kw">extends</span> <span class="tp">Intent</span> { <span class="kw">const</span> <span class="tp">AtualizarIntent</span>(); }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tray-notificacoes">System Tray e Notificacoes Nativas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + tray_manager + local_notifier &mdash; Icone na bandeja e notificacoes</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:tray_manager/tray_manager.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:local_notifier/local_notifier.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:window_manager/window_manager.dart'</span>;
+
+<span class="kw">class</span> <span class="tp">TrayService</span> <span class="kw">with</span> <span class="tp">TrayListener</span> {
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">inicializar</span>() <span class="kw">async</span> {
+    <span class="kw">await</span> trayManager.<span class="fn">setIcon</span>(<span class="str">'assets/tray_icon.ico'</span>);  <span class="com">// .ico (Win), .png (Mac/Lin)</span>
+    <span class="kw">await</span> trayManager.<span class="fn">setToolTip</span>(<span class="str">'Meu App'</span>);
+
+    <span class="kw">final</span> menu = <span class="tp">Menu</span>(items: [
+      <span class="tp">MenuItem</span>(key: <span class="str">'show',    label: 'Mostrar janela'</span>),
+      <span class="tp">MenuItem</span>.separator(),
+      <span class="tp">MenuItem</span>(key: <span class="str">'quit',    label: 'Sair', role: 'quit'</span>),
+    ]);
+    <span class="kw">await</span> trayManager.<span class="fn">setContextMenu</span>(menu);
+    trayManager.<span class="fn">addListener</span>(<span class="kw">this</span>);
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">onTrayIconMouseDown</span>() {
+    windowManager.<span class="fn">show</span>();
+    windowManager.<span class="fn">focus</span>();
+  }
+
+  <span class="at">@override</span>
+  <span class="kw">void</span> <span class="fn">onTrayMenuItemClick</span>(<span class="tp">MenuItem</span> item) <span class="kw">async</span> {
+    <span class="kw">switch</span> (item.key) {
+      <span class="kw">case</span> <span class="str">'show'</span>: windowManager.<span class="fn">show</span>(); windowManager.<span class="fn">focus</span>();
+      <span class="kw">case</span> <span class="str">'quit'</span>: <span class="kw">await</span> windowManager.<span class="fn">destroy</span>();
+    }
+  }
+}
+
+<span class="com">// Notificacao nativa do OS</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">notificar</span>(<span class="tp">String</span> titulo, <span class="tp">String</span> corpo) <span class="kw">async</span> {
+  <span class="kw">await</span> localNotifier.<span class="fn">setup</span>(appName: <span class="str">'Meu App'</span>);
+  <span class="kw">final</span> notif = <span class="tp">LocalNotification</span>(title: titulo, body: corpo);
+  <span class="kw">await</span> notif.<span class="fn">show</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="empacotamento">Empacotamento e Distribuicao</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Empacotar para Windows (MSIX + Inno Setup) e macOS (DMG)</div>
+          <pre class="example"><span class="com"># Windows — MSIX (Microsoft Store / sideload)</span>
+<span class="com"># pubspec.yaml: msix: ^3.x</span>
+flutter pub add --dev msix
+
+<span class="com"># msix config em pubspec.yaml:</span>
+<span class="com"># msix_config:</span>
+<span class="com">#   display_name: Meu App</span>
+<span class="com">#   publisher_display_name: Minha Empresa</span>
+<span class="com">#   identity_name: com.minha-empresa.meu-app</span>
+<span class="com">#   msix_version: 1.0.0.0</span>
+<span class="com">#   logo_path: assets/logo.png</span>
+flutter pub run msix:create
+
+<span class="com"># Windows — Inno Setup tradicional</span>
+flutter build windows --release
+<span class="com"># criar script .iss referenciando build/windows/runner/Release/</span>
+iscc setup_script.iss
+
+<span class="com"># macOS — DMG com create-dmg</span>
+flutter build macos --release
+npm install -g create-dmg
+create-dmg \
+  --volname "Meu App" \
+  --window-pos 200 120 \
+  --window-size 800 400 \
+  --icon-size 100 \
+  --app-drop-link 600 185 \
+  MeuApp-1.0.0.dmg \
+  "build/macos/Build/Products/Release/MeuApp.app"
+
+<span class="com"># Linux — AppImage</span>
+flutter build linux --release
+<span class="com"># usar appimagetool com desktop entry + icon</span>
+ARCH=x86_64 appimagetool MeuApp.AppDir MeuApp-x86_64.AppImage</pre>
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Comparativo: Flutter Desktop vs Electron vs Tauri</p>
+          <table class="table">
+            <thead>
+              <tr><th>Framework</th><th>Linguagem</th><th>Bundle size</th><th>RAM tipica</th><th>Rendering</th><th>Acesso nativo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Flutter Desktop</td><td>Dart</td><td>~25 MB</td><td>~60 MB</td><td>Impeller GPU</td><td>dart:ffi + plugins</td></tr>
+              <tr><td>Electron</td><td>JavaScript</td><td>~120 MB</td><td>~200 MB</td><td>Chromium Blink</td><td>Node.js APIs</td></tr>
+              <tr><td>Tauri</td><td>Rust + JS</td><td>~6 MB</td><td>~40 MB</td><td>WebView nativa</td><td>Rust plugins</td></tr>
+              <tr><td>MAUI</td><td>C#</td><td>~35 MB</td><td>~80 MB</td><td>Native controls</td><td>.NET full</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FLUTTER. <strong>Desktop support for Flutter</strong>. Disponível em: &lt;https://docs.flutter.dev/platform-integration/desktop&gt;. Acesso em: 2025.</li>
+            <li>LEANFLUTTER. <strong>window_manager package</strong>. Disponível em: &lt;https://pub.dev/packages/window_manager&gt;. Acesso em: 2025.</li>
+            <li>LEANFLUTTER. <strong>tray_manager package</strong>. Disponível em: &lt;https://pub.dev/packages/tray_manager&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Embedded e IoT</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Jogos com Flame</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Flutter Desktop usa o mesmo <code>pubspec.yaml</code> e codebase do app mobile — mas lembre-se: widgets como <code>CupertinoNavigationBar</code> e <code>BottomNavigationBar</code> nao fazem sentido em desktop. Use <code>NavigationRail</code> ou <code>Drawer</code> para navegacao lateral mais adequada para telas grandes.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

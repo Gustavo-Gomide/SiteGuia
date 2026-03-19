@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do F#: let bindings, tipos, funções, pattern matching, records, discriminated unions, listas, option e pipeline operator." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Fundamentos</h1>
+          <p>Os fundamentos do F# cobrem o sistema de tipos (primitivos, listas, tuples, records, DUs), funções como valores de primeira classe com aplicação parcial e currying, pattern matching exaustivo, e o estilo de programação com pipelines — tudo com inferência de tipos que elimina a maior parte das anotações.</p>
+        </div>
+        <p class="intro-highlight">
+          Em F#, <strong>tudo é uma expressão</strong> que retorna um valor — inclusive if/else, match e try/with. Uma função que não retorna nada útil retorna <code>unit</code> (equivalente ao <code>void</code> de C#, mas é um tipo real). Isso permite composição sem casos especiais e elimina funções void que são difíceis de encadear.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos e Bindings</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Primitivos, tuples, listas e opções</div>
+          <pre class="example"><span class="com">// Primitivos — anotação de tipo opcional</span>
+<span class="kw">let</span> inteiro : int         = 42
+<span class="kw">let</span> float_   : float      = 3.14
+<span class="kw">let</span> bool_    : bool       = true
+<span class="kw">let</span> texto    : string     = <span class="str">"F#"</span>
+<span class="kw">let</span> char_    : char       = 'A'
+<span class="kw">let</span> big      : int64      = 9_223_372_036_854_775_807L
+<span class="kw">let</span> decimal_ : decimal    = 1.99m
+
+<span class="com">// Tuple — múltiplos valores sem nome</span>
+<span class="kw">let</span> par: int * string = (1, <span class="str">"um"</span>)
+<span class="kw">let</span> a, b = par    <span class="com">// desestruturar</span>
+<span class="kw">let</span> primeiro = fst par
+<span class="kw">let</span> segundo  = snd par
+
+<span class="com">// Lista imutável (Linked list)</span>
+<span class="kw">let</span> nums = [1; 2; 3; 4; 5]
+<span class="kw">let</span> nums2 = 0 :: nums               <span class="com">// cons: [0;1;2;3;4;5]</span>
+<span class="kw">let</span> combinado = [1;2] @ [3;4]       <span class="com">// concatenar</span>
+nums |> List.head                   <span class="com">// 1</span>
+nums |> List.tail                   <span class="com">// [2;3;4;5]</span>
+nums |> List.length                 <span class="com">// 5</span>
+
+<span class="com">// Array mutável de tamanho fixo</span>
+<span class="kw">let</span> arr = [| 10; 20; 30 |]
+arr.[1]                             <span class="com">// 20 (ou arr[1] F# 6+)</span>
+arr.[0] <- 100                      <span class="com">// mutação</span>
+
+<span class="com">// Option — ausência de valor sem null</span>
+<span class="kw">let</span> alguns : int option = Some 42
+<span class="kw">let</span> nenhum : int option = None
+
+<span class="kw">let</span> valor =
+    match alguns with
+    | Some n -> n * 2
+    | None   -> 0
+
+<span class="com">// Operadores de option</span>
+alguns |> Option.defaultValue 0     <span class="com">// 42</span>
+nenhum |> Option.defaultValue 0     <span class="com">// 0</span>
+alguns |> Option.map (fun n -> n + 1) <span class="com">// Some 43</span>
+alguns |> Option.bind (fun n -> if n > 10 then Some n else None)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="records-du">Records e Discriminated Unions</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Records imutáveis e DUs para modelagem de domínio</div>
+          <pre class="example"><span class="com">// Record — produto de campos nomeados</span>
+type Pessoa = {
+    Nome  : string
+    Idade : int
+    Email : string
+}
+
+<span class="kw">let</span> joao = { Nome = <span class="str">"João"</span>; Idade = 30; Email = <span class="str">"jo@ex.com"</span> }
+<span class="com">// Acessar campos</span>
+joao.Nome                   <span class="com">// "João"</span>
+<span class="com">// Cópia com modificação (with expression)</span>
+<span class="kw">let</span> joaoMaisVelho = { joao with Idade = 31 }
+
+<span class="com">// Record genérico</span>
+type Paginado<'T> = {
+    Itens      : 'T list
+    Total      : int
+    Pagina     : int
+    TotalPages : int
+}
+
+<span class="com">// Discriminated Union — soma de casos</span>
+type Forma =
+    | Circulo   of raio: float
+    | Retangulo of largura: float * altura: float
+    | Triangulo of base_: float * altura: float
+
+<span class="kw">let</span> area forma =
+    match forma with
+    | Circulo r       -> System.Math.PI * r * r
+    | Retangulo (l,h) -> l * h
+    | Triangulo (b,h) -> b * h / 2.0
+
+<span class="kw">let</span> c = Circulo 5.0
+printfn <span class="str">"Área: %.2f"</span> (area c)   <span class="com">// 78.54</span>
+
+<span class="com">// DU para modelar resultado (Result)</span>
+type Resultado<'OK, 'Erro> =
+    | Sucesso of 'OK
+    | Falha   of 'Erro
+
+<span class="kw">let</span> dividir a b =
+    if b = 0 then Falha <span class="str">"divisão por zero"</span>
+    else Sucesso (a / b)
+
+<span class="com">// DU para estado de pedido — estados inválidos irrepresentáveis</span>
+type StatusPedido =
+    | PedidoPendente  of criadoEm: System.DateTime
+    | PedidoPago      of pago: System.DateTime * valor: decimal
+    | PedidoEnviado   of pago: System.DateTime * rastreio: string
+    | PedidoCancelado of motivo: string</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções e Pipeline</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">HOFs, currying, pipe |> e composição >></div>
+          <pre class="example"><span class="com">// Função de primeira classe</span>
+<span class="kw">let</span> dobrar x = x * 2
+<span class="kw">let</span> fnRef = dobrar                  <span class="com">// funções são valores</span>
+
+<span class="com">// Lambda (função anônima)</span>
+<span class="kw">let</span> triple = fun x -> x * 3
+
+<span class="com">// Funções de ordem superior</span>
+<span class="kw">let</span> nums = [1..10]
+nums |> List.map (fun x -> x * x)   <span class="com">// [1;4;9;16;25;36;49;64;81;100]</span>
+nums |> List.filter (fun x -> x % 2 = 0)  <span class="com">// [2;4;6;8;10]</span>
+nums |> List.reduce (+)              <span class="com">// 55</span>
+nums |> List.fold (fun acc x -> acc + x) 0  <span class="com">// 55</span>
+
+<span class="com">// Pipeline |> — encadear transformações</span>
+<span class="kw">let</span> resultado =
+    [1..20]
+    |> List.filter (fun n -> n % 2 = 0)
+    |> List.map    (fun n -> n * n)
+    |> List.sum
+
+<span class="com">// Composição >> — combinar funções</span>
+<span class="kw">let</span> dobrarEAdicionar1 = dobrar >> (fun x -> x + 1)
+dobrarEAdicionar1 5  <span class="com">// 11</span>
+
+<span class="com">// Aplicação parcial</span>
+<span class="kw">let</span> multiplicar a b = a * b
+<span class="kw">let</span> dobrar2       = multiplicar 2
+<span class="kw">let</span> triplicar     = multiplicar 3
+[1..5] |> List.map dobrar2          <span class="com">// [2;4;6;8;10]</span>
+
+<span class="com">// Recursão com rec</span>
+<span class="kw">let</span> rec fib n =
+    match n with
+    | 0 | 1 -> n
+    | n     -> fib (n-1) + fib (n-2)
+
+<span class="com">// Tail-recursive com acumulador</span>
+<span class="kw">let</span> rec fibA n (a, b) =
+    if n = 0 then a
+    else fibA (n-1) (b, a+b)
+<span class="kw">let</span> fibonacci n = fibA n (0, 1)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pattern-matching">Pattern Matching</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Match expression — exaustivo, com guards e destructuring</div>
+          <pre class="example"><span class="com">// Match básico</span>
+<span class="kw">let</span> descrever n =
+    match n with
+    | 0         -> <span class="str">"zero"</span>
+    | 1         -> <span class="str">"um"</span>
+    | n when n < 0 -> <span class="str">"negativo"</span>   <span class="com">// guard com when</span>
+    | _         -> <span class="str">"outro"</span>          <span class="com">// wildcard</span>
+
+<span class="com">// Match em lista</span>
+<span class="kw">let</span> primeiroElemento lista =
+    match lista with
+    | []     -> None
+    | x :: _ -> Some x
+
+<span class="com">// Match em tuple</span>
+<span class="kw">let</span> classificar_ponto (x, y) =
+    match (x, y) with
+    | (0, 0) -> <span class="str">"origem"</span>
+    | (x, 0) -> sprintf <span class="str">"eixo X, x=%d"</span> x
+    | (0, y) -> sprintf <span class="str">"eixo Y, y=%d"</span> y
+    | (x, y) -> sprintf <span class="str">"(%d, %d)"</span> x y
+
+<span class="com">// Match em record</span>
+<span class="kw">let</span> saudar pessoa =
+    match pessoa with
+    | { Nome = "Admin" } -> <span class="str">"Bem-vindo, administrador!"</span>
+    | { Idade = a } when a < 18 -> <span class="str">"Acesso restrito"</span>
+    | { Nome = n; Email = e } -> sprintf <span class="str">"Olá %s <%s>"</span> n e
+
+<span class="com">// Active Patterns — customizar como match funciona</span>
+<span class="kw">let</span> (|Par|Impar|) n = if n % 2 = 0 then Par else Impar
+
+<span class="kw">let</span> descreverNum n =
+    match n with
+    | Par   -> sprintf <span class="str">"%d é par"</span>   n
+    | Impar -> sprintf <span class="str">"%d é ímpar"</span> n</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>WLASCHIN, S. <strong>Domain Modeling Made Functional</strong>. Pragmatic Bookshelf, 2018.</li>
+            <li>Microsoft. <strong>F# Language Reference</strong>. Disponível em: &lt;https://learn.microsoft.com/fsharp/language-reference/&gt;. Acesso em: 2026.</li>
+            <li>SYME, D.; GRANICZ, A.; CISTERNINO, A. <strong>Expert F# 4.0</strong>. Cap. 2-4. Apress, 2015.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> F# Avançado</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Discriminated Unions com pattern matching tornam impossível esquecer um caso: se você adicionar um novo estado ao seu DU, <strong>todos os match existentes deixam de compilar</strong> até serem atualizados. É o equivalente a um aviso de compilação global que não pode ser ignorado — contraste com herança de classe onde adicionar um novo subtipo pode passar silenciosamente sem atualizar código existente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

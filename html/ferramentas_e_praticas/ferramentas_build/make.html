@@ -1,0 +1,290 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Make e Makefile: guia completo sobre a ferramenta de build mais clássica do Unix — regras, dependências, variáveis e boas práticas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Make | Ferramentas de Build | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Make e Makefile</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Make — A Ferramenta de Build Clássica</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Make e Makefile</h1>
+          <p class="page-subtitle">O utilitário de automação de build mais longevo da computação — criado em 1976 e presente em todo sistema Unix-like até hoje</p>
+        </div>
+        <p class="intro-highlight">
+          Make é uma ferramenta que automatiza a compilação e construção de programas determinando quais partes de um projeto precisam ser recompiladas e executando os comandos necessários. Com base em um arquivo de regras chamado <strong>Makefile</strong>, o Make constrói apenas o que mudou — economizando tempo em projetos grandes.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- HISTÓRIA -->
+      <section>
+        <h2 id="historia" class="section-title">História e Contexto</h2>
+        <p>
+          O Make foi criado por <strong>Stuart Feldman</strong> em 1976, enquanto trabalhava no Bell Labs. Originalmente escrito em uma tarde para resolver um problema concreto: garantir que apenas os arquivos modificados fossem recompilados, sem depender de scripts que recompilam tudo sempre.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            Feldman ganhou o <strong>ACM Software System Award de 2003</strong> pelo Make. Em entrevista, ele afirmou que a <em>"regra dos 8 espaços"</em> (indentação de receitas com TAB) foi um erro que não pôde ser corrigido por compatibilidade retroativa — um dos bugs mais famosos da história do software.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CONCEITOS FUNDAMENTAIS -->
+      <section>
+        <h2 id="conceitos" class="section-title">Conceitos Fundamentais</h2>
+
+        <div class="exemplo-completo">
+          <h3 class="panel-title">Estrutura de uma Regra Make</h3>
+          <div class="formula-gigante">alvo : dependências <br>receita: comandos</div>
+          <div class="grid-completo">
+            <div class="carta-visual">
+              <strong>Alvo (target)</strong>
+              <p class="note">Arquivo a ser criado ou nome lógico de ação (ex: <code class="code-inline">all</code>, <code class="code-inline">clean</code>).</p>
+            </div>
+            <div class="carta-visual">
+              <strong>Dependências (prerequisites)</strong>
+              <p class="note">Arquivos dos quais o alvo depende. O Make reconstrói o alvo se alguma dependência for mais nova.</p>
+            </div>
+            <div class="carta-visual">
+              <strong>Receita (recipe)</strong>
+              <p class="note">Comandos shell executados para construir o alvo. <strong>DEVEM ser indentados com TAB</strong>, não espaços.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ide-box">
+          <div class="ide-header">
+            <div class="ide-dots">
+              <span class="ide-dot ide-dot--red"></span>
+              <span class="ide-dot ide-dot--yellow"></span>
+              <span class="ide-dot ide-dot--green"></span>
+            </div>
+            Makefile — exemplo comentado
+          </div>
+          <div class="ide-content">
+            <pre class="code-block"><span class="com"># Variáveis</span>
+<span class="tp">CC</span>      = gcc
+<span class="tp">CFLAGS</span>  = -Wall -Wextra -O2
+<span class="tp">TARGET</span>  = programa
+<span class="tp">SRCS</span>    = main.c utils.c parser.c
+<span class="tp">OBJS</span>    = $(<span class="tp">SRCS</span>:.c=.o)
+
+<span class="com"># Alvo padrão (primeiro listado) — constrói tudo</span>
+<span class="kw">all</span>: $(<span class="tp">TARGET</span>)
+
+<span class="com"># Linkagem: depende de todos os .o</span>
+$(<span class="tp">TARGET</span>): $(<span class="tp">OBJS</span>)
+	$(<span class="tp">CC</span>) $(<span class="tp">CFLAGS</span>) -o $@ $^
+
+<span class="com"># Compilação genérica: .c → .o (regra de padrão)</span>
+<span class="tp">%.o</span>: <span class="tp">%.c</span>
+	$(<span class="tp">CC</span>) $(<span class="tp">CFLAGS</span>) -c $&lt; -o $@
+
+<span class="com"># Alvos phony (não criam arquivos)</span>
+<span class="kw">.PHONY</span>: all clean install test
+
+<span class="com"># Remove os artefatos de build</span>
+<span class="kw">clean</span>:
+	rm -f $(<span class="tp">OBJS</span>) $(<span class="tp">TARGET</span>)
+
+<span class="com"># Instala o binário em /usr/local/bin</span>
+<span class="kw">install</span>: $(<span class="tp">TARGET</span>)
+	install -m 755 $(<span class="tp">TARGET</span>) /usr/local/bin/</pre>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- VARIÁVEIS AUTOMÁTICAS -->
+      <section>
+        <h2 id="variaveis" class="section-title">Variáveis Automáticas</h2>
+        <p>O Make possui variáveis automáticas que são populadas automaticamente em cada receita. São essenciais para escrever regras genéricas e não-repetitivas:</p>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Variável</th><th>Significado</th><th>Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code class="code-inline">$@</code></td><td>O alvo da regra atual</td><td><code class="code-inline">gcc -o $@</code> → <code class="code-inline">gcc -o programa</code></td></tr>
+              <tr><td><code class="code-inline">$&lt;</code></td><td>A primeira dependência</td><td><code class="code-inline">gcc -c $&lt;</code> → <code class="code-inline">gcc -c main.c</code></td></tr>
+              <tr><td><code class="code-inline">$^</code></td><td>Todas as dependências (sem duplicatas)</td><td>Usado na linkagem</td></tr>
+              <tr><td><code class="code-inline">$?</code></td><td>Dependências mais novas que o alvo</td><td>Para builds incrementais</td></tr>
+              <tr><td><code class="code-inline">$*</code></td><td>O <em>stem</em> da regra de padrão</td><td><code class="code-inline">%.o: %.c</code> → <code class="code-inline">$* = main</code></td></tr>
+              <tr><td><code class="code-inline">$(@D)</code></td><td>Diretório do alvo</td><td><code class="code-inline">mkdir -p $(@D)</code></td></tr>
+              <tr><td><code class="code-inline">$(@F)</code></td><td>Arquivo (sem diretório) do alvo</td><td>Útil para gerar nomes</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- FUNÇÕES E TÉCNICAS AVANÇADAS -->
+      <section>
+        <h2 id="avancado" class="section-title">Técnicas Avançadas</h2>
+
+        <div class="logic-grid">
+          <div>
+            <h3 class="panel-title">Funções de String</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Makefile — funções</div>
+              <pre class="code-block"><span class="com"># wildcard — encontra arquivos</span>
+<span class="tp">SRCS</span> = $(wildcard src/*.c)
+
+<span class="com"># patsubst — substitui padrões</span>
+<span class="tp">OBJS</span> = $(patsubst src/%.c, build/%.o, $(<span class="tp">SRCS</span>))
+
+<span class="com"># subst — substituição simples</span>
+<span class="tp">NEW</span> = $(subst .c,.o,$(<span class="tp">SRCS</span>))
+
+<span class="com"># notdir — remove o caminho</span>
+<span class="tp">NAMES</span> = $(notdir $(<span class="tp">SRCS</span>))
+
+<span class="com"># addprefix — adiciona prefixo</span>
+<span class="tp">FULL</span> = $(addprefix obj/, $(<span class="tp">NAMES</span>))</pre>
+            </div>
+          </div>
+          <div>
+            <h3 class="panel-title">Inclusão e Módulos</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">Makefile modular</div>
+              <pre class="code-block"><span class="com"># Incluir outro Makefile</span>
+<span class="kw">include</span> config.mk
+<span class="kw">-include</span> .deps.mk  <span class="com"># - ignora se não existir</span>
+
+<span class="com"># Gerar dependências automaticamente</span>
+<span class="tp">DEPFLAGS</span> = -MMD -MP
+<span class="tp">DEPS</span>     = $(<span class="tp">OBJS</span>:.o=.d)
+<span class="kw">-include</span> $(<span class="tp">DEPS</span>)
+
+<span class="com"># Build paralelo (N processos)</span>
+<span class="com"># Executar com: make -j4</span>
+
+<span class="com"># Variáveis de ambiente sobreponíveis</span>
+<span class="tp">PREFIX</span> ?= /usr/local
+<span class="com"># make PREFIX=/opt install</span></pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- MAKE ALÉM DE C -->
+      <section>
+        <h2 id="usos" class="section-title">Make Além de C/C++</h2>
+        <p>Embora originalmente criado para compilação de C, o Make é um orquestrador de comandos genérico. É amplamente usado em:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="fade">
+            <h3 class="panel-title">Projetos Python</h3>
+            <pre class="code-block code-block--small"><span class="kw">test</span>:
+	pytest tests/ -v
+<span class="kw">lint</span>:
+	ruff check .
+<span class="kw">format</span>:
+	black .
+<span class="kw">all</span>: lint test</pre>
+          </div>
+          <div class="card" data-reveal="fade" style="--reveal-delay:100ms">
+            <h3 class="panel-title">Documentação e LaTeX</h3>
+            <pre class="code-block code-block--small"><span class="tp">PDF</span> = relatorio.pdf
+<span class="kw">$(PDF)</span>: relatorio.tex
+	pdflatex $&lt;
+	pdflatex $&lt;  <span class="com"># 2x para referências</span>
+<span class="kw">clean</span>:
+	rm -f *.aux *.log $(<span class="tp">PDF</span>)</pre>
+          </div>
+          <div class="card" data-reveal="fade" style="--reveal-delay:200ms">
+            <h3 class="panel-title">Docker e DevOps</h3>
+            <pre class="code-block code-block--small"><span class="tp">IMAGE</span> = minha-app:latest
+<span class="kw">build</span>:
+	docker build -t $(<span class="tp">IMAGE</span>) .
+<span class="kw">push</span>: build
+	docker push $(<span class="tp">IMAGE</span>)
+<span class="kw">deploy</span>: push
+	kubectl apply -f k8s/</pre>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- BOAS PRÁTICAS -->
+      <section>
+        <h2 id="boas-praticas" class="section-title">Boas Práticas</h2>
+        <div class="panel">
+          <ul>
+            <li>Sempre declare <code class="code-inline">.PHONY</code> para alvos que não geram arquivos (<code class="code-inline">all</code>, <code class="code-inline">clean</code>, <code class="code-inline">test</code>). Sem isso, se existir um arquivo chamado <code class="code-inline">clean</code>, o Make pensará que já está atualizado.</li>
+            <li>Use variáveis para compilador e flags — facilita trocar de <code class="code-inline">gcc</code> para <code class="code-inline">clang</code> em uma linha.</li>
+            <li>Prefixe receitas com <code class="code-inline">@</code> para suprimir o eco do comando: <code class="code-inline">@echo "Compilando..."</code></li>
+            <li>Prefixe com <code class="code-inline">-</code> para ignorar erros: <code class="code-inline">-rm *.o</code> (não falha se nenhum .o existir).</li>
+            <li>Use <code class="code-inline">make -j$(nproc)</code> para paralelizar o build em múltiplos cores.</li>
+            <li>Estruture Makefiles grandes com <code class="code-inline">include</code> — um arquivo por módulo.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FELDMAN, Stuart I. <strong>Make — A Program for Maintaining Computer Programs</strong>. Software — Practice &amp; Experience, Vol. 9, pp. 255–265, 1979.</li>
+            <li>GNU Project. <strong>GNU Make Manual</strong>. Disponível em: <a href="https://www.gnu.org/software/make/manual/" target="_blank" rel="noopener">gnu.org/software/make/manual</a></li>
+            <li>MECKLENBURG, Robert. <strong>Managing Projects with GNU Make</strong>. 3rd ed. O'Reilly Media, 2004.</li>
+            <li>SMITH, Oram &amp; Talbott. <strong>Managing Projects with Make</strong>. O'Reilly Media, 1991.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Próximo passo: <a href="/html/ferramentas_e_praticas/ferramentas_build/cmake.html">CMake</a> — o gerador de Makefiles para projetos C/C++ multiplataforma.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Make é tão simples quanto poderoso. Um Makefile bem escrito documenta o processo de build melhor do que qualquer documentação separada."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

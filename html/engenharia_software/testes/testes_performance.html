@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Testes de performance: latência, throughput, carga, stress e como definir cenários e métricas úteis.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Testes de Performance | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Prevenir degradação antes que o usuário perceba</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Testes de Performance</h1>
+          <p class="page-subtitle">Carga, stress, métricas de cauda e definição de SLOs</p>
+        </div>
+        <p class="intro-highlight">
+          Testes de performance avaliam como o sistema se comporta sob carga: latência, throughput, consumo de recursos e limites.
+          Sem baseline e sem SLO definido, qualquer resultado parece aceitável — até o incidente de produção provar o contrário.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de teste de performance</h2>
+        <div class="section-divider"></div>
+        <p>Cada tipo responde a uma pergunta diferente sobre o comportamento do sistema sob pressão:</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Pergunta que responde</th>
+                <th>Quando usar</th>
+                <th>Ferramenta comum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Load</strong></td>
+                <td>O sistema aguenta a carga esperada de usuários?</td>
+                <td>Antes de lançamentos, em cada release crítico</td>
+                <td>k6, Locust, JMeter</td>
+              </tr>
+              <tr>
+                <td><strong>Stress</strong></td>
+                <td>Qual é o limite real antes de degradar ou quebrar?</td>
+                <td>Para definir capacidade e planejar infra</td>
+                <td>k6, Gatling</td>
+              </tr>
+              <tr>
+                <td><strong>Spike</strong></td>
+                <td>O sistema recupera após pico repentino de carga?</td>
+                <td>Antes de eventos programados (Black Friday, campanha)</td>
+                <td>k6, Locust</td>
+              </tr>
+              <tr>
+                <td><strong>Soak</strong></td>
+                <td>O sistema degrada ao longo do tempo (memory leak, pool)?</td>
+                <td>Antes de releases com suspeita de vazamento</td>
+                <td>k6, Gatling</td>
+              </tr>
+              <tr>
+                <td><strong>Baseline</strong></td>
+                <td>Como o sistema está hoje, sem carga extra?</td>
+                <td>Sempre — referência para comparar regressões</td>
+                <td>Qualquer ferramenta de load</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="metricas" class="section-title">Métricas e SLOs</h2>
+        <div class="section-divider"></div>
+        <p>Média de latência esconde experiências ruins. As métricas de cauda (p95, p99) revelam o que uma parcela real dos usuários vivencia:</p>
+        <div class="code-container">
+          <pre class="example"># Métricas essenciais de performance
+
+Latência (mais importante):
+  p50: metade dos usuários espera até este valor
+  p95: 95% dos usuários esperam até este valor (alvo mais comum de SLO)
+  p99: 99% dos usuários esperam até este valor (fluxos críticos)
+
+  Exemplo de SLO: "checkout deve responder em < 500ms p95"
+
+Throughput:
+  req/s ou transações/min que o sistema processa sem erro
+
+Taxa de erro:
+  % de requisições que falharam com 5xx ou timeout
+
+Recursos:
+  CPU%, memória, pool de conexões DB, lag de filas
+
+# Por que p95/p99 importam mais que a média:
+  Supondo 1000 req:
+    900 respondem em 100ms  → média parece ótima
+     90 respondem em 500ms
+     10 respondem em 3000ms  → 1% dos usuários → 10 por minuto em escala
+
+# Definindo SLO para um endpoint:
+  1. Meça a baseline atual (sem carga)
+  2. Execute load test com carga esperada
+  3. Defina thresholds aceitáveis (ex.: p95 < 400ms, erro < 0.5%)
+  4. Adicione ao CI para detectar regressões</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>A maioria dos problemas com testes de performance vem de ambiente inadequado ou métricas mal interpretadas:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Ambiente diferente de produção</h3>
+            <p>Testar em máquina local ou ambiente sub-dimensionado gera resultados irreais. A infra precisa ser comparável à produção para o teste valer.</p>
+          </div>
+          <div class="card">
+            <h3>Sem baseline</h3>
+            <p>Sem um ponto de referência anterior, não há como saber se uma release degradou a performance. Baseline é pré-requisito para qualquer análise.</p>
+          </div>
+          <div class="card">
+            <h3>Usar só a média</h3>
+            <p>Média mascara caudas longas. Um sistema com p50=100ms e p99=5000ms faz 1% dos usuários sofrerem — invisível na média.</p>
+          </div>
+          <div class="card">
+            <h3>Testar tarde demais</h3>
+            <p>Performance testada só em staging antes do launch geralmente resulta em arquitetura difícil de otimizar. Inclua no ciclo de desenvolvimento.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Para métricas de engenharia relacionadas, veja
+          <a href="/html/engenharia_software/qualidade/metricas_software.html">Métricas de Software</a>.
+          Para testes no nível de jornada completa, explore
+          <a href="/html/engenharia_software/testes/testes_sistema.html">testes de sistema (E2E)</a>.
+        </p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Performance sem baseline é opinião. Com baseline, é dado."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+
+

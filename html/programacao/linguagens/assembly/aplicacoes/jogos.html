@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para jogos: programacao DOS era VGA mode 13h, SIMD para matematica de jogos (vetores, matrizes, quaternions), blitting otimizado e audio mixing em assembly x86-64." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Jogos</h1>
+          <p>Assembly e jogos têm uma história profunda: nos anos 1980–90, jogos inteiros eram escritos em assembly para espremer cada ciclo de CPU de máquinas lentas. Hoje, assembly aparece nos <strong>hot paths de engines</strong> modernas — cálculo matricial SIMD, mistura de áudio, decompress de assets e shaders de software. Entender assembly torna você um programador de jogos muito mais eficiente.</p>
+        </div>
+        <p class="intro-highlight">
+          A matemática de jogos 3D — transformações de vértices, quatérnios, AABB tests, ray casting — envolve intensas multiplicações matriciais. Com <strong>AVX2</strong>, é possível transformar <strong>8 vértices simultaneamente</strong> em uma única passagem de loop, o que é o coração dos renderers de alto desempenho como os usados na Unreal Engine e no id Tech.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="vga-dos">Era DOS: VGA Mode 13h</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86 16-bit &mdash; Plotar pixel em VGA Mode 13h</div>
+          <pre class="example"><span class="com">; VGA Mode 13h: 320×200 pixels, 256 cores paleta, buffer em 0xA000:0000</span>
+<span class="com">; 1 byte por pixel, endereço = y*320 + x</span>
+
+    <span class="fn">BITS</span> <span class="num">16</span>
+    <span class="fn">ORG</span>  <span class="num">0x100</span>         <span class="com">; programa .COM: carregado em 0x100</span>
+
+<span class="kw">section</span> .text
+_start:
+    <span class="com">; Ativar modo 13h via BIOS INT 10h</span>
+    <span class="kw">mov</span>  ax, <span class="num">0x0013</span>    <span class="com">; AH=00 (set mode), AL=13h</span>
+    <span class="kw">int</span>  <span class="num">0x10</span>
+
+    <span class="com">; Segmento de vídeo</span>
+    <span class="kw">mov</span>  ax, <span class="num">0xA000</span>
+    <span class="kw">mov</span>  es, ax
+
+    <span class="com">; Preencher tela de branco (cor 15)</span>
+    <span class="kw">xor</span>  di, di
+    <span class="kw">mov</span>  cx, <span class="num">320</span> * <span class="num">200</span>
+    <span class="kw">mov</span>  al, <span class="num">15</span>        <span class="com">; cor branca na paleta padrão</span>
+    <span class="kw">rep</span>  <span class="kw">stosb</span>          <span class="com">; ES:[DI++] = AL, CX vezes</span>
+
+    <span class="com">; Plotar pixel vermelho (cor 4) em (160, 100)</span>
+    <span class="kw">mov</span>  bx, <span class="num">100</span>       <span class="com">; y</span>
+    <span class="kw">imul</span> bx, <span class="num">320</span>       <span class="com">; y * 320</span>
+    <span class="kw">add</span>  bx, <span class="num">160</span>       <span class="com">; + x</span>
+    <span class="kw">mov</span>  <span class="tp">byte</span> [es:bx], <span class="num">4</span>
+
+    <span class="com">; Desenhar linha horizontal azul (cor 1) em y=50</span>
+    <span class="kw">mov</span>  di, <span class="num">50</span> * <span class="num">320</span>  <span class="com">; início da linha y=50</span>
+    <span class="kw">mov</span>  cx, <span class="num">320</span>
+    <span class="kw">mov</span>  al, <span class="num">1</span>
+    <span class="kw">rep</span>  <span class="kw">stosb</span>
+
+    <span class="com">; Aguardar tecla (INT 16h)</span>
+    <span class="kw">xor</span>  ah, ah
+    <span class="kw">int</span>  <span class="num">0x16</span>
+
+    <span class="com">; Voltar ao modo texto 80×25</span>
+    <span class="kw">mov</span>  ax, <span class="num">0x0003</span>
+    <span class="kw">int</span>  <span class="num">0x10</span>
+
+    <span class="com">; Sair do programa .COM (INT 21h, AH=4Ch)</span>
+    <span class="kw">mov</span>  ax, <span class="num">0x4C00</span>
+    <span class="kw">int</span>  <span class="num">0x21</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="simd-games">SIMD para Matematica de Jogos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Multiplicar vetor 4D por matriz 4x4 com SSE</div>
+          <pre class="example"><span class="com">; vec4_transform: multiplica vetor4 por matriz 4x4 (row-major)</span>
+<span class="com">; Entrada: rdi = float4 v[4], rsi = float16 m[4][4]</span>
+<span class="com">; Saída:   rdi = resultado (in-place)</span>
+<span class="com">; Layout:  v = [x,y,z,w],  m = row-major</span>
+
+vec4_transform:
+    <span class="kw">movaps</span>  xmm0, [rdi]           <span class="com">; xmm0 = [x, y, z, w]</span>
+
+    <span class="com">; Expandir cada componente para todos os 4 raiaspor coluna</span>
+    <span class="kw">shufps</span>  xmm1, xmm0, xmm0, <span class="num">0x00</span>  <span class="com">; xmm1 = [x,x,x,x]</span>
+    <span class="kw">shufps</span>  xmm2, xmm0, xmm0, <span class="num">0x55</span>  <span class="com">; xmm2 = [y,y,y,y]</span>
+    <span class="kw">shufps</span>  xmm3, xmm0, xmm0, <span class="num">0xAA</span>  <span class="com">; xmm3 = [z,z,z,z]</span>
+    <span class="kw">shufps</span>  xmm4, xmm0, xmm0, <span class="num">0xFF</span>  <span class="com">; xmm4 = [w,w,w,w]</span>
+
+    <span class="com">; Multiplicar por cada linha da matriz e somar</span>
+    <span class="kw">mulps</span>   xmm1, [rsi]            <span class="com">; linha 0</span>
+    <span class="kw">mulps</span>   xmm2, [rsi + <span class="num">16</span>]      <span class="com">; linha 1</span>
+    <span class="kw">mulps</span>   xmm3, [rsi + <span class="num">32</span>]      <span class="com">; linha 2</span>
+    <span class="kw">mulps</span>   xmm4, [rsi + <span class="num">48</span>]      <span class="com">; linha 3</span>
+
+    <span class="kw">addps</span>   xmm1, xmm2
+    <span class="kw">addps</span>   xmm3, xmm4
+    <span class="kw">addps</span>   xmm1, xmm3            <span class="com">; xmm1 = resultado final</span>
+
+    <span class="kw">movaps</span>  [rdi], xmm1           <span class="com">; salvar resultado</span>
+    <span class="kw">ret</span>
+
+<span class="com">; Fast inverse square root — clássico do Quake III</span>
+<span class="com">; float InvSqrt(float x) — agora fazemos com SSE direto</span>
+inv_sqrt_sse:
+    <span class="com">; rdi = ptr para float, resultado em xmm0</span>
+    <span class="kw">movss</span>   xmm0, [rdi]
+    <span class="kw">rsqrtss</span> xmm0, xmm0       <span class="com">; 1/sqrt(x) com ~12 bits de precisão</span>
+    <span class="com">; Passo de Newton-Raphson para aumentar precisão:</span>
+    <span class="kw">movss</span>   xmm1, [rdi]
+    <span class="kw">mulss</span>   xmm1, xmm0       <span class="com">; x * est</span>
+    <span class="kw">mulss</span>   xmm1, xmm0       <span class="com">; x * est^2</span>
+    <span class="kw">movss</span>   xmm2, [half]
+    <span class="kw">mulss</span>   xmm1, xmm2       <span class="com">; 0.5 * x * est^2</span>
+    <span class="kw">movss</span>   xmm3, [three_halves]
+    <span class="kw">subss</span>   xmm3, xmm1       <span class="com">; 1.5 - 0.5*x*est^2</span>
+    <span class="kw">mulss</span>   xmm0, xmm3       <span class="com">; resultado refinado</span>
+    <span class="kw">ret</span>
+
+<span class="kw">section</span> .rodata
+    <span class="kw">align</span> <span class="num">4</span>
+    half          <span class="fn">dd</span> <span class="num">0.5</span>
+    three_halves  <span class="fn">dd</span> <span class="num">1.5</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="audio-mixing">Audio Mixing Otimizado com SIMD</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Mixagem de audio PCM com SSE</div>
+          <pre class="example"><span class="com">; mix_audio_sse: misturar dois buffers de áudio PCM float32</span>
+<span class="com">; audio_out[i] = clamp(audio_a[i] + audio_b[i], -1.0, 1.0)</span>
+<span class="com">; rdi = out*, rsi = a*, rdx = b*, rcx = sample_count</span>
+
+<span class="kw">section</span> .data
+    <span class="kw">align</span> <span class="num">16</span>
+    clamp_max  <span class="fn">dd</span>  <span class="num">1.0</span>, <span class="num">1.0</span>, <span class="num">1.0</span>, <span class="num">1.0</span>
+    clamp_min  <span class="fn">dd</span> -<span class="num">1.0</span>, -<span class="num">1.0</span>, -<span class="num">1.0</span>, -<span class="num">1.0</span>
+
+<span class="kw">section</span> .text
+mix_audio_sse:
+    <span class="kw">movaps</span>  xmm4, [clamp_max]   <span class="com">; xmm4 = +1.0 em 4 canais</span>
+    <span class="kw">movaps</span>  xmm5, [clamp_min]   <span class="com">; xmm5 = -1.0 em 4 canais</span>
+    <span class="kw">test</span>    rcx, rcx
+    <span class="kw">jz</span>      .fim
+.loop:
+    <span class="kw">movaps</span>  xmm0, [rsi]         <span class="com">; 4 samples do canal A</span>
+    <span class="kw">movaps</span>  xmm1, [rdx]         <span class="com">; 4 samples do canal B</span>
+    <span class="kw">addps</span>   xmm0, xmm1          <span class="com">; somar</span>
+    <span class="kw">minps</span>   xmm0, xmm4          <span class="com">; clamp superior: min(x, 1.0)</span>
+    <span class="kw">maxps</span>   xmm0, xmm5          <span class="com">; clamp inferior: max(x, -1.0)</span>
+    <span class="kw">movaps</span>  [rdi], xmm0         <span class="com">; salvar</span>
+    <span class="kw">add</span>     rdi, <span class="num">16</span>
+    <span class="kw">add</span>     rsi, <span class="num">16</span>
+    <span class="kw">add</span>     rdx, <span class="num">16</span>
+    <span class="kw">sub</span>     rcx, <span class="num">4</span>
+    <span class="kw">jnz</span>     .loop
+.fim:
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ABRASH, Michael. <strong>Michael Abrash's Graphics Programming Black Book</strong>. Coriolis Group Books, 1997. ISBN 978-1-57610-174-6. Disponível online gratuitamente.</li>
+            <li>INTEL. <strong>Improving Performance with SIMD Intrinsics in Three Use Cases</strong>. Intel Developer Zone, 2023. Disponível em: &lt;https://www.intel.com/content/www/us/en/developer/articles/technical/&gt;. Acesso em: 2025.</li>
+            <li>DE LOURA, Marcus (Ed.). <strong>Game Programming Gems</strong>. Charles River Media, 2000. ISBN 978-1-58450-049-0.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — GUI e Desktop</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>rsqrtss</strong> (recíproca da raiz quadrada) é 5× mais rápida que <code>sqrtss + divss</code> combinados, com precisão de ~12 bits. Para normalizar vetores 3D em motores de jogo — onde erros de 0.01% são invisíveis — é a escolha certa. Um passo de Newton-Raphson dobra a precisão para ~23 bits mantendo o speedup de ~3×.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

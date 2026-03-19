@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java para Embedded e IoT: Pi4J v2 no Raspberry Pi, GPIO, I2C, SPI, MQTT com Eclipse Paho, serial com jSerialComm e protocolo MODBUS." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java para Embedded e IoT</h1>
+          <p>Pi4J v2 para controle de GPIO, I2C e SPI no Raspberry Pi, Eclipse Paho para MQTT publish/subscribe com broker, comunicacao serial RS-232/485 com jSerialComm, e padrao de projeto para dispositivos IoT com reconnect automatico.</p>
+        </div>
+        <p class="intro-highlight">
+          Java roda confortavelmente em Raspberry Pi 4/5 com OpenJDK ARM64. Pi4J v2 usa GpioD (Linux moderno) em vez de WiringPi, sendo a escolha atual para projetos Java em hardware de placa unica.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pi4j">Pi4J v2 — GPIO, I2C e SPI</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Pi4J v2 &mdash; GPIO digital, PWM e leitura de sensor I2C</div>
+          <pre class="example"><span class="kw">import</span> com.pi4j.Pi4J;
+<span class="kw">import</span> com.pi4j.io.gpio.digital.*;
+<span class="kw">import</span> com.pi4j.io.pwm.*;
+<span class="kw">import</span> com.pi4j.io.i2c.*;
+
+<span class="kw">public class</span> <span class="tp">ControladorHardware</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="tp">String</span>[] args) <span class="kw">throws</span> <span class="tp">Exception</span> {
+
+    <span class="com">// Contexto Pi4J — auto-detecta plataforma (Raspberry Pi, etc.)</span>
+    <span class="kw">try</span> (<span class="kw">var</span> pi4j = <span class="tp">Pi4J</span>.<span class="fn">newAutoContext</span>()) {
+
+      <span class="com">// ===  GPIO DIGITAL DE SAIDA  ===</span>
+      <span class="com">// Pino GPIO 18 (BCM) ligado a um LED</span>
+      <span class="kw">var</span> cfgLed = <span class="tp">DigitalOutput</span>.<span class="fn">newConfigBuilder</span>(pi4j)
+        .<span class="fn">id</span>(<span class="str">"led"</span>)
+        .<span class="fn">name</span>(<span class="str">"LED Status"</span>)
+        .<span class="fn">address</span>(<span class="num">18</span>)
+        .<span class="fn">shutdown</span>(<span class="tp">DigitalState</span>.<span class="tp">LOW</span>)
+        .<span class="fn">initial</span>(<span class="tp">DigitalState</span>.<span class="tp">LOW</span>)
+        .<span class="fn">provider</span>(<span class="str">"pigpio-digital-output"</span>)
+        .<span class="fn">build</span>();
+
+      <span class="kw">var</span> led = pi4j.<span class="fn">create</span>(cfgLed);
+      led.<span class="fn">on</span>();
+      <span class="tp">Thread</span>.<span class="fn">sleep</span>(<span class="num">500</span>);
+      led.<span class="fn">off</span>();
+
+      <span class="com">// ===  GPIO DIGITAL DE ENTRADA (botao com pull-up)  ===</span>
+      <span class="kw">var</span> cfgBtn = <span class="tp">DigitalInput</span>.<span class="fn">newConfigBuilder</span>(pi4j)
+        .<span class="fn">id</span>(<span class="str">"botao"</span>)
+        .<span class="fn">name</span>(<span class="str">"Botao A"</span>)
+        .<span class="fn">address</span>(<span class="num">23</span>)
+        .<span class="fn">pull</span>(<span class="tp">PullResistance</span>.<span class="tp">PULL_UP</span>)
+        .<span class="fn">debounce</span>(<span class="num">3000L</span>)   <span class="com">// debounce 3ms</span>
+        .<span class="fn">provider</span>(<span class="str">"pigpio-digital-input"</span>)
+        .<span class="fn">build</span>();
+
+      <span class="kw">var</span> botao = pi4j.<span class="fn">create</span>(cfgBtn);
+      botao.<span class="fn">addListener</span>(e -> {
+        <span class="kw">if</span> (e.<span class="fn">state</span>() == <span class="tp">DigitalState</span>.<span class="tp">LOW</span>) {   <span class="com">// LOW = pressionado (pull-up)</span>
+          <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Botao pressionado!"</span>);
+          led.<span class="fn">toggle</span>();
+        }
+      });
+
+      <span class="com">// ===  PWM — controle de servo motor  ===</span>
+      <span class="com">// Servo: 50Hz, duty cycle 5%=0°, 7.5%=90°, 10%=180°</span>
+      <span class="kw">var</span> cfgServo = <span class="tp">Pwm</span>.<span class="fn">newConfigBuilder</span>(pi4j)
+        .<span class="fn">id</span>(<span class="str">"servo"</span>)
+        .<span class="fn">address</span>(<span class="num">12</span>)
+        .<span class="fn">frequency</span>(<span class="num">50</span>)
+        .<span class="fn">dutyCycle</span>(<span class="num">7.5</span>)
+        .<span class="fn">provider</span>(<span class="str">"pigpio-pwm"</span>)
+        .<span class="fn">build</span>();
+
+      <span class="kw">var</span> servo = pi4j.<span class="fn">create</span>(cfgServo);
+      servo.<span class="fn">on</span>(<span class="num">50</span>);           <span class="com">// frequencia Hz</span>
+      servo.<span class="fn">dutyCycle</span>(<span class="num">5.0</span>);  <span class="com">// 0 graus</span>
+      <span class="tp">Thread</span>.<span class="fn">sleep</span>(<span class="num">1000</span>);
+      servo.<span class="fn">dutyCycle</span>(<span class="num">10.0</span>); <span class="com">// 180 graus</span>
+      <span class="tp">Thread</span>.<span class="fn">sleep</span>(<span class="num">1000</span>);
+      servo.<span class="fn">off</span>();
+
+      <span class="com">// ===  I2C — sensor BME280 (temperatura, pressao, umidade)  ===</span>
+      <span class="kw">var</span> cfgI2c = <span class="tp">I2C</span>.<span class="fn">newConfigBuilder</span>(pi4j)
+        .<span class="fn">id</span>(<span class="str">"bme280"</span>)
+        .<span class="fn">bus</span>(<span class="num">1</span>)               <span class="com">// I2C bus 1 (SDA=GPIO2, SCL=GPIO3)</span>
+        .<span class="fn">device</span>(<span class="num">0x76</span>)         <span class="com">// endereco do BME280</span>
+        .<span class="fn">provider</span>(<span class="str">"pigpio-i2c"</span>)
+        .<span class="fn">build</span>();
+
+      <span class="kw">var</span> bme280 = pi4j.<span class="fn">create</span>(cfgI2c);
+      <span class="com">// Ler registrador do chip_id (deve retornar 0x60 para BME280)</span>
+      <span class="kw">int</span> chipId = bme280.<span class="fn">readRegister</span>(<span class="num">0xD0</span>);
+      <span class="tp">System</span>.out.<span class="fn">printf</span>(<span class="str">"BME280 chip_id: 0x%02X%n"</span>, chipId);
+
+      <span class="kw">var</span> dados = bme280.<span class="fn">readRegister</span>(<span class="num">0xF7</span>, <span class="num">8</span>);   <span class="com">// burst read 8 bytes</span>
+      <span class="kw">double</span> temperatura = <span class="fn">parsarTemperatura</span>(dados);
+      <span class="tp">System</span>.out.<span class="fn">printf</span>(<span class="str">"Temperatura: %.2f C%n"</span>, temperatura);
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT com Eclipse Paho</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Eclipse Paho &mdash; publisher/subscriber MQTT com reconnect</div>
+          <pre class="example"><span class="kw">import</span> org.eclipse.paho.client.mqttv3.*;
+<span class="kw">import</span> org.eclipse.paho.client.mqttv3.persist.MemoryPersistence;
+
+<span class="kw">public class</span> <span class="tp">ClienteMQTT</span> {
+
+  <span class="kw">private static final</span> <span class="tp">String</span> BROKER   = <span class="str">"ssl://broker.exemplo.com:8883"</span>;
+  <span class="kw">private static final</span> <span class="tp">String</span> CLIENT_ID = <span class="str">"sensor-temperatura-01"</span>;
+
+  <span class="kw">private</span> <span class="tp">MqttClient</span> client;
+
+  <span class="kw">public void</span> <span class="fn">conectar</span>(<span class="tp">String</span> usuario, <span class="kw">char</span>[] senha) <span class="kw">throws</span> <span class="tp">MqttException</span> {
+    client = <span class="kw">new</span> <span class="tp">MqttClient</span>(BROKER, CLIENT_ID, <span class="kw">new</span> <span class="tp">MemoryPersistence</span>());
+
+    <span class="kw">var</span> opts = <span class="kw">new</span> <span class="tp">MqttConnectOptions</span>();
+    opts.<span class="fn">setUserName</span>(usuario);
+    opts.<span class="fn">setPassword</span>(senha);
+    opts.<span class="fn">setCleanSession</span>(<span class="kw">false</span>);         <span class="com">// persiste subscricoes entre reconexoes</span>
+    opts.<span class="fn">setAutomaticReconnect</span>(<span class="kw">true</span>);
+    opts.<span class="fn">setConnectionTimeout</span>(<span class="num">10</span>);
+    opts.<span class="fn">setKeepAliveInterval</span>(<span class="num">30</span>);
+    <span class="com">// TLS — somente conectar se o certificado for valido</span>
+    opts.<span class="fn">setSocketFactory</span>(<span class="tp">SSLContext</span>.<span class="fn">getDefault</span>().<span class="fn">getSocketFactory</span>());
+
+    client.<span class="fn">setCallback</span>(<span class="kw">new</span> <span class="tp">MqttCallbackExtended</span>() {
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">connectComplete</span>(<span class="kw">boolean</span> reconnect, <span class="tp">String</span> serverURI) {
+        <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Conectado: "</span> + serverURI);
+        <span class="kw">try</span> {
+          <span class="com">// Re-subscrever no connectComplete para sobreviver a reconexoes</span>
+          client.<span class="fn">subscribe</span>(<span class="str">"sensores/+/comando"</span>, <span class="num">1</span>, (<span class="fn">topico</span>, msg) ->
+            <span class="fn">processarComando</span>(topico, msg.<span class="fn">toString</span>()));
+        } <span class="kw">catch</span> (<span class="tp">MqttException</span> e) {
+          <span class="tp">System</span>.err.<span class="fn">println</span>(<span class="str">"Erro ao subscrever: "</span> + e.<span class="fn">getMessage</span>());
+        }
+      }
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">connectionLost</span>(<span class="tp">Throwable</span> cause) {
+        <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Conexao perdida: "</span> + cause.<span class="fn">getMessage</span>());
+        <span class="com">// automaticReconnect cuida da reconexao</span>
+      }
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">messageArrived</span>(<span class="tp">String</span> topico, <span class="tp">MqttMessage</span> msg) {}
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">deliveryComplete</span>(<span class="tp">IMqttDeliveryToken</span> t) {}
+    });
+
+    client.<span class="fn">connect</span>(opts);
+  }
+
+  <span class="kw">public void</span> <span class="fn">publicarLeitura</span>(<span class="tp">String</span> sensorId, <span class="kw">double</span> temperatura) <span class="kw">throws</span> <span class="tp">Exception</span> {
+    <span class="kw">if</span> (!client.<span class="fn">isConnected</span>()) <span class="kw">throw new</span> <span class="tp">IllegalStateException</span>(<span class="str">"Nao conectado"</span>);
+    <span class="kw">var</span> topico  = <span class="str">"sensores/"</span> + sensorId + <span class="str">"/temperatura"</span>;
+    <span class="kw">var</span> payload = <span class="tp">String</span>.<span class="fn">format</span>(<span class="str">"{\"temp\":%.2f,\"ts\":%d}"</span>,
+      temperatura, <span class="tp">System</span>.<span class="fn">currentTimeMillis</span>());
+    <span class="kw">var</span> msg = <span class="kw">new</span> <span class="tp">MqttMessage</span>(payload.<span class="fn">getBytes</span>(<span class="tp">StandardCharsets</span>.<span class="tp">UTF_8</span>));
+    msg.<span class="fn">setQos</span>(<span class="num">1</span>);        <span class="com">// at-least-once</span>
+    msg.<span class="fn">setRetained</span>(<span class="kw">true</span>); <span class="com">// broker armazena ultimo valor</span>
+    client.<span class="fn">publish</span>(topico, msg);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="serial">Comunicacao Serial com jSerialComm</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + jSerialComm &mdash; comunicacao RS-232/485 com Arduino</div>
+          <pre class="example"><span class="kw">import</span> com.fazecast.jSerialComm.SerialPort;
+
+<span class="kw">public class</span> <span class="tp">ComunicacaoSerial</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="tp">String</span>[] args) <span class="kw">throws</span> <span class="tp">InterruptedException</span> {
+
+    <span class="com">// Listar portas disponiveis</span>
+    <span class="kw">for</span> (<span class="kw">var</span> p : <span class="tp">SerialPort</span>.<span class="fn">getCommPorts</span>()) {
+      <span class="tp">System</span>.out.<span class="fn">printf</span>(<span class="str">"%-20s | %s%n"</span>, p.<span class="fn">getSystemPortName</span>(), p.<span class="fn">getDescriptivePortName</span>());
+    }
+
+    <span class="kw">var</span> porta = <span class="tp">SerialPort</span>.<span class="fn">getCommPort</span>(<span class="str">"/dev/ttyUSB0"</span>);   <span class="com">// ou "COM3" no Windows</span>
+    porta.<span class="fn">setBaudRate</span>(<span class="num">9600</span>);
+    porta.<span class="fn">setNumDataBits</span>(<span class="num">8</span>);
+    porta.<span class="fn">setNumStopBits</span>(<span class="tp">SerialPort</span>.<span class="tp">ONE_STOP_BIT</span>);
+    porta.<span class="fn">setParity</span>(<span class="tp">SerialPort</span>.<span class="tp">NO_PARITY</span>);
+    porta.<span class="fn">setComPortTimeouts</span>(
+      <span class="tp">SerialPort</span>.<span class="tp">TIMEOUT_READ_BLOCKING</span>, <span class="num">2000</span>, <span class="num">0</span>);
+
+    <span class="kw">if</span> (!porta.<span class="fn">openPort</span>()) {
+      <span class="kw">throw new</span> <span class="tp">RuntimeException</span>(<span class="str">"Nao foi possivel abrir a porta serial"</span>);
+    }
+
+    <span class="kw">try</span> {
+      <span class="com">// Enviar comando ao Arduino (ex: "LED:ON\n")</span>
+      <span class="kw">var</span> cmd = <span class="str">"LED:ON\n"</span>.<span class="fn">getBytes</span>(<span class="tp">StandardCharsets</span>.<span class="tp">US_ASCII</span>);
+      <span class="kw">int</span> escritos = porta.<span class="fn">writeBytes</span>(cmd, cmd.length);
+      <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Bytes enviados: "</span> + escritos);
+
+      <span class="com">// Ler resposta linha a linha</span>
+      <span class="kw">try</span> (<span class="kw">var</span> br = <span class="kw">new</span> <span class="tp">BufferedReader</span>(
+            <span class="kw">new</span> <span class="tp">InputStreamReader</span>(porta.<span class="fn">getInputStream</span>()))) {
+        <span class="tp">String</span> linha;
+        <span class="kw">while</span> ((linha = br.<span class="fn">readLine</span>()) != <span class="kw">null</span>) {
+          <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Arduino: "</span> + linha);
+          <span class="kw">if</span> (linha.<span class="fn">startsWith</span>(<span class="str">"OK"</span>)) <span class="kw">break</span>;
+        }
+      }
+    } <span class="kw">finally</span> {
+      porta.<span class="fn">closePort</span>();
+    }
+  }
+}
+
+<span class="com">// Listener assincrono (nao bloqueia thread principal)</span>
+porta.<span class="fn">addDataListener</span>(<span class="kw">new</span> <span class="tp">SerialPortDataListener</span>() {
+  @<span class="at">Override</span>
+  <span class="kw">public int</span> <span class="fn">getListeningEvents</span>() {
+    <span class="kw">return</span> <span class="tp">SerialPort</span>.<span class="tp">LISTENING_EVENT_DATA_AVAILABLE</span>;
+  }
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">serialEvent</span>(<span class="tp">SerialPortEvent</span> event) {
+    <span class="kw">int</span> bytesDisponiveis = porta.<span class="fn">bytesAvailable</span>();
+    <span class="kw">byte</span>[] buffer = <span class="kw">new byte</span>[bytesDisponiveis];
+    porta.<span class="fn">readBytes</span>(buffer, bytesDisponiveis);
+    <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="kw">new</span> <span class="tp">String</span>(buffer, <span class="tp">StandardCharsets</span>.<span class="tp">US_ASCII</span>));
+  }
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="padroes-iot">Padroes de Projeto para IoT</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Device Shadow</h3>
+            <p>Armazena o ultimo estado conhecido do dispositivo em nuvem (AWS IoT Core / Azure IoT Hub). Permite consultar e controlar o dispositivo mesmo quando ele esta offline, sincronizando ao reconectar.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Telemetria com Buffer Local</h3>
+            <p>Quando sem conexao, armazena leituras em SQLite local (via JDBC). Ao reconectar ao broker MQTT, reenvia os dados em ordem cronologica e limpa o buffer.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Heartbeat / Watchdog</h3>
+            <p>Daemon thread que publica estado "<code>ONLINE</code>" a cada 30s no topico <code>sensores/{id}/status</code> com retained=true. Se o broker nao recebe por 90s, LWT (Last Will Testament) publica "<code>OFFLINE</code>" automaticamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>OTA Update</h3>
+            <p>Dispositivo subscreve <code>ota/{id}/firmware</code>. Backend publica URL de novo JAR assinado. Dispositivo baixa, verifica hash SHA-256, substitui o JAR atual e reinicia via watchdog do SO.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PI4J. <strong>Pi4J v2 — Java library for the Raspberry Pi</strong>. Disponível em: &lt;https://pi4j.com/documentation/&gt;. Acesso em: 2025.</li>
+            <li>ECLIPSE FOUNDATION. <strong>Eclipse Paho MQTT Java Client</strong>. Disponível em: &lt;https://www.eclipse.org/paho/index.php?page=clients/java/index.php&gt;. Acesso em: 2025.</li>
+            <li>JSERIALCOMM. <strong>jSerialComm — Serial Communication Library</strong>. Disponível em: &lt;https://fazecast.github.io/jSerialComm/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Mobile (Android)</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em IoT, use sempre TLS/MQTTS e autenticacao por certificado de cliente — dispositivos comprometidos podem injetar dados falsos ou causar danos fisicos em automacao industrial.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

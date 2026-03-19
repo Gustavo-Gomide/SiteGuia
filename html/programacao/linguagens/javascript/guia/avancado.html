@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript avancado: generators, iteradores, Proxy, Reflect, WeakRef, FinalizationRegistry, Web Workers, SharedArrayBuffer e padroes de design." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript Avancado</h1>
+          <p>Generators, iteradores assíncronos, Proxy, Reflect, WeakRef, Web Workers com SharedArrayBuffer, e padroes de design em JavaScript moderno.</p>
+        </div>
+        <p class="intro-highlight">
+          O JavaScript moderno vai muito além do DOM. Generators e iteradores permitem criar sequências preguiçosas infinitas; Proxy e Reflect possibilitam meta-programação; Web Workers habilitam paralelismo real no browser; SharedArrayBuffer + Atomics permitem memória compartilhada thread-safe.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generators">Generators e Iteradores</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; Generator functions, yield*, iterador customizado</div>
+          <pre class="example"><span class="com">// Generator básico</span>
+<span class="kw">function*</span> <span class="fn">fibonacci</span>() {
+  <span class="kw">let</span> [a, b] = [<span class="num">0</span>, <span class="num">1</span>];
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> a;
+    [a, b] = [b, a + b];
+  }
+}
+
+<span class="kw">function</span> <span class="fn">take</span>(n, gen) {
+  <span class="kw">const</span> result = [];
+  <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> gen) {
+    result.<span class="fn">push</span>(v);
+    <span class="kw">if</span> (result.length === n) <span class="kw">break</span>;
+  }
+  <span class="kw">return</span> result;
+}
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">take</span>(<span class="num">8</span>, <span class="fn">fibonacci</span>())); <span class="com">// [0,1,1,2,3,5,8,13]</span>
+
+<span class="com">// yield* — delegar para outro iterável</span>
+<span class="kw">function*</span> <span class="fn">concat</span>(...arrays) {
+  <span class="kw">for</span> (<span class="kw">const</span> arr <span class="kw">of</span> arrays) <span class="kw">yield*</span> arr;
+}
+<span class="fn">console</span>.<span class="fn">log</span>([...<span class="fn">concat</span>([<span class="num">1</span>,<span class="num">2</span>], [<span class="num">3</span>,<span class="num">4</span>], [<span class="num">5</span>])]); <span class="com">// [1,2,3,4,5]</span>
+
+<span class="com">// Generator como máquina de estado: send (next(value))</span>
+<span class="kw">function*</span> <span class="fn">acumulador</span>() {
+  <span class="kw">let</span> total = <span class="num">0</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">const</span> n = <span class="kw">yield</span> total; <span class="com">// pausa e retorna total; recebe próximo n</span>
+    total += n ?? <span class="num">0</span>;
+  }
+}
+<span class="kw">const</span> acc = <span class="fn">acumulador</span>();
+acc.<span class="fn">next</span>();              <span class="com">// inicia — { value: 0, done: false }</span>
+acc.<span class="fn">next</span>(<span class="num">10</span>);            <span class="com">// { value: 10 }</span>
+acc.<span class="fn">next</span>(<span class="num">5</span>);             <span class="com">// { value: 15 }</span>
+
+<span class="com">// Iterador customizado via Symbol.iterator</span>
+<span class="kw">class</span> <span class="tp">Intervalo</span> {
+  <span class="kw">constructor</span>(inicio, fim, passo = <span class="num">1</span>) {
+    <span class="kw">this</span>.inicio = inicio; <span class="kw">this</span>.fim = fim; <span class="kw">this</span>.passo = passo;
+  }
+  [<span class="tp">Symbol</span>.iterator]() {
+    <span class="kw">let</span> atual = <span class="kw">this</span>.inicio;
+    <span class="kw">const</span> { fim, passo } = <span class="kw">this</span>;
+    <span class="kw">return</span> {
+      <span class="fn">next</span>() {
+        <span class="kw">if</span> (atual > fim) <span class="kw">return</span> { done: <span class="kw">true</span> };
+        <span class="kw">const</span> value = atual;
+        atual += passo;
+        <span class="kw">return</span> { value, done: <span class="kw">false</span> };
+      }
+    };
+  }
+}
+<span class="fn">console</span>.<span class="fn">log</span>([...<span class="kw">new</span> <span class="tp">Intervalo</span>(<span class="num">0</span>, <span class="num">10</span>, <span class="num">2</span>)]); <span class="com">// [0,2,4,6,8,10]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="async-generators">Generators Assíncronos e for-await-of</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; async generator: stream de dados paginados</div>
+          <pre class="example"><span class="com">// Lê páginas de uma API enquanto houver nextCursor</span>
+<span class="kw">async function*</span> <span class="fn">buscarPaginado</span>(url) {
+  <span class="kw">let</span> cursor = <span class="kw">null</span>;
+  <span class="kw">do</span> {
+    <span class="kw">const</span> endpoint = cursor ? <span class="str">`${url}?cursor=${cursor}`</span> : url;
+    <span class="kw">const</span> res  = <span class="kw">await</span> <span class="fn">fetch</span>(endpoint);
+    <span class="kw">const</span> data = <span class="kw">await</span> res.<span class="fn">json</span>();
+    <span class="kw">yield</span>* data.items;
+    cursor = data.nextCursor;
+  } <span class="kw">while</span> (cursor);
+}
+
+<span class="com">// Consumir com for-await-of</span>
+<span class="kw">async function</span> <span class="fn">processar</span>() {
+  <span class="kw">for</span> <span class="kw">await</span> (<span class="kw">const</span> item <span class="kw">of</span> <span class="fn">buscarPaginado</span>(<span class="str">"/api/usuarios"</span>)) {
+    <span class="fn">console</span>.<span class="fn">log</span>(item.nome);
+  }
+}
+
+<span class="com">// ReadableStream como iterador assíncrono (Node.js 18+)</span>
+<span class="kw">import</span> { createReadStream } <span class="kw">from</span> <span class="str">"node:fs"</span>;
+<span class="kw">import</span> { createInterface }  <span class="kw">from</span> <span class="str">"node:readline"</span>;
+
+<span class="kw">const</span> rl = <span class="fn">createInterface</span>({
+  input: <span class="fn">createReadStream</span>(<span class="str">"dados.csv"</span>),
+  crlfDelay: <span class="tp">Infinity</span>,
+});
+
+<span class="kw">let</span> linhas = <span class="num">0</span>;
+<span class="kw">for</span> <span class="kw">await</span> (<span class="kw">const</span> linha <span class="kw">of</span> rl) {
+  <span class="kw">if</span> (++linhas === <span class="num">1</span>) <span class="kw">continue</span>; <span class="com">// pular cabeçalho</span>
+  <span class="kw">const</span> [id, nome, valor] = linha.<span class="fn">split</span>(<span class="str">","</span>);
+  <span class="fn">console</span>.<span class="fn">log</span>({ id, nome, valor: <span class="fn">parseFloat</span>(valor) });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="proxy-reflect">Proxy e Reflect: Metaprogramação</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; Proxy com Reflect para validação e observabilidade</div>
+          <pre class="example"><span class="com">// Proxy de validação com Reflect.set</span>
+<span class="kw">function</span> <span class="fn">validado</span>(target, schema) {
+  <span class="kw">return</span> <span class="kw">new</span> <span class="tp">Proxy</span>(target, {
+    <span class="fn">set</span>(obj, prop, value) {
+      <span class="kw">if</span> (prop <span class="kw">in</span> schema) {
+        <span class="kw">const</span> { tipo, min, max } = schema[prop];
+        <span class="kw">if</span> (<span class="kw">typeof</span> value !== tipo)
+          <span class="kw">throw new</span> <span class="tp">TypeError</span>(<span class="str">`${prop}: esperado ${tipo}`</span>);
+        <span class="kw">if</span> (min !== <span class="kw">undefined</span> && value < min)
+          <span class="kw">throw new</span> <span class="tp">RangeError</span>(<span class="str">`${prop} < ${min}`</span>);
+        <span class="kw">if</span> (max !== <span class="kw">undefined</span> && value > max)
+          <span class="kw">throw new</span> <span class="tp">RangeError</span>(<span class="str">`${prop} > ${max}`</span>);
+      }
+      <span class="kw">return</span> <span class="tp">Reflect</span>.<span class="fn">set</span>(obj, prop, value); <span class="com">// comportamento padrão</span>
+    },
+    <span class="fn">deleteProperty</span>(obj, prop) {
+      <span class="kw">if</span> (schema[prop]?.obrigatorio)
+        <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`${prop} é obrigatório`</span>);
+      <span class="kw">return</span> <span class="tp">Reflect</span>.<span class="fn">deleteProperty</span>(obj, prop);
+    },
+  });
+}
+
+<span class="kw">const</span> produto = <span class="fn">validado</span>({}, {
+  nome:  { tipo: <span class="str">"string"</span>, obrigatorio: <span class="kw">true</span> },
+  preco: { tipo: <span class="str">"number"</span>, min: <span class="num">0</span> },
+  estoque: { tipo: <span class="str">"number"</span>, min: <span class="num">0</span>, max: <span class="num">9999</span> },
+});
+produto.nome  = <span class="str">"Teclado"</span>;
+produto.preco = <span class="num">250</span>;
+<span class="com">// produto.preco = -10; // RangeError: preco < 0</span>
+
+<span class="com">// Proxy reativo: observer pattern automático</span>
+<span class="kw">function</span> <span class="fn">reativo</span>(obj, onChange) {
+  <span class="kw">return</span> <span class="kw">new</span> <span class="tp">Proxy</span>(obj, {
+    <span class="fn">set</span>(target, key, value) {
+      <span class="kw">const</span> old = target[key];
+      <span class="kw">const</span> ok  = <span class="tp">Reflect</span>.<span class="fn">set</span>(target, key, value);
+      <span class="kw">if</span> (ok && old !== value) <span class="fn">onChange</span>(key, old, value);
+      <span class="kw">return</span> ok;
+    }
+  });
+}
+
+<span class="kw">const</span> estado = <span class="fn">reativo</span>({ cor: <span class="str">"azul"</span> }, (k, de, para) => {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`[reativo] ${k}: ${de} → ${para}`</span>);
+});
+estado.cor = <span class="str">"vermelho"</span>; <span class="com">// imprime: [reativo] cor: azul → vermelho</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="workers">Web Workers e SharedArrayBuffer</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript (Browser) &mdash; Worker Thread e Atomics para thread-safety</div>
+          <pre class="example"><span class="com">// === main.js ===</span>
+<span class="kw">const</span> sab = <span class="kw">new</span> <span class="tp">SharedArrayBuffer</span>(<span class="num">4</span>); <span class="com">// 4 bytes compartilhados</span>
+<span class="kw">const</span> arr = <span class="kw">new</span> <span class="tp">Int32Array</span>(sab);
+
+<span class="kw">const</span> worker = <span class="kw">new</span> <span class="tp">Worker</span>(<span class="str">"worker.js"</span>);
+worker.<span class="fn">postMessage</span>({ sab, id: <span class="num">1</span> });  <span class="com">// transferência zero-copy</span>
+
+worker.<span class="fn">onmessage</span> = (e) => {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"Worker finalizou. Resultado:"</span>, <span class="tp">Atomics</span>.<span class="fn">load</span>(arr, <span class="num">0</span>));
+};
+
+<span class="com">// === worker.js (Worker thread) ===</span>
+self.<span class="fn">addEventListener</span>(<span class="str">"message"</span>, ({ data: { sab, id } }) => {
+  <span class="kw">const</span> arr = <span class="kw">new</span> <span class="tp">Int32Array</span>(sab);
+  <span class="com">// Incremento atômico — thread-safe sem mutex</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i < <span class="num">1_000_000</span>; i++) {
+    <span class="tp">Atomics</span>.<span class="fn">add</span>(arr, <span class="num">0</span>, <span class="num">1</span>);
+  }
+  self.<span class="fn">postMessage</span>(<span class="str">"done"</span>);
+});
+
+<span class="com">// Node.js Worker Threads (node:worker_threads)</span>
+<span class="kw">import</span> { Worker, isMainThread, parentPort, workerData }
+  <span class="kw">from</span> <span class="str">"node:worker_threads"</span>;
+
+<span class="kw">if</span> (isMainThread) {
+  <span class="kw">const</span> w = <span class="kw">new</span> <span class="fn">Worker</span>(import.meta.filename, {
+    workerData: { vetor: [<span class="num">1</span>, <span class="num">4</span>, <span class="num">9</span>, <span class="num">16</span>] }
+  });
+  w.<span class="fn">once</span>(<span class="str">"message"</span>, (res) => <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"Soma:"</span>, res));
+} <span class="kw">else</span> {
+  <span class="kw">const</span> soma = workerData.vetor.<span class="fn">reduce</span>((a, b) => a + b, <span class="num">0</span>);
+  parentPort.<span class="fn">postMessage</span>(soma);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="weakref">WeakRef, FinalizationRegistry e Caches Eficientes</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; WeakRef para cache sem memory leak</div>
+          <pre class="example"><span class="com">// Cache com WeakRef — GC pode coletar entradas</span>
+<span class="kw">class</span> <span class="tp">WeakCache</span> {
+  #cache = <span class="kw">new</span> <span class="tp">Map</span>();
+  #registry = <span class="kw">new</span> <span class="tp">FinalizationRegistry</span>((key) => {
+    <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`[cache] ${key} coletado pelo GC`</span>);
+    <span class="kw">this</span>.#cache.<span class="fn">delete</span>(key);
+  });
+
+  <span class="fn">set</span>(key, value) {
+    <span class="kw">const</span> ref = <span class="kw">new</span> <span class="tp">WeakRef</span>(value);
+    <span class="kw">this</span>.#cache.<span class="fn">set</span>(key, ref);
+    <span class="kw">this</span>.#registry.<span class="fn">register</span>(value, key, ref); <span class="com">// cleanup token</span>
+  }
+
+  <span class="fn">get</span>(key) {
+    <span class="kw">const</span> ref = <span class="kw">this</span>.#cache.<span class="fn">get</span>(key);
+    <span class="kw">if</span> (!ref) <span class="kw">return</span> <span class="kw">undefined</span>;
+    <span class="kw">const</span> value = ref.<span class="fn">deref</span>();
+    <span class="kw">if</span> (!value) <span class="kw">this</span>.#cache.<span class="fn">delete</span>(key); <span class="com">// limpeza manual</span>
+    <span class="kw">return</span> value;
+  }
+}
+
+<span class="com">// WeakMap — chaves são objetos, não evita GC</span>
+<span class="kw">const</span> metadados = <span class="kw">new</span> <span class="tp">WeakMap</span>();
+<span class="kw">function</span> <span class="fn">anotarObjeto</span>(obj, info) {
+  metadados.<span class="fn">set</span>(obj, info);
+}
+<span class="kw">let</span> ref = {};
+<span class="fn">anotarObjeto</span>(ref, { criado: <span class="kw">new</span> <span class="tp">Date</span>() });
+ref = <span class="kw">null</span>; <span class="com">// ref acessível → GC coleta obj e entrada do WeakMap</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>TC39. <strong>ECMAScript Specification — Iteration Protocol</strong>. Disponível em: &lt;https://tc39.es/ecma262/#sec-iteration&gt;. Acesso em: 2025.</li>
+            <li>MOZILLA. <strong>MDN — Proxy e Reflect</strong>. Disponível em: &lt;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy&gt;. Acesso em: 2025.</li>
+            <li>MOZILLA. <strong>MDN — SharedArrayBuffer</strong>. Disponível em: &lt;https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks JavaScript</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript: Node.js, Express e APIs</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Proxy e Reflect sao a base de reatividade de frameworks como Vue 3 e MobX</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

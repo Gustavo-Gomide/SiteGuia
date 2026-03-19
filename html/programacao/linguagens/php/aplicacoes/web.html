@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="PHP para desenvolvimento web: Laravel full-stack, rotas, middleware, autenticação, APIs REST com Sanctum, Redis e filas — Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>PHP — Desenvolvimento Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>PHP — Desenvolvimento Web</strong></p></div>
+
+      <!-- HERO -->
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="php" aria-hidden="true"></span></div>
+          <h1>PHP para Desenvolvimento Web</h1>
+          <p>O domínio natural do PHP: Laravel full-stack, REST APIs, autenticação, filas e cache com Redis</p>
+        </div>
+        <p class="intro-highlight">
+          Web é o habitat natural do PHP. Com Laravel como framework principal, é possível construir desde um blog simples até uma plataforma SaaS com autenticação OAuth2, autorização granular com Policies, filas de tarefas assíncronas, broadcasting de eventos em tempo real e APIs consumidas por SPAs e aplicativos móveis — tudo com a mesma linguagem e o mesmo framework.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ROTAS E MIDDLEWARE -->
+      <section>
+        <h2 class="section-title" id="rotas-middleware">Rotas e Middleware</h2>
+        <p>
+          O sistema de roteamento do Laravel é expressivo e suporta nomeação, agrupamento, rate limiting e middleware em cadeia. Middleware são camadas que filtram e transformam requisições HTTP antes de chegarem ao controller.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — routes/api.php</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">App\Http\Controllers\Api\ProdutoController</span>;
+<span class="kw">use</span> <span class="tp">App\Http\Controllers\Api\AuthController</span>;
+
+<span class="com">// Rotas públicas</span>
+<span class="tp">Route</span>::<span class="fn">post</span>(<span class="str">'/login'</span>, [<span class="tp">AuthController</span>::<span class="kw">class</span>, <span class="str">'login'</span>]);
+<span class="tp">Route</span>::<span class="fn">post</span>(<span class="str">'/register'</span>, [<span class="tp">AuthController</span>::<span class="kw">class</span>, <span class="str">'register'</span>]);
+
+<span class="com">// Grupo protegido com Sanctum + rate limiting</span>
+<span class="tp">Route</span>::<span class="fn">middleware</span>([<span class="str">'auth:sanctum'</span>, <span class="str">'throttle:60,1'</span>])-><span class="fn">group</span>(<span class="kw">function</span>() {
+    <span class="tp">Route</span>::<span class="fn">apiResource</span>(<span class="str">'produtos'</span>, <span class="tp">ProdutoController</span>::<span class="kw">class</span>);
+    <span class="tp">Route</span>::<span class="fn">get</span>(<span class="str">'/perfil'</span>, <span class="kw">fn</span>() => <span class="fn">auth</span>()-><span class="fn">user</span>());
+});</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — middleware customizado</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">EnsureAccountActive</span>
+{
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="tp">Request</span> <span class="tp">$req</span>, <span class="tp">Closure</span> <span class="tp">$next</span>): <span class="tp">Response</span>
+    {
+        <span class="kw">if</span> (<span class="fn">auth</span>()-><span class="fn">check</span>() && !<span class="fn">auth</span>()-><span class="fn">user</span>()-><span class="tp">ativo</span>) {
+            <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([<span class="str">'error'</span> => <span class="str">'Conta suspensa'</span>], <span class="num">403</span>);
+        }
+        <span class="kw">return</span> <span class="tp">$next</span>(<span class="tp">$req</span>);
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AUTENTICAÇÃO -->
+      <section>
+        <h2 class="section-title" id="autenticacao">Autenticação com Laravel Sanctum</h2>
+        <p>
+          Laravel Sanctum oferece dois modos: <strong>token-based</strong> para SPAs e mobile apps, e <strong>session-based via cookie</strong> para SPAs no mesmo domínio. Tokens são hasheados no banco de dados e podem ter habilidades (escopos) específicas.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — AuthController com Sanctum</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">AuthController</span> <span class="kw">extends</span> <span class="tp">Controller</span>
+{
+    <span class="kw">public function</span> <span class="fn">login</span>(<span class="tp">LoginRequest</span> <span class="tp">$request</span>): <span class="tp">JsonResponse</span>
+    {
+        <span class="tp">$request</span>-><span class="fn">authenticate</span>(); <span class="com">// Form Request valida credenciais</span>
+
+        <span class="tp">$user</span>  = <span class="tp">$request</span>-><span class="fn">user</span>();
+        <span class="tp">$token</span> = <span class="tp">$user</span>-><span class="fn">createToken</span>(<span class="str">'app-token'</span>, [<span class="str">'produtos:ler'</span>, <span class="str">'pedidos:criar'</span>]);
+
+        <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([
+            <span class="str">'token'</span> => <span class="tp">$token</span>->plainTextToken,
+            <span class="str">'user'</span>  => <span class="kw">new</span> <span class="tp">UserResource</span>(<span class="tp">$user</span>),
+        ]);
+    }
+
+    <span class="kw">public function</span> <span class="fn">logout</span>(<span class="tp">Request</span> <span class="tp">$request</span>): <span class="tp">JsonResponse</span>
+    {
+        <span class="tp">$request</span>-><span class="fn">user</span>()-><span class="fn">currentAccessToken</span>()-><span class="fn">delete</span>();
+        <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>([<span class="str">'message'</span> => <span class="str">'Desconectado'</span>]);
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AUTORIZAÇÃO -->
+      <section>
+        <h2 class="section-title" id="autorizacao">Autorização com Gates e Policies</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — ProdutoPolicy completa</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">ProdutoPolicy</span>
+{
+    <span class="com">// before() intercepta antes de qualquer método — admin bypassa tudo</span>
+    <span class="kw">public function</span> <span class="fn">before</span>(<span class="tp">User</span> <span class="tp">$user</span>): ?<span class="kw">bool</span>
+    {
+        <span class="kw">return</span> <span class="tp">$user</span>-><span class="fn">hasRole</span>(<span class="str">'admin'</span>) ? <span class="kw">true</span> : <span class="kw">null</span>;
+    }
+
+    <span class="kw">public function</span> <span class="fn">viewAny</span>(<span class="tp">User</span> <span class="tp">$user</span>): <span class="kw">bool</span> { <span class="kw">return</span> <span class="kw">true</span>; }
+
+    <span class="kw">public function</span> <span class="fn">update</span>(<span class="tp">User</span> <span class="tp">$user</span>, <span class="tp">Produto</span> <span class="tp">$produto</span>): <span class="kw">bool</span>
+    {
+        <span class="kw">return</span> <span class="tp">$user</span>->id === <span class="tp">$produto</span>->user_id;
+    }
+
+    <span class="kw">public function</span> <span class="fn">delete</span>(<span class="tp">User</span> <span class="tp">$user</span>, <span class="tp">Produto</span> <span class="tp">$produto</span>): <span class="kw">bool</span>
+    {
+        <span class="kw">return</span> <span class="tp">$user</span>->id === <span class="tp">$produto</span>->user_id;
+    }
+}
+
+<span class="com">// No Controller — automaticamente lança AuthorizationException</span>
+<span class="kw">public function</span> <span class="fn">update</span>(<span class="tp">Request</span> <span class="tp">$req</span>, <span class="tp">Produto</span> <span class="tp">$produto</span>): <span class="tp">JsonResponse</span>
+{
+    <span class="tp">$this</span>-><span class="fn">authorize</span>(<span class="str">'update'</span>, <span class="tp">$produto</span>);
+    <span class="tp">$produto</span>-><span class="fn">update</span>(<span class="tp">$req</span>-><span class="fn">validated</span>());
+    <span class="kw">return</span> <span class="fn">response</span>()-><span class="fn">json</span>(<span class="kw">new</span> <span class="tp">ProdutoResource</span>(<span class="tp">$produto</span>));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- FILAS -->
+      <section>
+        <h2 class="section-title" id="filas">Jobs e Filas Assíncronas</h2>
+        <p>
+          Filas permitem processar tarefas lentas (envio de email, processamento de imagens, chamadas a APIs externas) de forma assíncrona, sem bloquear a resposta HTTP.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — Job e despacho</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">ProcessarPedidoJob</span> <span class="kw">implements</span> <span class="tp">ShouldQueue</span>
+{
+    <span class="kw">use</span> <span class="tp">Dispatchable</span>, <span class="tp">InteractsWithQueue</span>, <span class="tp">Queueable</span>, <span class="tp">SerializesModels</span>;
+
+    <span class="kw">public int</span> <span class="tp">$tries</span> = <span class="num">3</span>;           <span class="com">// máx. tentativas</span>
+    <span class="kw">public int</span> <span class="tp">$backoff</span> = <span class="num">60</span>;         <span class="com">// segundos entre tentativas</span>
+
+    <span class="kw">public function</span> <span class="fn">__construct</span>(<span class="kw">public readonly</span> <span class="tp">Pedido</span> <span class="tp">$pedido</span>) {}
+
+    <span class="kw">public function</span> <span class="fn">handle</span>(<span class="tp">PagamentoService</span> <span class="tp">$pagamento</span>): <span class="kw">void</span>
+    {
+        <span class="tp">$pagamento</span>-><span class="fn">processar</span>(<span class="tp">$this</span>-><span class="tp">pedido</span>);
+        <span class="tp">$this</span>-><span class="tp">pedido</span>-><span class="fn">marcarComoConcluido</span>();
+    }
+
+    <span class="kw">public function</span> <span class="fn">failed</span>(<span class="tp">Throwable</span> <span class="tp">$e</span>): <span class="kw">void</span>
+    {
+        <span class="tp">$this</span>-><span class="tp">pedido</span>-><span class="fn">marcarComoFalho</span>(<span class="tp">$e</span>-><span class="fn">getMessage</span>());
+    }
+}
+
+<span class="com">// Despacho na fila 'alta-prioridade' com delay</span>
+<span class="tp">ProcessarPedidoJob</span>::<span class="fn">dispatch</span>(<span class="tp">$pedido</span>)
+    -><span class="fn">onQueue</span>(<span class="str">'alta-prioridade'</span>)
+    -><span class="fn">delay</span>(<span class="fn">now</span>()-><span class="fn">addSeconds</span>(<span class="num">10</span>));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CACHE REDIS -->
+      <section>
+        <h2 class="section-title" id="cache-redis">Cache com Redis</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — cache com Laravel + Redis</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">Illuminate\Support\Facades\Cache</span>;
+
+<span class="com">// Lembrar resultado de query por 30 minutos</span>
+<span class="tp">$produtos</span> = <span class="tp">Cache</span>::<span class="fn">remember</span>(<span class="str">'produtos.ativos'</span>, <span class="num">1800</span>, <span class="kw">function</span>() {
+    <span class="kw">return</span> <span class="tp">Produto</span>::<span class="fn">ativos</span>()-><span class="fn">with</span>(<span class="str">'categoria'</span>)-><span class="fn">get</span>();
+});
+
+<span class="com">// Cache por usuário (cache tag)</span>
+<span class="tp">$perfil</span> = <span class="tp">Cache</span>::<span class="fn">tags</span>([<span class="str">'usuario'</span>, <span class="str">"usuario:{$userId}"</span>])
+    -><span class="fn">remember</span>(<span class="str">"perfil.{$userId}"</span>, <span class="num">3600</span>, <span class="kw">fn</span>() => <span class="tp">User</span>::<span class="fn">findOrFail</span>(<span class="tp">$userId</span>));
+
+<span class="com">// Invalidar cache de um usuário específico</span>
+<span class="tp">Cache</span>::<span class="fn">tags</span>([<span class="str">"usuario:{$userId}"</span>])-><span class="fn">flush</span>();
+
+<span class="com">// Locks distribuídos para evitar race conditions</span>
+<span class="tp">$lock</span> = <span class="tp">Cache</span>::<span class="fn">lock</span>(<span class="str">"pedido:{$id}"</span>, <span class="num">10</span>);
+<span class="kw">if</span> (<span class="tp">$lock</span>-><span class="fn">get</span>()) {
+    <span class="kw">try</span> { <span class="fn">processarPedido</span>(); }
+    <span class="kw">finally</span> { <span class="tp">$lock</span>-><span class="fn">release</span>(); }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- API RESOURCES -->
+      <section>
+        <h2 class="section-title" id="api-resources">API Resources e CORS</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — ProdutoResource</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">ProdutoResource</span> <span class="kw">extends</span> <span class="tp">JsonResource</span>
+{
+    <span class="kw">public function</span> <span class="fn">toArray</span>(<span class="tp">Request</span> <span class="tp">$request</span>): <span class="kw">array</span>
+    {
+        <span class="kw">return</span> [
+            <span class="str">'id'</span>       => <span class="tp">$this</span>->id,
+            <span class="str">'nome'</span>     => <span class="tp">$this</span>->nome,
+            <span class="str">'preco'</span>    => (float) <span class="tp">$this</span>->preco,
+            <span class="str">'ativo'</span>    => (bool) <span class="tp">$this</span>->ativo,
+            <span class="str">'categoria'</span> => <span class="kw">new</span> <span class="tp">CategoriaResource</span>(<span class="tp">$this</span>-><span class="fn">whenLoaded</span>(<span class="str">'categoria'</span>)),
+            <span class="str">'criado_em'</span> => <span class="tp">$this</span>->created_at?-><span class="fn">toIso8601String</span>(),
+            <span class="com">// Mostrar somente para admins</span>
+            <span class="str">'custo'</span>    => <span class="tp">$this</span>-><span class="fn">when</span>(<span class="fn">auth</span>()-><span class="fn">user</span>()?-><span class="fn">isAdmin</span>(), <span class="tp">$this</span>->custo),
+        ];
+    }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — config/cors.php</div>
+          <pre class="example"><span class="kw">return</span> [
+    <span class="str">'paths'</span>             => [<span class="str">'api/*'</span>, <span class="str">'sanctum/csrf-cookie'</span>],
+    <span class="str">'allowed_methods'</span>   => [<span class="str">'*'</span>],
+    <span class="str">'allowed_origins'</span>   => [<span class="str">'https://meuapp.com'</span>, <span class="str">'https://app.meuapp.com'</span>],
+    <span class="str">'allowed_headers'</span>   => [<span class="str">'Content-Type'</span>, <span class="str">'Authorization'</span>, <span class="str">'X-Requested-With'</span>],
+    <span class="str">'exposed_headers'</span>   => [<span class="str">'X-RateLimit-Remaining'</span>],
+    <span class="str">'max_age'</span>           => <span class="num">86400</span>,
+    <span class="str">'supports_credentials'</span> => <span class="kw">true</span>,
+];</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>OTWELL, Taylor. <strong>Laravel Documentation — Authentication</strong>. Laravel LLC, 2024. Disponível em: <a href="https://laravel.com/docs/sanctum" target="_blank" rel="noopener">laravel.com/docs/sanctum</a></li>
+            <li>OTWELL, Taylor. <strong>Laravel Documentation — Queues</strong>. Laravel LLC, 2024. Disponível em: <a href="https://laravel.com/docs/queues" target="_blank" rel="noopener">laravel.com/docs/queues</a></li>
+            <li>FIELDING, Roy T. <strong>Architectural Styles and the Design of Network-based Software Architectures</strong>. Dissertação de Doutorado, UC Irvine, 2000. Disponível em: <a href="https://ics.uci.edu/~fielding/pubs/dissertation/top.htm" target="_blank" rel="noopener">ics.uci.edu</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP como Backend Mobile</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Laravel e Frameworks PHP</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling." — Taylor Otwell</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

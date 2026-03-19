@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Prolog para web: servidor HTTP no SWI-Prolog, APIs REST, JSON, validacao logica, autenticacao e limites de deploy." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Prolog para Web | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Prolog para Web</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="visao-geral">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="prolog" aria-hidden="true"></span></div>
+          <h1>APIs Declarativas com SWI-Prolog HTTP</h1>
+          <p>Regras de negocio explicitas, validacao logica e servicos REST com serializacao JSON.</p>
+        </div>
+        <p class="intro-highlight">
+          Em aplicacoes web, Prolog se destaca quando a regra de negocio muda rapido e precisa ser auditavel: voce troca ifs complexos por uma base de conhecimento formal.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Arquitetura Web Declarativa</h2>
+        <p>
+          Em uma stack tradicional, controladores imperativos fazem validacao, autorizacao e composicao de resposta. Em Prolog, a rota vira ponto de entrada e a decisao de negocio vive em predicados de regra.
+        </p>
+        <p>
+          Analogia: o servidor HTTP e a recepcao; o motor logico e o especialista que decide segundo normas. Isso reduz codigo duplicado quando multiplos endpoints compartilham as mesmas politicas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Servidor HTTP, Rotas REST e JSON</h2>
+        <p>
+          O pacote <code class="code-inline">library(http/http_dispatch)</code> organiza rotas; <code class="code-inline">library(http/http_json)</code> le e escreve JSON; o corpo da regra implementa validacao e inferencia.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">
+            <span>Endpoint REST com SWI-Prolog</span>
+          </div>
+          <pre class="example"><code><span class="kw">:-</span> <span class="fn">use_module</span>(<span class="str">library(http/thread_httpd)</span>).
+<span class="kw">:-</span> <span class="fn">use_module</span>(<span class="str">library(http/http_dispatch)</span>).
+<span class="kw">:-</span> <span class="fn">use_module</span>(<span class="str">library(http/http_json)</span>).
+
+<span class="kw">:-</span> <span class="fn">http_handler</span>(root(api/avaliar), <span class="fn">avaliar_handler</span>, []).
+
+<span class="fn">server</span>(Porta) <span class="kw">:-</span>
+  <span class="fn">http_server</span>(<span class="fn">http_dispatch</span>, [port(Porta)]).
+
+<span class="fn">avaliar_handler</span>(Request) <span class="kw">:-</span>
+  <span class="fn">http_read_json_dict</span>(Request, DictIn),
+  <span class="fn">autoriza</span>(DictIn.usuario, DictIn.acao, Resultado),
+  <span class="fn">reply_json_dict</span>(_{permitido:Resultado}).
+
+<span class="fn">autoriza</span>(<span class="str">"admin"</span>, _, <span class="str">true</span>).
+<span class="fn">autoriza</span>(_, <span class="str">"deletar"</span>, <span class="str">false</span>).
+<span class="fn">autoriza</span>(_, _, <span class="str">true</span>).</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="validacao-logica">Regras de Negocio e Validacao Logica</h2>
+        <p>
+          Validacoes complexas (combinar perfil, horario, estado da entidade, limite de tentativas) ficam mais legiveis em clausulas declarativas. Alem de decidir, Prolog pode explicar por que negou uma operacao.
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">Padrao recomendado</h3>
+          <p>1. Predicados puros para regra.</p>
+          <p>2. Predicados de infraestrutura para HTTP e serializacao.</p>
+          <p>3. Predicados de auditoria para justificar resultado.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="autenticacao">Autenticacao Basica e Token</h2>
+        <p>
+          Para cenarios simples, o SWI-Prolog suporta autenticacao HTTP basica. Em APIs modernas, o caminho mais comum e validar token JWT em camada externa (Nginx, API gateway, servico auth) e passar claims para o motor Prolog.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">
+            <span>Validacao simplificada de token (conceitual)</span>
+          </div>
+          <pre class="example"><code><span class="fn">permitido</span>(Claims, Acao) <span class="kw">:-</span>
+  <span class="fn">member</span>(role=<span class="str">admin</span>, Claims),
+  <span class="fn">acao_critica</span>(Acao).
+
+<span class="fn">permitido</span>(Claims, Acao) <span class="kw">:-</span>
+  <span class="fn">member</span>(scope=Scope, Claims),
+  <span class="fn">scope_aceita</span>(Scope, Acao).
+
+<span class="com">% chamado pela rota apos validar assinatura do token fora do Prolog</span></code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deploy-limitacoes">Deploy, Escalabilidade e Limitacoes</h2>
+        <p>
+          Deploy tipico: container Docker com SWI-Prolog atras de proxy reverso. Prolog lida bem com APIs de regra, mas para workloads massivos de streaming e CPU numerica pesada, uma arquitetura hibrida costuma ser mais eficiente.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            Evite acoplar logica de autenticao criptografica complexa ao mesmo modulo de inferencia: separe responsabilidade para reduzir risco operacional.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Prolog Web x Frameworks Imperativos</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Aspecto</th>
+                <th>Prolog Web</th>
+                <th>Framework imperativo comum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Regra de negocio</td>
+                <td>Declarativa e consultavel</td>
+                <td>Espalhada em servicos e condicionais</td>
+              </tr>
+              <tr>
+                <td>Explicabilidade</td>
+                <td>Alta, com trilha de inferencia</td>
+                <td>Depende de logs customizados</td>
+              </tr>
+              <tr>
+                <td>Ecossistema geral web</td>
+                <td>Menor</td>
+                <td>Muito amplo</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>SWI-PROLOG. <em>HTTP Support Libraries</em>. Disponivel em: <a href="https://www.swi-prolog.org/pldoc/man?section=http" target="_blank" rel="noopener">https://www.swi-prolog.org/pldoc/man?section=http</a>. Acesso em: 13 mar. 2026.</li>
+          <li>SWI-PROLOG. <em>JSON support</em>. Disponivel em: <a href="https://www.swi-prolog.org/pldoc/man?section=json" target="_blank" rel="noopener">https://www.swi-prolog.org/pldoc/man?section=json</a>. Acesso em: 13 mar. 2026.</li>
+          <li>O'KEEFE, R. A. <em>The Craft of Prolog</em>. MIT Press, 1990.</li>
+          <li>FIELDING, R. T. <em>Architectural Styles and the Design of Network-based Software Architectures</em>. 2000. Disponivel em: <a href="https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm" target="_blank" rel="noopener">https://www.ics.uci.edu/~fielding/pubs/dissertation/top.htm</a>. Acesso em: 13 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p>
+          <span data-svg="estrela" aria-hidden="true"></span>
+          Prolog na web vale ouro quando seu diferencial competitivo esta nas regras, nao na quantidade de endpoints.
+        </p>
+      </div>
+
+      <ul class="link-list">
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/aplicacoes/banco_dados.html">Prolog com Banco de Dados</a></li>
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/aplicacoes/terminal_cli.html">Prolog para CLI</a></li>
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+      </ul>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

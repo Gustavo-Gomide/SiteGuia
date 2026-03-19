@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Escalonamento de CPU: objetivos, critérios (throughput, latência, fairness), filas de escalonamento e o funcionamento geral do escalonador do SO." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Escalonamento de Processos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Escalonamento de Processos</h1>
+            <p class="page-subtitle">O escalonador decide qual processo usa a CPU — política, filas e trade-offs entre responsividade e throughput.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Com dezenas ou centenas de processos competindo pelo processador, o <strong>escalonador de CPU</strong> (scheduler) é o módulo do kernel responsável por decidir qual processo passa do estado Pronto para Executando, e por quanto tempo. A política escolhida define diretamente a experiência do usuário (responsividade) e a utilização eficiente do hardware (throughput).
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — OBJETIVOS ═══════════════════ -->
+      <section id="objetivos">
+        <h2>Objetivos e Métricas</h2>
+        <p>Diferentes cargas de trabalho exigem métricas distintas. Muitos critérios são conflitantes — maximizar throughput geralmente piora latência interativa:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Métrica</th><th>Definição</th><th>Importante para</th><th>Conflito com</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Throughput</strong></td>
+                <td>Número de processos completados por unidade de tempo</td>
+                <td>Servidores batch, renderização, compilacao</td>
+                <td>Tempo de resposta (interativo)</td>
+              </tr>
+              <tr>
+                <td><strong>Turnaround time</strong></td>
+                <td>Tempo total desde submissão até conclusão do processo</td>
+                <td>Trabalhos batch, jobs de CI/CD</td>
+                <td>Fairness</td>
+              </tr>
+              <tr>
+                <td><strong>Wait time</strong></td>
+                <td>Tempo que o processo passou na ready queue aguardando CPU</td>
+                <td>Analise de eficiência do escalonador</td>
+                <td>Throughput (quantum muito pequeno aumenta overhead)</td>
+              </tr>
+              <tr>
+                <td><strong>Response time</strong></td>
+                <td>Tempo até a primeira saída visível (primeira resposta ao usuário)</td>
+                <td>Sistemas interativos, jogos, UI</td>
+                <td>Throughput</td>
+              </tr>
+              <tr>
+                <td><strong>CPU utilization</strong></td>
+                <td>Percentual de tempo em que a CPU está ocupada (não ociosa)</td>
+                <td>Maximizar uso do hardware</td>
+                <td>Tempo de resposta (manter CPU 100% pode atrasar processos interativos)</td>
+              </tr>
+              <tr>
+                <td><strong>Fairness</strong></td>
+                <td>Cada processo recebe sua parcela justa de CPU ao longo do tempo</td>
+                <td>Sistemas multi-usuario, desktops</td>
+                <td>Prioridade (processos de alta prioridade podem monopolizar)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — FILAS ═══════════════════ -->
+      <section id="filas">
+        <h2>Filas de Escalonamento</h2>
+        <p>O kernel mantém múltiplas filas para gerenciar processos em diferentes estágios:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Job Queue (Longo Prazo)</h3>
+            <p>Controla o grau de multiprogramação — quantos processos podem estar na memória simultaneamente. O escalonador de <strong>longo prazo</strong> admite novos processos a partir do disco. Em sistemas modernos com memória abundante, esse nível é quase transparente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Ready Queue (Curto Prazo)</h3>
+            <p>Processos prontos para receber a CPU. O escalonador de <strong>curto prazo</strong> (dispatcher) seleciona um processo dessa fila dezenas de vezes por segundo. É aqui que os algoritmos (FCFS, RR, CFS) operam.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">I/O Wait Queues (Médio Prazo)</h3>
+            <p>Uma fila por dispositivo de I/O. Quando um processo faz uma chamada bloqueante (leitura de disco, rede), ele sai da ready queue e entra na fila de espera do dispositivo. Ao concluir, retorna para a ready queue.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — PREEMPTIVO VS COOPERATIVO ═══════════════════ -->
+      <section id="preemptivo">
+        <h2>Preemptivo vs Cooperativo</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Critério</th><th>Escalonamento Cooperativo</th><th>Escalonamento Preemptivo</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Quem cede a CPU</strong></td>
+                <td>O próprio processo (voluntariamente, via yield ou syscall)</td>
+                <td>O kernel, por interrupção de timer (quantum expirado)</td>
+              </tr>
+              <tr>
+                <td><strong>Latência de resposta</strong></td>
+                <td>Imprevisível — processo malicioso ou com bug pode monopolizar</td>
+                <td>Previsível — limitada pelo quantum de tempo</td>
+              </tr>
+              <tr>
+                <td><strong>Complexidade do kernel</strong></td>
+                <td>Simples — não precisa de timer de preempção</td>
+                <td>Maior — requer tratamento de interrupção, seções críticas no kernel</td>
+              </tr>
+              <tr>
+                <td><strong>Onde foi usado</strong></td>
+                <td>Windows 3.1, macOS clássico (pré-OS X), sistemas embarcados simples</td>
+                <td>Todos os SOs modernos: Linux, Windows NT+, macOS (OS X+), Android</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — CFS ═══════════════════ -->
+      <section id="cfs">
+        <h2>CFS — Completely Fair Scheduler (Linux)</h2>
+        <p>Desde o Linux 2.6.23 (2007), o escalonador padrão é o <strong>CFS</strong>, que substitui o antigo O(1) scheduler:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">vruntime e Red-Black Tree</h3>
+            <p>Cada processo acumula <code class="code-inline">vruntime</code> (tempo virtual de CPU, ponderado pela prioridade/nice). Todos os processos prontos ficam numa árvore rubro-negra ordenada por vruntime. O processo com <strong>menor vruntime sempre executa a seguir</strong> — garantindo fairness.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Quantum Dinâmico</h3>
+            <p>O quantum não é fixo: é derivado de uma <em>latência-alvo</em> (padrão 6 ms) dividida pelo número de processos na fila. Com 6 processos, cada um recebe 1 ms. Isso mantém latência de resposta previsível independentemente da carga.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Group Scheduling (cgroups)</h3>
+            <p>O CFS suporta escalonamento por grupo via cgroups, permitindo alocar fatias de CPU para containers Docker, VMs ou grupos de usuarios. Base do isolamento de recursos em Kubernetes.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Explore os algoritmos clássicos comparados numericamente em
+          <a href="/html/sistemas/processos/algoritmos_escalonamento.html">Algoritmos de Escalonamento</a> e
+          <a href="/html/sistemas/processos/estados_processo.html">Estados de Processo</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O escalonador perfeito não existe — toda política é um trade-off entre latência, throughput e fairness."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

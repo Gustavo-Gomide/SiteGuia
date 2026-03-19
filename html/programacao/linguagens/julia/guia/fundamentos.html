@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos de Julia: tipos, funções, controle de fluxo, coleções, I/O e tratamento de erros." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Julia — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+          <h1>Fundamentos de Julia</h1>
+          <p>Tipos primitivos e compostos, funções com multiple dispatch, coleções (Array, Dict, Set, Tuple), controle de fluxo, compreensões, broadcasting e tratamento de erros.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos Primitivos e Compostos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Sistema de tipos de Julia</div>
+          <pre class="example"><span class="com"># Tipos numéricos</span>
+i::Int64    = 42
+f::Float64  = 3.14
+b::Bool     = true
+c::Char     = 'A'
+s::String   = "Julia"
+
+<span class="com"># Inteiros com tamanhos explícitos</span>
+Int8, Int16, Int32, Int64, Int128
+UInt8, UInt16, UInt32, UInt64, UInt128
+
+<span class="com"># Tipos especiais matemáticos</span>
+r = 3//4               <span class="com"># Rational{Int64} — 3/4 exato</span>
+z = 1 + 2im            <span class="com"># Complex{Int64} — número complexo</span>
+big = BigInt(10)^100   <span class="com"># inteiro arbitrário</span>
+bigf = BigFloat(pi)    <span class="com"># ponto flutuante arbitrário</span>
+
+<span class="com"># Conversão de tipos</span>
+parse(Int, "42")       <span class="com"># String -> Int</span>
+parse(Float64, "3.14")
+string(42)             <span class="com"># Int -> String</span>
+Float64(42)            <span class="com"># Int -> Float64</span>
+convert(Float64, 1)    <span class="com"># int -> float explícito</span>
+
+<span class="com"># Verificar tipo</span>
+typeof(42)             <span class="com"># Int64</span>
+isa(42, Integer)       <span class="com"># true</span>
+42 isa Number          <span class="com"># true (sintaxe alternativa)</span>
+
+<span class="com"># Hierarquia de tipos numéricos</span>
+<span class="com"># Number -> Real -> {AbstractFloat, Integer}</span>
+<span class="com"># AbstractFloat -> {Float16, Float32, Float64}</span>
+<span class="com"># Integer -> {Signed, Unsigned}</span>
+
+<span class="com"># structs — tipos compostos</span>
+struct Ponto
+    x::Float64
+    y::Float64
+end
+
+<span class="com"># mutable struct — mutável</span>
+mutable struct Retangulo
+    largura::Float64
+    altura::Float64
+end
+
+p = Ponto(3.0, 4.0)
+println(p.x, ", ", p.y)
+
+r = Retangulo(10.0, 5.0)
+r.largura = 20.0        <span class="com"># ok — mutável</span>
+
+<span class="com"># Construtor interno personalizado</span>
+struct Temperatura
+    celsius::Float64
+    function Temperatura(c)
+        c &lt; -273.15 && error("Abaixo do zero absoluto!")
+        new(c)
+    end
+end</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções e Multiple Dispatch</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Funções, dispatch e composição</div>
+          <pre class="example"><span class="com"># Função normal</span>
+function area(r::Float64)
+    return π * r^2
+end
+
+<span class="com"># Sintaxe inline</span>
+area(r::Float64) = π * r^2
+
+<span class="com"># Multiple dispatch — mesmo nome, tipos diferentes</span>
+function descrever(x::Int)
+    "Inteiro: $x"
+end
+function descrever(x::Float64)
+    "Float: $x"
+end
+function descrever(x::String)
+    "Texto: \"$x\""
+end
+function descrever(x::Any)
+    "Desconhecido: $(typeof(x))"
+end
+
+println(descrever(42))         <span class="com"># Inteiro: 42</span>
+println(descrever(3.14))       <span class="com"># Float: 3.14</span>
+println(descrever("oi"))       <span class="com"># Texto: "oi"</span>
+
+<span class="com"># Múltiplos métodos com múltiplos argumentos</span>
+function combinar(x::Int, y::Int)    = x + y
+function combinar(x::String, y::String) = x * y
+function combinar(x::Number, y::Number) = x * y
+
+<span class="com"># Listar métodos de uma função</span>
+methods(descrever)
+
+<span class="com"># Parâmetros padrão e variádicos</span>
+function cumprimentar(nome::String, saudacao::String = "Olá")
+    "$saudacao, $nome!"
+end
+
+function somar(nums...)
+    sum(nums)
+end
+
+<span class="com"># Argumentos keyword</span>
+function criar_janela(; largura::Int = 800, altura::Int = 600, titulo::String = "Janela")
+    (largura, altura, titulo)
+end
+criar_janela(altura = 400, titulo = "Editor")
+
+<span class="com"># Funções anônimas</span>
+quadrado = x -> x^2
+soma = (a, b) -> a + b
+
+<span class="com"># Composição de funções (operador ∘)</span>
+dobrar_depois_somar = x -> dobrar(x) + 1
+composta = sqrt ∘ abs ∘ dobrar    <span class="com"># sqrt(abs(dobrar(x)))</span>
+
+<span class="com"># Pipe |></span>
+resultado = -4 |> abs |> sqrt      <span class="com"># sqrt(abs(-4)) = 2.0</span>
+
+<span class="com"># Funções que alteram seus argumentos: convenção ! no nome</span>
+function dobrar!(v::Vector)
+    for i in eachindex(v)
+        v[i] *= 2
+    end
+end</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="colecoes">Coleções: Array, Dict, Set e Tuple</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estruturas de dados nativas</div>
+          <pre class="example"><span class="com">## ARRAYS (1-indexados!)</span>
+v = [1, 2, 3, 4, 5]     <span class="com"># Vector{Int64}</span>
+m = [1 2 3; 4 5 6]      <span class="com"># Matrix{Int64} 2×3</span>
+v3 = Vector{Float64}(undef, 5)   <span class="com"># não inicializado</span>
+zeros(3, 3)              <span class="com"># matriz de zeros</span>
+ones(2, 4)               <span class="com"># matriz de uns</span>
+rand(3, 3)               <span class="com"># uniforme [0,1]</span>
+randn(3, 3)              <span class="com"># normal padrão</span>
+
+<span class="com"># Acesso (1-indexado!)</span>
+v[1]                     <span class="com"># primeiro elemento</span>
+v[end]                   <span class="com"># último elemento</span>
+v[2:4]                   <span class="com"># slice v[2], v[3], v[4]</span>
+v[end-1:end]             <span class="com"># dois últimos</span>
+m[1, :]                  <span class="com"># primeira linha</span>
+m[:, 2]                  <span class="com"># segunda coluna</span>
+
+<span class="com"># Operações</span>
+push!(v, 6)              <span class="com"># adicionar ao fim</span>
+pop!(v)                  <span class="com"># remover e retornar último</span>
+pushfirst!(v, 0)         <span class="com"># adicionar ao início</span>
+popfirst!(v)             <span class="com"># remover primeiro</span>
+append!(v, [7, 8])       <span class="com"># concatenar in-place</span>
+deleteat!(v, 2)          <span class="com"># remover índice 2</span>
+sort(v)                  <span class="com"># novo array ordenado</span>
+sort!(v)                 <span class="com"># ordenar in-place</span>
+length(v)                <span class="com"># tamanho</span>
+size(m)                  <span class="com"># dimensões (linhas, colunas)</span>
+
+<span class="com">## BROADCASTING — aplica operação elemento a elemento</span>
+v .* 2                   <span class="com"># multiplica cada elemento por 2</span>
+v .+ [10, 20, 30, 40, 50]     <span class="com"># soma elemento a elemento</span>
+sin.(v)                  <span class="com"># sen de cada elemento</span>
+2 .^ v                   <span class="com"># 2^cada_elemento</span>
+@. v^2 + 2*v + 1         <span class="com"># @. faz broadcast em toda expressão</span>
+
+<span class="com">## DICT</span>
+d = Dict("a" => 1, "b" => 2, "c" => 3)
+d["a"]                   <span class="com"># 1</span>
+d["d"] = 4               <span class="com"># adicionar</span>
+get(d, "z", 0)           <span class="com"># 0 (default)</span>
+haskey(d, "a")           <span class="com"># true</span>
+delete!(d, "b")
+keys(d), values(d), pairs(d)
+
+<span class="com">## SET</span>
+s = Set([1, 2, 3, 2, 1])  <span class="com"># {1, 2, 3}</span>
+push!(s, 4)
+4 in s                    <span class="com"># true</span>
+union(s, Set([5, 6]))
+intersect(s, Set([2, 3, 5]))
+setdiff(s, Set([1, 2]))
+
+<span class="com">## TUPLE — imutável</span>
+t = (1, "Julia", 3.14)
+t[1]                      <span class="com"># 1</span>
+a, b, c = t               <span class="com"># desestruturação</span>
+
+<span class="com"># NamedTuple</span>
+ponto = (x = 1.0, y = 2.0, z = 0.0)
+ponto.x                   <span class="com"># 1.0</span>
+ponto[:y]                 <span class="com"># 2.0</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="controle">Controle de Fluxo e Compreensões</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Loops, condicionais, compreensões e iteradores</div>
+          <pre class="example"><span class="com"># if/elseif/else</span>
+function classificar(x::Int)
+    if x &lt; 0
+        "negativo"
+    elseif x == 0
+        "zero"
+    elseif x &lt; 10
+        "pequeno"
+    else
+        "grande"
+    end
+end
+
+<span class="com"># Operador ternário</span>
+sinal = x >= 0 ? "positivo" : "negativo"
+
+<span class="com"># for com range</span>
+for i in 1:5
+    println(i)
+end
+
+<span class="com"># for com step</span>
+for i in 0:2:10       <span class="com"># 0, 2, 4, 6, 8, 10</span>
+    print("$i ")
+end
+
+<span class="com"># for com coleções</span>
+for (k, v) in Dict("a" => 1, "b" => 2)
+    println("$k => $v")
+end
+
+<span class="com"># enumerate</span>
+frutas = ["maçã", "banana", "cereja"]
+for (i, fruta) in enumerate(frutas)
+    println("$i: $fruta")
+end
+
+<span class="com"># zip</span>
+for (a, b) in zip([1,2,3], ["a","b","c"])
+    println("$a-$b")
+end
+
+<span class="com"># while</span>
+n = 1
+while n &lt;= 5
+    print("$n ")
+    n += 1
+end
+
+<span class="com"># break e continue</span>
+for i in 1:10
+    i % 2 == 0 && continue    <span class="com"># pular pares</span>
+    i > 7 && break             <span class="com"># parar em 7</span>
+    print("$i ")
+end
+
+<span class="com">## COMPREENSÕES</span>
+quadrados = [x^2 for x in 1:10]
+pares = [x for x in 1:20 if x % 2 == 0]
+tabela = [(i, j) for i in 1:3, j in 1:3]  <span class="com"># 2D</span>
+
+<span class="com"># Generator — sem alocar array</span>
+soma_quadrados = sum(x^2 for x in 1:1000)
+
+<span class="com"># Dict comprehension</span>
+quadrado_dict = Dict(x => x^2 for x in 1:5)
+
+<span class="com"># map/filter/reduce</span>
+map(x -> x^2, 1:5)            <span class="com"># [1, 4, 9, 16, 25]</span>
+filter(iseven, 1:10)           <span class="com"># [2, 4, 6, 8, 10]</span>
+reduce(+, 1:100)               <span class="com"># 5050</span>
+foldl((acc, x) -> acc + x, 1:5, init=0)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="erros">Tratamento de Erros e I/O</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">try/catch, throw e operações de arquivo</div>
+          <pre class="example"><span class="com"># try/catch/finally</span>
+function dividir(a, b)
+    try
+        a / b
+    catch e
+        if isa(e, DivideError)
+            println("Divisão por zero!")
+            0
+        else
+            rethrow(e)
+        end
+    end
+end
+
+<span class="com"># Lançar exceções</span>
+function verificar_idade(idade::Int)
+    idade &lt; 0 && throw(ArgumentError("Idade negativa: $idade"))
+    idade > 150 && throw(DomainError(idade, "Idade impossível"))
+    idade
+end
+
+<span class="com"># finally sempre executa</span>
+try
+    resultado = parse(Int, "abc")
+catch e
+    println("Erro: $(e.msg)")
+finally
+    println("Bloco finally sempre executa")
+end
+
+<span class="com"># Tipos de exceção padrão</span>
+<span class="com"># ArgumentError, DomainError, BoundsError</span>
+<span class="com"># InexactError, KeyError, LoadError</span>
+<span class="com"># MethodError, OverflowError, TypeError</span>
+
+<span class="com"># Exceção personalizada</span>
+struct ValidacaoError &lt;: Exception
+    campo::String
+    mensagem::String
+end
+Base.showerror(io::IO, e::ValidacaoError) =
+    print(io, "ValidacaoError no campo '$(e.campo)': $(e.mensagem)")
+
+<span class="com">## I/O de arquivos</span>
+<span class="com"># Escrita</span>
+open("saida.txt", "w") do f
+    write(f, "Linha 1\n")
+    println(f, "Linha 2")
+end
+
+<span class="com"># Leitura</span>
+conteudo = read("saida.txt", String)
+linhas   = readlines("saida.txt")       <span class="com"># Vector{String}</span>
+open("saida.txt") do f
+    for linha in eachline(f)
+        println(linha)
+    end
+end
+
+<span class="com"># I/O padrão</span>
+nome = readline()                        <span class="com"># ler linha do stdin</span>
+print("Sem quebra de linha")
+println("Com quebra de linha")
+@printf "Pi = %.4f\n" π                 <span class="com"># printf estilo C</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>JULIA DOCUMENTATION. <strong>Variables, Types and Functions</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/manual/types/&gt;. Acesso em: 2026.</li>
+            <li>JULIA DOCUMENTATION. <strong>Methods and Multiple Dispatch</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/manual/methods/&gt;. Acesso em: 2026.</li>
+            <li>LAUWENS, Ben; DOWNEY, Allen. <strong>Think Julia</strong>. O'Reilly Media, 2019.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Tópicos Avançados</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Ferramentas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>broadcasting</strong> com <code>.</code> é a estrela da sintaxe Julia: <code>sin.(v)</code> aplica <code>sin</code> a cada elemento de <code>v</code> gerando código SIMD otimizado. E o <code>@.</code> transforma toda uma expressão em broadcasting: <code>@. v^2 + 2v + 1</code> compila para um único loop sem alocações intermediárias.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

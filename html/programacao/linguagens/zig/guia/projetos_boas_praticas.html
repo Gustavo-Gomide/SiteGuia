@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Boas praticas para projetos Zig: arquitetura, isolamento de allocators, testes, profiling e CI." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Zig: Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Zig: Projetos e Boas Praticas</strong></p>
+			</div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="zig" aria-hidden="true"></span></div>
+					<h1>Arquitetura disciplinada para projetos Zig duraveis</h1>
+					<p>Separar ownership, modularizar por responsabilidade e testar comportamento observavel desde cedo.</p>
+				</div>
+				<p class="intro-highlight">Em Zig, boas praticas aparecem onde a linguagem mais cobra disciplina: fronteiras de memoria, contratos de erro, composicao de modulos e rotinas automatizadas de verificacao.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="arquitetura" class="section-title">Arquitetura modular e fronteiras explicitas</h2>
+				<p>Organize o projeto em modulos que reflitam responsabilidade tecnica: dominio, adaptadores de I/O, persistencia, serializacao, FFI e interface de usuario. Em Zig, esse tipo de separacao ajuda especialmente porque funcoes carregam contratos de allocator e erro de maneira visivel. Misturar tudo numa camada unica rapidamente torna ownership confuso.</p>
+				<p>Uma boa pergunta arquitetural e: "qual modulo tem o direito de alocar, liberar e transformar esse dado?". Se a resposta nao estiver clara, a API provavelmente ainda precisa ser refinada.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="allocators-isolamento" class="section-title">Isolamento de allocators</h2>
+				<p>Allocators devem atravessar o sistema de forma intencional. Um erro comum e capturar allocator global em varios cantos do projeto. Isso reduz testabilidade e dificulta medir consumo de memoria por subsistema. O ideal e receber allocator por construtor ou parametro nas areas onde a alocacao realmente acontece.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">
+						<span>Zig</span>
+						<span>Servico com allocator explicito</span>
+					</div>
+					<pre class="example"><code><span class="kw">const</span> std = @import(<span class="str">"std"</span>);
+
+<span class="kw">const</span> Repo = <span class="kw">struct</span> {
+		allocator: std.mem.Allocator,
+
+		<span class="kw">pub</span> <span class="kw">fn</span> <span class="fn">init</span>(allocator: std.mem.Allocator) Repo {
+				<span class="kw">return</span> .{ .allocator = allocator };
+		}
+};
+
+<span class="com">// A dependencia de memoria fica visivel no construtor</span></code></pre>
+				</div>
+				<p>Esse padrao permite trocar arena, fixed buffer ou allocator instrumentado sem alterar o dominio principal.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="testes-profiling" class="section-title">Testes, profiling e observabilidade</h2>
+				<p>Teste funcoes puras com <strong>zig test</strong>, mas nao pare ai. Em Zig, vale incluir testes de integracao para parsing, formatos binarios, FFI e rotinas que usam allocator. Tambem vale medir comportamento: tempo de CPU, alocacoes por operacao, throughput e tamanho de binario.</p>
+				<p>Profiling faz mais sentido quando pergunta algo objetivo: qual rota aloca demais, qual parser faz copia desnecessaria, qual modo de build alterou latencia. Medir sem uma hipotese raramente produz refatoracao util.</p>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Otimizacao prematura em Zig pode levar a APIs rigidas demais. Primeiro estabeleca corretude e ownership; depois refine layout, alocacao e hot paths.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="ci-release" class="section-title">CI, revisao e empacotamento</h2>
+				<p>Uma pipeline minima saudavel roda formatter, testes e builds para pelo menos um conjunto representativo de targets. Se o projeto usa FFI, inclua validacao dos artefatos nativos necessarios. Se distribui binarios, publique checksums e documente o modo de build adotado.</p>
+				<p>Em revisao de codigo, procure principalmente ownership mal definido, uso confuso de slices, erros engolidos com <strong>catch unreachable</strong> sem justificativa e allocators acoplados indevidamente. Esses pontos geram problemas mais caros do que pequenas imperfeicoes sintaticas.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<ul>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/std/#A;std:mem.Allocator" target="_blank" rel="noopener">std.mem.Allocator</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#Zig-Test" target="_blank" rel="noopener">Language Reference: Testing</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/learn/build-system/" target="_blank" rel="noopener">Build System Overview</a>.</li>
+					<li>Hall, Pedro Park. <a href="https://pedropark99.github.io/zig-book/Chapters/01-memory.html" target="_blank" rel="noopener">Zig Book: Memory</a>.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><span data-svg="estrela" aria-hidden="true"></span> Projeto Zig maduro nao nasce de truques; nasce de ownership claro, allocators bem posicionados e um pipeline que detecta regressao antes de chegar ao usuario.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/ecossistema_tooling.html">Revisar tooling</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/banco_dados.html">Ver persistencia e transacoes</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/terminal_cli.html">Ver CLIs bem estruturadas</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

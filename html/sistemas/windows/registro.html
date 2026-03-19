@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Registro do Windows (Registry): estrutura de hives, chaves e valores, HKLM vs HKCU, uso em scripts e como fazer backups seguros antes de editar." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Registro do Windows | Windows | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — REGISTRO DO WINDOWS ═══════════════════ -->
+      <section>
+        <h2 id="registro" class="section-title">Registro do Windows</h2>
+        <div class="section-divider"></div>
+        <p class="intro-highlight">
+          O Registro é o banco de dados hierárquico centralizado onde o Windows armazena configurações do sistema, de aplicações e preferências de usuário. Substituiu os arquivos .INI do Windows 3.x. Editar incorretamente pode tornar o sistema não inicializável — sempre exporte uma chave antes de modificá-la.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — HIVES PRINCIPAIS ═══════════════════ -->
+      <section>
+        <h2 id="hives-principais" class="section-title">Hives Principais</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Hive</th>
+                <th>Abreviação</th>
+                <th>Conteúdo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>HKEY_LOCAL_MACHINE</td><td>HKLM</td><td>Configurações do sistema: hardware, drivers, serviços, software instalado para todos os usuários</td></tr>
+              <tr><td>HKEY_CURRENT_USER</td><td>HKCU</td><td>Configurações do usuário logado: preferências, apps, variáveis de ambiente do usuário</td></tr>
+              <tr><td>HKEY_USERS</td><td>HKU</td><td>Todos os perfis de usuário carregados; HKCU é um atalho para o subkey do usuário atual</td></tr>
+              <tr><td>HKEY_CLASSES_ROOT</td><td>HKCR</td><td>Associações de extensão de arquivo e informações de COM; fusão de HKLM\Software\Classes e HKCU\Software\Classes</td></tr>
+              <tr><td>HKEY_CURRENT_CONFIG</td><td>HKCC</td><td>Configuração de hardware atual (perfil de hardware); mapeado de HKLM\SYSTEM\CurrentControlSet\Hardware Profiles\Current</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — TIPOS DE VALORES ═══════════════════ -->
+      <section>
+        <h2 id="tipos-de-valores" class="section-title">Tipos de Valores</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Código</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>REG_SZ</td><td>1</td><td>String de texto simples (terminada em nulo)</td></tr>
+              <tr><td>REG_EXPAND_SZ</td><td>2</td><td>String com variáveis de ambiente expansíveis (%SystemRoot%)</td></tr>
+              <tr><td>REG_BINARY</td><td>3</td><td>Dados binários brutos</td></tr>
+              <tr><td>REG_DWORD</td><td>4</td><td>Inteiro 32-bit sem sinal (0–4294967295)</td></tr>
+              <tr><td>REG_QWORD</td><td>11</td><td>Inteiro 64-bit</td></tr>
+              <tr><td>REG_MULTI_SZ</td><td>7</td><td>Múltiplas strings separadas por nulo</td></tr>
+              <tr><td>REG_LINK</td><td>6</td><td>Link simbólico para outra chave</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — CHAVES IMPORTANTES ═══════════════════ -->
+      <section>
+        <h2 id="chaves-importantes" class="section-title">Chaves Importantes</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Registro — Chaves de Referência</div>
+          <pre class="code-block"># Startup de programas (persistência):
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce
+
+# Serviços do Windows:
+HKLM\SYSTEM\CurrentControlSet\Services\NOME_DO_SERVIÇO
+  Start: 0=Boot, 1=System, 2=Automatic, 3=Manual, 4=Disabled
+  Type: 1=Kernel driver, 2=File system driver, 16=Win32 own process, 32=Win32 shared
+
+# Associação de extensão de arquivo:
+HKCR\.pdf = AcroExch.Document
+HKCR\AcroExch.Document\shell\open\command = "C:\...\AcroRd32.exe" "%1"
+
+# Informações do SO:
+HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+  ProductName, CurrentVersion, CurrentBuild, ReleaseId
+
+# Configurações de rede:
+HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters
+  Hostname, Domain, SearchList, NameServer
+
+# Variáveis de ambiente do sistema:
+HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — SCRIPTS POWERSHELL PARA REGISTRO ═══════════════════ -->
+      <section>
+        <h2 id="scripts-powershell-registro" class="section-title">Scripts PowerShell para Registro</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PowerShell — Gerenciamento do Registro</div>
+          <pre class="code-block"># Ler valor
+Get-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion" -Name ProductName
+
+# Criar ou modificar valor
+Set-ItemProperty -Path "HKCU:\Software\MyApp" -Name "ContagemAcessos" -Value 1 -Type DWord
+
+# Criar nova chave
+New-Item -Path "HKCU:\Software\MyApp\Config"
+
+# Exportar chave (backup) — SEMPRE antes de editar
+Export-Clixml -Path "backup_run_key.xml" -InputObject (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run")
+# Ou via regedit: File > Export
+
+# REG.EXE na linha de comando
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v ProductName
+reg add "HKCU\Software\MyApp" /v Enabled /t REG_DWORD /d 1
+reg export "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" C:\backup_run.reg
+reg import C:\backup_run.reg</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <a href="/html/sistemas/windows/arquitetura_windows.html">Arquitetura do Windows</a>
+        <a href="/html/sistemas/windows/administracao.html">Administração do Windows</a>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Antes de editar o Registro, exporte. Depois que travar, você vai querer ter feito isso."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

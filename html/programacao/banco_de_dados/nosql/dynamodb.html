@@ -1,0 +1,410 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Amazon DynamoDB: banco NoSQL serverless da AWS com latencia de milissegundos em qualquer escala." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Amazon DynamoDB | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Amazon DynamoDB</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Amazon DynamoDB</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Amazon DynamoDB</h1>
+          <p>NoSQL serverless da AWS — latência de milissegundos em qualquer escala.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Amazon DynamoDB</strong> é um banco de dados de chave-valor e documentos totalmente gerenciado
+          pela AWS. Sem servidores para provisionar, sem patches, sem tuning — você define a tabela e a Amazon
+          cuida de replicação, backups e escalabilidade automática. Foi o sistema que inspirou o famoso paper
+          "Dynamo" de 2007, que moldou toda uma geração de bancos NoSQL.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é o DynamoDB?</h2>
+        <p>
+          O DynamoDB é um banco de dados <strong>chave-valor + documento</strong> criado para resolver um problema
+          real da Amazon: em 2004, durante o pico de vendas do Black Friday, os bancos relacionais travavam sob
+          carga. A solução foi projetar um sistema que priorizasse <em>disponibilidade</em> e
+          <em>latência previsível</em> em vez de consistência forte.
+        </p>
+        <p>
+          Pense em um <strong>armário de fichários de biblioteca</strong>: cada gaveta tem uma etiqueta (partition key)
+          e dentro dela os documentos estão ordenados por número (sort key). Para recuperar um arquivo você vai
+          direto à gaveta correta — não precisa varrer a biblioteca inteira. Essa navegação direta é o que garante
+          latência de P99 abaixo de 10 ms, independente de terabytes de dados.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>DeCandia et al., 2007:</strong> "Dynamo sacrifices consistency under certain failure scenarios
+            and uses object versioning and application-assisted conflict resolution in a novel manner."
+            — Dynamo: Amazon's Highly Available Key-value Store, SOSP 2007.
+          </p>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>DynamoDB não é um banco relacional disfarçado.</strong> Tentar modelar dados relacionais
+            (com JOINs em múltiplas tabelas) no DynamoDB é o caminho mais rápido para uma fatura AWS alta
+            e uma performance ruim. Single-Table Design é a abordagem correta — aprenda antes de começar.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="como-funciona" class="section-title">Como o DynamoDB Funciona</h2>
+        <p>
+          O DynamoDB distribui dados usando <strong>consistent hashing</strong>: a partition key é hashada com
+          MD5 e o resultado determina qual nó físico (partition) armazena o dado. Cada partition suporta até
+          10 GB e 3.000 RCU + 1.000 WCU. Quando o limite é atingido, o serviço divide a partition
+          automaticamente — sem downtime, sem migração manual.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dynamo-flow.txt</div>
+          <pre class="example"><span class="com"># Fluxo de uma escrita no DynamoDB</span>
+<span class="com"># ─────────────────────────────────────────────────────────</span>
+
+<span class="tp">Cliente</span>  ──PUT Item──►  <span class="tp">Request Router</span>
+                              │
+                     <span class="com">hash(PK) → partition_id</span>
+                              │
+                    <span class="tp">Partition Leader</span>  ──►  <span class="tp">Replica 1</span>
+                              │               ──►  <span class="tp">Replica 2</span>
+                              │
+                    <span class="com">WAL (Write-Ahead Log) gravado</span>
+                    <span class="com">ACK devolvido ao cliente</span>
+                              │
+                    <span class="tp">DynamoDB Streams</span>  ──►  <span class="tp">Lambda / Kinesis</span>
+                    <span class="com">(evento de mudança gerado para cada write)</span>
+
+<span class="com"># Consistência por padrão: eventual (lê de qualquer réplica)</span>
+<span class="com"># Strongly Consistent Read: lê apenas do leader (+50% custo)</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Consistent Hashing</h3>
+            <p>
+              Cada partition key é hashada para determinar qual nó armazena o dado. A distribuição uniforme
+              de partitions garante que nenhum nó fique sobrecarregado — desde que a chave seja bem escolhida.
+              Uma PK ruim (ex: status "ativo/inativo") concentra tudo em 2 nós: hotspot partition.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>WAL + Replicação</h3>
+            <p>
+              Cada escrita é gravada no Write-Ahead Log de 3 réplicas antes do ACK ao cliente. Isso garante
+              durabilidade mesmo se um nó falhar imediatamente após a confirmação. A replicação é síncrona
+              para o líder e assíncrona para as réplicas secundárias.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>DynamoDB Streams</h3>
+            <p>
+              Toda mudança na tabela (INSERT, MODIFY, REMOVE) gera um evento ordenado em um stream com
+              TTL de 24h. Use com AWS Lambda para arquitetura event-driven: atualizar cache, disparar
+              notificações, replicar para Elasticsearch — sem polling, sem mensageria separada.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="chaves" class="section-title">Partition Key, Sort Key e Single-Table Design</h2>
+        <p>
+          A modelagem no DynamoDB começa pela pergunta: <em>"Quais queries minha aplicação precisa fazer?"</em>
+          — ao contrário do SQL, onde você modela os dados e depois escreve as queries. Cada item tem
+          obrigatoriamente uma <strong>Partition Key (PK)</strong> e, opcionalmente, uma <strong>Sort Key (SK)</strong>.
+          Juntas, elas formam a chave primária composta.
+        </p>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>PK (Partition Key)</th>
+                  <th>SK (Sort Key)</th>
+                  <th>Entidade / Significado</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>CLIENTE#101</td><td>PERFIL</td><td>Dados do cliente (email, nome, endereço)</td></tr>
+                <tr><td>CLIENTE#101</td><td>PEDIDO#2024-01-15</td><td>Pedido específico — range por data</td></tr>
+                <tr><td>CLIENTE#101</td><td>PEDIDO#2024-03-22</td><td>Outro pedido do mesmo cliente</td></tr>
+                <tr><td>PRODUTO#XYZ</td><td>ESTOQUE</td><td>Quantidade em estoque</td></tr>
+                <tr><td>PRODUTO#XYZ</td><td>REVIEW#5stars#uuid</td><td>Reviews ordenadas por nota</td></tr>
+                <tr><td>SESSAO#abc123</td><td>METADATA</td><td>Sessão de usuário + TTL automático</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <p>
+          Esse padrão é chamado de <strong>Single-Table Design</strong>: múltiplas entidades convivem na mesma
+          tabela, diferenciadas por prefixos na PK e SK. O benefício: uma única chamada
+          <code class="code-inline">Query(PK="CLIENTE#101")</code> retorna o perfil + todos os pedidos em uma
+          única roundtrip à AWS — sem JOINs, sem múltiplas queries.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dynamodb-sdk.js (AWS SDK v3)</div>
+          <pre class="example"><span class="kw">import</span> { <span class="tp">DynamoDBClient</span> } <span class="kw">from</span> <span class="str">"@aws-sdk/client-dynamodb"</span>;
+<span class="kw">import</span> { <span class="tp">DynamoDBDocumentClient</span>, <span class="tp">PutCommand</span>, <span class="tp">QueryCommand</span>, <span class="tp">TransactWriteCommand</span> } <span class="kw">from</span> <span class="str">"@aws-sdk/lib-dynamodb"</span>;
+
+<span class="kw">const</span> <span class="tp">client</span> = <span class="tp">DynamoDBDocumentClient</span>.from(<span class="kw">new</span> <span class="tp">DynamoDBClient</span>({ region: <span class="str">"us-east-1"</span> }));
+
+<span class="com">// 1. Inserir item (marshalling automático com DocumentClient)</span>
+<span class="kw">await</span> <span class="tp">client</span>.send(<span class="kw">new</span> <span class="tp">PutCommand</span>({
+  TableName: <span class="str">"Loja"</span>,
+  Item: {
+    PK: <span class="str">"CLIENTE#101"</span>,
+    SK: <span class="str">"PEDIDO#2024-01-15"</span>,
+    total: <span class="num">299.90</span>,
+    status: <span class="str">"Processando"</span>,
+    TTL: <span class="tp">Math</span>.floor(<span class="tp">Date</span>.now() / <span class="num">1000</span>) + <span class="num">7776000</span>  <span class="com">// expira em 90 dias</span>
+  },
+  ConditionExpression: <span class="str">"attribute_not_exists(PK)"</span>  <span class="com">// evita sobrescrever</span>
+}));
+
+<span class="com">// 2. Query por PK + SK begins_with (um cliente e todos os pedidos)</span>
+<span class="kw">const</span> { Items } = <span class="kw">await</span> <span class="tp">client</span>.send(<span class="kw">new</span> <span class="tp">QueryCommand</span>({
+  TableName: <span class="str">"Loja"</span>,
+  KeyConditionExpression: <span class="str">"PK = :pk AND begins_with(SK, :prefix)"</span>,
+  ExpressionAttributeValues: { <span class="str">":pk"</span>: <span class="str">"CLIENTE#101"</span>, <span class="str">":prefix"</span>: <span class="str">"PEDIDO#"</span> },
+  ScanIndexForward: <span class="kw">false</span>,  <span class="com">// ordem decrescente (mais recentes primeiro)</span>
+  Limit: <span class="num">10</span>
+}));
+
+<span class="com">// 3. Transação ACID: aprovar pedido + decrementar estoque atomicamente</span>
+<span class="kw">await</span> <span class="tp">client</span>.send(<span class="kw">new</span> <span class="tp">TransactWriteCommand</span>({
+  TransactItems: [
+    { Update: { TableName: <span class="str">"Loja"</span>, Key: { PK: <span class="str">"CLIENTE#101"</span>, SK: <span class="str">"PEDIDO#2024-01-15"</span> },
+        UpdateExpression: <span class="str">"SET #s = :aprovado"</span>,
+        ExpressionAttributeNames: { <span class="str">"#s"</span>: <span class="str">"status"</span> },
+        ExpressionAttributeValues: { <span class="str">":aprovado"</span>: <span class="str">"Aprovado"</span> } } },
+    { Update: { TableName: <span class="str">"Loja"</span>, Key: { PK: <span class="str">"PRODUTO#XYZ"</span>, SK: <span class="str">"ESTOQUE"</span> },
+        UpdateExpression: <span class="str">"SET quantidade = quantidade - :um"</span>,
+        ConditionExpression: <span class="str">"quantidade > :zero"</span>,
+        ExpressionAttributeValues: { <span class="str">":um"</span>: <span class="num">1</span>, <span class="str">":zero"</span>: <span class="num">0</span> } } }
+  ]
+}));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando Usar (e Quando Evitar)</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Use DynamoDB quando
+            </h3>
+            <ul>
+              <li>Precisa de latência de leitura/escrita abaixo de 10 ms com P99 garantido.</li>
+              <li>A aplicação já está na AWS e quer integração nativa com Lambda, API Gateway, EventBridge.</li>
+              <li>Workload de chave-valor clara: sessões, carrinho de compras, preferências de usuário.</li>
+              <li>Scale horizontal automático sem gerenciar shards: de zero a milhões de req/s.</li>
+              <li>Precisa de TTL automático em itens (sessões, cache, eventos temporários).</li>
+              <li>Arquitetura event-driven com DynamoDB Streams + Lambda.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">
+              <span data-svg="fechar" aria-hidden="true"></span>
+              Evite DynamoDB quando
+            </h3>
+            <ul>
+              <li>A aplicação precisa de queries ad-hoc com WHERE em múltiplos campos — use PostgreSQL.</li>
+              <li>O modelo de dados é naturalmente relacional com muitos JOINs — o custo de modelagem é alto.</li>
+              <li>O volume de dados é menor que 10 GB e o tráfego é baixo — um RDS tb.micro é suficiente e mais barato.</li>
+              <li>Precisa de transações distribuídas cross-table complexas — DynamoDB limita TransactItems a 25 ações.</li>
+              <li>A equipe está fora do ecossistema AWS — Cassandra ou ScyllaDB são alternativas multi-cloud.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="avancado" class="section-title">Avançado: GSIs, DAX e Capacidade</h2>
+        <p>
+          Após dominar o Single-Table Design, os próximos tópicos que fazem a diferença em produção são os
+          índices secundários, o cache em memória e o planejamento de capacidade.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>GSI — Global Secondary Index</h3>
+            <p>
+              Permite criar uma segunda "visão" da tabela com PK e SK diferentes. Exemplo: tabela principal
+              com <code class="code-inline">PK=CLIENTE</code>, GSI com <code class="code-inline">PK=STATUS</code>
+              para buscar todos os pedidos pendentes. Cada GSI replica os dados e tem seu próprio throughput —
+              use com moderação.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>LSI — Local Secondary Index</h3>
+            <p>
+              Índice alternativo com a mesma PK mas SK diferente. Deve ser definido na criação da tabela
+              (não pode ser adicionado depois). Útil para ordenar itens da mesma partição por múltiplos
+              critérios simultaneamente. Limite: 5 LSIs por tabela.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>DAX — DynamoDB Accelerator</h3>
+            <p>
+              Cache in-memory totalmente compatível com DynamoDB. Reduz latência de milissegundos para
+              microssegundos sem mudar uma linha de código (troca apenas o endpoint). Ideal para leituras
+              repetitivas de dados hot (rankings, configurações, catálogos).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Modos de Capacidade</h3>
+            <p>
+              <strong>On-Demand:</strong> paga por request (RRU/WRU). Ideal para workloads imprevisíveis.
+              <strong>Provisionado + Auto-Scaling:</strong> define RCU/WCU, mais previsível e até 7× mais barato
+              para cargas estáveis. Fórmula: 1 WCU = 1 escrita/s até 1 KB; 1 RCU = 1 leitura forte/s até 4 KB.
+            </p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dynamodb-gsi.js (query em GSI)</div>
+          <pre class="example"><span class="com">// GSI: "GSI1" com PK=status, SK=createdAt — buscar pedidos pendentes recentes</span>
+<span class="kw">const</span> { Items } = <span class="kw">await</span> <span class="tp">client</span>.send(<span class="kw">new</span> <span class="tp">QueryCommand</span>({
+  TableName: <span class="str">"Loja"</span>,
+  IndexName: <span class="str">"GSI1"</span>,
+  KeyConditionExpression: <span class="str">"#st = :pendente AND createdAt > :data"</span>,
+  ExpressionAttributeNames: { <span class="str">"#st"</span>: <span class="str">"status"</span> },
+  ExpressionAttributeValues: {
+    <span class="str">":pendente"</span>: <span class="str">"Pendente"</span>,
+    <span class="str">":data"</span>:    <span class="str">"2024-01-01"</span>
+  },
+  ScanIndexForward: <span class="kw">false</span>
+}));</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Hot Partition:</strong> se todos os requests baterem na mesma partition key
+            (ex: PK = "hoje" num sistema de logs), você ultrapassará o limite de 3.000 RCU + 1.000 WCU
+            por partition e receberá erros <code class="code-inline">ProvisionedThroughputExceededException</code>.
+            Soluções: adicionar sufixo aleatório à PK (write sharding) + GSI com agregação, ou usar Kinesis
+            Data Streams diretamente para ingestão de alto volume.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema DynamoDB</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>DynamoDB Local</h3>
+            <p>
+              Versão emulada que roda localmente em JAR ou Docker. Ideal para testes unitários e CI/CD sem
+              custos de AWS. Comportamento idêntico ao serviço real, incluindo streams e GSIs.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>NoSQL Workbench</h3>
+            <p>
+              GUI oficial da AWS para visualizar tabelas, modelar Single-Table Design com o Data Modeler
+              e executar queries. Disponível para Windows, Mac e Linux. Essencial para aprender a modelagem.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>PartiQL</h3>
+            <p>
+              Linguagem SQL-compatível da AWS que funciona sobre DynamoDB. Permite usar
+              <code class="code-inline">SELECT * FROM Loja WHERE PK = 'CLIENTE#101'</code> em vez da API nativa.
+              Útil para queries exploratórias — não recomendado para produção de alta performance.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>boto3 e SDKs</h3>
+            <p>
+              SDKs oficiais para Python (boto3), JavaScript/TypeScript (v3), Java (SDK v2), Go, .NET e mais.
+              O <code class="code-inline">DynamoDBDocumentClient</code> (JS) e o
+              <code class="code-inline">DynamoDBMapper</code> (Java) simplificam o marshalling de tipos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>AWS CDK / Terraform</h3>
+            <p>
+              Infrastructure as Code para provisionar tabelas, GSIs, Auto-Scaling policies e Streams.
+              O CDK permite definir tudo em TypeScript/Python com validação em tempo de build.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>DynamoDB + Lambda</h3>
+            <p>
+              Padrão de arquitetura serverless: API Gateway → Lambda → DynamoDB. Com Streams, Lambda
+              reage a mudanças para atualizar caches, enviar notificações e manter projeções secundárias
+              em Elasticsearch ou Redshift — CQRS sem servidor dedicado.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>AMAZON WEB SERVICES. <strong>Amazon DynamoDB Developer Guide</strong>. Disponível em: <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/" target="_blank" rel="noopener">docs.aws.amazon.com/amazondynamodb</a>. Acesso em: 2026.</li>
+            <li>DeCANDIA, Giuseppe et al. <strong>Dynamo: Amazon's Highly Available Key-value Store</strong>. In: ACM SYMPOSIUM ON OPERATING SYSTEMS PRINCIPLES (SOSP), 21., 2007, Stevenson, WA. Proceedings... New York: ACM, 2007. p. 205–220.</li>
+            <li>DeBRIE, Alex. <strong>The DynamoDB Book</strong>. DynamoDB Book LLC, 2020.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled: A Brief Guide to the Emerging World of Polyglot Persistence</strong>. Upper Saddle River: Addison-Wesley, 2012.</li>
+            <li>AMAZON WEB SERVICES. <strong>Best Practices for Designing and Architecting with DynamoDB</strong>. Disponível em: <a href="https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html" target="_blank" rel="noopener">docs.aws.amazon.com/amazondynamodb/best-practices</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>Single-Table Design parece contraintuitivo até o dia em que você vê a conta de infraestrutura — e entende por que a Amazon modelou o planeta inteiro em uma única abordagem.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/cassandra.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Cassandra — Wide-Column Masterless</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/hbase.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>HBase — Família de Colunas Hadoop</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Single-Table Design parece contraintuitivo até o momento em que você vê a conta de infraestrutura." — Alex DeBrie
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

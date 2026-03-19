@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript para desktop: Electron com ipcMain/ipcRenderer/contextBridge, Tauri com Rust backend e comparativo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript para Desktop</h1>
+          <p>Electron empacota uma aplicacao web como app nativo. Tauri usa um backend Rust leve com WebView do SO, gerando binarios muito menores.</p>
+        </div>
+        <p class="intro-highlight">
+          Electron e usado por VS Code, Slack, Figma e Discord. Tauri e a alternativa moderna: backend Rust com seguranca de tipos, instalador de 2-8 MB, API de sistema via comandos, e acesso opcional a Node.js via sidecar.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="electron">Electron: Main, Renderer e contextBridge</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Electron &mdash; main.js: criacao de janela e IPC seguro</div>
+          <pre class="example"><span class="com">// main.js (processo principal Node.js)</span>
+<span class="kw">import</span> { app, <span class="tp">BrowserWindow</span>, ipcMain, dialog, shell } <span class="kw">from</span> <span class="str">"electron"</span>;
+<span class="kw">import</span> { join } <span class="kw">from</span> <span class="str">"node:path"</span>;
+<span class="kw">import</span> { readFile, writeFile } <span class="kw">from</span> <span class="str">"node:fs/promises"</span>;
+
+<span class="kw">let</span> win;
+
+<span class="kw">function</span> <span class="fn">criarJanela</span>() {
+  win = <span class="kw">new</span> <span class="tp">BrowserWindow</span>({
+    width:  <span class="num">1200</span>,
+    height: <span class="num">800</span>,
+    webPreferences: {
+      preload:          <span class="fn">join</span>(__dirname, <span class="str">"preload.js"</span>),
+      contextIsolation: <span class="kw">true</span>,   <span class="com">// OBRIGATORIO para seguranca</span>
+      nodeIntegration:  <span class="kw">false</span>,  <span class="com">// nao expor Node diretamente</span>
+    },
+  });
+
+  win.<span class="fn">loadFile</span>(<span class="str">"dist/index.html"</span>);
+
+  <span class="com">// Abrir devtools so em desenvolvimento</span>
+  <span class="kw">if</span> (process.env.NODE_ENV === <span class="str">"development"</span>)
+    win.webContents.<span class="fn">openDevTools</span>();
+}
+
+app.<span class="fn">whenReady</span>().<span class="fn">then</span>(() => {
+  <span class="fn">criarJanela</span>();
+
+  app.<span class="fn">on</span>(<span class="str">"activate"</span>, () => {
+    <span class="kw">if</span> (<span class="tp">BrowserWindow</span>.<span class="fn">getAllWindows</span>().<span class="fn">length</span> === <span class="num">0</span>) <span class="fn">criarJanela</span>();
+  });
+});
+
+app.<span class="fn">on</span>(<span class="str">"window-all-closed"</span>, () => {
+  <span class="kw">if</span> (process.platform !== <span class="str">"darwin"</span>) app.<span class="fn">quit</span>();
+});
+
+<span class="com">// Handler IPC: abrir arquivo</span>
+ipcMain.<span class="fn">handle</span>(<span class="str">"abrir-arquivo"</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> { canceled, filePaths } = <span class="kw">await</span> dialog.<span class="fn">showOpenDialog</span>(win, {
+    properties: [<span class="str">"openFile"</span>],
+    filters: [{ name: <span class="str">"Texto"</span>, extensions: [<span class="str">"txt"</span>, <span class="str">"md"</span>] }],
+  });
+  <span class="kw">if</span> (canceled) <span class="kw">return null</span>;
+  <span class="kw">return</span> <span class="fn">readFile</span>(filePaths[<span class="num">0</span>], <span class="str">"utf8"</span>);
+});
+
+<span class="com">// Handler IPC: salvar arquivo</span>
+ipcMain.<span class="fn">handle</span>(<span class="str">"salvar-arquivo"</span>, <span class="kw">async</span> (_event, conteudo) => {
+  <span class="kw">const</span> { canceled, filePath } = <span class="kw">await</span> dialog.<span class="fn">showSaveDialog</span>(win, {
+    filters: [{ name: <span class="str">"Texto"</span>, extensions: [<span class="str">"txt"</span>] }],
+  });
+  <span class="kw">if</span> (canceled) <span class="kw">return false</span>;
+  <span class="kw">await</span> <span class="fn">writeFile</span>(filePath, conteudo, <span class="str">"utf8"</span>);
+  <span class="kw">return true</span>;
+});
+
+<span class="com">// Abrir links externos no browser padrao</span>
+ipcMain.<span class="fn">on</span>(<span class="str">"abrir-url-externa"</span>, (_e, url) => shell.<span class="fn">openExternal</span>(url));</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Electron &mdash; preload.js e uso no renderer</div>
+          <pre class="example"><span class="com">// preload.js — ponte segura entre main e renderer</span>
+<span class="kw">const</span> { contextBridge, ipcRenderer } = <span class="fn">require</span>(<span class="str">"electron"</span>);
+
+contextBridge.<span class="fn">exposeInMainWorld</span>(<span class="str">"api"</span>, {
+  <span class="fn">abrirArquivo</span>:   ()       => ipcRenderer.<span class="fn">invoke</span>(<span class="str">"abrir-arquivo"</span>),
+  <span class="fn">salvarArquivo</span>:  (texto)  => ipcRenderer.<span class="fn">invoke</span>(<span class="str">"salvar-arquivo"</span>, texto),
+  <span class="fn">abrirUrl</span>:       (url)    => ipcRenderer.<span class="fn">send</span>(<span class="str">"abrir-url-externa"</span>, url),
+  <span class="fn">onProgresso</span>:    (cb)     => ipcRenderer.<span class="fn">on</span>(<span class="str">"progresso"</span>, (_e, p) => cb(p)),
+});
+
+<span class="com">// renderer.js — acesso via window.api (sem Node.js diretto)</span>
+<span class="kw">const</span> btn = document.<span class="fn">getElementById</span>(<span class="str">"abrir"</span>);
+btn.<span class="fn">addEventListener</span>(<span class="str">"click"</span>, <span class="kw">async</span> () => {
+  <span class="kw">const</span> conteudo = <span class="kw">await</span> window.api.<span class="fn">abrirArquivo</span>();
+  <span class="kw">if</span> (conteudo) document.<span class="fn">getElementById</span>(<span class="str">"editor"</span>).value = conteudo;
+});
+
+window.api.<span class="fn">onProgresso</span>((pct) => {
+  document.<span class="fn">getElementById</span>(<span class="str">"barra"</span>).style.width = pct + <span class="str">"%"</span>;
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tauri">Tauri: WebView Nativo + Backend Rust</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tauri &mdash; invoke comando Rust + event listen no frontend JS</div>
+          <pre class="example"><span class="com">// frontend/main.js — chamada de comando Rust via @tauri-apps/api</span>
+<span class="kw">import</span> { invoke }  <span class="kw">from</span> <span class="str">"@tauri-apps/api/core"</span>;
+<span class="kw">import</span> { listen }  <span class="kw">from</span> <span class="str">"@tauri-apps/api/event"</span>;
+<span class="kw">import</span> { open }    <span class="kw">from</span> <span class="str">"@tauri-apps/plugin-dialog"</span>;
+<span class="kw">import</span> { readTextFile, writeTextFile } <span class="kw">from</span> <span class="str">"@tauri-apps/plugin-fs"</span>;
+
+<span class="com">// Chamar comando Rust (type-safe com TypeScript)</span>
+<span class="kw">const</span> resultado = <span class="kw">await</span> <span class="fn">invoke</span>(<span class="str">"greet"</span>, { name: <span class="str">"Mundo"</span> });
+<span class="fn">console</span>.<span class="fn">log</span>(resultado); <span class="com">// "Ola, Mundo! (de Rust)"</span>
+
+<span class="com">// Escutar evento emitido pelo backend Rust</span>
+<span class="kw">await</span> <span class="fn">listen</span>(<span class="str">"progresso-download"</span>, (event) => {
+  <span class="kw">const</span> { pct, arquivo } = event.payload;
+  document.<span class="fn">getElementById</span>(<span class="str">"barra"</span>).style.width = pct + <span class="str">"%"</span>;
+  document.<span class="fn">getElementById</span>(<span class="str">"status"</span>).textContent = arquivo;
+});
+
+<span class="com">// Abrir dialogo nativo do SO e ler arquivo</span>
+<span class="kw">const</span> caminho = <span class="kw">await</span> <span class="fn">open</span>({ multiple: <span class="kw">false</span>, directory: <span class="kw">false</span> });
+<span class="kw">if</span> (caminho) {
+  <span class="kw">const</span> conteudo = <span class="kw">await</span> <span class="fn">readTextFile</span>(caminho);
+  document.<span class="fn">getElementById</span>(<span class="str">"editor"</span>).value = conteudo;
+}
+
+<span class="com">// src-tauri/src/main.rs — backend Rust</span>
+<span class="com">// #[tauri::command]</span>
+<span class="com">// fn greet(name: &str) -&gt; String {</span>
+<span class="com">//   format!("Ola, {}! (de Rust)", name)</span>
+<span class="com">// }</span>
+<span class="com">//</span>
+<span class="com">// fn main() {</span>
+<span class="com">//   tauri::Builder::default()</span>
+<span class="com">//     .invoke_handler(tauri::generate_handler![greet])</span>
+<span class="com">//     .run(tauri::generate_context!())</span>
+<span class="com">//     .expect("erro ao executar app Tauri");</span>
+<span class="com">// }</span>
+
+<span class="com">// Emitir evento do Rust para o frontend:</span>
+<span class="com">// app_handle.emit("progresso-download", json!({ "pct": 50, "arquivo": "foo.zip" }))?;</span>
+
+<span class="com">// Comandos Tauri CLI</span>
+<span class="com">// npm create tauri-app@latest</span>
+<span class="com">// npm run tauri dev         # modo dev com hot reload</span>
+<span class="com">// npm run tauri build       # gerar instalador nativo</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Electron vs Tauri</h2>
+        <div class="panel">
+          <p class="panel-title">Comparativo de Frameworks Desktop</p>
+          <table class="table">
+            <thead>
+              <tr><th>Aspecto</th><th>Electron</th><th>Tauri 2</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Backend</td><td>Node.js embutido</td><td>Rust (nativo)</td></tr>
+              <tr><td>WebView</td><td>Chromium proprio</td><td>WebKit / WebView2 do SO</td></tr>
+              <tr><td>Tamanho instalador</td><td>~120 MB</td><td>~2-8 MB</td></tr>
+              <tr><td>RAM minima</td><td>~80 MB</td><td>~10-30 MB</td></tr>
+              <tr><td>Seguranca</td><td>contextIsolation + CSP</td><td>Rust memory-safe + ACL de plugins</td></tr>
+              <tr><td>Plataformas</td><td>Win / Mac / Linux</td><td>Win / Mac / Linux / iOS / Android</td></tr>
+              <tr><td>HMR em dev</td><td>electron-vite</td><td>Vite integrado</td></tr>
+              <tr><td>Auto-update</td><td>electron-updater</td><td>plugin-updater oficial</td></tr>
+              <tr><td>Exemplos</td><td>VS Code, Slack, Figma</td><td>1Password, Zed parcialmente</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ELECTRON. <strong>Electron — Build cross-platform desktop apps</strong>. Disponível em: &lt;https://www.electronjs.org/&gt;. Acesso em: 2025.</li>
+            <li>TAURI. <strong>Tauri — Build smaller, faster, and more secure desktop and mobile applications</strong>. Disponível em: &lt;https://tauri.app/&gt;. Acesso em: 2025.</li>
+            <li>ELECTRON. <strong>Context Isolation</strong>. Disponível em: &lt;https://www.electronjs.org/docs/latest/tutorial/context-isolation&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para IoT com Johnny-Five e MQTT.js</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para Mobile com React Native e Expo</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Tauri 2 agora suporta iOS e Android — o mesmo app desktop pode rodar no mobile com ajustes minimos</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

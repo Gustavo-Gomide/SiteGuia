@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Tópicos avançados de C: ponteiros, gerenciamento de memória dinâmica, preprocessador, function pointers, undefined behavior e código moderno." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Tópicos Avançados</strong></p></div>
+
+      <!-- HERO -->
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="code" aria-hidden="true"></span></div>
+          <h1>C Avançado</h1>
+          <p>Ponteiros, memória dinâmica, preprocessador, function pointers e os segredos do comportamento indefinido.</p>
+        </div>
+        <p class="intro-highlight">
+          É nos tópicos avançados que C revela sua real natureza: uma linguagem que confia plenamente no programador. Ponteiros dão acesso direto à memória; <code>malloc</code> e <code>free</code> exigem disciplina; macros transformam código em tempo de compilação. Dominar esses recursos é a diferença entre um programador C e um engenheiro de sistemas.
+        </p>
+      </section>
+
+      <!-- PONTEIROS -->
+      <section>
+        <h2 id="ponteiros-titulo" class="section-title">Ponteiros</h2>
+        <p>Um ponteiro é uma variável que armazena um <strong>endereço de memória</strong>. O operador <code>&amp;</code> obtém o endereço de uma variável; o operador <code>*</code> dereferencia (acessa o valor no endereço).</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; declaração, deref, aritmética de ponteiros</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">int</span>  valor = <span class="num">42</span>;
+    <span class="tp">int</span> *p     = &amp;valor;   <span class="com">/* p aponta para valor */</span>
+
+    <span class="fn">printf</span>(<span class="str">"valor   = %d\n"</span>,   valor);     <span class="com">/* 42      */</span>
+    <span class="fn">printf</span>(<span class="str">"&amp;valor  = %p\n"</span>,   (void*)&amp;valor); <span class="com">/* endereço */</span>
+    <span class="fn">printf</span>(<span class="str">"p       = %p\n"</span>,   (void*)p);  <span class="com">/* mesmo endereço */</span>
+    <span class="fn">printf</span>(<span class="str">"*p      = %d\n"</span>,   *p);        <span class="com">/* 42 — deref */</span>
+
+    *p = <span class="num">100</span>;  <span class="com">/* modifica valor via ponteiro */</span>
+    <span class="fn">printf</span>(<span class="str">"valor após *p=100: %d\n"</span>, valor); <span class="com">/* 100 */</span>
+
+    <span class="com">/* Aritmética de ponteiros em arrays */</span>
+    <span class="tp">int</span> arr[] = {<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>, <span class="num">40</span>};
+    <span class="tp">int</span> *q = arr;   <span class="com">/* arr decai para &arr[0] */</span>
+    <span class="fn">printf</span>(<span class="str">"arr[2] = %d, *(q+2) = %d\n"</span>, arr[<span class="num">2</span>], *(q + <span class="num">2</span>)); <span class="com">/* ambos 30 */</span>
+
+    <span class="com">/* Ponteiro para ponteiro */</span>
+    <span class="tp">int</span> **pp = &amp;p;
+    <span class="fn">printf</span>(<span class="str">"**pp = %d\n"</span>, **pp);  <span class="com">/* 100 */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+
+        <div class="panel">
+          <h3>Tipos de ponteiros importantes</h3>
+          <table class="table">
+            <thead><tr><th>Declaração</th><th>Significado</th></tr></thead>
+            <tbody>
+              <tr><td><code>int *p</code></td><td>ponteiro para int</td></tr>
+              <tr><td><code>const int *p</code></td><td>ponteiro para int constante (não pode modificar o valor)</td></tr>
+              <tr><td><code>int * const p</code></td><td>ponteiro constante para int (não pode redirecionar)</td></tr>
+              <tr><td><code>const int * const p</code></td><td>ponteiro constante para int constante</td></tr>
+              <tr><td><code>void *p</code></td><td>ponteiro genérico — aceita qualquer tipo, exige cast</td></tr>
+              <tr><td><code>int **pp</code></td><td>ponteiro para ponteiro para int</td></tr>
+              <tr><td><code>int (*fp)(int, int)</code></td><td>ponteiro para função que recebe dois int e retorna int</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> <strong>Ponteiro nulo e dangling pointer</strong>: Sempre inicialize ponteiros — ou com <code>NULL</code>, ou com um endereço válido. Verificar <code>if (p != NULL)</code> antes de dereferenciar evita segfaults. Nunca use um ponteiro após liberar a memória apontada.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- MEMÓRIA DINÂMICA -->
+      <section>
+        <h2 id="mem-titulo" class="section-title">Gerenciamento de Memória Dinâmica</h2>
+        <p>A heap permite alocar memória em tempo de execução com tamanho variável ou longa duração. Toda alocação deve ter um <code>free</code> correspondente — sem exceções.</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>malloc</h3>
+            <p>Aloca <em>n</em> bytes não inicializados. Retorna <code>void*</code> ou <code>NULL</code> em falha. <code>malloc(n * sizeof(int))</code></p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>calloc</h3>
+            <p>Aloca <em>n</em> elementos de tamanho <em>t</em> e zera a memória. <code>calloc(n, sizeof(int))</code> — mais seguro que malloc.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>realloc</h3>
+            <p>Redimensiona bloco alocado. Pode mover para novo endereço. Guarde o retorno em <strong>variável separada</strong> para não perder o ponteiro original se retornar NULL.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>free</h3>
+            <p>Libera memória alocada. Após o free, o ponteiro é inválido — atribua <code>NULL</code> imediatamente para evitar uso acidental (dangling pointer).</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; vetor dinâmico (array com realloc)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="kw">typedef struct</span> {
+    <span class="tp">int</span>   *dados;
+    <span class="tp">int</span>    tamanho;
+    <span class="tp">int</span>    capacidade;
+} <span class="tp">Vetor</span>;
+
+<span class="tp">Vetor</span> *<span class="fn">vetor_novo</span>(<span class="tp">int</span> cap_inicial) {
+    <span class="tp">Vetor</span> *v = <span class="fn">malloc</span>(<span class="kw">sizeof</span>(<span class="tp">Vetor</span>));
+    <span class="kw">if</span> (!v) <span class="kw">return</span> NULL;
+    v-&gt;dados = <span class="fn">malloc</span>(cap_inicial * <span class="kw">sizeof</span>(<span class="tp">int</span>));
+    <span class="kw">if</span> (!v-&gt;dados) { <span class="fn">free</span>(v); <span class="kw">return</span> NULL; }
+    v-&gt;tamanho   = <span class="num">0</span>;
+    v-&gt;capacidade = cap_inicial;
+    <span class="kw">return</span> v;
+}
+
+<span class="tp">int</span> <span class="fn">vetor_push</span>(<span class="tp">Vetor</span> *v, <span class="tp">int</span> valor) {
+    <span class="kw">if</span> (v-&gt;tamanho == v-&gt;capacidade) {
+        <span class="tp">int</span> nova_cap = v-&gt;capacidade * <span class="num">2</span>;
+        <span class="tp">int</span> *tmp = <span class="fn">realloc</span>(v-&gt;dados, nova_cap * <span class="kw">sizeof</span>(<span class="tp">int</span>));
+        <span class="kw">if</span> (!tmp) <span class="kw">return</span> <span class="num">-1</span>;  <span class="com">/* falha: ponteiro original preservado */</span>
+        v-&gt;dados     = tmp;
+        v-&gt;capacidade = nova_cap;
+    }
+    v-&gt;dados[v-&gt;tamanho++] = valor;
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+
+<span class="tp">void</span> <span class="fn">vetor_free</span>(<span class="tp">Vetor</span> *v) {
+    <span class="kw">if</span> (!v) <span class="kw">return</span>;
+    <span class="fn">free</span>(v-&gt;dados);
+    <span class="fn">free</span>(v);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">Vetor</span> *v = <span class="fn">vetor_novo</span>(<span class="num">4</span>);
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) <span class="fn">vetor_push</span>(v, i * i);
+
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; v-&gt;tamanho; i++)
+        <span class="fn">printf</span>(<span class="str">"%d "</span>, v-&gt;dados[i]);
+    <span class="fn">puts</span>(<span class="str">""</span>);
+
+    <span class="fn">vetor_free</span>(v);
+    v = NULL;  <span class="com">/* 'dangling pointer' prevention */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* 0 1 4 9 16 25 36 49 64 81 */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- FUNCTION POINTERS -->
+      <section>
+        <h2 id="fp-titulo" class="section-title">Function Pointers e Callbacks</h2>
+        <p>Ponteiros para funções permitem passar comportamento como argumento — a base de callbacks, tabelas de dispatch virtual (vtables) e plugins em C. É assim que <code>qsort</code> e <code>bsearch</code> da libc funcionam.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; qsort, callbacks, tabela de dispatch</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="com">/* Assinatura de comparador para qsort */</span>
+<span class="tp">int</span> <span class="fn">cmp_int_asc</span>(<span class="kw">const</span> <span class="tp">void</span> *a, <span class="kw">const</span> <span class="tp">void</span> *b) {
+    <span class="kw">return</span> *((<span class="kw">const</span> <span class="tp">int</span>*)a) - *((<span class="kw">const</span> <span class="tp">int</span>*)b);
+}
+<span class="tp">int</span> <span class="fn">cmp_int_desc</span>(<span class="kw">const</span> <span class="tp">void</span> *a, <span class="kw">const</span> <span class="tp">void</span> *b) {
+    <span class="kw">return</span> *((<span class="kw">const</span> <span class="tp">int</span>*)b) - *((<span class="kw">const</span> <span class="tp">int</span>*)a);
+}
+
+<span class="com">/* Typedef para tornar a assinatura legível */</span>
+<span class="kw">typedef</span> <span class="tp">double</span> (*<span class="tp">Operacao</span>)(<span class="tp">double</span>, <span class="tp">double</span>);
+
+<span class="tp">double</span> <span class="fn">somar</span>(<span class="tp">double</span> a, <span class="tp">double</span> b) { <span class="kw">return</span> a + b; }
+<span class="tp">double</span> <span class="fn">subtrair</span>(<span class="tp">double</span> a, <span class="tp">double</span> b) { <span class="kw">return</span> a - b; }
+<span class="tp">double</span> <span class="fn">multiplicar</span>(<span class="tp">double</span> a, <span class="tp">double</span> b) { <span class="kw">return</span> a * b; }
+<span class="tp">double</span> <span class="fn">dividir</span>(<span class="tp">double</span> a, <span class="tp">double</span> b) { <span class="kw">return</span> b ? a / b : <span class="num">0</span>; }
+
+<span class="com">/* Tabela de dispatch: associa char a função */</span>
+<span class="kw">typedef struct</span> { <span class="tp">char</span> op; <span class="tp">Operacao</span> fn; } <span class="tp">Entrada</span>;
+<span class="tp">Entrada</span> tabela[] = {
+    {<span class="str">'+'</span>, somar}, {<span class="str">'-'</span>, subtrair},
+    {<span class="str">'*'</span>, multiplicar}, {<span class="str">'/'</span>, dividir}
+};
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">int</span> nums[] = {<span class="num">5</span>, <span class="num">3</span>, <span class="num">8</span>, <span class="num">1</span>, <span class="num">9</span>, <span class="num">2</span>};
+    <span class="tp">int</span> n = <span class="kw">sizeof</span>(nums) / <span class="kw">sizeof</span>(nums[<span class="num">0</span>]);
+
+    <span class="fn">qsort</span>(nums, n, <span class="kw">sizeof</span>(<span class="tp">int</span>), cmp_int_asc);
+    <span class="fn">printf</span>(<span class="str">"Asc: "</span>);
+    <span class="kw">for</span>(<span class="tp">int</span> i=<span class="num">0</span>;i&lt;n;i++) <span class="fn">printf</span>(<span class="str">"%d "</span>, nums[i]);
+
+    <span class="fn">qsort</span>(nums, n, <span class="kw">sizeof</span>(<span class="tp">int</span>), cmp_int_desc);
+    <span class="fn">printf</span>(<span class="str">"\nDesc: "</span>);
+    <span class="kw">for</span>(<span class="tp">int</span> i=<span class="num">0</span>;i&lt;n;i++) <span class="fn">printf</span>(<span class="str">"%d "</span>, nums[i]);
+
+    <span class="com">/* Tabela de dispatch */</span>
+    <span class="tp">char</span> op = <span class="str">'*'</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">4</span>; i++) {
+        <span class="kw">if</span> (tabela[i].op == op) {
+            <span class="fn">printf</span>(<span class="str">"\n6 %c 7 = %.0f\n"</span>, op, tabela[i].fn(<span class="num">6</span>, <span class="num">7</span>));
+            <span class="kw">break</span>;
+        }
+    }
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PREPROCESSADOR -->
+      <section>
+        <h2 id="prep-titulo" class="section-title">Preprocessador — Macros e Guardas</h2>
+        <p>O preprocessador C transforma código antes da compilação: expande <code>#include</code>, substitui macros, avalia condicionais. É poderoso mas perigoso se mal usado.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; macros, guardas de header, X-macros</div>
+          <pre class="example"><span class="com">/* meu_header.h */</span>
+<span class="kw">#ifndef</span> MEU_HEADER_H   <span class="com">/* guarda de inclusão — evita dupla definição */</span>
+<span class="kw">#define</span> MEU_HEADER_H
+
+<span class="com">/* Macro com argumento — adicione parênteses ao redor de cada uso! */</span>
+<span class="kw">#define</span> <span class="fn">MAX</span>(a, b)      ((a) &gt; (b) ? (a) : (b))
+<span class="kw">#define</span> <span class="fn">ARRAY_LEN</span>(arr) (<span class="kw">sizeof</span>(arr) / <span class="kw">sizeof</span>((arr)[<span class="num">0</span>]))
+<span class="kw">#define</span> <span class="fn">SWAP</span>(T, a, b)  <span class="kw">do</span> { T _t = (a); (a) = (b); (b) = _t; } <span class="kw">while</span>(<span class="num">0</span>)
+
+<span class="com">/* X-Macro: lista uma vez, usa múltiplas vezes */</span>
+<span class="kw">#define</span> CORES \
+    X(VERMELHO, 0xFF0000) \
+    X(VERDE,    0x00FF00) \
+    X(AZUL,     0x0000FF)
+
+<span class="kw">typedef enum</span> {
+<span class="kw">#define</span> X(nome, val) CORE_##nome,
+    CORES
+<span class="kw">#undef</span> X
+    CORE_TOTAL
+} <span class="tp">Cor</span>;
+
+<span class="kw">#endif</span> <span class="com">/* MEU_HEADER_H */</span>
+
+<span class="com">/* ---------------------------------- */</span>
+<span class="com">/* main.c */</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="com">/* #include "meu_header.h" — incluído acima para demonstração */</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">int</span> x = <span class="num">4</span>, y = <span class="num">7</span>;
+    <span class="fn">printf</span>(<span class="str">"MAX = %d\n"</span>, <span class="fn">MAX</span>(x, y));  <span class="com">/* 7 */</span>
+
+    <span class="tp">int</span> arr[] = {<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>};
+    <span class="fn">printf</span>(<span class="str">"len = %zu\n"</span>, <span class="fn">ARRAY_LEN</span>(arr));  <span class="com">/* 5 */</span>
+
+    <span class="fn">SWAP</span>(<span class="tp">int</span>, x, y);
+    <span class="fn">printf</span>(<span class="str">"x=%d y=%d\n"</span>, x, y);  <span class="com">/* x=7 y=4 */</span>
+
+<span class="kw">#ifdef</span> DEBUG
+    <span class="fn">printf</span>(<span class="str">"[DEBUG] x=%d y=%d\n"</span>, x, y);
+<span class="kw">#endif</span>
+
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> <strong>Macros sem parênteses causam bugs sutis:</strong> <code>#define DOBRAR(x) x*2</code> resulta em <code>DOBRAR(3+1)</code> = 3+1*2 = 5 (errado!). Sempre: <code>#define DOBRAR(x) ((x)*2)</code>. Para bloco de statements, use o idioma <code>do { ... } while(0)</code>.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- UNDEFINED BEHAVIOR -->
+      <section>
+        <h2 id="ub-titulo" class="section-title">Comportamento Indefinido (UB)</h2>
+        <p>C padrão lista centenas de situações de "comportamento indefinido" — onde o compilador pode fazer literalmente qualquer coisa: crashar, silenciosamente retornar valores errados, ou parecer funcionar e depois falhar em produção. Conhecer as armadilhas é obrigatório.</p>
+
+        <div class="logic-grid">
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> UBs mais comuns</h3>
+            <ul>
+              <li><strong>Overflow de inteiro signed:</strong> <code>INT_MAX + 1</code> — UB. Use unsigned ou verifique antes.</li>
+              <li><strong>Deref de ponteiro nulo:</strong> <code>int *p = NULL; *p = 1;</code> — segfault ou pior.</li>
+              <li><strong>Array out-of-bounds:</strong> <code>arr[10]</code> quando arr tem 5 elementos — corrompe memória.</li>
+              <li><strong>Use-after-free:</strong> acessar ponteiro após <code>free()</code> — dados podem parecer válidos até garbage collection sobrescrever.</li>
+              <li><strong>Shift além do tamanho:</strong> <code>1 &lt;&lt; 32</code> em <code>int</code> de 32 bits — UB.</li>
+              <li><strong>Data race:</strong> dois threads acessando a mesma variável sem sincronização — C11 introduziu <code>&lt;stdatomic.h&gt;</code>.</li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Como evitar</h3>
+            <ul>
+              <li>Compile sempre com <code>-Wall -Wextra -Wpedantic -fsanitize=address,undefined</code></li>
+              <li>Use Valgrind para detectar vazamentos e acessos inválidos</li>
+              <li>Prefira <code>calloc</code> a <code>malloc</code> — memória inicializada com zero</li>
+              <li>Use <code>size_t</code> para índices e tamanhos — nunca negativo por acidente</li>
+              <li>Leia o relatório de <code>-fsanitize=address</code> line-by-line</li>
+              <li>Ferramentas estáticas: <code>cppcheck</code>, <code>clang-static-analyzer</code></li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; detectando UB com AddressSanitizer</div>
+          <pre class="example"><span class="com">/* Compilar: gcc -fsanitize=address,undefined -g ub_demo.c */</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">int</span> *buf = <span class="fn">malloc</span>(<span class="num">5</span> * <span class="kw">sizeof</span>(<span class="tp">int</span>));
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt;= <span class="num">5</span>; i++)   <span class="com">/* BUG: i=5 é out-of-bounds! */</span>
+        buf[i] = i;
+    <span class="fn">free</span>(buf);
+    buf[<span class="num">0</span>] = <span class="num">99</span>;               <span class="com">/* BUG: use-after-free! */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* ASan emite:
+   heap-buffer-overflow on address 0x...
+   READ of size 4 at offset 20 past end of region */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- C MODERNO (C99–C23) -->
+      <section>
+        <h2 id="moderno-titulo" class="section-title">C Moderno: C99 a C23</h2>
+        <p>O padrão C evoluiu significativamente. Cada edição adicionou recursos que tornam o código mais seguro, legível e alinhado com hardware moderno.</p>
+
+        <div class="panel">
+          <h3>Principais adições por padrão</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Padrão</th><th>Destaques</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>C99</strong></td><td>VLA, <code>inline</code>, <code>restrict</code>, <code>//</code> comentários, <code>_Bool</code>, <code>stdint.h</code>, <code>stdbool.h</code>, declarações mistas com código, literais compostos</td></tr>
+              <tr><td><strong>C11</strong></td><td>Threads (<code>_Thread_local</code>), <code>_Atomic</code>, <code>_Generic</code>, <code>_Static_assert</code>, inicializador de membro anônimo, <code>fopen</code> modo "x" (exclusivo)</td></tr>
+              <tr><td><strong>C17</strong></td><td>Correções de defeitos e clarificações do C11. Sem novos recursos maiores.</td></tr>
+              <tr><td><strong>C23</strong></td><td><code>nullptr</code>, <code>bool</code>/<code>true</code>/<code>false</code> como palavras-chave, <code>[[nodiscard]]</code>, <code>[[fallthrough]]</code>, <code>typeof</code>, <code>_BitInt(N)</code>, binary literals (<code>0b1010</code>), <code>constexpr</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; recursos C11/C23</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdbool.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdatomic.h&gt;</span>    <span class="com">/* C11 */</span>
+
+<span class="com">/* _Static_assert: falha na compilação, não em runtime */</span>
+<span class="fn">_Static_assert</span>(<span class="kw">sizeof</span>(<span class="tp">int</span>) &gt;= <span class="num">4</span>, <span class="str">"int muito pequeno"</span>);
+
+<span class="com">/* _Generic: sobrecarga de funções simulada */</span>
+<span class="kw">#define</span> <span class="fn">ABS</span>(x) _Generic((x),    \
+    <span class="tp">int</span>:    <span class="fn">abs</span>(x),            \
+    <span class="tp">long</span>:   <span class="fn">labs</span>(x),           \
+    <span class="tp">double</span>: <span class="fn">fabs</span>(x),           \
+    <span class="kw">default</span>: x)
+
+<span class="com">/* Atomic: operações thread-safe sem mutex */</span>
+<span class="tp">atomic_int</span> contador = <span class="num">0</span>;
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="com">/* bool nativo (C99 via stdbool.h; C23 como palavra-chave) */</span>
+    <span class="tp">bool</span> ativo = <span class="kw">true</span>;
+    <span class="fn">printf</span>(<span class="str">"ativo = %s\n"</span>, ativo ? <span class="str">"sim"</span> : <span class="str">"não"</span>);
+
+    <span class="fn">printf</span>(<span class="str">"ABS(-3.14) = %.2f\n"</span>, <span class="fn">ABS</span>(-<span class="num">3.14</span>)); <span class="com">/* usa fabs */</span>
+    <span class="fn">printf</span>(<span class="str">"ABS(-7) = %d\n"</span>,    <span class="fn">ABS</span>(-<span class="num">7</span>));     <span class="com">/* usa abs  */</span>
+
+    <span class="fn">atomic_fetch_add</span>(&amp;contador, <span class="num">1</span>);
+    <span class="fn">printf</span>(<span class="str">"contador = %d\n"</span>, <span class="fn">atomic_load</span>(&amp;contador));
+
+    <span class="com">/* C23: binary literal e nullptr */</span>
+    <span class="tp">int</span> flags = <span class="num">0b10110011</span>;
+    <span class="tp">int</span> *p = nullptr;   <span class="com">/* equivale a NULL mas tipado */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>RITCHIE, Dennis M.; KERNIGHAN, Brian W. <strong>The C Programming Language</strong>. 2. ed. Englewood Cliffs: Prentice Hall, 1988.</li>
+            <li>SEACORD, Robert C. <strong>Effective C: An Introduction to Professional C Programming</strong>. San Francisco: No Starch Press, 2020.</li>
+            <li>KLEMENS, Ben. <strong>21st Century C</strong>. 2. ed. Sebastopol: O'Reilly Media, 2014.</li>
+            <li>cppreference.com. <strong>C reference</strong>. Disponível em: &lt;https://en.cppreference.com/w/c&gt;. Acesso em: 2025.</li>
+            <li>ISO/IEC 9899:2023. <strong>Programming languages &mdash; C</strong>. Geneva: ISO, 2024.</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- CALLOUT FINAL -->
+      <div class="callout">
+        <p><span data-svg="info" aria-hidden="true"></span> Próximas etapas em C:</p>
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas &amp; Frameworks &mdash; libc, POSIX, OpenSSL, libevent</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema &amp; Ferramentas &mdash; GDB, Valgrind, CMake, sanitizers</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos &amp; Boas Práticas &mdash; estrutura, naming, error handling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "C makes it easy to shoot yourself in the foot. C++ makes it harder, but when you do, you blow away your whole leg." &mdash; Bjarne Stroustrup</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

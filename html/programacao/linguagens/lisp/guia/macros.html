@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Lisp - Macros: defmacro, backquote, unquote, splice, hygiene com gensym, reader macros e exemplos práticos de DSL e logging." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Lisp - Macros | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Lisp - Macros</strong></p>
+			</div>
+
+			<section>
+				<h2 class="section-title" id="hero">Lisp - Macros</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="Macros em Lisp">
+						<span data-svg="lisp" aria-hidden="true"></span>
+					</div>
+					<h1>Código Que Escreve Código</h1>
+					<p>Macros expandem formas antes da avaliação normal, permitindo introduzir novas construções sem alterar o compilador.</p>
+				</div>
+				<p class="intro-highlight">Aprender macros é cruzar a fronteira entre usar a linguagem e moldar a linguagem para o seu domínio.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="defmacro">defmacro</h2>
+				<p><code>defmacro</code> recebe formas Lisp e retorna outras formas Lisp. A expansão ocorre em compile-time (ou load-time), antes da execução da forma final.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Lisp/Common Lisp</div>
+					<pre class="example"><span class="com">; macro básica</span>
+(<span class="kw">defmacro</span> <span class="fn">incf2</span> (var)
+	`(<span class="kw">setf</span> ,var (+ ,var 2)))
+
+<span class="com">; backquote (`) monta template</span>
+<span class="com">; unquote (,) injeta expressão</span>
+<span class="com">; splice (,@) injeta lista de elementos</span>
+
+(<span class="kw">defmacro</span> <span class="fn">my-progn</span> (&amp;body body)
+	`(<span class="kw">progn</span> ,@body))</pre>
+				</div>
+				<p class="note">Regra mental útil: função calcula valores; macro calcula código.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="macros-utils">Macros Utilitárias</h2>
+				<p>Reimplementar formas conhecidas ajuda a entender expansion e hygiene.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Lisp/Common Lisp</div>
+					<pre class="example"><span class="com">; when reimplementado</span>
+(<span class="kw">defmacro</span> <span class="fn">my-when</span> (condicao &amp;body corpo)
+	`(<span class="kw">if</span> ,condicao
+			 (<span class="kw">progn</span> ,@corpo)
+			 <span class="kw">nil</span>))
+
+<span class="com">; unless reimplementado</span>
+(<span class="kw">defmacro</span> <span class="fn">my-unless</span> (condicao &amp;body corpo)
+	`(<span class="kw">if</span> (not ,condicao)
+			 (<span class="kw">progn</span> ,@corpo)
+			 <span class="kw">nil</span>))
+
+<span class="com">; macro fictícia de domínio</span>
+(<span class="kw">defmacro</span> <span class="fn">com-macro-personagem</span> ((nome hp) &amp;body corpo)
+	`(<span class="kw">let</span> ((personagem (list :nome ,nome :hp ,hp)))
+		 ,@corpo))
+
+<span class="com">; hygiene com gensym</span>
+(<span class="kw">defmacro</span> <span class="fn">with-temp</span> ((expr) &amp;body body)
+	(<span class="kw">let</span> ((tmp (<span class="fn">gensym</span> <span class="str">"TMP-"</span>)))
+		`(<span class="kw">let</span> ((,tmp ,expr))
+			 ,@body)))</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="macros-avancadas">Macros Avançadas</h2>
+				<div class="panel">
+					<div class="panel-title">Ferramentas além de defmacro</div>
+					<ul>
+						<li><strong>Reader macros</strong> para alterar leitura sintática (nível de reader)</li>
+						<li><code>define-symbol-macro</code> para expansão de símbolos em formas</li>
+						<li>Cálculo em compile-time para eliminar custo em runtime</li>
+					</ul>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Lisp/Common Lisp</div>
+					<pre class="example"><span class="com">; symbol macro</span>
+(<span class="kw">define-symbol-macro</span> <span class="fn">pi2</span> 6.283185307)
+
+(<span class="kw">defun</span> <span class="fn">circunferencia</span> (r)
+	(* pi2 r))
+
+<span class="com">; compile-time computation simplificada</span>
+(<span class="kw">defmacro</span> <span class="fn">const-fold-soma</span> (a b)
+	(<span class="kw">if</span> (and (numberp a) (numberp b))
+			(+ a b)
+			`(+ ,a ,b)))</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Evite reader macros em excesso: elas elevam expressividade, mas podem reduzir legibilidade para quem não conhece o dialeto interno do projeto.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="exemplos-praticos">Exemplos Práticos</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Lisp/Common Lisp</div>
+					<pre class="example"><span class="com">; macro de logging</span>
+(<span class="kw">defmacro</span> <span class="fn">with-log</span> ((tag) &amp;body body)
+	`(<span class="kw">progn</span>
+		 (<span class="fn">format</span> <span class="kw">t</span> <span class="str">"[~a] inicio~%"</span> ,tag)
+		 (<span class="kw">prog1</span> (<span class="kw">progn</span> ,@body)
+			 (<span class="fn">format</span> <span class="kw">t</span> <span class="str">"[~a] fim~%"</span> ,tag))))
+
+<span class="com">; mini DSL de rotas</span>
+(<span class="kw">defmacro</span> <span class="fn">defroutes</span> (&amp;body routes)
+	`(<span class="kw">list</span>
+		,@(<span class="fn">mapcar</span>
+			 (<span class="kw">lambda</span> (r)
+				 `(<span class="kw">list</span> ,(first r) #',(second r)))
+			 routes)))
+
+(<span class="kw">defparameter</span> <span class="fn">*rotas*</span>
+	(<span class="fn">defroutes</span>
+		(<span class="str">"/"</span> home-handler)
+		(<span class="str">"/users"</span> users-handler)))</pre>
+				</div>
+				<p>Esse estilo de DSL reduz boilerplate e permite que o domínio de problema apareça diretamente na sintaxe.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>GRAHAM, Paul. <strong>On Lisp</strong>. Prentice Hall, 1993.</li>
+						<li>HYGINNSON, Doug et al. <strong>Common Lisp HyperSpec - Macros</strong>. Disponível em: &lt;https://clhs.lisp.se&gt;. Acesso em: 2026.</li>
+						<li>SEIBEL, Peter. <strong>Practical Common Lisp</strong>. Apress, 2005.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Lisp - Fundamentos</a></li>
+					<li><a class="link-card" href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Lisp - Recursos Avançados</a></li>
+					<li><a class="link-card" href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Lisp - Ecossistema e Tooling</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Macros bem projetadas não escondem lógica: elas revelam o domínio com mais precisão do que o código repetitivo tradicional.</p>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

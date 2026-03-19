@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Desenvolvimento Web com Go: net/http, Gin, middlewares, templates HTML, WebSockets e deploy." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Desenvolvimento Web</h1>
+          <p>Go é uma das linguagens mais usadas para backend web de alto desempenho. A biblioteca padrão <code>net/http</code> inclui servidor HTTP/2 completo, e frameworks como Gin e Echo adicionam roteamento avançado, middleware e binding JSON. O modelo goroutine/handler trata cada requisição concorrentemente por padrão.</p>
+        </div>
+        <p class="intro-highlight">
+          O benchmark <strong>TechEmpower Framework Benchmarks</strong> consistentemente coloca servidores Go nas primeiras posições entre linguagens com GC. Um servidor Go típico atinge 100.000–500.000 requisições por segundo em hardware modesto — sem ajustes, sem tunning de thread pool, sem configuração de reactive pipeline. A concorrência é automática.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="net-http">net/http — Servidor Padrão</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Servidor HTTP completo sem frameworks externos</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"encoding/json"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"log/slog"</span>
+    <span class="str">"net/http"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="com">// Middleware: logging de requisições</span>
+<span class="kw">func</span> <span class="fn">logMiddleware</span>(next http.Handler) http.Handler {
+    <span class="kw">return</span> http.HandlerFunc(<span class="kw">func</span>(w http.ResponseWriter, r *http.Request) {
+        inicio := time.Now()
+        next.ServeHTTP(w, r)
+        slog.Info(<span class="str">"request"</span>, <span class="str">"method"</span>, r.Method, <span class="str">"path"</span>, r.URL.Path,
+            <span class="str">"dur"</span>, time.Since(inicio))
+    })
+}
+
+<span class="com">// Handler como função</span>
+<span class="kw">func</span> <span class="fn">healthHandler</span>(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set(<span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>)
+    json.NewEncoder(w).Encode(map[string]string{<span class="str">"status"</span>: <span class="str">"ok"</span>})
+}
+
+<span class="com">// Handler como struct (para injeção de dependências)</span>
+<span class="kw">type</span> produtoHandler <span class="kw">struct</span> {
+    service ProdutoService
+}
+
+<span class="kw">func</span> (h *produtoHandler) <span class="fn">ServeHTTP</span>(w http.ResponseWriter, r *http.Request) {
+    <span class="kw">switch</span> r.Method {
+    <span class="kw">case</span> http.MethodGet:
+        lista, err := h.service.List(r.Context())
+        <span class="kw">if</span> err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            <span class="kw">return</span>
+        }
+        w.Header().Set(<span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>)
+        json.NewEncoder(w).Encode(lista)
+    <span class="kw">case</span> http.MethodPost:
+        <span class="kw">var</span> p Produto
+        <span class="kw">if</span> err := json.NewDecoder(r.Body).Decode(&amp;p); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            <span class="kw">return</span>
+        }
+        <span class="com">// criar produto ...</span>
+        w.WriteHeader(http.StatusCreated)
+        json.NewEncoder(w).Encode(p)
+    }
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    mux := http.NewServeMux()
+    mux.HandleFunc(<span class="str">"GET /health"</span>, healthHandler)   <span class="com">// Go 1.22: método no padrão!</span>
+    mux.HandleFunc(<span class="str">"GET /api/v1/produtos"</span>, func(w http.ResponseWriter, r *http.Request) {
+        fmt.Fprintln(w, <span class="str">"lista de produtos"</span>)
+    })
+
+    srv := &amp;http.Server{
+        Addr:         <span class="str">":8080"</span>,
+        Handler:      logMiddleware(mux),
+        ReadTimeout:  5 * time.Second,
+        WriteTimeout: 10 * time.Second,
+        IdleTimeout:  120 * time.Second,
+    }
+
+    slog.Info(<span class="str">"servidor iniciado"</span>, <span class="str">"addr"</span>, <span class="str">":8080"</span>)
+    srv.ListenAndServe()
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="templates">HTML Templates</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">html/template — server-side rendering seguro</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"html/template"</span>
+    <span class="str">"net/http"</span>
+)
+
+<span class="kw">var</span> tmpl = template.Must(template.ParseGlob(<span class="str">"templates/*.html"</span>))
+
+<span class="com">// templates/base.html</span>
+<span class="com">// &lt;!DOCTYPE html&gt;</span>
+<span class="com">// &lt;html&gt;&lt;head&gt;&lt;title&gt;{{.Titulo}}&lt;/title&gt;&lt;/head&gt;</span>
+<span class="com">// &lt;body&gt;</span>
+<span class="com">// {{template "conteudo" .}}</span>
+<span class="com">// &lt;/body&gt;&lt;/html&gt;</span>
+
+<span class="com">// templates/lista.html</span>
+<span class="com">// {{define "conteudo"}}</span>
+<span class="com">// &lt;ul&gt;{{range .Itens}}&lt;li&gt;{{.Nome}} — R$ {{printf "%.2f" .Preco}}&lt;/li&gt;{{end}}&lt;/ul&gt;</span>
+<span class="com">// {{end}}</span>
+
+<span class="kw">type</span> ListaViewModel <span class="kw">struct</span> {
+    Titulo string
+    Itens  []Produto
+}
+
+<span class="kw">func</span> <span class="fn">listaHandler</span>(w http.ResponseWriter, r *http.Request) {
+    data := ListaViewModel{
+        Titulo: <span class="str">"Catálogo de Produtos"</span>,
+        Itens: []Produto{
+            {Nome: <span class="str">"Teclado"</span>, Preco: 250},
+            {Nome: <span class="str">"Mouse"</span>,   Preco: 120},
+        },
+    }
+    <span class="kw">if</span> err := tmpl.ExecuteTemplate(w, <span class="str">"base.html"</span>, data); err != nil {
+        http.Error(w, err.Error(), 500)
+    }
+}
+
+<span class="com">// html/template escapa automaticamente XSS</span>
+<span class="com">// template.HTML("&lt;b&gt;negrito&lt;/b&gt;") — marca como HTML seguro</span>
+<span class="com">// template.JS("alert(1)")         — marca como JS seguro</span>
+<span class="com">// Não usar text/template para HTML — não escapa!</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="websockets">WebSockets com gorilla/websocket</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Chat em tempo real com WebSockets</div>
+          <pre class="example"><span class="com">// go get github.com/gorilla/websocket</span>
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"net/http"</span>
+    <span class="str">"github.com/gorilla/websocket"</span>
+)
+
+<span class="kw">var</span> upgrader = websocket.Upgrader{
+    ReadBufferSize:  1024,
+    WriteBufferSize: 1024,
+    CheckOrigin: <span class="kw">func</span>(r *http.Request) bool {
+        <span class="kw">return</span> true   <span class="com">// em produção: verificar origin!</span>
+    },
+}
+
+<span class="kw">type</span> Hub <span class="kw">struct</span> {
+    clients    map[*websocket.Conn]bool
+    broadcast  chan []byte
+    register   chan *websocket.Conn
+    unregister chan *websocket.Conn
+}
+
+<span class="kw">func</span> (h *Hub) <span class="fn">Run</span>() {
+    <span class="kw">for</span> {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> conn := &lt;-h.register:
+            h.clients[conn] = true
+        <span class="kw">case</span> conn := &lt;-h.unregister:
+            delete(h.clients, conn)
+            conn.Close()
+        <span class="kw">case</span> msg := &lt;-h.broadcast:
+            <span class="kw">for</span> conn := <span class="kw">range</span> h.clients {
+                conn.WriteMessage(websocket.TextMessage, msg)
+            }
+        }
+    }
+}
+
+<span class="kw">func</span> <span class="fn">wsHandler</span>(hub *Hub, w http.ResponseWriter, r *http.Request) {
+    conn, err := upgrader.Upgrade(w, r, nil)
+    <span class="kw">if</span> err != nil { <span class="kw">return</span> }
+    hub.register &lt;- conn
+
+    <span class="kw">for</span> {
+        _, msg, err := conn.ReadMessage()
+        <span class="kw">if</span> err != nil {
+            hub.unregister &lt;- conn
+            <span class="kw">break</span>
+        }
+        hub.broadcast &lt;- msg
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>net/http package</strong>. Disponível em: &lt;https://pkg.go.dev/net/http&gt;. Acesso em: 2026.</li>
+            <li>Gin. <strong>Gin Web Framework</strong>. Disponível em: &lt;https://gin-gonic.com/docs/&gt;. Acesso em: 2026.</li>
+            <li>gorilla/websocket. <strong>A fast, well-tested WebSocket implementation for Go</strong>. Disponível em: &lt;https://github.com/gorilla/websocket&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com Go</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Go 1.22 introduziu <strong>routing patterns com método HTTP e parâmetros de path</strong> direto no <code>http.ServeMux</code> padrão: <code>mux.HandleFunc("GET /users/{id}", handler)</code>. Antes era necessário frameworks como Gin apenas para isso. Para muitos projetos simples, a stdlib agora é suficiente — um servidor HTTP de produção sem nenhuma dependência externa, compilando em um binário estático de poucos megabytes.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

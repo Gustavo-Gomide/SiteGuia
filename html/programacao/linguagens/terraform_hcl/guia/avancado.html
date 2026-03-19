@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Topicos avancados de Terraform/HCL: workspaces, backends remotos, lifecycle, dynamic, for_each, import e moved." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Terraform e HCL: Avancado | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Terraform e HCL: Avancado</strong></p></div>
+
+			<section>
+				<h2 class="section-title" id="escalando-terraform-em-ambientes-reais">Escalando Terraform em Ambientes Reais</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="terraform" aria-hidden="true"></span></div>
+					<h1>Praticas avancadas para operacao confiavel</h1>
+					<p>Workspaces, state remoto, refatoracao segura e construcao dinamica de recursos.</p>
+				</div>
+				<p class="intro-highlight">No nivel avancado, o desafio deixa de ser "fazer funcionar" e passa a ser "evoluir sem quebrar ambiente".</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="workspaces-backend">Workspaces e Backends Remotos</h2>
+				<p>Workspaces separam estados para diferentes contextos, como dev e prod. Backends remotos armazenam state com controle de concorrencia e auditoria.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - backend remoto + workspace por sufixo</div>
+					<pre class="example"><span class="kw">terraform</span> {
+	backend <span class="str">"s3"</span> {
+		bucket         = <span class="str">"org-tfstate"</span>
+		key            = <span class="str">"network/terraform.tfstate"</span>
+		region         = <span class="str">"us-east-1"</span>
+		dynamodb_table = <span class="str">"org-tf-locks"</span>
+		encrypt        = true
+	}
+}
+
+<span class="kw">locals</span> {
+	env = terraform.workspace
+}</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="meta-arguments">Lifecycle e Meta-Arguments</h2>
+				<p>Meta-arguments controlam comportamento de recursos: criacao, destruicao, iteracao e dependencias.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - lifecycle, for_each e count</div>
+					<pre class="example"><span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="fn">"svc"</span> {
+	name = <span class="str">"svc-${terraform.workspace}"</span>
+
+	lifecycle {
+		create_before_destroy = true
+		ignore_changes        = [tags]
+	}
+}
+
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="fn">"nodes"</span> {
+	for_each      = toset([<span class="str">"api"</span>, <span class="str">"worker"</span>])
+	ami           = data.aws_ami.ubuntu.id
+	instance_type = <span class="str">"t3.micro"</span>
+	tags = { Role = each.key }
+}</pre>
+				</div>
+				<div class="panel">
+					<h3 class="panel-title">for_each vs count</h3>
+					<p>Prefira <code class="code-inline">for_each</code> quando os itens possuem identidade estavel (chaves). Use <code class="code-inline">count</code> para repeticoes simples baseadas em numero.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="dynamic-import-moved">Dynamic Blocks, Import e Moved</h2>
+				<p>Esses recursos ajudam a reduzir duplicacao, adotar infraestrutura legada e refatorar sem destruir.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - dynamic block</div>
+					<pre class="example"><span class="kw">resource</span> <span class="str">"aws_security_group"</span> <span class="fn">"web"</span> {
+	name = <span class="str">"web-sg"</span>
+
+	dynamic <span class="str">"ingress"</span> {
+		for_each = [80, 443]
+		content {
+			from_port   = ingress.value
+			to_port     = ingress.value
+			protocol    = <span class="str">"tcp"</span>
+			cidr_blocks = [<span class="str">"0.0.0.0/0"</span>]
+		}
+	}
+}</pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - import e moved</div>
+					<pre class="example"><span class="com"># Terraform 1.5+: bloco import declarativo</span>
+<span class="kw">import</span> {
+	to = aws_s3_bucket.logs
+	id = <span class="str">"bucket-de-logs-legado"</span>
+}
+
+<span class="kw">moved</span> {
+	from = aws_instance.web
+	to   = module.compute.aws_instance.web
+}</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Refatoracao sem <code class="code-inline">moved</code> pode provocar destruicao/recriacao inesperada. Sempre valide com plan.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<ul>
+					<li>HASHICORP. <strong>Meta-Arguments</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language/meta-arguments" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language/meta-arguments</a>. Acesso em: 13 mar. 2026.</li>
+					<li>HASHICORP. <strong>State: Backends</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language/settings/backends/configuration" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language/settings/backends/configuration</a>. Acesso em: 13 mar. 2026.</li>
+					<li>HASHICORP. <strong>Refactoring: moved blocks</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language/modules/develop/refactoring" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language/modules/develop/refactoring</a>. Acesso em: 13 mar. 2026.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Tooling de times Terraform</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/aplicacoes/nuvem.html"><span data-svg="seta-direita" aria-hidden="true"></span> Padroes multi-cloud em nuvem</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Terraform avancado e sobre diminuir risco operacional sem perder velocidade de evolucao.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

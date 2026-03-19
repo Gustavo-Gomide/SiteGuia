@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure para Web: Ring, Compojure, Reitit, Hiccup, middleware, JSON, autenticação JWT, ClojureScript, Reagent e Re-frame com React." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Clojure — Desenvolvimento Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure &mdash; Desenvolvimento Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Clojure — Desenvolvimento Web</h1>
+          <p>Clojure tem um ecossistema web maduro: <strong>Ring</strong> define a abstração HTTP como dados simples; <strong>Compojure</strong> e <strong>Reitit</strong> roteiam requisições; <strong>Hiccup</strong> gera HTML com vetores Clojure; e <strong>ClojureScript</strong> compila Clojure para JavaScript, permitindo usar <strong>Reagent</strong> (React) no front-end com o mesmo idioma.</p>
+        </div>
+        <p class="intro-highlight">
+          A filosofia Ring: uma <em>requisição HTTP é um mapa Clojure</em>, um <em>handler</em> é uma função <code>{:request} → {:response}</code>, e um <em>middleware</em> é uma função que envolve um handler. Sem frameworks mágicos — só dados e funções.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ring">Ring — Abstração HTTP</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">project.clj / deps.edn dependências de web</div>
+          <pre class="example"><span class="com">; deps.edn</span>
+{<span class="str">:deps</span>
+ {ring/ring-core      {<span class="str">:mvn/version</span> <span class="str">"1.11.0"</span>}
+  ring/ring-jetty-adapter {<span class="str">:mvn/version</span> <span class="str">"1.11.0"</span>}
+  compojure            {<span class="str">:mvn/version</span> <span class="str">"1.7.1"</span>}
+  hiccup               {<span class="str">:mvn/version</span> <span class="str">"2.0.0"</span>}
+  cheshire             {<span class="str">:mvn/version</span> <span class="str">"5.12.0"</span>}   <span class="com">; JSON</span>
+  metosin/reitit       {<span class="str">:mvn/version</span> <span class="str">"0.7.0"</span>}    <span class="com">; router avançado</span>
+  buddy/buddy-auth     {<span class="str">:mvn/version</span> <span class="str">"3.0.1"</span>}}}</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ring Handler e servidor Jetty</div>
+          <pre class="example">(<span class="kw">ns</span> meu-app.core
+  (:require [ring.adapter.jetty <span class="str">:as</span> jetty]
+            [ring.middleware.params  <span class="str">:refer</span> [wrap-params]]
+            [ring.middleware.json    <span class="str">:refer</span> [wrap-json-body
+                                             wrap-json-response]]))
+
+<span class="com">; Handler = função request → response</span>
+(<span class="kw">defn</span> <span class="fn">handler</span> [req]
+  {<span class="str">:status</span>  <span class="num">200</span>
+   <span class="str">:headers</span> {<span class="str">"Content-Type"</span> <span class="str">"application/json"</span>}
+   <span class="str">:body</span>    <span class="str">"{\"ok\":true}"</span>})
+
+<span class="com">; Middleware = função que envolve um handler</span>
+(<span class="kw">def</span> <span class="fn">app</span>
+  (-&gt; handler
+      (wrap-json-body   {<span class="str">:keywords?</span> true})
+      (wrap-json-response)
+      (wrap-params)))
+
+<span class="com">; Iniciar servidor</span>
+(<span class="kw">defn</span> <span class="fn">-main</span> [&amp; _]
+  (jetty/run-jetty app {<span class="str">:port</span> <span class="num">3000</span> <span class="str">:join?</span> false})
+  (<span class="fn">println</span> <span class="str">"Servidor em http://localhost:3000"</span>))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="compojure">Compojure — Roteamento</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Definindo rotas com Compojure</div>
+          <pre class="example">(<span class="kw">ns</span> meu-app.routes
+  (:require [compojure.core  <span class="str">:refer</span> [defroutes GET POST PUT DELETE]]
+            [compojure.route <span class="str">:refer</span> [not-found]]
+            [ring.util.response <span class="str">:refer</span> [response]]
+            [cheshire.core <span class="str">:as</span> json]
+            [meu-app.db <span class="str">:as</span> db]))
+
+(<span class="kw">defroutes</span> <span class="fn">api-routes</span>
+
+  (GET <span class="str">"/usuarios"</span> req
+    (response (<span class="fn">db/listar-usuarios</span>)))
+
+  (GET <span class="str">"/usuarios/:id"</span> [id]
+    (<span class="kw">let</span> [usuario (<span class="fn">db/buscar</span> (<span class="fn">Long/parseLong</span> id))]
+      (<span class="kw">if</span> usuario
+        (response usuario)
+        {<span class="str">:status</span> <span class="num">404</span> <span class="str">:body</span> {<span class="str">:error</span> <span class="str">"não encontrado"</span>}})))
+
+  (POST <span class="str">"/usuarios"</span> {body <span class="str">:body</span>}
+    (<span class="kw">let</span> [novo (<span class="fn">db/criar-usuario!</span> body)]
+      {<span class="str">:status</span> <span class="num">201</span> <span class="str">:body</span> novo}))
+
+  (PUT <span class="str">"/usuarios/:id"</span> {body <span class="str">:body</span> {id <span class="str">:id</span>} <span class="str">:params</span>}
+    (<span class="kw">let</span> [atualizado (<span class="fn">db/atualizar!</span> (<span class="fn">Long/parseLong</span> id) body)]
+      (response atualizado)))
+
+  (DELETE <span class="str">"/usuarios/:id"</span> [id]
+    (<span class="fn">db/deletar!</span> (<span class="fn">Long/parseLong</span> id))
+    {<span class="str">:status</span> <span class="num">204</span> <span class="str">:body</span> nil})
+
+  (not-found {<span class="str">:status</span> <span class="num">404</span> <span class="str">:body</span> {<span class="str">:error</span> <span class="str">"rota não existe"</span>}}))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hiccup">Hiccup — HTML como Dados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Hiccup — vetores Clojure como HTML</div>
+          <pre class="example">(<span class="kw">ns</span> meu-app.views
+  (:require [hiccup2.core <span class="str">:as</span> h]))
+
+<span class="com">; Sintaxe: [tag attrs? & children]</span>
+(<span class="kw">defn</span> <span class="fn">layout</span> [titulo &amp; content]
+  (h/html
+    {<span class="str">:mode</span> <span class="str">:html</span>}
+    [<span class="str">:html</span> {<span class="str">:lang</span> <span class="str">"pt-br"</span>}
+     [<span class="str">:head</span>
+      [<span class="str">:meta</span> {<span class="str">:charset</span> <span class="str">"UTF-8"</span>}]
+      [<span class="str">:title</span> titulo]]
+     [<span class="str">:body</span>
+      [<span class="str">:h1</span> titulo]
+      content]]))
+
+(<span class="kw">defn</span> <span class="fn">lista-usuarios</span> [usuarios]
+  (h/html
+    [<span class="str">:ul.user-list</span>           <span class="com">; shorthand para class</span>
+     (<span class="kw">for</span> [u usuarios]
+       [<span class="str">:li</span> {<span class="str">:key</span> (<span class="str">:id</span> u)}
+        [<span class="str">:span.nome</span> (<span class="str">:nome</span> u)]
+        [<span class="str">:span.email</span> (<span class="str">:email</span> u)]])]))
+
+<span class="com">; :#main-id = id="main-id"</span>
+[<span class="str">:div#main-id.container.flex</span>
+ [<span class="str">:p</span> <span class="str">"conteúdo"</span>]]
+<span class="com">; => &lt;div id="main-id" class="container flex"&gt;&lt;p&gt;conteúdo&lt;/p&gt;&lt;/div&gt;</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="clojurescript">ClojureScript — Front-end com Reagent</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Reagent — React com sintaxe Hiccup</div>
+          <pre class="example">(<span class="kw">ns</span> meu-app.frontend
+  (:require [reagent.core <span class="str">:as</span> r]
+            [reagent.dom  <span class="str">:as</span> rdom]))
+
+<span class="com">; Atom Reagent — estado reativo</span>
+(<span class="kw">def</span> <span class="fn">contador</span> (r/atom <span class="num">0</span>))
+
+<span class="com">; Componente = função que retorna Hiccup</span>
+(<span class="kw">defn</span> <span class="fn">botao-contador</span> []
+  [<span class="str">:div</span>
+   [<span class="str">:p</span> <span class="str">"Contador: "</span> @contador]
+   [<span class="str">:button</span> {<span class="str">:on-click</span> #(swap! contador inc)}
+    <span class="str">"+"</span>]
+   [<span class="str">:button</span> {<span class="str">:on-click</span> #(swap! contador dec)}
+    <span class="str">"-"</span>]])
+
+<span class="com">; Montar na DOM</span>
+(rdom/render [botao-contador]
+             (.getElementById js/document <span class="str">"app"</span>))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Re-frame — arquitetura Flux/Redux para ClojureScript</div>
+          <pre class="example">(<span class="kw">ns</span> meu-app.events
+  (:require [re-frame.core <span class="str">:as</span> rf]))
+
+<span class="com">; ── db — estado global ───────────────────────────────────────</span>
+(rf/reg-event-db
+  <span class="str">::init</span>
+  (<span class="kw">fn</span> [_ _] {<span class="str">:contador</span> <span class="num">0</span> <span class="str">:usuarios</span> []}))
+
+<span class="com">; ── event — como state muda ──────────────────────────────────</span>
+(rf/reg-event-db
+  <span class="str">::incrementar</span>
+  (<span class="kw">fn</span> [db _] (<span class="fn">update</span> db <span class="str">:contador</span> inc)))
+
+<span class="com">; ── subscription — derivar estado ───────────────────────────</span>
+(rf/reg-sub
+  <span class="str">::contador</span>
+  (<span class="kw">fn</span> [db _] (<span class="str">:contador</span> db)))
+
+<span class="com">; ── view — componente que lê subscription ────────────────────</span>
+(<span class="kw">defn</span> <span class="fn">tela</span> []
+  (<span class="kw">let</span> [n (rf/subscribe [<span class="str">::contador</span>])]
+    (<span class="kw">fn</span> []
+      [<span class="str">:div</span>
+       [<span class="str">:h2</span> <span class="str">"Contador: "</span> @n]
+       [<span class="str">:button</span> {<span class="str">:on-click</span> #(rf/dispatch [<span class="str">::incrementar</span>])}
+        <span class="str">"Incrementar"</span>]])))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Ring GitHub. <strong>Ring Wiki</strong>. Disponível em: &lt;https://github.com/ring-clojure/ring/wiki&gt;. Acesso em: 2025.</li>
+            <li>WEAVEJESTER. <strong>Compojure README</strong>. Disponível em: &lt;https://github.com/weavejester/compojure&gt;. Acesso em: 2025.</li>
+            <li>Day8. <strong>Re-frame documentation</strong>. Disponível em: &lt;https://day8.github.io/re-frame&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Clojure para Dados e IA</a></li>
+          <li><a href="../guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Ring transforma um conceito complexo (HTTP) em algo simples: requisição é um mapa, resposta é um mapa, middleware é uma função. Isso permite compor middlewares como funções: <code>(-&gt; handler wrap-auth wrap-json wrap-cors)</code> — cada camada adiciona comportamento sem alterar a lógica central, seguindo literalmente o princípio de responsabilidade única.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

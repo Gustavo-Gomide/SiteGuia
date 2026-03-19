@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Mobile com Go: gomobile para Android e iOS, e Fyne mobile cross-platform." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Mobile</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Mobile</h1>
+          <p>Go pode ser executado em dispositivos móveis de duas formas: <strong>gomobile</strong> — compila Go para bibliotecas nativas (.aar Android / .framework iOS) ou apps completos; e <strong>Fyne</strong> — framework GUI que compila para Android e iOS com o mesmo codebase desktop. Ambas as abordagens eliminam a necessidade de Java/Kotlin/Swift para lógica Go.</p>
+        </div>
+        <p class="intro-highlight">
+          A abordagem mais prática é usar Go como <strong>biblioteca de lógica compartilhada</strong>: o backend em Go é compilado para <code>.aar</code> (Android) e <code>.framework</code> (iOS) via <code>gomobile bind</code>, e os UIs nativos são escritos em Kotlin/Swift — o que é o melhor de dois mundos para apps complexos.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gomobile-bind">gomobile bind — Biblioteca Nativa</html>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Expor lógica Go para Android (AAR) e iOS (framework)</div>
+          <pre class="example"><span class="com">// Instalar gomobile</span>
+go install golang.org/x/mobile/cmd/gomobile@latest
+gomobile init
+
+<span class="com">// Estrutura: apenas tipos exportados são visíveis em Java/Kotlin/Swift</span>
+<span class="kw">package</span> meulib    <span class="com">// nome do pacote = nome da biblioteca</span>
+
+<span class="kw">import</span> (
+    <span class="str">"errors"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="com">// Regras gomobile bind:</span>
+<span class="com">// - Apenas tipos: bool, int, float64, string, []byte</span>
+<span class="com">// - Structs com métodos exportados</span>
+<span class="com">// - Interfaces (retornadas por funções)</span>
+<span class="com">// - error como segundo valor de retorno</span>
+
+<span class="kw">type</span> Calculadora <span class="kw">struct</span> {
+    Historico []string
+}
+
+<span class="kw">func</span> <span class="fn">NovaCalculadora</span>() *Calculadora {
+    <span class="kw">return</span> &amp;Calculadora{}
+}
+
+<span class="kw">func</span> (c *Calculadora) <span class="fn">Somar</span>(a, b float64) float64 {
+    resultado := a + b
+    c.Historico = append(c.Historico, fmt.Sprintf(<span class="str">"%.2f + %.2f = %.2f"</span>, a, b, resultado))
+    <span class="kw">return</span> resultado
+}
+
+<span class="kw">func</span> (c *Calculadora) <span class="fn">Dividir</span>(a, b float64) (float64, error) {
+    <span class="kw">if</span> b == 0 {
+        <span class="kw">return</span> 0, errors.New(<span class="str">"divisão por zero"</span>)
+    }
+    <span class="kw">return</span> a / b, nil
+}
+
+<span class="kw">func</span> (c *Calculadora) <span class="fn">UltimoHistorico</span>() string {
+    <span class="kw">if</span> len(c.Historico) == 0 { <span class="kw">return</span> <span class="str">""</span> }
+    <span class="kw">return</span> c.Historico[len(c.Historico)-1]
+}
+
+<span class="com">// Compilar para Android (.aar)</span>
+gomobile bind -target android -o meulib.aar ./meulib/
+
+<span class="com">// Compilar para iOS (.framework)</span>
+gomobile bind -target ios -o Meulib.xcframework ./meulib/
+
+<span class="com">// Uso em Kotlin (Android)</span>
+// val calc = Meulib.NovaCalculadora()
+// val res = calc.somar(10.0, 5.0)       → 15.0
+// val div = calc.dividir(10.0, 0.0)     → throws Exception
+
+<span class="com">// Uso em Swift (iOS)</span>
+// let calc = MeulibNovaCalculadora()!
+// let res = calc.somar(10, b: 5)        → 15.0</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gomobile-app">gomobile build — App Completo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">App Go nativo sem UI framework externo</div>
+          <pre class="example"><span class="com">// go get golang.org/x/mobile/app</span>
+<span class="com">// go get golang.org/x/mobile/event/lifecycle</span>
+<span class="kw">import</span> (
+    <span class="str">"golang.org/x/mobile/app"</span>
+    <span class="str">"golang.org/x/mobile/event/lifecycle"</span>
+    <span class="str">"golang.org/x/mobile/event/paint"</span>
+    <span class="str">"golang.org/x/mobile/event/touch"</span>
+    <span class="str">"golang.org/x/mobile/gl"</span>
+    <span class="str">"golang.org/x/mobile/exp/gl/glutil"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    app.Main(<span class="kw">func</span>(a app.App) {
+        <span class="kw">var</span> glctx gl.Context
+
+        <span class="kw">for</span> e := <span class="kw">range</span> a.Events() {
+            <span class="kw">switch</span> e := a.Filter(e).(type) {
+
+            <span class="kw">case</span> lifecycle.Event:
+                <span class="kw">switch</span> e.Crosses(lifecycle.StageVisible) {
+                <span class="kw">case</span> lifecycle.CrossOn:
+                    glctx, _ = e.DrawContext.(gl.Context)
+                <span class="kw">case</span> lifecycle.CrossOff:
+                    glctx = nil
+                }
+
+            <span class="kw">case</span> paint.Event:
+                <span class="kw">if</span> glctx != nil {
+                    glctx.ClearColor(0.1, 0.1, 0.2, 1)
+                    glctx.Clear(gl.COLOR_BUFFER_BIT)
+                    a.Publish()
+                }
+
+            <span class="kw">case</span> touch.Event:
+                fmt.Printf(<span class="str">"Touch: (%.0f, %.0f) tipo=%v\n"</span>, e.X, e.Y, e.Type)
+            }
+        }
+    })
+}
+
+<span class="com"># Buildar APK de debug direto no device conectado</span>
+gomobile build -target android -o app.apk .
+adb install -r app.apk
+
+<span class="com"># Buildar IPA para iOS (requer macOS + Xcode)</span>
+gomobile build -target ios -o app.app .</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fyne-mobile">Fyne Mobile — UI Cross-Platform</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">O mesmo app Fyne compila para Android e iOS</div>
+          <pre class="example"><span class="com">// fyne package -os android -appID com.exemplo.app</span>
+<span class="com">// fyne package -os ios     -appID com.exemplo.app</span>
+<span class="com">// Requer: Android Studio / Xcode instalados</span>
+
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fyne.io/fyne/v2/app"</span>
+    <span class="str">"fyne.io/fyne/v2/container"</span>
+    <span class="str">"fyne.io/fyne/v2/widget"</span>
+    <span class="str">"fyne.io/fyne/v2/storage"</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    a := app.New()
+    w := a.NewWindow(<span class="str">"Notas"</span>)
+
+    <span class="com">// Armazenamento persistente em mobile (usa storage nativo)</span>
+    uri, _ := storage.Child(storage.RootURI(), <span class="str">"notas.txt"</span>)
+
+    entrada := widget.NewMultiLineEntry()
+    entrada.SetPlaceHolder(<span class="str">"Escreva suas notas..."</span>)
+
+    <span class="com">// Carregar notas salvas</span>
+    <span class="kw">if</span> r, err := storage.Reader(uri); err == nil {
+        defer r.Close()
+        conteudo, _ := io.ReadAll(r)
+        entrada.SetText(string(conteudo))
+    }
+
+    botaoSalvar := widget.NewButton(<span class="str">"Salvar"</span>, <span class="kw">func</span>() {
+        w, _ := storage.Writer(uri)
+        defer w.Close()
+        w.Write([]byte(entrada.Text))
+        dialog.ShowInformation(<span class="str">"OK"</span>, <span class="str">"Notas salvas!"</span>, mainWindow)
+    })
+
+    mainWindow = w
+    w.SetContent(container.NewBorder(nil, botaoSalvar, nil, nil, entrada))
+    w.ShowAndRun()
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>gomobile — Build and run mobile apps with Go</strong>. Disponível em: &lt;https://pkg.go.dev/golang.org/x/mobile&gt;. Acesso em: 2026.</li>
+            <li>FYNE.IO. <strong>Fyne — Mobile targets for Android and iOS</strong>. Disponível em: &lt;https://developer.fyne.io/started/mobile&gt;. Acesso em: 2026.</li>
+            <li>GO TEAM. <strong>Mobile Wiki</strong>. Disponível em: &lt;https://github.com/golang/go/wiki/Mobile&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI Desktop com Go</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <code>gomobile bind</code> é a estratégia preferida para times que já têm app nativo: <strong>escreva a lógica de negócios, criptografia, sincronização e protocolos em Go</strong> — testável, portável e de alta performance — e deixe o UI para Kotlin/Swift que têm os melhores componentes nativos de cada plataforma. É a arquitetura usada por apps como o Dropbox e o Keybase em produção.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

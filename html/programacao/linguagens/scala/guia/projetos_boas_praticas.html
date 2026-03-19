@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Projetos e boas praticas em Scala: arquitetura modular, clean code funcional, erros, observabilidade e CI." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" /><link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png"><link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script"><script src="/js/main.js" defer></script>
+	<title>Scala - Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div><div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&times;</span></button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content"><div class="content-area">
+		<div class="Colored_border_anim_card_box"><p><strong>Scala - Projetos e Boas Praticas</strong></p></div>
+
+		<section>
+			<div class="page-header"><div class="logo logo--lg page-icon"><span data-svg="scala" aria-hidden="true"></span></div>
+				<h1>Projetos Scala em Producao</h1><p>Como organizar codigo, reduzir riscos e manter evolucao sustentavel em sistemas reais.</p>
+			</div>
+			<p class="intro-highlight">Boas praticas em Scala comecam na modelagem de dominio e terminam no pipeline de entrega: arquitetura, testes, observabilidade e governanca tecnica caminham juntos.</p>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="arquitetura-modular">Arquitetura por Modulos</h2>
+			<p>Separar modulos por dominio (ex.: faturamento, identidade, catalogo) reduz acoplamento e melhora ownership. Use multiplos subprojetos sbt para isolar dependencias.</p>
+			<div class="code-container rounded-md border overflow-hidden">
+				<div class="code-header">scala - exemplo conceitual de modulo</div>
+				<pre class="example"><span class="kw">trait</span> <span class="fn">PedidoRepo</span>:
+	<span class="kw">def</span> <span class="fn">buscar</span>(id: Long): Option[Pedido]
+
+<span class="kw">class</span> <span class="fn">PedidoService</span>(repo: PedidoRepo):
+	<span class="kw">def</span> <span class="fn">totalComImposto</span>(id: Long): Either[String, BigDecimal] = ??? <span class="com">// regra de dominio isolada</span></pre>
+			</div>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="clean-code-fp">Clean Code com Estilo Funcional</h2>
+			<p>Evite efeitos colaterais escondidos. Prefira funcoes puras para regra de negocio, mantendo IO na borda da aplicacao.</p>
+			<div class="panel">
+				<ul>
+					<li>Modelagem explicita com ADTs.</li>
+					<li>Funcoes pequenas, com nomes de negocio.</li>
+					<li>Dependencias injetadas via construtor ou contexto controlado.</li>
+				</ul>
+			</div>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="erros-resiliencia">Tratamento de Erros e Resiliencia</h2>
+			<p>Erros previsiveis devem ser modelados em tipos (<code class="code-inline">Either</code>, ADTs de erro). Excecoes ficam para falhas nao recuperaveis ou integracao inesperada.</p>
+			<div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Nunca "engula" excecoes em camada de infraestrutura sem log estruturado e contexto de correlacao.</p></div>
+			<div class="code-container rounded-md border overflow-hidden">
+				<div class="code-header">scala - erro tipado por dominio</div>
+				<pre class="example"><span class="kw">sealed trait</span> ErroPagamento
+<span class="kw">case object</span> LimiteExcedido <span class="kw">extends</span> ErroPagamento
+<span class="kw">case object</span> SaldoInsuficiente <span class="kw">extends</span> ErroPagamento
+
+<span class="kw">def</span> <span class="fn">autorizar</span>(valor: BigDecimal): Either[ErroPagamento, Unit] = ???</pre>
+			</div>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="observabilidade">Observabilidade</h2>
+			<p>Logs estruturados, metricas e tracing distribuidos sao obrigatorios em microsservicos. Em JVM, e comum combinar SLF4J + OpenTelemetry + Prometheus.</p>
+			<div class="card">
+				<svg viewBox="0 0 720 150" width="100%" role="img" aria-label="Pilares de observabilidade">
+					<rect x="50" y="55" width="170" height="45" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+					<text x="135" y="82" text-anchor="middle">Logs</text>
+					<rect x="275" y="55" width="170" height="45" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+					<text x="360" y="82" text-anchor="middle">Metricas</text>
+					<rect x="500" y="55" width="170" height="45" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+					<text x="585" y="82" text-anchor="middle">Tracing</text>
+				</svg>
+			</div>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="ci-cd">CI e Qualidade Continua</h2>
+			<p>Esteira minima recomendada: formatar, analisar, testar, empacotar e publicar artefato versionado.</p>
+			<div class="code-container rounded-md border overflow-hidden">
+				<div class="code-header">yaml - pipeline essencial</div>
+				<pre class="example"><span class="kw">steps</span>:
+	- run: sbt scalafmtCheckAll
+	- run: sbt test
+	- run: sbt package</pre>
+			</div>
+			<div class="section-divider"></div>
+		</section>
+
+		<section>
+			<h2 class="section-title" id="referencias">Referencias</h2>
+			<div class="panel"><ul>
+				<li>SCALA CENTER. <strong>Best Practices</strong>. Disponivel em: <a href="https://docs.scala-lang.org/style/" target="_blank" rel="noopener">docs.scala-lang.org/style</a>.</li>
+				<li>OPEN TELEMETRY. <strong>Documentation</strong>. Disponivel em: <a href="https://opentelemetry.io/docs/" target="_blank" rel="noopener">opentelemetry.io</a>.</li>
+				<li>SBT TEAM. <strong>Multi-Project Builds</strong>. Disponivel em: <a href="https://www.scala-sbt.org/1.x/docs/Multi-Project.html" target="_blank" rel="noopener">scala-sbt.org</a>.</li>
+				<li>TYPELEVEL. <strong>Cats Effect</strong>. Disponivel em: <a href="https://typelevel.org/cats-effect/" target="_blank" rel="noopener">typelevel.org/cats-effect</a>.</li>
+			</ul></div>
+		</section>
+
+		<div class="callout">
+			<ul class="link-list">
+				<li><a class="link-card" href="/html/programacao/linguagens/scala/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Aplicacoes Web em Scala</a></li>
+				<li><a class="link-card" href="/html/programacao/linguagens/scala/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Scala com Banco de Dados</a></li>
+			</ul>
+			<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto escalavel e aquele que continua simples mesmo quando cresce.</p>
+		</div>
+	</div></main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+

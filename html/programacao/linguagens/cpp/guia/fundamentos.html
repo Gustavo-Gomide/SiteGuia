@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do C++: ponteiros, referencias, classes, RAII, construtores, STL containers, iteradores, algoritmos e gerenciamento de memoria." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fundamentos do C++ | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>Fundamentos do C++</h1>
+          <p>Ponteiros, referencias, classes com RAII, construtores e destrutores, operadores, templates basicos, STL containers (vector, map, set, list) e iteradores. O nucleo que todo programador C++ precisa dominar antes de partir para recursos avancados.</p>
+        </div>
+        <p class="intro-highlight">
+          RAII — Resource Acquisition Is Initialization — e o idioma central do C++ moderno: todo recurso (memoria, arquivo, mutex, socket) deve ser de propriedade de um objeto, cujo destrutor libera o recurso automaticamente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ponteiros">Ponteiros e Referencias</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; ponteiros brutos, referencias e smart pointers</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;memory&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Ponteiro bruto — use apenas quando necessario (interop C, data race)</span>
+  <span class="kw">int</span>  valor  = <span class="num">42</span>;
+  <span class="kw">int</span>* ptr    = &amp;valor;       <span class="com">// endereco de valor</span>
+  *ptr = <span class="num">100</span>;               <span class="com">// derreferencia</span>
+  std::<span class="fn">println</span>(<span class="str">"*ptr = {}"</span>, *ptr);    <span class="com">// 100</span>
+
+  <span class="com">// Referencia — alias permanente, nunca nula, nao reassociavel</span>
+  <span class="kw">int</span>&amp; ref = valor;
+  ref = <span class="num">200</span>;
+  std::<span class="fn">println</span>(<span class="str">"valor = {}"</span>, valor);  <span class="com">// 200</span>
+
+  <span class="com">// unique_ptr — propriedade exclusiva (move-only)</span>
+  <span class="kw">auto</span> u = std::<span class="fn">make_unique</span>&lt;<span class="kw">int</span>&gt;(<span class="num">10</span>);
+  std::<span class="fn">println</span>(<span class="str">"unique = {}"</span>, *u);
+  <span class="com">// delete automatico quando sai do escopo</span>
+
+  <span class="com">// shared_ptr — propriedade compartilhada (ref-count)</span>
+  <span class="kw">auto</span> s1 = std::<span class="fn">make_shared</span>&lt;<span class="kw">int</span>&gt;(<span class="num">20</span>);
+  <span class="kw">auto</span> s2 = s1;               <span class="com">// copia — contagem vai a 2</span>
+  std::<span class="fn">println</span>(<span class="str">"use_count = {}"</span>, s1.<span class="fn">use_count</span>());  <span class="com">// 2</span>
+
+  <span class="com">// weak_ptr — referencia que nao incrementa contagem (quebra ciclos)</span>
+  std::<span class="tp">weak_ptr</span>&lt;<span class="kw">int</span>&gt; w = s1;
+  <span class="kw">if</span> (<span class="kw">auto</span> tmp = w.<span class="fn">lock</span>()) {
+    std::<span class="fn">println</span>(<span class="str">"weak = {}"</span>, *tmp);
+  }
+}</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <div>
+            <strong>Dangling pointer / dangling reference</strong> — um ponteiro ou referencia que aponta para objeto ja destruido causa Undefined Behaviour (UB). Sempre prefira smart pointers a ponteiros brutos proprietarios. Use <code>-fsanitize=address</code> em debug para detectar acessos invalidos.
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="classes">Classes, RAII e Rule of Five</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; classe Buffer com RAII e Rule of Five</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;cstddef&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;algorithm&gt;</span>  <span class="com">// std::copy_n</span>
+<span class="kw">#include</span> <span class="str">&lt;stdexcept&gt;</span>
+
+<span class="com">// Buffer de bytes com propriedade RAII</span>
+<span class="kw">class</span> <span class="tp">Buffer</span> {
+  <span class="kw">std::byte</span>* dados_;
+  std::<span class="tp">size_t</span> capacidade_;
+
+<span class="kw">public</span>:
+  <span class="com">// 1. Construtor — adquire recurso</span>
+  <span class="kw">explicit</span> <span class="tp">Buffer</span>(std::<span class="tp">size_t</span> n)
+    : dados_{ <span class="kw">new</span> std::<span class="kw">byte</span>[n] }, capacidade_{ n } {}
+
+  <span class="com">// 2. Destrutor — libera recurso (nunca pode lancar excecao)</span>
+  ~<span class="fn">Buffer</span>() <span class="kw">noexcept</span> { <span class="kw">delete</span>[] dados_; }
+
+  <span class="com">// 3. Construtor de copia — copia profunda</span>
+  <span class="tp">Buffer</span>(<span class="kw">const</span> <span class="tp">Buffer</span>&amp; outro)
+    : dados_{ <span class="kw">new</span> std::<span class="kw">byte</span>[outro.capacidade_] },
+      capacidade_{ outro.capacidade_ } {
+    std::<span class="fn">copy_n</span>(outro.dados_, capacidade_, dados_);
+  }
+
+  <span class="com">// 4. Operador de atribuicao por copia (copy-and-swap)</span>
+  <span class="tp">Buffer</span>&amp; <span class="kw">operator</span>=(<span class="tp">Buffer</span> outro) <span class="kw">noexcept</span> {
+    <span class="fn">swap</span>(*<span class="kw">this</span>, outro);
+    <span class="kw">return</span> *<span class="kw">this</span>;
+  }
+
+  <span class="com">// 5. Construtor de movimento — transfere propriedade</span>
+  <span class="tp">Buffer</span>(<span class="tp">Buffer</span>&amp;&amp; outro) <span class="kw">noexcept</span>
+    : dados_{ outro.dados_ }, capacidade_{ outro.capacidade_ } {
+    outro.dados_       = <span class="kw">nullptr</span>;
+    outro.capacidade_  = <span class="num">0</span>;
+  }
+
+  <span class="com">// 6. Operador de atribuicao por movimento</span>
+  <span class="tp">Buffer</span>&amp; <span class="kw">operator</span>=(<span class="tp">Buffer</span>&amp;&amp; outro) <span class="kw">noexcept</span> {
+    <span class="kw">if</span> (<span class="kw">this</span> != &amp;outro) {
+      <span class="kw">delete</span>[] dados_;
+      dados_      = outro.dados_;
+      capacidade_ = outro.capacidade_;
+      outro.dados_      = <span class="kw">nullptr</span>;
+      outro.capacidade_ = <span class="num">0</span>;
+    }
+    <span class="kw">return</span> *<span class="kw">this</span>;
+  }
+
+  <span class="kw">friend void</span> <span class="fn">swap</span>(<span class="tp">Buffer</span>&amp; a, <span class="tp">Buffer</span>&amp; b) <span class="kw">noexcept</span> {
+    <span class="kw">using</span> std::<span class="fn">swap</span>;
+    <span class="fn">swap</span>(a.dados_,       b.dados_);
+    <span class="fn">swap</span>(a.capacidade_,  b.capacidade_);
+  }
+
+  std::<span class="tp">size_t</span> <span class="fn">size</span>()  <span class="kw">const noexcept</span> { <span class="kw">return</span> capacidade_;  }
+  std::<span class="kw">byte</span>*  <span class="fn">data</span>()  <span class="kw">noexcept</span>       { <span class="kw">return</span> dados_;        }
+};</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="stl-containers">STL Containers</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; vector, map, set, unordered_map, list</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;map&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;set&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unordered_map&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;algorithm&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ranges&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// vector — array dinamico contiguous na memoria</span>
+  std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; v = { <span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span>, <span class="num">1</span>, <span class="num">5</span>, <span class="num">9</span> };
+  v.<span class="fn">push_back</span>(<span class="num">26</span>);
+  v.<span class="fn">emplace_back</span>(<span class="num">53</span>);                   <span class="com">// constroi no lugar — eficiente</span>
+  v.<span class="fn">reserve</span>(<span class="num">100</span>);                       <span class="com">// pre-aloca sem mudar size</span>
+  std::<span class="fn">sort</span>(v.<span class="fn">begin</span>(), v.<span class="fn">end</span>());
+
+  <span class="com">// map — arvore balanceada (chave ordenada), O(log n)</span>
+  std::<span class="tp">map</span>&lt;std::<span class="tp">string</span>, <span class="kw">int</span>&gt; freq;
+  freq[<span class="str">"cpp"</span>]++;
+  freq[<span class="str">"java"</span>]++;
+  freq[<span class="str">"cpp"</span>]++;
+  <span class="kw">if</span> (<span class="kw">auto</span> it = freq.<span class="fn">find</span>(<span class="str">"cpp"</span>); it != freq.<span class="fn">end</span>()) {
+    std::<span class="fn">println</span>(<span class="str">"cpp: {}"</span>, it-&gt;second);     <span class="com">// 2</span>
+  }
+
+  <span class="com">// unordered_map — hash table, O(1) medio</span>
+  std::<span class="tp">unordered_map</span>&lt;std::<span class="tp">string</span>, std::<span class="tp">string</span>&gt; cache;
+  cache.<span class="fn">emplace</span>(<span class="str">"key"</span>, <span class="str">"value"</span>);
+  cache.<span class="fn">try_emplace</span>(<span class="str">"key2"</span>, <span class="str">"value2"</span>);  <span class="com">// nao sobrescreve se existir</span>
+
+  <span class="com">// set — elementos unicos e ordenados</span>
+  std::<span class="tp">set</span>&lt;<span class="kw">int</span>&gt; s = { <span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span>, <span class="num">1</span>, <span class="num">5</span> };  <span class="com">// {1, 3, 4, 5}</span>
+  <span class="kw">auto</span> [it, ok] = s.<span class="fn">insert</span>(<span class="num">4</span>);            <span class="com">// ok=false, nao inseriu (duplicata)</span>
+
+  <span class="com">// Ranges (C++20) — pipeline funcional sobre containers</span>
+  <span class="kw">auto</span> pares_grandes = v
+    | std::<span class="tp">views</span>::<span class="fn">filter</span>([](<span class="kw">int</span> x) { <span class="kw">return</span> x &gt; <span class="num">3</span> &amp;&amp; x % <span class="num">2</span> == <span class="num">0</span>; })
+    | std::<span class="tp">views</span>::<span class="fn">transform</span>([](<span class="kw">int</span> x) { <span class="kw">return</span> x * <span class="num">2</span>; });
+
+  <span class="kw">for</span> (<span class="kw">int</span> n : pares_grandes)
+    std::<span class="fn">print</span>(<span class="str">"{} "</span>, n);
+  std::<span class="fn">println</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funcoes, Lambdas e std::function</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; overload, default args, lambda, std::function</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;functional&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;algorithm&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Overload de funcao — mesmo nome, assinaturas distintas</span>
+<span class="kw">double</span> <span class="fn">area</span>(<span class="kw">double</span> lado) { <span class="kw">return</span> lado * lado; }
+<span class="kw">double</span> <span class="fn">area</span>(<span class="kw">double</span> l, <span class="kw">double</span> h) { <span class="kw">return</span> l * h; }
+
+<span class="com">// Template de funcao — gerado em compile time</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="tp">T</span> <span class="fn">maximo</span>(<span class="tp">T</span> a, <span class="tp">T</span> b) { <span class="kw">return</span> a &gt; b ? a : b; }
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Lambda com captura por valor [=] e por referencia [&amp;]</span>
+  <span class="kw">int</span> limite = <span class="num">5</span>;
+  <span class="kw">auto</span> filtrar = [limite](<span class="kw">int</span> x) { <span class="kw">return</span> x &gt; limite; };
+  <span class="kw">auto</span> imprimir = [&amp;](<span class="kw">int</span> x) { std::<span class="fn">println</span>(<span class="str">"limite={} x={}"</span>, limite, x); };
+
+  <span class="com">// Lambda generica (C++14) — template implicito</span>
+  <span class="kw">auto</span> dobrar = [](<span class="kw">auto</span> x) { <span class="kw">return</span> x * <span class="num">2</span>; };
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, <span class="fn">dobrar</span>(<span class="num">3</span>));     <span class="com">// 6</span>
+  std::<span class="fn">println</span>(<span class="str">"{:.2f}"</span>, <span class="fn">dobrar</span>(<span class="num">3.14</span>)); <span class="com">// 6.28</span>
+
+  <span class="com">// std::function — wrapper polimorfico para qualquer callable</span>
+  std::<span class="tp">function</span>&lt;<span class="kw">int</span>(<span class="kw">int</span>)&gt; operacao;
+  operacao = filtrar;
+  <span class="com">// Troca em tempo de execucao:</span>
+  operacao = [](<span class="kw">int</span> x) { <span class="kw">return</span> x * x; };
+
+  std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; v = { <span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span> };
+  std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; resultado;
+  std::<span class="fn">copy_if</span>(v.<span class="fn">begin</span>(), v.<span class="fn">end</span>(), std::<span class="fn">back_inserter</span>(resultado), filtrar);
+
+  <span class="kw">for</span> (<span class="kw">int</span> n : resultado) std::<span class="fn">print</span>(<span class="str">"{} "</span>, n);   <span class="com">// 6</span>
+  std::<span class="fn">println</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="excecoes">Excecoes e Tratamento de Erros</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; try/catch, hierarquia de excecoes, std::expected (C++23)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdexcept&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;expected&gt;</span>    <span class="com">// C++23</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Excecao customizada herdando std::runtime_error</span>
+<span class="kw">class</span> <span class="tp">ValidationError</span> : <span class="kw">public</span> std::<span class="tp">runtime_error</span> {
+  <span class="kw">int</span> codigo_;
+<span class="kw">public</span>:
+  <span class="tp">ValidationError</span>(<span class="tp">std::string</span> msg, <span class="kw">int</span> cod)
+    : std::<span class="tp">runtime_error</span>(std::<span class="fn">move</span>(msg)), codigo_{ cod } {}
+  <span class="kw">int</span> <span class="fn">codigo</span>() <span class="kw">const noexcept</span> { <span class="kw">return</span> codigo_; }
+};
+
+<span class="kw">void</span> <span class="fn">validar</span>(<span class="kw">int</span> age) {
+  <span class="kw">if</span> (age &lt; <span class="num">0</span>)  <span class="kw">throw</span> <span class="tp">ValidationError</span>(<span class="str">"Idade negativa"</span>, <span class="num">400</span>);
+  <span class="kw">if</span> (age &gt; <span class="num">150</span>) <span class="kw">throw</span> <span class="tp">ValidationError</span>(<span class="str">"Idade improvavel"</span>, <span class="num">422</span>);
+}
+
+<span class="com">// std::expected (C++23) — retorna valor OU erro sem excecoes</span>
+std::<span class="tp">expected</span>&lt;<span class="kw">double</span>, std::<span class="tp">string</span>&gt; <span class="fn">dividir</span>(<span class="kw">double</span> a, <span class="kw">double</span> b) {
+  <span class="kw">if</span> (b == <span class="num">0.0</span>) <span class="kw">return</span> std::<span class="fn">unexpected</span>(<span class="str">"divisao por zero"</span>);
+  <span class="kw">return</span> a / b;
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="kw">try</span> {
+    <span class="fn">validar</span>(-<span class="num">5</span>);
+  } <span class="kw">catch</span> (<span class="kw">const</span> <span class="tp">ValidationError</span>&amp; e) {
+    std::<span class="fn">println</span>(<span class="str">"Validacao [{}]: {}"</span>, e.<span class="fn">codigo</span>(), e.<span class="fn">what</span>());
+  } <span class="kw">catch</span> (<span class="kw">const</span> std::<span class="tp">exception</span>&amp; e) {
+    std::<span class="fn">println</span>(<span class="str">"Erro generico: {}"</span>, e.<span class="fn">what</span>());
+  }
+
+  <span class="com">// expected — zero-overhead error path</span>
+  <span class="kw">auto</span> r = <span class="fn">dividir</span>(<span class="num">10.0</span>, <span class="num">0.0</span>);
+  <span class="kw">if</span> (r) {
+    std::<span class="fn">println</span>(<span class="str">"Resultado: {}"</span>, *r);
+  } <span class="kw">else</span> {
+    std::<span class="fn">println</span>(<span class="str">"Erro: {}"</span>, r.<span class="fn">error</span>());
+  }
+  <span class="com">// ou com value_or:</span>
+  <span class="kw">double</span> val = <span class="fn">dividir</span>(<span class="num">1.0</span>, <span class="num">2.0</span>).<span class="fn">value_or</span>(<span class="num">0.0</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="heranca">Heranca, Polimorfismo e Virtual</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; classe base abstrata, override, final, dynamic_cast</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;memory&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;numbers&gt;</span>   <span class="com">// std::numbers::pi</span>
+
+<span class="kw">class</span> <span class="tp">Forma</span> {                             <span class="com">// classe base abstrata</span>
+<span class="kw">public</span>:
+  <span class="kw">virtual double</span> <span class="fn">area</span>()  <span class="kw">const</span> = <span class="num">0</span>;    <span class="com">// metodo puramente virtual</span>
+  <span class="kw">virtual double</span> <span class="fn">perimetro</span>() <span class="kw">const</span> = <span class="num">0</span>;
+  <span class="kw">virtual</span> ~<span class="fn">Forma</span>() = <span class="kw">default</span>;          <span class="com">// destrutor virtual obrigatorio</span>
+};
+
+<span class="kw">class</span> <span class="tp">Circulo</span> <span class="kw">final</span> : <span class="kw">public</span> <span class="tp">Forma</span> {   <span class="com">// final — nao pode ser herdada</span>
+  <span class="kw">double</span> r_;
+<span class="kw">public</span>:
+  <span class="kw">explicit</span> <span class="tp">Circulo</span>(<span class="kw">double</span> r) : r_{ r } {}
+  <span class="kw">double</span> <span class="fn">area</span>()      <span class="kw">const override</span> { <span class="kw">return</span> std::<span class="tp">numbers</span>::pi * r_ * r_; }
+  <span class="kw">double</span> <span class="fn">perimetro</span>() <span class="kw">const override</span> { <span class="kw">return</span> <span class="num">2.0</span> * std::<span class="tp">numbers</span>::pi * r_; }
+};
+
+<span class="kw">class</span> <span class="tp">Retangulo</span> : <span class="kw">public</span> <span class="tp">Forma</span> {
+  <span class="kw">double</span> l_, h_;
+<span class="kw">public</span>:
+  <span class="tp">Retangulo</span>(<span class="kw">double</span> l, <span class="kw">double</span> h) : l_{ l }, h_{ h } {}
+  <span class="kw">double</span> <span class="fn">area</span>()      <span class="kw">const override</span> { <span class="kw">return</span> l_ * h_; }
+  <span class="kw">double</span> <span class="fn">perimetro</span>() <span class="kw">const override</span> { <span class="kw">return</span> <span class="num">2.0</span> * (l_ + h_); }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  std::<span class="tp">vector</span>&lt;std::<span class="tp">unique_ptr</span>&lt;<span class="tp">Forma</span>&gt;&gt; formas;
+  formas.<span class="fn">emplace_back</span>(std::<span class="fn">make_unique</span>&lt;<span class="tp">Circulo</span>&gt;(<span class="num">5.0</span>));
+  formas.<span class="fn">emplace_back</span>(std::<span class="fn">make_unique</span>&lt;<span class="tp">Retangulo</span>&gt;(<span class="num">4.0</span>, <span class="num">3.0</span>));
+
+  <span class="kw">for</span> (<span class="kw">const auto</span>&amp; f : formas) {
+    std::<span class="fn">println</span>(<span class="str">"Area={:.2f}  Perimetro={:.2f}"</span>,
+      f-&gt;<span class="fn">area</span>(), f-&gt;<span class="fn">perimetro</span>());
+  }
+
+  <span class="com">// dynamic_cast — cast seguro com RTTI (retorna nullptr se falhar)</span>
+  <span class="kw">if</span> (<span class="kw">auto</span>* c = <span class="kw">dynamic_cast</span>&lt;<span class="tp">Circulo</span>*&gt;(formas[<span class="num">0</span>].<span class="fn">get</span>())) {
+    std::<span class="fn">println</span>(<span class="str">"e um Circulo"</span>);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>STROUSTRUP, Bjarne. <strong>A Tour of C++</strong>. 3. ed. Addison-Wesley, 2022.</li>
+            <li>MEYERS, Scott. <strong>Effective Modern C++</strong>. O'Reilly, 2014.</li>
+            <li>CPPREFERENCE. <strong>Rule of five / Rule of zero</strong>. Disponível em: &lt;https://en.cppreference.com/w/cpp/language/rule_of_three&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introducao ao C++</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ Avancado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Prefira a Rule of Zero: projete suas classes para que o compilador gere automaticamente todos os metodos especiais, evitando implementar destrutores, copias ou moves manualmente sempre que possivel.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

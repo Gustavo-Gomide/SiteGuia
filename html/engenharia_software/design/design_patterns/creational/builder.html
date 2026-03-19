@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Builder: padrão criacional para construir objetos complexos passo a passo, separando construção de representação." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Builder | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Construção passo a passo de objetos complexos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Builder</h1>
+          <p class="page-subtitle">Criacional — GoF</p>
+        </div>
+        <p class="intro-highlight">Builder separa a construção de um objeto complexo da sua representação final. Permite criar diferentes configurações do mesmo objeto passo a passo, sem construtores com muitos parâmetros ou objetos parcialmente inicializados.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando" class="section-title">Problemas que Builder resolve</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Problema</th>
+                <th>Sem Builder</th>
+                <th>Com Builder</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Muitos parâmetros</strong></td>
+                <td><code>new Query(table, cols, null, null, limit, null, sort)</code></td>
+                <td><code>new QueryBuilder().from('pedidos').limit(10).build()</code></td>
+              </tr>
+              <tr>
+                <td><strong>Configurações opcionais</strong></td>
+                <td>Vários construtores sobrecarregados ou parâmetros opcionais confusos.</td>
+                <td>Cada método do builder é opcional; <code>build()</code> valida no final.</td>
+              </tr>
+              <tr>
+                <td><strong>Imutabilidade</strong></td>
+                <td>Objeto mutavel com setters chamados em sequência.</td>
+                <td><code>build()</code> retorna objeto imutável e válido.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — SQL Query Builder</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">class QueryBuilder {
+  private tabela = '';
+  private colunas: string[] = ['*'];
+  private condicoes: string[] = [];
+  private _limit: number | null = null;
+  private _orderBy: string | null = null;
+
+  from(tabela: string): this {
+    this.tabela = tabela;
+    return this;
+  }
+
+  select(...cols: string[]): this {
+    this.colunas = cols;
+    return this;
+  }
+
+  where(condicao: string): this {
+    this.condicoes.push(condicao);
+    return this;
+  }
+
+  limit(n: number): this {
+    this._limit = n;
+    return this;
+  }
+
+  orderBy(col: string): this {
+    this._orderBy = col;
+    return this;
+  }
+
+  build(): string {
+    if (!this.tabela) throw new Error('Tabela obrigatória.');
+    let sql = `SELECT ${this.colunas.join(', ')} FROM ${this.tabela}`;
+    if (this.condicoes.length) sql += ` WHERE ${this.condicoes.join(' AND ')}`;
+    if (this._orderBy) sql += ` ORDER BY ${this._orderBy}`;
+    if (this._limit) sql += ` LIMIT ${this._limit}`;
+    return sql;
+  }
+}
+
+const query = new QueryBuilder()
+  .from('pedidos')
+  .select('id', 'total', 'status')
+  .where('status = \'ativo\'')
+  .orderBy('criado_em DESC')
+  .limit(20)
+  .build();
+// SELECT id, total, status FROM pedidos WHERE status = 'ativo' ORDER BY criado_em DESC LIMIT 20</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Objetos com muitos parâmetros opcionais. Construção em etapas com validação no final.</p>
+          </div>
+          <div class="card">
+            <h3>Fluent interface</h3>
+            <p>Devolver <code>this</code> em cada método permite encadeamento (method chaining) legível.</p>
+          </div>
+          <div class="card">
+            <h3>Validação centralizada</h3>
+            <p>O <code>build()</code> valida o estado completo antes de criar — evita objetos inválidos.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>O objeto tem poucos parâmetros bóvios. Um construtor simples ou objeto literal resolve sem o overhead do Builder.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Builder é muito usado em testes (Test Data Builder) e ORMs (QueryBuilder). Veja <a href="/html/engenharia_software/design/design_patterns/creational/factory.html">Factory Method</a> para criação sem etapas.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Builder orquestra a construção complexa — o objeto final só existe quando está completo e válido."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

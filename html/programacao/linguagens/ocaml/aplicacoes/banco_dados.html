@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OCaml com banco de dados: Caqti, SQL tipado, transacoes, pool de conexoes e praticas avancadas para PostgreSQL e SQLite." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml - Aplicacoes com Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml - Aplicacoes com Banco de Dados</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="visao-geral">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>Persistencia de dados em OCaml</h1>
+          <p>Como construir camada de dados confiavel com SQL, transacoes e tipos fortes, minimizando inconsistencias entre codigo e esquema.</p>
+        </div>
+        <p class="intro-highlight">Em OCaml, o maior ganho em banco de dados vem de modelar invariantes no tipo e limitar pontos de acesso SQL com contratos bem definidos.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Fundamentos: conexao, query e mapeamento</h2>
+        <p>Pense na camada de dados como um tradutor simultaneo: de um lado, SQL e constraints; do outro, tipos de dominio. Quanto melhor o tradutor, menos ambiguidades em runtime.</p>
+        <div class="panel"><p><strong>Caqti</strong> e a escolha comum para acesso a PostgreSQL, MariaDB e SQLite com assinatura de tipos em cada consulta.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Pipeline de uma operacao no repositorio</h2>
+        <svg viewBox="0 0 900 180" role="img" aria-label="Fluxo de repositorio OCaml" class="w-full rounded-md border p-sm">
+          <rect x="20" y="55" width="160" height="50" rx="10" fill="currentColor" opacity="0.08"></rect>
+          <text x="52" y="86" fill="currentColor">Handler</text>
+          <rect x="230" y="55" width="160" height="50" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="255" y="86" fill="currentColor">Servico</text>
+          <rect x="440" y="55" width="160" height="50" rx="10" fill="currentColor" opacity="0.08"></rect>
+          <text x="465" y="86" fill="currentColor">Repositorio</text>
+          <rect x="650" y="55" width="220" height="50" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="720" y="86" fill="currentColor">SQL</text>
+          <line x1="180" y1="80" x2="230" y2="80" stroke="currentColor"></line>
+          <line x1="390" y1="80" x2="440" y2="80" stroke="currentColor"></line>
+          <line x1="600" y1="80" x2="650" y2="80" stroke="currentColor"></line>
+        </svg>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso-pratico">Exemplo com Caqti e transacao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">repositorio_usuario.ml</div>
+          <pre class="example"><span class="com">(* Repositorio com separacao entre erro de dominio e erro de infraestrutura. *)</span>
+<span class="kw">open</span> <span class="tp">Lwt</span>.<span class="tp">Syntax</span>
+
+<span class="kw">type</span> <span class="tp">usuario</span> = { id : <span class="tp">int</span>; email : <span class="tp">string</span>; ativo : <span class="tp">bool</span> }
+
+<span class="kw">let</span> inserir_usuario =
+  <span class="tp">Caqti_request</span>.<span class="fn">exec</span>
+    <span class="tp">Caqti_type</span>.(tup2 string bool)
+    <span class="str">"INSERT INTO usuarios (email, ativo) VALUES (?, ?)"</span>
+
+<span class="kw">let</span> buscar_por_email =
+  <span class="tp">Caqti_request</span>.<span class="fn">find_opt</span>
+    <span class="tp">Caqti_type</span>.<span class="tp">string</span>
+    <span class="tp">Caqti_type</span>.(tup3 int string bool)
+    <span class="str">"SELECT id, email, ativo FROM usuarios WHERE email = ?"</span>
+
+<span class="kw">let</span> criar_usuario conn email =
+  <span class="kw">let*</span> existe = <span class="tp">Caqti_lwt</span>.<span class="tp">Connection</span>.<span class="fn">find_opt</span> conn buscar_por_email email <span class="kw">in</span>
+  <span class="kw">match</span> existe <span class="kw">with</span>
+  | <span class="tp">Ok</span> (<span class="tp">Some</span> _) -> <span class="tp">Lwt</span>.<span class="fn">return</span> (<span class="tp">Error</span> <span class="str">"email ja cadastrado"</span>)
+  | <span class="tp">Ok</span> <span class="tp">None</span> ->
+      <span class="kw">let*</span> r = <span class="tp">Caqti_lwt</span>.<span class="tp">Connection</span>.<span class="fn">exec</span> conn inserir_usuario (email, <span class="kw">true</span>) <span class="kw">in</span>
+      <span class="kw">begin match</span> r <span class="kw">with</span>
+      | <span class="tp">Ok</span> () -> <span class="tp">Lwt</span>.<span class="fn">return</span> (<span class="tp">Ok</span> ())
+      | <span class="tp">Error</span> e -> <span class="tp">Lwt</span>.<span class="fn">return</span> (<span class="tp">Error</span> (<span class="tp">Caqti_error</span>.<span class="fn">show</span> e))
+      <span class="kw">end</span>
+  | <span class="tp">Error</span> e -> <span class="tp">Lwt</span>.<span class="fn">return</span> (<span class="tp">Error</span> (<span class="tp">Caqti_error</span>.<span class="fn">show</span> e))</pre>
+        </div>
+        <p>Esse padrao permite tratar erro de dominio (email duplicado) separado de erro infra (falha de conexao), algo crucial para APIs previsiveis.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-uso">Quando usar Caqti, PGOCaml ou binding direto</h2>
+        <ul>
+          <li><strong>Caqti</strong>: melhor escolha geral para portabilidade e simplicidade.</li>
+          <li><strong>PGOCaml</strong>: quando o projeto e 100% PostgreSQL e deseja DSL mais dedicada.</li>
+          <li>Bindings diretos (<code>postgresql-ocaml</code>, <code>sqlite3-ocaml</code>): quando precisa de recursos especificos de driver.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos avancados</h2>
+        <div class="panel">
+          <ul>
+            <li>Pool de conexoes com limites por workload para evitar saturacao de banco.</li>
+            <li>Migracoes automatizadas (Goose/Flyway externo ou script versionado no CI).</li>
+            <li>Estrangulamento por transacao: granularidade minima para reduzir lock contention.</li>
+            <li>Idempotencia de comandos de escrita em filas/eventos.</li>
+          </ul>
+        </div>
+        <div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Evite concatenacao de SQL com string. Mesmo em codigo interno, padronize parametros para seguranca e legibilidade.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>CAQTI CONTRIBUTORS. <strong>Caqti</strong>. Disponivel em: <a href="https://github.com/paurkedal/ocaml-caqti" target="_blank" rel="noopener">https://github.com/paurkedal/ocaml-caqti</a>.</li>
+            <li>STEINMETZ, Markus et al. <strong>PostgreSQL Documentation</strong>. Disponivel em: <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">https://www.postgresql.org/docs/</a>.</li>
+            <li>OCAML. <strong>Real World OCaml - Data Serialization and SQL</strong>. Disponivel em: <a href="https://dev.realworldocaml.org/" target="_blank" rel="noopener">https://dev.realworldocaml.org/</a>.</li>
+            <li>PGOCAML CONTRIBUTORS. <strong>PGOCaml</strong>. Disponivel em: <a href="https://github.com/darioteixeira/pgocaml" target="_blank" rel="noopener">https://github.com/darioteixeira/pgocaml</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/web.html">OCaml - Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/projetos_boas_praticas.html">OCaml - Projetos e Boas Praticas</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/dados_ia.html">OCaml - Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Persistencia madura em OCaml nasce quando SQL deixa de ser detalhe tecnico e passa a ser contrato explicito do dominio.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

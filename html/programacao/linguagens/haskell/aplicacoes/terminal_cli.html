@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Terminal e CLI com Haskell: optparse-applicative, turtle, formatação ANSI e scripts de sistema." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Terminal e CLI</h1>
+          <p>Haskell é excelente para ferramentas CLI: <strong>optparse-applicative</strong> usa a estrutura de Applicative Functor para compor parsers de argumentos com auto-geração de help; <strong>turtle</strong> oferece uma API shell em Haskell idiomático; <strong>ansi-terminal</strong> para cores; e <strong>System.IO</strong> para manipulação de arquivos e processos.</p>
+        </div>
+        <p class="intro-highlight">
+          <code>optparse-applicative</code> é único: parsers de argumentos são <strong>functores aplicativos</strong> que se compõem automaticamente gerando tanto o parser quanto o texto de ajuda. Adicionar um novo argumento ao tipo de dados gera automaticamente a flag e a documentação correspondente.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="optparse" class="section-title">optparse-applicative — Parsers de Argumentos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CLI type-safe com help gerado automaticamente</div>
+          <pre class="example">{-# LANGUAGE RecordWildCards #-}
+<span class="com">-- cabal install optparse-applicative</span>
+import Options.Applicative
+
+<span class="com">-- Tipos de dados representam os argumentos</span>
+data Opcoes = Opcoes
+    { entrada    :: FilePath
+    , saida      :: FilePath
+    , verbose    :: Bool
+    , maxLinhas  :: Int
+    , formato    :: String
+    } deriving Show
+
+data Comando
+    = Converter Opcoes
+    | Analisar  { arquivoAnalisar :: FilePath }
+    | Validar   { arquivoValidar  :: FilePath, schema :: Maybe FilePath }
+    deriving Show
+
+<span class="com">-- Parser de Opcoes usando Applicative</span>
+parsOpcoes :: Parser Opcoes
+parsOpcoes = Opcoes
+    &lt;$&gt; strOption
+            ( long "entrada"
+           &lt;&gt; short 'i'
+           &lt;&gt; metavar "ARQUIVO"
+           &lt;&gt; help "Arquivo de entrada" )
+    &lt;*&gt; strOption
+            ( long "saida"
+           &lt;&gt; short 'o'
+           &lt;&gt; metavar "ARQUIVO"
+           &lt;&gt; value "output.json"
+           &lt;&gt; showDefault
+           &lt;&gt; help "Arquivo de saída" )
+    &lt;*&gt; switch
+            ( long "verbose"
+           &lt;&gt; short 'v'
+           &lt;&gt; help "Mostrar detalhes" )
+    &lt;*&gt; option auto
+            ( long "max-linhas"
+           &lt;&gt; value 1000
+           &lt;&gt; showDefault
+           &lt;&gt; help "Máximo de linhas a processar" )
+    &lt;*&gt; strOption
+            ( long "formato"
+           &lt;&gt; value "json"
+           &lt;&gt; showDefault
+           &lt;&gt; help "Formato de saída: json|csv|yaml" )
+
+<span class="com">-- Parser de subcomandos</span>
+parsComando :: Parser Comando
+parsComando = subparser
+    ( command "converter"
+        (info (Converter &lt;$&gt; parsOpcoes)
+              (progDesc "Converter arquivo de formato"))
+   &lt;&gt; command "analisar"
+        (info (Analisar &lt;$&gt; argument str (metavar "ARQUIVO"))
+              (progDesc "Analisar estatísticas"))
+   &lt;&gt; command "validar"
+        (info (Validar
+                &lt;$&gt; argument str (metavar "ARQUIVO")
+                &lt;*&gt; optional (option str (long "schema" &lt;&gt; metavar "SCHEMA")))
+              (progDesc "Validar arquivo contra schema"))
+    )
+
+main :: IO ()
+main = do
+    cmd &lt;- execParser $ info (parsComando &lt;**&gt; helper)
+        ( fullDesc
+       &lt;&gt; progDesc "Ferramenta de processamento de dados"
+       &lt;&gt; header "datatool - processa CSV, JSON e YAML" )
+    case cmd of
+        Converter opts -> executarConversor opts
+        Analisar path  -> analisarArquivo path
+        Validar p s    -> validarArquivo p s</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="turtle" class="section-title">turtle — Shell Scripting em Haskell</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Manipulação de arquivos e processos de forma idiomática</div>
+          <pre class="example"><span class="com">-- cabal install turtle</span>
+import Turtle
+import qualified Data.Text as T
+import Prelude hiding (FilePath)
+
+<span class="com">-- Listar arquivos recursivamente</span>
+listarHaskell :: FilePath -> Shell FilePath
+listarHaskell dir = do
+    f &lt;- lstree dir      <span class="com">-- recursivo</span>
+    guard (extension f == Just "hs")
+    return f
+
+<span class="com">-- Contar linhas de código</span>
+contarLinhas :: IO ()
+contarLinhas = do
+    total &lt;- fold (listarHaskell ".") (Fold (\ total _ -> total + 1) 0 id)
+    printf ("Arquivos .hs encontrados: "%d%"\n") total
+
+<span class="com">-- Executar comandos externos</span>
+gitStatus :: IO ()
+gitStatus = do
+    code &lt;- shell "git status --short" empty
+    case code of
+        ExitSuccess   -> echo "Repositório limpo"
+        ExitFailure n -> printf ("Git falhou com código "%d%"\n") n
+
+<span class="com">-- Capturar saída de comando</span>
+obterBranch :: IO Text
+obterBranch = do
+    lines_ &lt;- strict $ inshell "git rev-parse --abbrev-ref HEAD" empty
+    return (T.strip lines_)
+
+<span class="com">-- Script de backup</span>
+backup :: FilePath -> FilePath -> IO ()
+backup src dst = do
+    timestamp &lt;- strict $ inshell "date +%Y%m%d_%H%M%S" empty
+    let destDir = dst &lt;/&gt; fromText (T.strip timestamp)
+    mktree destDir
+    cptree src destDir
+    printf ("Backup criado em: "%fp%"\n") destDir
+
+<span class="com">-- Ler e processar arquivos com Text</span>
+import qualified Data.Text.IO as TIO
+
+processarTexto :: FilePath -> IO ()
+processarTexto path = do
+    conteudo &lt;- TIO.readFile (T.unpack $ format fp path)
+    let linhas    = T.lines conteudo
+        semVazias = filter (not . T.null . T.strip) linhas
+        ordenadas = sort semVazias
+    TIO.writeFile "output.txt" (T.unlines ordenadas)
+    printf (d%" linhas processadas\n") (length ordenadas)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ansi" class="section-title">Saída Colorida e Formatação</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ansi-terminal e pretty-printer para output rico</div>
+          <pre class="example"><span class="com">-- cabal install ansi-terminal</span>
+import System.Console.ANSI
+
+<span class="com">-- Colorir saída</span>
+sucesso :: String -> IO ()
+sucesso msg = do
+    setSGR [SetColor Foreground Vivid Green, SetConsoleIntensity BoldIntensity]
+    putStr "✓ "
+    setSGR [Reset]
+    putStrLn msg
+
+erro :: String -> IO ()
+erro msg = do
+    setSGR [SetColor Foreground Vivid Red]
+    putStr "✗ "
+    setSGR [Reset]
+    putStrLn msg
+
+aviso :: String -> IO ()
+aviso msg = do
+    setSGR [SetColor Foreground Vivid Yellow]
+    putStr "⚠ "
+    setSGR [Reset]
+    putStrLn msg
+
+info :: String -> IO ()
+info msg = do
+    setSGR [SetColor Foreground Vivid Cyan]
+    putStr "ℹ "
+    setSGR [Reset]
+    putStrLn msg
+
+<span class="com">-- Tabela simples</span>
+tabela :: [[String]] -> IO ()
+tabela rows = do
+    let widths = map (maximum . map length) (transpose rows)
+    setSGR [SetColor Foreground Vivid White, SetConsoleIntensity BoldIntensity]
+    mapM_ (putStr . padRight (head widths)) (head rows)
+    putStrLn ""
+    setSGR [Reset]
+    putStrLn (replicate (sum widths + length widths) '-')
+    mapM_ (\row -> do
+        mapM_ (\(w, cell) -> putStr (padRight w cell)) (zip widths row)
+        putStrLn "") (tail rows)
+  where
+    padRight n s = s ++ replicate (n - length s + 2) ' '
+    transpose [] = []
+    transpose ([] : _) = []
+    transpose xss = map head xss : transpose (map tail xss)
+
+<span class="com">-- Progress bar</span>
+progressBar :: Int -> Int -> IO ()
+progressBar atual total = do
+    clearLine
+    let pct       = atual * 100 `div` total
+        barWidth  = 40
+        filled    = barWidth * atual `div` total
+        bar       = replicate filled '█' ++ replicate (barWidth - filled) '░'
+    setSGR [SetColor Foreground Vivid Cyan]
+    putStr $ "\r[" ++ bar ++ "] " ++ show pct ++ "%"
+    setSGR [Reset]
+    hFlush stdout</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura-cli" class="section-title">Arquitetura de CLI Profissional</h2>
+        <p>Uma CLI robusta separa parser de argumentos, casos de uso, adaptadores de IO e formatacao de saida. Esse desenho facilita testes automatizados, reduz regressao e permite reutilizar o mesmo nucleo em servicos ou jobs agendados.</p>
+        <ul>
+          <li><strong>Exemplo real:</strong> ferramentas internas de migracao de dados, validadores de contrato e automacao de deploy.</li>
+          <li><strong>Boa pratica:</strong> saida estruturada opcional (JSON) para integracao com pipelines CI/CD.</li>
+          <li><strong>Limitacao:</strong> para interacoes ricas em tempo real, TUI/GUI pode ser mais adequada do que CLI pura.</li>
+          <li><strong>Trade-off:</strong> tipagem forte aumenta seguranca, mas exige maior disciplina na modelagem inicial.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BAE, Bryan O. <strong>optparse-applicative — Utilities and Conveniences for using CLI parsers</strong>. Disponível em: &lt;https://hackage.haskell.org/package/optparse-applicative&gt;. Acesso em: 2026.</li>
+            <li>GONZALEZ, Gabriella. <strong>turtle — Shell scripting, Haskell-style</strong>. Disponível em: &lt;https://hackage.haskell.org/package/turtle&gt;. Acesso em: 2026.</li>
+            <li>ANSI-TERMINAL. <strong>ansi-terminal — Simple ANSI terminal support</strong>. Disponível em: &lt;https://hackage.haskell.org/package/ansi-terminal&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Haskell</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <code>optparse-applicative</code> demonstra a elegância de usar <strong>abstrações matemáticas para resolver problemas reais</strong>: parsers de argumentos são Applicative Functors, então você os compõe com <code>&lt;$&gt;</code> e <code>&lt;*&gt;</code> exatamente como compõe qualquer Applicative. O resultado é que parsers complexos com subcomandos, flags opcionais e defaults são simplesmente registros Haskell — sem magic strings, sem configuração em runtime, erro de compilação se o tipo não bater.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

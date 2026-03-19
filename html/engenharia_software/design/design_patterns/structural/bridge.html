@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bridge: padrão estrutural que separa abstração da implementação, permitindo evoluir ambos de forma independente." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Bridge | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Separar abstração de implementação para variar ambas</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Bridge</h1>
+          <p class="page-subtitle">Estrutural — GoF</p>
+        </div>
+        <p class="intro-highlight">Bridge separa uma abstração da sua implementação, permitindo que as duas variem de forma independente. Evita a explosão de subclasses quando há duas dimensões de variação. Em vez de herança, usa composição.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="problema" class="section-title">O problema que Bridge resolve</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Sem Bridge (herança)</th>
+                <th>Com Bridge (composição)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>FormaCirculo, FormaQuadrado, FormaDark, FormaLight...</td>
+                <td>Forma (abstrato) + Tema (impl.) combinam independentemente</td>
+              </tr>
+              <tr>
+                <td>N formas × M implementações = N×M classes</td>
+                <td>N + M classes</td>
+              </tr>
+              <tr>
+                <td>Adicionar nova impl. = N novas subclasses</td>
+                <td>Adicionar nova impl. = 1 nova classe</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — formas com renderizadores</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// IMPLEMENTAÇÃO (varia independentemente)
+interface Renderizador {
+  renderizarCirculo(raio: number): string;
+  renderizarQuadrado(lado: number): string;
+}
+
+class RenderizadorSVG implements Renderizador {
+  renderizarCirculo(raio: number) { return `&lt;circle r="${raio}"/&gt;`; }
+  renderizarQuadrado(lado: number) { return `&lt;rect width="${lado}" height="${lado}"/&gt;`; }
+}
+
+class RenderizadorCanvas implements Renderizador {
+  renderizarCirculo(raio: number) { return `ctx.arc(0,0,${raio},0,2*Math.PI)`; }
+  renderizarQuadrado(lado: number) { return `ctx.rect(0,0,${lado},${lado})`; }
+}
+
+// ABSTRAÇÃO (delega render ao impl. injetado)
+abstract class Forma {
+  constructor(protected render: Renderizador) {}
+  abstract desenhar(): string;
+}
+
+class Circulo extends Forma {
+  constructor(private raio: number, render: Renderizador) { super(render); }
+  desenhar() { return this.render.renderizarCirculo(this.raio); }
+}
+
+class Quadrado extends Forma {
+  constructor(private lado: number, render: Renderizador) { super(render); }
+  desenhar() { return this.render.renderizarQuadrado(this.lado); }
+}
+
+// Combinam livremente:
+new Circulo(10, new RenderizadorSVG()).desenhar();
+new Circulo(10, new RenderizadorCanvas()).desenhar();
+new Quadrado(20, new RenderizadorSVG()).desenhar();</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Há duas dimensões independentes de variação que combinadas causariam explosão de subclasses.</p>
+          </div>
+          <div class="card">
+            <h3>Composição sobre herança</h3>
+            <p>Injetar o renderizador (implem.) em vez de herdar garante mais flexibilidade e testabilidade.</p>
+          </div>
+          <div class="card">
+            <h3>Runtime switch</h3>
+            <p>A implementação pode ser trocada em runtime. A abstração permanece a mesma interface para o cliente.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Há apenas uma dimensão de variação. Strategy já resolve sem a estrutura de abstração/impl.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Bridge é conceitualmente similar a Strategy mas aplicado à separação estrutural de abstração/implementação. Veja <a href="/html/engenharia_software/design/design_patterns/structural/decorator.html">Decorator</a> para adicionar comportamento sem mudar estrutura.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Bridge troca N×M subclasses por N+M classes — composição vence herança quando há múltiplos eixos de variação."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

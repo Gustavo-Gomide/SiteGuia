@@ -1,0 +1,240 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Automação de Tarefas: guia completo sobre scripts de automação, Taskfile, pre-commit hooks, cron e ferramentas modernas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Automação | Produtividade | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Automação de Tarefas</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Automação de Tarefas — Elimine o Trabalho Repetitivo</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Automação de Tarefas</h1>
+          <p class="page-subtitle">Codifique seus processos repetitivos uma vez e deixe a máquina executar — builds, testes, deploys, formatação e qualidade automatizados</p>
+        </div>
+        <p class="intro-highlight">
+          Um desenvolvedor produtivo é aquele que <strong>automatiza tarefas recorrentes</strong>. Cada processo manual é um candidato à automação: executar testes antes de commitar, formatar código ao salvar, fazer deploy após merge, enviar notificações quando uma tarefa termina. Esses ganhos, individualmente pequenos, são enormes em escala de meses e anos.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="shell-scripts" class="section-title">Shell Scripts — A Base da Automação</h2>
+        <div class="ide-box">
+          <div class="ide-header">
+            <div class="ide-dots">
+              <span class="ide-dot ide-dot--red"></span>
+              <span class="ide-dot ide-dot--yellow"></span>
+              <span class="ide-dot ide-dot--green"></span>
+            </div>
+            setup.sh — script de configuração de ambiente
+          </div>
+          <div class="ide-content">
+            <pre class="code-block">#!/usr/bin/env bash
+set -euo pipefail                     <span class="com"># sair ao primeiro erro; var não definida = erro</span>
+IFS=$'\n\t'
+
+LOG() { echo "[$(date '+%H:%M:%S')] $*"; }
+
+LOG "Configurando ambiente de desenvolvimento..."
+
+<span class="com"># Verificar pré-requisitos</span>
+command -v python3 &amp;&gt;/dev/null || { echo "Python 3 não encontrado"; exit 1; }
+command -v node   &amp;&gt;/dev/null || { echo "Node.js não encontrado";  exit 1; }
+
+<span class="com"># Criar ambiente virtual Python</span>
+if [ ! -d ".venv" ]; then
+    LOG "Criando venv..."
+    python3 -m venv .venv
+fi
+
+source .venv/bin/activate
+
+<span class="com"># Instalar dependências</span>
+LOG "Instalando dependências Python..."
+pip install -q -r requirements.txt
+
+LOG "Instalando dependências Node.js..."
+npm ci --silent
+
+LOG "Configurando git hooks..."
+npx husky install
+
+LOG "Pronto. Ambiente configurado com sucesso."</pre>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="taskfile" class="section-title">Taskfile — Make Moderno</h2>
+        <p><a href="https://taskfile.dev" target="_blank" rel="noopener"><strong>Taskfile</strong></a> (ou <code class="code-inline">task</code>) é uma alternativa moderna ao Make: sintaxe YAML legive, multi-plataforma (inclui Windows) e sem as peculiaridades do Makefile.</p>
+        <div class="ide-box">
+          <div class="ide-header">
+            <div class="ide-dots">
+              <span class="ide-dot ide-dot--red"></span>
+              <span class="ide-dot ide-dot--yellow"></span>
+              <span class="ide-dot ide-dot--green"></span>
+            </div>
+            Taskfile.yml
+          </div>
+          <div class="ide-content">
+            <pre class="code-block">version: '3'
+
+vars:
+  APP: meu-app
+
+tasks:
+  default:
+    desc: "Mostra as tarefas disponíveis"
+    cmds: [task --list]
+
+  build:
+    desc: "Compila o projeto"
+    cmds:
+      - go build -o bin/{{.APP}} ./cmd/{{.APP}}
+
+  test:
+    desc: "Executa todos os testes"
+    cmds:
+      - go test ./... -v -race -coverprofile=coverage.out
+
+  lint:
+    desc: "Lint + format"
+    cmds:
+      - golangci-lint run
+      - gofmt -w .
+
+  docker:build:
+    desc: "Build da imagem Docker"
+    cmds:
+      - docker build -t {{.APP}}:latest .
+
+  dev:
+    desc: "Inicia servidor de desenvolvimento"
+    deps: [build]
+    cmds:
+      - air                          <span class="com"># live reload</span></pre>
+          </div>
+        </div>
+        <p>Execute com <code class="code-inline">task build</code>, <code class="code-inline">task test</code>, etc. Lista de tarefas com <code class="code-inline">task --list</code>.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="git-hooks" class="section-title">Git Hooks — Automação no Fluxo de VCS</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Hooks mais úteis</h3>
+            <div class="scroll-x">
+              <table>
+                <thead><tr><th>Hook</th><th>Quando executa</th><th>Uso comum</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="code-inline">pre-commit</code></td><td>Antes do commit</td><td>Linting, formatação, testes unitários</td></tr>
+                  <tr><td><code class="code-inline">commit-msg</code></td><td>Após digitar a mensagem</td><td>Validar formato do commit (Conventional Commits)</td></tr>
+                  <tr><td><code class="code-inline">pre-push</code></td><td>Antes de fazer push</td><td>Testes de integração, segurança</td></tr>
+                  <tr><td><code class="code-inline">post-merge</code></td><td>Após merge/pull</td><td>Reinstalar dependências</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">pre-commit — a ferramenta</h3>
+            <p><a href="https://pre-commit.com" target="_blank" rel="noopener"><strong>pre-commit</strong></a> é um gerenciador de hooks Git. Define os hooks em <code class="code-inline">.pre-commit-config.yaml</code> e eles são compartilhados com a equipe:</p>
+            <pre class="code-block">repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.1.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format</pre>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="cron" class="section-title">Cron — Tarefas Agendadas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">crontab — sintaxe e exemplos</div>
+          <pre class="code-block"><span class="com"># Formato: minuto hora dia-do-mes mes dia-da-semana comando</span>
+<span class="com"># min (0-59) | hora (0-23) | dom (1-31) | mês (1-12) | dow (0-7, dom=0 ou 7)</span>
+
+<span class="com"># Backup diário às 2h da manhã</span>
+0 2 * * * /usr/local/bin/backup.sh
+
+<span class="com"># Limpar logs toda segunda-feira às 3h30</span>
+30 3 * * 1 find /var/log/app -name "*.log" -mtime +30 -delete
+
+<span class="com"># Sincronizar dados a cada 15 minutos</span>
+*/15 * * * * /scripts/sync.sh &gt;&gt; /var/log/sync.log 2&gt;&amp;1
+
+<span class="com"># Abrir o editor de crontab</span>
+<span class="kw">crontab</span> -e
+
+<span class="com"># Ver crontabs atuais</span>
+<span class="kw">crontab</span> -l</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Taskfile. <strong>Taskfile Documentation</strong>. <a href="https://taskfile.dev" target="_blank" rel="noopener">taskfile.dev</a></li>
+            <li>pre-commit. <strong>pre-commit: A framework for managing multi-language pre-commit hooks</strong>. <a href="https://pre-commit.com" target="_blank" rel="noopener">pre-commit.com</a></li>
+            <li>GNU. <strong>Bash Reference Manual</strong>. <a href="https://www.gnu.org/software/bash/manual/" target="_blank" rel="noopener">gnu.org/software/bash</a></li>
+            <li>NEWHAM, Cameron. <strong>Learning the bash Shell</strong>. 3rd ed. O'Reilly, 2005.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Veja também: <a href="/html/ferramentas_e_praticas/terminal.html">Terminal</a> e <a href="/html/ferramentas_e_praticas/ferramentas_build/make.html">Make</a> — as bases da automação.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Todo processo manual que você vai repetir mais de 10 vezes merece ser automatizado. O tempo investido em automatação é sempre menor que o tempo total das execuções manuais."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

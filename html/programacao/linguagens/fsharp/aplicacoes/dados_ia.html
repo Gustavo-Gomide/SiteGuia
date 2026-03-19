@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dados e IA com F#: FSharp.Data, Deedle DataFrame, ML.NET, Plotly.NET e notebooks interativos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Dados e Inteligência Artificial</h1>
+          <p>F# combina Type Providers (acesso tipado a CSV, JSON, XML, SQL, OData), Deedle (DataFrame analítico estilo pandas), ML.NET para machine learning .NET-nativo e Plotly.NET para visualizações interativas — tudo integrado ao ecossistema .NET e executável em notebooks com .NET Interactive.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>.NET Interactive Notebooks</strong> (extensão do VS Code) permite misturar células F#, C#, SQL e JavaScript num único notebook. Cada célula F# é executada no FSI; variáveis persistem entre células; gráficos Plotly.NET renderizam inline. É a alternativa ao Jupyter com tipagem estática completa.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fsharp-data">FSharp.Data — Type Providers para Dados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CSV, JSON Schema e World Bank Type Provider</div>
+          <pre class="example">#r "nuget: FSharp.Data"
+open FSharp.Data
+
+<span class="com">// CSV Type Provider — schema inferido da primeira linha</span>
+type Titanic = CsvProvider&lt;<span class="str">"titanic.csv"</span>&gt;
+<span class="kw">let</span> treino = Titanic.Load(<span class="str">"titanic.csv"</span>)
+
+<span class="kw">let</span> taxaSobrevivencia =
+    treino.Rows
+    |> Seq.filter  (fun r -> r.Survived = <span class="str">"1"</span>)
+    |> Seq.length
+    |> fun s -> float s / float (Seq.length treino.Rows)
+
+printfn <span class="str">"Taxa de sobrevivência: %.1f%%"</span> (taxaSobrevivencia * 100.0)
+
+<span class="com">// Análise por classe de bilhete</span>
+treino.Rows
+|> Seq.groupBy (fun r -> r.Pclass)
+|> Seq.map (fun (cl, rows) ->
+    cl,
+    rows |> Seq.filter (fun r -> r.Survived = <span class="str">"1"</span>) |> Seq.length,
+    rows |> Seq.length)
+|> Seq.iter (fun (cl, sobrev, total) ->
+    printfn <span class="str">"Classe %s: %d/%d (%.0f%%)"</span> cl sobrev total
+        (100.0 * float sobrev / float total))
+
+<span class="com">// World Bank Type Provider (dados econômicos em tempo real)</span>
+<span class="kw">let</span> wb = WorldBankData.GetDataContext()
+<span class="kw">let</span> br = wb.Countries.Brazil
+<span class="kw">let</span> pib = br.Indicators.``GDP (current US$)`` |> Seq.last
+printfn <span class="str">"PIB Brasil: $%.0f"</span> (snd pib)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deedle">Deedle — DataFrame para F#</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criar, filtrar, agrupar e pivotar Series e Frames</div>
+          <pre class="example">#r "nuget: Deedle"
+open Deedle
+
+<span class="com">// Criar Frame (DataFrame) de CSV</span>
+<span class="kw">let</span> df = Frame.ReadCsv&lt;int&gt;(<span class="str">"vendas.csv"</span>)
+<span class="com">// Colunas: Id, Produto, Valor, Quantidade, Data</span>
+
+<span class="com">// Acessar coluna como Series</span>
+<span class="kw">let</span> valores : Series&lt;int, float&gt; = df.GetColumn(<span class="str">"Valor"</span>)
+
+<span class="com">// Estatísticas descritivas</span>
+printfn <span class="str">"Média: %.2f"</span>  (Stats.mean valores)
+printfn <span class="str">"Desvpad: %.2f"</span> (Stats.stdDev valores)
+printfn <span class="str">"Mín: %.2f"</span>    (Stats.min valores)
+printfn <span class="str">"Máx: %.2f"</span>    (Stats.max valores)
+
+<span class="com">// Filtrar linhas</span>
+<span class="kw">let</span> vendaGrande =
+    df |> Frame.filterRows (fun _ row ->
+        row.GetAs&lt;float&gt;(<span class="str">"Valor"</span>) > 1000.0)
+
+<span class="com">// Agrupar e agregar</span>
+<span class="kw">let</span> totalPorProduto =
+    df
+    |> Frame.groupRowsByString <span class="str">"Produto"</span>
+    |> Frame.applyLevel fst (Stats.sum)
+
+<span class="com">// Criar Series manualmente</span>
+<span class="kw">let</span> precos = Series.ofValues [10.5; 20.0; 15.3; 8.0; 30.0]
+<span class="kw">let</span> nomes  = Series.ofValues [<span class="str">"A"</span>; <span class="str">"B"</span>; <span class="str">"C"</span>; <span class="str">"D"</span>; <span class="str">"E"</span>]
+
+<span class="kw">let</span> dfManual =
+    Frame.ofColumns [
+        <span class="str">"Nome"</span>  , nomes  |> Series.mapValues box
+        <span class="str">"Preco"</span> , precos |> Series.mapValues box
+    ]
+
+<span class="com">// Exportar</span>
+dfManual.SaveCsv(<span class="str">"resultado.csv"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mlnet">ML.NET com F# — Machine Learning .NET Nativo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Regressão e classificação com ML.NET</div>
+          <pre class="example">#r "nuget: Microsoft.ML"
+open Microsoft.ML
+open Microsoft.ML.Data
+
+<span class="com">// Tipos de dados — anotações para ML.NET</span>
+[&lt;CLIMutable&gt;]
+type HouseData = {
+    [&lt;LoadColumn(0)&gt;] mutable Area  : float32
+    [&lt;LoadColumn(1)&gt;] mutable Quartos: float32
+    [&lt;LoadColumn(2)&gt;] mutable Preco  : float32
+}
+
+[&lt;CLIMutable&gt;]
+type HousePrediction = {
+    mutable Score: float32
+}
+
+<span class="kw">let</span> mlContext = MLContext(seed = 42)
+
+<span class="com">// Carregar dados</span>
+<span class="kw">let</span> dados =
+    [| { Area=50f; Quartos=1f; Preco=200000f }
+       { Area=80f; Quartos=2f; Preco=320000f }
+       { Area=120f;Quartos=3f; Preco=480000f }
+       { Area=200f;Quartos=4f; Preco=800000f } |]
+
+<span class="kw">let</span> trainData = mlContext.Data.LoadFromEnumerable(dados)
+
+<span class="com">// Pipeline: features → treinar</span>
+<span class="kw">let</span> pipeline =
+    mlContext.Transforms
+             .Concatenate(<span class="str">"Features"</span>, [| <span class="str">"Area"</span>; <span class="str">"Quartos"</span> |])
+             .Append(mlContext.Regression.Trainers.Sdca(
+                 labelColumnName = <span class="str">"Preco"</span>,
+                 maximumNumberOfIterations = 100))
+
+<span class="kw">let</span> modelo = pipeline.Fit(trainData)
+
+<span class="com">// Predição</span>
+<span class="kw">let</span> engine =
+    mlContext.Model.CreatePredictionEngine&lt;HouseData, HousePrediction&gt;(modelo)
+
+<span class="kw">let</span> resultado =
+    engine.Predict({ Area = 100f; Quartos = 3f; Preco = 0f })
+
+printfn <span class="str">"Preço estimado: R$ %.0f"</span> resultado.Score
+
+<span class="com">// Avaliar com validação cruzada</span>
+<span class="kw">let</span> cvResults =
+    mlContext.Regression.CrossValidate(trainData, pipeline, numberOfFolds = 3)
+
+cvResults |> Array.iter (fun cv ->
+    printfn <span class="str">"Fold RMSE: %.2f"</span> cv.Metrics.RootMeanSquaredError)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="plotly">Plotly.NET — Visualizações Interativas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Gráficos de linha, barra, dispersão e heatmap</div>
+          <pre class="example">#r "nuget: Plotly.NET"
+open Plotly.NET
+
+<span class="com">// Gráfico de linha</span>
+<span class="kw">let</span> anos  = [2018..2024]
+<span class="kw">let</span> valor = [10.0; 12.5; 11.0; 15.0; 18.3; 20.1; 23.5]
+
+Chart.Line(anos, valor, Name = <span class="str">"Receita (M)"</span>)
+|> Chart.withTitle <span class="str">"Receita Anual"</span>
+|> Chart.withXAxisStyle(TitleText = <span class="str">"Ano"</span>)
+|> Chart.withYAxisStyle(TitleText = <span class="str">"R$ Milhões"</span>)
+|> Chart.show
+
+<span class="com">// Dispersão com cores por categoria</span>
+<span class="kw">let</span> scatter =
+    [
+        Chart.Scatter([1.0;2.0;3.0], [4.0;5.0;6.0], StyleParam.Mode.Markers, Name = <span class="str">"Grupo A"</span>)
+        Chart.Scatter([1.5;2.5;3.5], [3.0;4.0;5.0], StyleParam.Mode.Markers, Name = <span class="str">"Grupo B"</span>)
+    ]
+    |> Chart.combine
+    |> Chart.withTitle <span class="str">"Grupos"</span>
+    |> Chart.show
+
+<span class="com">// Heatmap de correlação</span>
+<span class="kw">let</span> matrix = [
+    [1.0; 0.8; 0.3]
+    [0.8; 1.0; 0.5]
+    [0.3; 0.5; 1.0]
+]
+<span class="kw">let</span> labels = [<span class="str">"A"</span>; <span class="str">"B"</span>; <span class="str">"C"</span>]
+
+Chart.Heatmap(matrix, colNames = labels, rowNames = labels, Showscale = true)
+|> Chart.withTitle <span class="str">"Correlações"</span>
+|> Chart.show
+
+<span class="com">// Subplots lado a lado</span>
+[
+    Chart.Bar([<span class="str">"Jan"</span>;<span class="str">"Fev"</span>;<span class="str">"Mar"</span>], [100; 150; 120], Name = <span class="str">"Vendas"</span>)
+    Chart.Line([<span class="str">"Jan"</span>;<span class="str">"Fev"</span>;<span class="str">"Mar"</span>], [50; 80; 60], Name = <span class="str">"Custo"</span>)
+]
+|> Chart.SingleStack()
+|> Chart.withSize(1000, 600)
+|> Chart.show</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="notebooks">.NET Interactive — Notebooks com F#</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Instalar</h3>
+            <p><code>dotnet tool install -g Microsoft.dotnet-interactive</code> + extensão <strong>Polyglot Notebooks</strong> no VS Code. Cria arquivos <code>.ipynb</code> com suporte a F#, C#, SQL e JS.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Pacotes inline</h3>
+            <p>Dentro do notebook: <code>#r "nuget: FSharp.Data"</code> instala pacote sem modificar o projeto. Variáveis F# persistem na sessão FSI entre células.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Visualizações inline</h3>
+            <p><code>Chart.show</code> renderiza gráficos Plotly diretamente na célula. Tabelas com <code>display(df)</code>. Markdown com <code>#!markdown</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Magic commands</h3>
+            <p><code>#!time</code> mede execução. <code>#!share --from csharp variavel</code> compartilha entre kernels. <code>#!sql</code> executa SQL com resultado tabular.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Deedle. <strong>Deedle — Exploratory data library for .NET</strong>. Disponível em: &lt;https://fslab.org/Deedle/&gt;. Acesso em: 2026.</li>
+            <li>Microsoft. <strong>ML.NET Guide</strong>. Disponível em: &lt;https://learn.microsoft.com/dotnet/machine-learning/&gt;. Acesso em: 2026.</li>
+            <li>Plotly.NET. <strong>Plotly.NET — Interactive charts for F# and C#</strong>. Disponível em: &lt;https://plotly.net&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com F#</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O fluxo de ciência de dados com F# tem uma vantagem única: <strong>você transita direto do notebook exploratório para produção</strong>. O código FSI que analisa dados é o mesmo código F# compilado que roda no servidor — mesma linguagem, mesmos tipos, mesma biblioteca. Não há reescrita de Python para Java nem conversão de notebook para pipeline. O Type Provider que inferiu o schema do CSV em desenvolvimento é o mesmo que valida o CSV em produção.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

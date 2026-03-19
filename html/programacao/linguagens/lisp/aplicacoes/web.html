@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Aplicacoes web com Lisp: Common Lisp no backend, APIs JSON, sessoes e deploy com foco pratico." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Lisp - Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Lisp - Aplicacoes Web</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Aplicacoes Web em Lisp</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="lisp" aria-hidden="true"></span></div>
+          <h1>Common Lisp no backend moderno</h1>
+          <p>Frameworks como Hunchentoot e Caveman2 permitem construir APIs, autenticar usuarios e operar servicos web com bom desempenho e grande flexibilidade.</p>
+        </div>
+        <p class="intro-highlight">Lisp em web funciona melhor quando voce usa a linguagem para acelerar modelagem de dominio, gerar DSLs internas e manter um ciclo de desenvolvimento orientado por REPL.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="stack-web" class="section-title">Stack tipica de backend</h2>
+        <div class="grid grid--3">
+          <div class="card"><h3>Servidor HTTP</h3><p>Hunchentoot fornece roteamento, request/response e middlewares basicos.</p></div>
+          <div class="card"><h3>Camada de app</h3><p>Caveman2 organiza rotas, controllers e templates; facilita separar regras de negocio.</p></div>
+          <div class="card"><h3>Persistencia e cache</h3><p>Postmodern/CLSQL para SQL, Redis via cliente externo para sessao e cache.</p></div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Fluxo operacional recomendado</h3>
+          <p>Desenvolver com SBCL + REPL local, empacotar imagem com as dependencias e executar atras de Nginx/HAProxy para TLS, compressao e rate limiting.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="api-json" class="section-title">API JSON, sessao e seguranca</h2>
+        <table>
+          <thead>
+            <tr><th>Aspecto</th><th>Boa pratica</th><th>Risco comum</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>JSON</td><td>Schema claro e validacao de entrada</td><td>Payload sem validacao</td></tr>
+            <tr><td>Sessao</td><td>Cookie seguro + expirar sessao</td><td>Session fixation</td></tr>
+            <tr><td>Deploy</td><td>Reverse proxy e observabilidade</td><td>Processo sem healthcheck</td></tr>
+          </tbody>
+        </table>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Common Lisp - endpoint JSON com validacao basica</div>
+          <pre class="example"><span class="com">;; Exemplo didatico com Hunchentoot + cl-json</span>
+(<span class="kw">defun</span> <span class="fn">safe-int</span> (x)
+  (<span class="kw">handler-case</span> (parse-integer x)
+    (error () nil)))
+
+(<span class="kw">defun</span> <span class="fn">users-handler</span> ()
+  (<span class="kw">let*</span> ((limit-raw (hunchentoot:parameter <span class="str">\"limit\"</span>))
+         (limit (<span class="kw">or</span> (safe-int limit-raw) 20)))
+    (<span class="kw">if</span> (< limit 1)
+        (setf (hunchentoot:return-code*) 400)
+        (setf (hunchentoot:content-type*) <span class="str">\"application/json\"</span>))
+    (cl-json:encode-json-to-string
+      `((<span class="str">\"ok\"</span> . t) (<span class="str">\"limit\"</span> . ,limit)))))</pre>
+        </div>
+        <p>O ponto principal e tornar validacao e serializacao explicitas. Lisp nao impede erros de contrato em runtime, entao testes de integracao e observabilidade sao essenciais.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tradeoffs-web" class="section-title">Limites e trade-offs</h2>
+        <div class="panel">
+          <h3 class="panel-title">Onde Lisp brilha</h3>
+          <p>Projetos com regras de negocio sofisticadas, necessidade de DSL interna e equipes pequenas com alto dominio tecnico.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Onde exige cautela</h3>
+          <p>Mercado com menor oferta de profissionais, menor numero de integracoes prontas comparado a ecossistemas JavaScript/Java e padroes de deploy menos conhecidos por times de plataforma.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li><a href="https://edicl.github.io/hunchentoot/" target="_blank" rel="noopener">HUNCHENTOOT. Official Documentation.</a></li>
+          <li><a href="https://8arrow.org/caveman/" target="_blank" rel="noopener">CAVEMAN2. Web Framework for Common Lisp.</a></li>
+          <li><a href="https://lispcookbook.github.io/cl-cookbook/web.html" target="_blank" rel="noopener">LISP COOKBOOK. Common Lisp Web Development.</a></li>
+          <li><a href="https://sbcl.org/manual/" target="_blank" rel="noopener">STEEL BANK COMMON LISP. SBCL User Manual.</a></li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Lisp em web entrega valor quando voce usa o REPL para reduzir ciclo de feedback e projeta contratos de API com disciplina.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/guia/introducao.html">Visao geral de Lisp</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/web.html">Comparar com Clojure Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/aplicacoes/terminal_cli.html">Lisp para CLI e automacao</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

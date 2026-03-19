@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Permissões de arquivo em Linux e Windows: rwx, bits especiais (setuid, setgid, sticky bit), ACLs, chmod/chown/umask e permissões NTFS." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Permissões de Arquivo | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Permissões de Arquivo</h1>
+            <p class="page-subtitle">rwx, bits especiais, ACLs, umask e o modelo de segurança Unix</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Permissões controlam quem pode ler, escrever ou executar arquivos — elas são a base do modelo de segurança Unix. Cada arquivo tem um dono (owner), um grupo associado e um conjunto de permissões para três classes: dono, grupo e outros (others). Entender esse modelo é pré-requisito para qualquer administração de sistema Linux.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — rwx ═══════════════════ -->
+      <section id="rwx">
+        <h2>Modelo rwx do Unix</h2>
+        <p>Cada arquivo tem 9 bits de permissão divididos em três trios: <code>rwx</code> para o dono, <code>rwx</code> para o grupo e <code>rwx</code> para outros. Na representação octal, r=4, w=2, x=1. O comando <code>ls -l</code> exibe os bits como string de 10 caracteres (tipo + 9 bits).</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Modo octal</th>
+                <th>Representacao simbolica</th>
+                <th>Significado tipico</th>
+                <th>Riscos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>644</td><td>rw-r--r--</td><td>Arquivo de configuracao ou texto</td><td>Nenhum significativo</td></tr>
+              <tr><td>755</td><td>rwxr-xr-x</td><td>Binario ou diretorio publico</td><td>Nenhum significativo</td></tr>
+              <tr><td>700</td><td>rwx------</td><td>Script privado do usuario</td><td>Nenhum</td></tr>
+              <tr><td>600</td><td>rw-------</td><td>Chave SSH privada, arquivo de senha</td><td>Nenhum (protegido)</td></tr>
+              <tr><td>666</td><td>rw-rw-rw-</td><td>Arquivo gravavel por todos</td><td>Qualquer usuario pode sobrescrever</td></tr>
+              <tr><td>777</td><td>rwxrwxrwx</td><td>Tudo liberado</td><td>Alto risco; evitar em producao</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — chmod simbólico e octal</div>
+          <pre class="code-block"># Setar permissões com modo octal
+chmod 755 script.sh
+
+# Adicionar bit de execução para todos
+chmod +x script.sh
+
+# Remover escrita para outros
+chmod o-w arquivo.txt
+
+# Recursivo em diretório
+chmod -R 750 /var/app/</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — BITS ESPECIAIS ═══════════════════ -->
+      <section id="bits-especiais">
+        <h2>Bits Especiais — setuid, setgid e Sticky Bit</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">setuid (bit 4000)</h3>
+            <p>Quando ativo em um executavel, o processo roda com o UID do dono do arquivo, nao do usuario que executou. Permite que usuarios comuns executem operacoes privilegiadas de forma controlada. Exibido como <code>s</code> no bit x do dono.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">setgid (bit 2000)</h3>
+            <p>Em executavel: processo assume GID do grupo dono. Em diretorio: novos arquivos criados herdam o grupo do diretorio, nao o grupo primario do usuario. Util para diretorios compartilhados de equipe.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Sticky Bit (bit 1000)</h3>
+            <p>Em diretorio: apenas o dono do arquivo (ou root) pode deletar ou renomear arquivos ali contidos, mesmo que o diretorio seja gravavel por todos. Usado em <code>/tmp</code> para evitar que usuarios apaguem arquivos uns dos outros.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — setuid no /usr/bin/passwd</div>
+          <pre class="code-block"># passwd precisa escrever em /etc/shadow (dono: root)
+# Por isso tem setuid: qualquer usuário executa como root
+ls -la /usr/bin/passwd
+# -rwsr-xr-x 1 root root 68208 ...  /usr/bin/passwd
+#    ^ 's' indica setuid ativo
+
+# Setar setuid via chmod
+chmod u+s /usr/bin/meuapp
+
+# Sticky bit em /tmp
+ls -ld /tmp
+# drwxrwxrwt 15 root root ...  /tmp
+#          ^ 't' indica sticky bit
+
+# Setar sticky bit
+chmod +t /shared/projeto/</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ACLs ═══════════════════ -->
+      <section id="acls">
+        <h2>ACLs — Access Control Lists</h2>
+        <p>O modelo rwx so permite tres classes. ACLs POSIX permitem atribuir permissoes individuais para usuarios ou grupos adicionais, alem do trio padrao. A mascara (mask) ACL define o teto de permissoes para entradas nao-owner.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — getfacl e setfacl</div>
+          <pre class="code-block"># Ver ACL de um arquivo
+getfacl relatorio.pdf
+# # file: relatorio.pdf
+# # owner: alice
+# # group: financeiro
+# user::rw-
+# user:bob:r--        &lt;-- permissão extra para bob
+# group::r--
+# mask::r--
+# other::---
+
+# Adicionar leitura+escrita para o usuário bob
+setfacl -m u:bob:rw relatorio.pdf
+
+# Adicionar ACL padrão para diretório (novos arquivos herdam)
+setfacl -d -m g:devs:rwx /var/projeto/
+
+# Remover ACL de um usuário
+setfacl -x u:bob relatorio.pdf
+
+# Remover todas as ACLs extras
+setfacl -b relatorio.pdf</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — UMASK ═══════════════════ -->
+      <section id="umask">
+        <h2>umask, chmod e chown</h2>
+        <p>O <code>umask</code> define quais bits de permissao serao <em>subtraidos</em> das permissoes padrao ao criar novos arquivos e diretorios. Permissao padrao para arquivos e 0666, para diretorios e 0777. Com <code>umask 022</code>: arquivo criado com 644, diretorio com 755.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Comando</th>
+                <th>Exemplo</th>
+                <th>Efeito</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>umask</td><td>umask 022</td><td>Novos arquivos: 644; novos dirs: 755</td></tr>
+              <tr><td>umask</td><td>umask 027</td><td>Novos arquivos: 640; novos dirs: 750 (outros sem acesso)</td></tr>
+              <tr><td>chmod</td><td>chmod 755 bin/app</td><td>Seta permissoes exatas</td></tr>
+              <tr><td>chmod</td><td>chmod +x script.sh</td><td>Adiciona execucao para todos</td></tr>
+              <tr><td>chmod</td><td>chmod o-w arquivo</td><td>Remove escrita de outros</td></tr>
+              <tr><td>chown</td><td>chown alice:devs arquivo</td><td>Muda dono e grupo</td></tr>
+              <tr><td>chown</td><td>chown -R www-data:www-data /var/www/</td><td>Recursivo em diretorio</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/alocacao_arquivos.html">Alocação de Arquivos</a> e <a href="/html/sistemas/arquivos/sistema_arquivos.html">Sistema de Arquivos</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Permissões corretas nao sao restricoes — sao a garantia de que cada processo acessa apenas o que deve acessar."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

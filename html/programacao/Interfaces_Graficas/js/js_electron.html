@@ -1,0 +1,202 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Electron JS: crie apps desktop com HTML, CSS e JavaScript usando Chromium e Node.js." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Electron | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>JavaScript &mdash; Electron</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Electron</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Electron &mdash; Apps Desktop com HTML, CSS e JS</h1>
+          <p>O framework que alimenta VS Code, Slack, Discord, Figma e Notion. Web tech para o desktop.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>Electron</strong> (criado pela GitHub em 2013, originalmente como Atom Shell) combina
+          um runtime <strong>Chromium</strong> para a UI com um runtime <strong>Node.js</strong> para acesso
+          ao sistema. Isso permite que desenvolvedores web criem apps desktop completos usando as mesmas
+          tecnologias que ja conhecem. O preco e o tamanho: um app Electron simples começa em torno de
+          <strong>150 MB</strong> descomprimido porque embute o Chromium inteiro. Apesar disso, o ecossistema
+          e enorme e a produtividade e altissima, tornando-o uma das plataformas desktop mais usadas no mundo.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="processos" class="section-title">1. Processo Main e Processo Renderer</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">javascript &mdash; main.js (processo principal)</div>
+          <pre class="example"><span class="kw">const</span> { app, BrowserWindow, ipcMain } = <span class="fn">require</span>(<span class="str">'electron'</span>);
+<span class="kw">const</span> path = <span class="fn">require</span>(<span class="str">'path'</span>);
+
+<span class="kw">function</span> <span class="fn">createWindow</span>() {
+    <span class="kw">const</span> win = <span class="kw">new</span> <span class="fn">BrowserWindow</span>({
+        width: <span class="num">900</span>, height: <span class="num">600</span>,
+        webPreferences: {
+            preload: path.<span class="fn">join</span>(__dirname, <span class="str">'preload.js'</span>),
+            <span class="com">// contextIsolation DEVE ser true — separacao de seguranca</span>
+            contextIsolation: <span class="kw">true</span>,
+            nodeIntegration: <span class="kw">false</span>  <span class="com">// NUNCA true em apps reais</span>
+        }
+    });
+    win.<span class="fn">loadFile</span>(<span class="str">'index.html'</span>);
+}
+
+app.<span class="fn">whenReady</span>().<span class="fn">then</span>(<span class="fn">createWindow</span>);
+app.<span class="fn">on</span>(<span class="str">'window-all-closed'</span>, () => app.<span class="fn">quit</span>());</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">javascript &mdash; preload.js e renderer.js com contextBridge</div>
+          <pre class="example"><span class="com">// preload.js — a ponte segura entre main e renderer</span>
+<span class="kw">const</span> { contextBridge, ipcRenderer } = <span class="fn">require</span>(<span class="str">'electron'</span>);
+
+contextBridge.<span class="fn">exposeInMainWorld</span>(<span class="str">'api'</span>, {
+    <span class="fn">getVersion</span>: () => ipcRenderer.<span class="fn">invoke</span>(<span class="str">'get-version'</span>),
+    <span class="fn">saveFile</span>: (data) => ipcRenderer.<span class="fn">invoke</span>(<span class="str">'save-file'</span>, data)
+});
+
+<span class="com">// renderer.js — codigo da pagina web tem acesso apenas a window.api</span>
+<span class="kw">const</span> version = <span class="kw">await</span> window.api.<span class="fn">getVersion</span>();
+document.<span class="fn">getElementById</span>(<span class="str">'ver'</span>).textContent = version;
+
+<span class="com">// main.js &mdash; handler IPC do lado do Node.js</span>
+ipcMain.<span class="fn">handle</span>(<span class="str">'get-version'</span>, () => app.<span class="fn">getVersion</span>());</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span>
+          <strong>Seguranca critica:</strong> Nunca habilite <code>nodeIntegration: true</code> em apps que carregam conteudo externo. Com <code>contextIsolation: true</code> + preload, o renderer nao tem acesso direto ao Node.js, eliminando XSS que se torna RCE (Remote Code Execution).</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="apis" class="section-title">2. APIs Nativas do Electron</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>dialog</h3>
+            <p>Caixas de dialogo nativas do SO: <code>dialog.showOpenDialog()</code>, <code>showSaveDialog()</code>, <code>showMessageBox()</code>. Aspecto completamente nativo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Tray e Menu</h3>
+            <p>Icone na bandeja do sistema com <code>Tray</code> e menu de contexto com <code>Menu.buildFromTemplate()</code>. Permite apps que ficam rodando em segundo plano.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>shell e clipboard</h3>
+            <p><code>shell.openExternal(url)</code> abre o browser padrao. <code>shell.openPath()</code> abre arquivos com o app padrao. <code>clipboard.writeText()</code> para a area de transferencia.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>autoUpdater</h3>
+            <p>Atualizacoes automaticas em background com <code>electron-updater</code> (do electron-builder). Integra com GitHub Releases, S3 ou servidores proprios.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>globalShortcut</h3>
+            <p>Atalhos de teclado globais (mesmo quando o app nao esta em foco): <code>globalShortcut.register('Ctrl+Shift+K', fn)</code>. Comum em launchers e utilidades.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>nativeTheme</h3>
+            <p>Detecta e reage ao tema do SO (claro/escuro). <code>nativeTheme.shouldUseDarkColors</code> e mudancas emitidas via evento <code>updated</code>.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="build" class="section-title">3. Build e Distribuicao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">json &mdash; electron-builder no package.json</div>
+          <pre class="example">{
+  <span class="str">"scripts"</span>: {
+    <span class="str">"build:win"</span>:   <span class="str">"electron-builder --win"</span>,
+    <span class="str">"build:mac"</span>:   <span class="str">"electron-builder --mac"</span>,
+    <span class="str">"build:linux"</span>: <span class="str">"electron-builder --linux"</span>
+  },
+  <span class="str">"build"</span>: {
+    <span class="str">"appId"</span>:   <span class="str">"com.empresa.meuapp"</span>,
+    <span class="str">"productName"</span>: <span class="str">"Meu App"</span>,
+    <span class="str">"win"</span>:  { <span class="str">"target"</span>: <span class="str">"nsis"</span> },
+    <span class="str">"mac"</span>:  { <span class="str">"target"</span>: <span class="str">"dmg"</span>,  <span class="str">"category"</span>: <span class="str">"public.app-category.utilities"</span> },
+    <span class="str">"linux"</span>: { <span class="str">"target"</span>: [<span class="str">"AppImage"</span>, <span class="str">"deb"</span>] },
+    <span class="str">"publish"</span>: { <span class="str">"provider"</span>: <span class="str">"github"</span> }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">4. Quando Usar Electron</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Equipe ja conhece web (React, Vue, Svelte) e precisa de um app desktop rapidamente</li>
+              <li>Apps com UI complexa e rica que se beneficiam de um browser engine completo</li>
+              <li>Ferramentas de produtividade, editores de codigo, clientes de chat, IDEs</li>
+              <li>Compartilhar codigo entre web e desktop com pouco esforco extra</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>Tamanho do binario e critico (&lt;10 MB) &mdash; considere Tauri (Rust + webview nativo)</li>
+              <li>Performance de CPU/GPU e crucial &mdash; o overhead do Chromium e real</li>
+              <li>Apps simples de sistema &mdash; Tauri ou Qt/GTK producem apps menores e mais eficientes</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>ELECTRON TEAM. <strong>Electron Documentation</strong>. Disponivel em: <a href="https://www.electronjs.org/docs/latest/" target="_blank" rel="noopener">electronjs.org/docs/latest</a>. Acesso em: 2026.</li>
+            <li>ELECTRON-BUILDER. <strong>electron-builder Docs</strong>. Disponivel em: <a href="https://www.electron.build/" target="_blank" rel="noopener">electron.build</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/js/js_nwjs.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>NW.js &mdash; alternativa mais antiga ao Electron</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/rust/rust_tauri.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tauri &mdash; alternativa mais leve com Rust</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O VS Code e Electron. O Figma e Electron. O Slack e Electron. Nao subestime o que web tech pode fazer no desktop." &mdash; Web Dev Community
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,349 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Nginx: arquitetura event-driven, nginx.conf, proxy reverso, upstream, SSL termination, rate limiting e headers de segurança." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Nginx | Servidores | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TÍTULO DA PÁGINA
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Servidores</strong></p>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 1 — HERO
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="hero" class="section-title">Nginx</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Nginx</h1>
+          <p>Arquitetura event-driven, proxy reverso, upstream, SSL termination e rate limiting</p>
+        </div>
+
+        <p class="intro-highlight">
+          O <strong>Nginx</strong> nasceu em 2004 como solução para o problema C10K — servir 10 000
+          conexões simultâneas. Sua arquitetura event-driven assíncrona o torna ideal para
+          proxy reverso, load balancer, TLS termination e entrega de conteúdo estático em alta escala.
+        </p>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 2 — ARQUITETURA MASTER/WORKER
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="arquitetura" class="section-title">Arquitetura Master/Worker</h2>
+
+        <p>
+          O Nginx usa um processo master mais N worker processes (um por core de <abbr title="Central Processing Unit">CPU</abbr> por padrão).
+          Cada worker é single-threaded e gerencia milhares de conexões simultâneas via
+          <code class="code-inline">epoll</code> no Linux sem bloquear.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">$ ps aux | grep nginx</div>
+          <pre class="code-block">root     12345  nginx: master process /usr/sbin/nginx
+www-data 12346  nginx: worker process
+www-data 12347  nginx: worker process
+www-data 12348  nginx: cache manager process</pre>
+        </div>
+
+        <div class="grid-cards">
+
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Master Process</h3>
+            <p>Roda como <code class="code-inline">root</code> — lê a configuração, abre portas privilegiadas (80, 443) e cria os worker processes. Não processa requisições diretamente.</p>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:100ms">
+            <h3 class="panel-title">Worker Processes</h3>
+            <p>Rodam como <code class="code-inline">www-data</code>. Cada worker usa <code class="code-inline">epoll()</code> no Linux para gerenciar milhares de conexões simultâneas em um único loop de eventos.</p>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:200ms">
+            <h3 class="panel-title">Cache Manager/Loader</h3>
+            <p>Processos auxiliares que gerenciam o cache em disco — carregam metadados ao iniciar e expiram entradas obsoletas em background.</p>
+          </div>
+
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 3 — NGINX.CONF
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="nginx-conf" class="section-title">Estrutura do nginx.conf</h2>
+
+        <p>
+          O nginx.conf é organizado em contextos aninhados:
+          <code class="code-inline">main</code> → <code class="code-inline">events</code> →
+          <code class="code-inline">http</code> → <code class="code-inline">server</code> →
+          <code class="code-inline">location</code>.
+          Cada diretiva é válida apenas no contexto correto.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/nginx/nginx.conf</div>
+          <pre class="code-block">worker_processes  auto;
+error_log  /var/log/nginx/error.log warn;
+
+events {
+    worker_connections 1024;
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer"';
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    tcp_nopush      on;
+    keepalive_timeout  65;
+    gzip  on;
+    gzip_types text/plain text/css application/json application/javascript;
+
+    include /etc/nginx/sites-enabled/*;
+}</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 4 — SERVER BLOCK E LOCATION
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="server-block" class="section-title">Server Block e Location</h2>
+
+        <p>
+          O <code class="code-inline">server</code> block define um virtual host.
+          O <code class="code-inline">location</code> mapeia padrões de URL para comportamentos —
+          serve arquivos, faz proxy reverso ou aplica regras de cache e rate limiting.
+        </p>
+
+        <div class="grid-cards">
+
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Servidor Estático + HTTPS</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sites-available/static</div>
+              <pre class="code-block">server {
+    listen 80;
+    server_name example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name example.com;
+    root /var/www/html;
+
+    ssl_certificate     /etc/letsencrypt/.../fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/.../privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(css|js|woff2|png)$ {
+        expires 6M;
+        add_header Cache-Control "public, immutable";
+    }
+}</pre>
+            </div>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:100ms">
+            <h3 class="panel-title">Proxy Reverso para App</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sites-available/app</div>
+              <pre class="code-block">upstream backend {
+    server 127.0.0.1:8000;
+    server 127.0.0.1:8001;
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass         http://backend;
+        proxy_http_version 1.1;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}</pre>
+            </div>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:200ms">
+            <h3 class="panel-title">FastCGI (PHP-FPM)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sites-available/php</div>
+              <pre class="code-block">server {
+    root /var/www/php;
+
+    location ~ \.php$ {
+        include        fastcgi_params;
+        fastcgi_pass   unix:/run/php/php8.2-fpm.sock;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME
+                       $document_root$fastcgi_script_name;
+    }
+
+    location ~ /\.ht { deny all; }
+}</pre>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 5 — RATE LIMITING
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="rate-limiting" class="section-title">Rate Limiting</h2>
+
+        <p>
+          O Nginx implementa rate limiting via <code class="code-inline">limit_req_zone</code>
+          (no contexto <code class="code-inline">http{}</code>) e
+          <code class="code-inline">limit_req</code> (nos <code class="code-inline">location</code> blocks).
+          Fundamental para proteção contra brute force e abusos de <abbr title="Application Programming Interface">API</abbr>.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nginx.conf — http context</div>
+          <pre class="code-block"># Definir zona — no contexto http{}
+limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+
+server {
+    location /api/ {
+        limit_req zone=api burst=20 nodelay;
+        proxy_pass http://backend;
+    }
+
+    location /login {
+        limit_req zone=api burst=5;
+        proxy_pass http://backend;
+    }
+}</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 6 — CABEÇALHOS DE SEGURANÇA
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="seguranca" class="section-title">Cabeçalhos de Segurança</h2>
+
+        <p>
+          Adicione estes cabeçalhos no bloco <code class="code-inline">server</code> ou em
+          <code class="code-inline">/etc/nginx/conf.d/security.conf</code> para endurecimento
+          básico em todos os virtual hosts. <code class="code-inline">server_tokens off</code>
+          oculta a versão do Nginx no cabeçalho <code class="code-inline">Server</code>.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">server block</div>
+          <pre class="code-block">server_tokens off;
+
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header X-Content-Type-Options    "nosniff" always;
+add_header X-Frame-Options           "SAMEORIGIN" always;
+add_header Referrer-Policy           "strict-origin-when-cross-origin" always;
+add_header Content-Security-Policy   "default-src 'self'" always;</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 7 — COMANDOS DE GERENCIAMENTO
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="comandos" class="section-title">Comandos de Gerenciamento</h2>
+
+        <p>
+          Sempre valide a configuração com <code class="code-inline">nginx -t</code> antes de
+          qualquer reload. Um erro de sintaxe em produção sem testes prévios pode derrubar o serviço.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Bash</div>
+          <pre class="code-block">nginx -t                  # testar config (SEMPRE antes de reload!)
+nginx -s reload           # reload graceful
+systemctl restart nginx   # restart completo
+nginx -T 2>/dev/null | head -50  # dump config
+tail -f /var/log/nginx/access.log
+tail -f /var/log/nginx/error.log
+nginx -s quit             # graceful shutdown
+nginx -s reopen           # reopen log files</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           CALLOUT / ENCERRAMENTO
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="callout">
+        <p>Veja também: <a href="/html/rede_e_comunicacao/servidores/proxy_reverso.html">Proxy Reverso</a> e <a href="/html/rede_e_comunicacao/servidores/load_balancer.html">Load Balancer</a> — Nginx é a base de ambos em produção.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O Nginx não foi projetado para ser simples — foi projetado para ser eficiente. E acabou sendo simples por consequência."
+        </p>
+      </div>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

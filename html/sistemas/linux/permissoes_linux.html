@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Permissões no Linux: modelo rwx, sudo, su, PAM, capabilities, namespaces de usuário e controle de acesso obrigatório com SELinux e AppArmor." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Permissões no Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Permissões no Linux</h1>
+            <p class="page-subtitle">rwx, sudo, PAM, capabilities e Mandatory Access Control com SELinux e AppArmor</p>
+          </div>
+        </div>
+        <p class="intro-highlight">O modelo de permissões do Linux vai muito além do <code>rwx</code> básico. sudo delega privilege sem expor a senha do root; PAM controla autenticação de forma modular; capabilities fragmentam os poderes do root; SELinux e AppArmor adicionam uma camada de Mandatory Access Control obrigatório, formando uma defesa em profundidade real.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SUDO E SUDOERS ═══════════════════ -->
+      <section id="sudo">
+        <h2>sudo e /etc/sudoers</h2>
+        <p><code>sudo</code> permite executar comandos como root (ou outro usuário) sem trocar de sessão, registrando cada uso em log (<code>/var/log/auth.log</code> ou <code>/var/log/secure</code>). A configuração fica em <code>/etc/sudoers</code> e deve ser editada <em>exclusivamente</em> com <code>visudo</code>, que valida a sintaxe antes de salvar.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/sudoers — sintaxe e exemplos comuns</div>
+          <pre class="code-block"># Sintaxe: USUARIO HOST=(USUARIO_DESTINO) COMANDOS
+
+# Dar acesso total ao usuario joao
+joao ALL=(ALL:ALL) ALL
+
+# Grupo sudo/wheel: todos os membros viram root
+%sudo  ALL=(ALL:ALL) ALL
+%wheel ALL=(ALL:ALL) ALL    # convencao RHEL/Fedora
+
+# Executar comandos especificos sem senha
+deply ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart nginx, \
+                           /usr/bin/systemctl status nginx
+
+# Incluir arquivos de configuracao adicional
+#includedir /etc/sudoers.d
+
+# Verificar o que um usuario pode fazer
+sudo -l -U joao
+
+# Listar proprias permissoes sudo
+sudo -l</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — PAM ═══════════════════ -->
+      <section id="pam">
+        <h2>PAM — Pluggable Authentication Modules</h2>
+        <p>PAM é a camada de autenticação do Linux. Cada serviço (login, ssh, sudo, su) tem um arquivo em <code>/etc/pam.d/</code> que define a pilha de módulos a executar. Isso permite configurar 2FA, limites de sessão, restrições de terminal — tudo sem modificar os programas.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">pam_unix</h3>
+            <p>Autenticação por senha local via <code>/etc/shadow</code>. Módulo base presente em quase toda configuração PAM.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">pam_google_authenticator</h3>
+            <p>Adiciona 2FA (OTP) ao SSH ou login local. Instalado e configurado por usuário com <code>google-authenticator</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">pam_limits</h3>
+            <p>Aplica limites de recursos (ulimits) por usuário: número de processos, tamanho de arquivos, memória. Configuração em <code>/etc/security/limits.conf</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">pam_securetty</h3>
+            <p>Restringe login do root a terminais listados em <code>/etc/securetty</code>. Bloqueia root via SSH por padrão.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/pam.d/sshd — configuração típica</div>
+          <pre class="code-block"># Tipos de linha: auth | account | password | session
+# Controles: required | requisite | sufficient | optional
+
+auth    required  pam_securetty.so
+auth    required  pam_unix.so
+auth    required  pam_nologin.so
+auth    optional  pam_google_authenticator.so   # 2FA (se instalado)
+
+account required  pam_unix.so
+account required  pam_access.so
+
+password required pam_unix.so sha512 shadow
+
+session required  pam_unix.so
+session required  pam_limits.so
+session optional  pam_lastlog.so</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — LINUX CAPABILITIES ═══════════════════ -->
+      <section id="capabilities">
+        <h2>Linux Capabilities</h2>
+        <p>Tradicionalmente, root era tudo ou nada. As <strong>capabilities</strong> dividem os privilégios do root em unidades independentes, permitindo conceder apenas o necessário a um processo sem dar root completo.</p>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Capability</th><th>Privilégio Concedido</th><th>Uso Comum</th></tr></thead>
+          <tbody>
+            <tr><td>CAP_NET_BIND_SERVICE</td><td>Abrir portas abaixo de 1024 sem root</td><td>nginx/Apache rodando como www-data na porta 80/443</td></tr>
+            <tr><td>CAP_NET_ADMIN</td><td>Configurar interfaces de rede, rotas, firewall</td><td>Ferramentas de rede que precisam alterar configurações</td></tr>
+            <tr><td>CAP_SYS_TIME</td><td>Ajustar o relógio do sistema</td><td>ntpd, chrony</td></tr>
+            <tr><td>CAP_KILL</td><td>Enviar sinais a qualquer processo de qualquer UID</td><td>Monitores de processo, supervisores</td></tr>
+            <tr><td>CAP_SYS_PTRACE</td><td>Fazer ptrace em qualquer processo</td><td>Debuggers (gdb, strace) em modo privilegiado</td></tr>
+            <tr><td>CAP_DAC_OVERRIDE</td><td>Ignorar permissões de arquivo (DAC)</td><td>Agentes de backup que precisam ler todos os arquivos</td></tr>
+          </tbody>
+        </table></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — getcap e setcap</div>
+          <pre class="code-block"># Ver capabilities de um binario
+getcap /usr/bin/ping
+# /usr/bin/ping cap_net_raw=ep
+
+# Conceder cap_net_bind_service ao node.js (porta 80 sem root)
+sudo setcap cap_net_bind_service=+ep /usr/bin/node
+
+# Remover todas as capabilities de um binario
+sudo setcap -r /usr/bin/node
+
+# Listar capabilities do processo atual
+cat /proc/$$/status | grep Cap</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — SELINUX E APPARMOR ═══════════════════ -->
+      <section id="mac">
+        <h2>SELinux e AppArmor: Mandatory Access Control</h2>
+        <p>O modelo DAC (Discretionary Access Control) tradicional deixa o dono do arquivo decidir as permissões. O MAC (Mandatory Access Control) adiciona políticas do sistema que nem o root pode contornar sem alterar a política explícita.</p>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Aspecto</th><th>DAC Clássico (rwx)</th><th>SELinux</th><th>AppArmor</th></tr></thead>
+          <tbody>
+            <tr><td>Modelo</td><td>Baseado em UID/GID + bits rwx</td><td>Contexts (user:role:type:level) + policy</td><td>Perfis por caminho de programa</td></tr>
+            <tr><td>Granularidade</td><td>Por arquivo/diretório</td><td>Por tipo de objeto e processo (MLS/MCS)</td><td>Por programa e caminho de arquivo</td></tr>
+            <tr><td>Complexidade</td><td>Simples</td><td>Alta — curva de aprendizado íngreme</td><td>Média — mais simples de escrever perfis</td></tr>
+            <tr><td>Distribuições</td><td>Todas</td><td>RHEL, Fedora, CentOS (padrão)</td><td>Ubuntu, Debian, openSUSE (padrão)</td></tr>
+            <tr><td>Modo permissivo</td><td>N/A</td><td>Sim (loga sem bloquear)</td><td>Sim (complain mode)</td></tr>
+          </tbody>
+        </table></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — SELinux e AppArmor comandos essenciais</div>
+          <pre class="code-block"># ==================== SELINUX ====================
+# Ver status
+gestatus
+sestatus -v
+
+# Ver contexto de um arquivo
+ls -Z /var/www/html/
+
+# Ver negações recentes de politica
+ausearch -m avc -ts recent
+
+# Gerar politica a partir de negacoes (cuidado em producao)
+audit2allow -a -M minha_politica
+semodule -i minha_politica.pp
+
+# Mudar contexto de arquivo
+chcon -t httpd_sys_content_t /var/www/html/
+
+# Modo permissivo temporario
+setenforce 0   # permissivo (so loga)
+setenforce 1   # enforcing (bloqueia)
+
+# ==================== APPARMOR ====================
+# Ver status dos perfis
+aa-status
+
+# Colocar perfil em modo reclamacao (nao bloqueia)
+aa-complain /etc/apparmor.d/usr.bin.nginx
+
+# Perfis em /etc/apparmor.d/
+ls /etc/apparmor.d/
+
+# Carregar perfil
+apparmor_parser -r /etc/apparmor.d/usr.sbin.nginx</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Complete o tema com <a href="/html/sistemas/linux/usuarios_grupos.html">Usuários e Grupos</a> e revise os fundamentos em <a href="/html/sistemas/linux/comandos_basicos.html">Comandos Básicos</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Segurança não é uma feature — é um modelo aplicado em camadas, daí o conceito de defesa em profundidade."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

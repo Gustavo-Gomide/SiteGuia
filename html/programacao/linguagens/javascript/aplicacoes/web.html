@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript para Web: Node.js com Express e Fastify, API REST com JWT, middleware pipeline, WebSockets e deploy Docker." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript para Web</h1>
+          <p>Node.js com Express e Fastify, API REST autenticada com JWT, WebSockets em tempo real e deploy com Docker multi-stage.</p>
+        </div>
+        <p class="intro-highlight">
+          Node.js roda mais de 50% dos servidores web de alto tráfego. Express permanece o framework mais popular e Fastify é sua alternativa moderna com validação nativa, serialização ultra-rápida via fast-json-stringify, e suporte nativo a TypeScript.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="express">Express: API REST com JWT e Middleware</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Node.js + Express &mdash; API REST autenticada com JWT e Zod</div>
+          <pre class="example"><span class="com">// src/app.js</span>
+<span class="kw">import</span> express   <span class="kw">from</span> <span class="str">"express"</span>;
+<span class="kw">import</span> helmet    <span class="kw">from</span> <span class="str">"helmet"</span>;
+<span class="kw">import</span> cors      <span class="kw">from</span> <span class="str">"cors"</span>;
+<span class="kw">import</span> jwt       <span class="kw">from</span> <span class="str">"jsonwebtoken"</span>;
+<span class="kw">import</span> bcrypt    <span class="kw">from</span> <span class="str">"bcrypt"</span>;
+<span class="kw">import</span> { z }     <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> app    = <span class="fn">express</span>();
+<span class="kw">const</span> SECRET = process.env.JWT_SECRET; <span class="com">// nunca hardcoded</span>
+<span class="kw">const</span> db     = <span class="kw">new</span> <span class="tp">Map</span>(); <span class="com">// substituir por banco real</span>
+
+app.<span class="fn">use</span>(<span class="fn">helmet</span>());
+app.<span class="fn">use</span>(<span class="fn">cors</span>({ origin: process.env.ALLOWED_ORIGIN }));
+app.<span class="fn">use</span>(express.<span class="fn">json</span>({ limit: <span class="str">"50kb"</span> }));
+
+<span class="com">// Middleware de autenticacao</span>
+<span class="kw">function</span> <span class="fn">autenticar</span>(req, res, next) {
+  <span class="kw">const</span> auth = req.headers.authorization;
+  <span class="kw">if</span> (!auth?.startsWith(<span class="str">"Bearer "</span>))
+    <span class="kw">return</span> res.<span class="fn">sendStatus</span>(<span class="num">401</span>);
+  <span class="kw">try</span> {
+    req.usuario = jwt.<span class="fn">verify</span>(auth.<span class="fn">slice</span>(<span class="num">7</span>), SECRET);
+    <span class="fn">next</span>();
+  } <span class="kw">catch</span> {
+    res.<span class="fn">sendStatus</span>(<span class="num">401</span>);
+  }
+}
+
+<span class="com">// Rota de login</span>
+<span class="kw">const</span> LoginSchema = z.<span class="fn">object</span>({
+  email: z.<span class="fn">string</span>().<span class="fn">email</span>(),
+  senha: z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">8</span>),
+});
+
+app.<span class="fn">post</span>(<span class="str">"/auth/login"</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> resultado = LoginSchema.<span class="fn">safeParse</span>(req.body);
+  <span class="kw">if</span> (!resultado.success)
+    <span class="kw">return</span> res.<span class="fn">status</span>(<span class="num">400</span>).<span class="fn">json</span>(resultado.error.flatten());
+
+  <span class="kw">const</span> { email, senha } = resultado.data;
+  <span class="kw">const</span> usuario = db.<span class="fn">get</span>(email);
+  <span class="kw">if</span> (!usuario || !(<span class="kw">await</span> bcrypt.<span class="fn">compare</span>(senha, usuario.hash)))
+    <span class="kw">return</span> res.<span class="fn">sendStatus</span>(<span class="num">401</span>);
+
+  <span class="kw">const</span> token = jwt.<span class="fn">sign</span>(
+    { sub: usuario.id, email },
+    SECRET,
+    { expiresIn: <span class="str">"2h"</span>, algorithm: <span class="str">"HS256"</span> }
+  );
+  res.<span class="fn">json</span>({ token });
+});
+
+<span class="com">// CRUD protegido</span>
+app.<span class="fn">get</span>(<span class="str">"/api/perfil"</span>, autenticar, (req, res) => {
+  res.<span class="fn">json</span>({ usuario: req.usuario });
+});
+
+<span class="com">// Tratamento global de erros</span>
+app.<span class="fn">use</span>((err, req, res, next) => {
+  <span class="fn">console</span>.<span class="fn">error</span>(err.stack);
+  res.<span class="fn">status</span>(<span class="num">500</span>).<span class="fn">json</span>({ erro: <span class="str">"Erro interno"</span> }); <span class="com">// sem stack em produção</span>
+});
+
+app.<span class="fn">listen</span>(<span class="num">3000</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fastify">Fastify: Performance e Schema Nativo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Node.js + Fastify &mdash; Plugin, schema JSON, hooks e serialização rápida</div>
+          <pre class="example"><span class="kw">import</span> Fastify      <span class="kw">from</span> <span class="str">"fastify"</span>;
+<span class="kw">import</span> fastifyJwt   <span class="kw">from</span> <span class="str">"@fastify/jwt"</span>;
+<span class="kw">import</span> fastifyCors  <span class="kw">from</span> <span class="str">"@fastify/cors"</span>;
+<span class="kw">import</span> fastifySensible <span class="kw">from</span> <span class="str">"@fastify/sensible"</span>;
+
+<span class="kw">const</span> app = <span class="fn">Fastify</span>({ logger: <span class="kw">true</span> });
+<span class="kw">await</span> app.<span class="fn">register</span>(fastifyCors, { origin: <span class="kw">true</span> });
+<span class="kw">await</span> app.<span class="fn">register</span>(fastifyJwt, { secret: process.env.JWT_SECRET });
+<span class="kw">await</span> app.<span class="fn">register</span>(fastifySensible);
+
+<span class="com">// Rota com schema JSON (validação + serialização automática)</span>
+app.<span class="fn">post</span>(<span class="str">"/api/tarefas"</span>, {
+  schema: {
+    body: {
+      type: <span class="str">"object"</span>,
+      required: [<span class="str">"titulo"</span>],
+      properties: {
+        titulo:    { type: <span class="str">"string"</span>, minLength: <span class="num">1</span>, maxLength: <span class="num">200</span> },
+        descricao: { type: <span class="str">"string"</span> },
+        prioridade: { type: <span class="str">"integer"</span>, minimum: <span class="num">1</span>, maximum: <span class="num">5</span>, default: <span class="num">3</span> },
+      },
+      additionalProperties: <span class="kw">false</span>,  <span class="com">// rejeita campos não declarados</span>
+    },
+    response: {
+      <span class="num">201</span>: {
+        type: <span class="str">"object"</span>,
+        properties: {
+          id:     { type: <span class="str">"string"</span>, format: <span class="str">"uuid"</span> },
+          titulo: { type: <span class="str">"string"</span> },
+        },
+      },
+    },
+  },
+  <span class="kw">async</span> <span class="fn">handler</span>(req, reply) {
+    <span class="kw">const</span> tarefa = { id: crypto.<span class="fn">randomUUID</span>(), ...req.body };
+    <span class="kw">return</span> reply.<span class="fn">code</span>(<span class="num">201</span>).<span class="fn">send</span>(tarefa);
+  },
+});
+
+<span class="kw">await</span> app.<span class="fn">listen</span>({ port: <span class="num">3000</span>, host: <span class="str">"0.0.0.0"</span> });</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="websockets">WebSockets: Chat em Tempo Real com ws</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Node.js + ws &mdash; Chat com rooms e heartbeat</div>
+          <pre class="example"><span class="kw">import</span> { WebSocketServer, WebSocket } <span class="kw">from</span> <span class="str">"ws"</span>;
+<span class="kw">import</span> { createServer } <span class="kw">from</span> <span class="str">"node:http"</span>;
+
+<span class="kw">const</span> httpServer = <span class="fn">createServer</span>();
+<span class="kw">const</span> wss = <span class="kw">new</span> <span class="fn">WebSocketServer</span>({ server: httpServer });
+<span class="kw">const</span> salas = <span class="kw">new</span> <span class="tp">Map</span>(); <span class="com">// sala → Set&lt;WebSocket&gt;</span>
+
+wss.<span class="fn">on</span>(<span class="str">"connection"</span>, (ws) => {
+  ws.isAlive = <span class="kw">true</span>;
+  ws.<span class="fn">on</span>(<span class="str">"pong"</span>, () => { ws.isAlive = <span class="kw">true</span>; });
+  ws.<span class="fn">on</span>(<span class="str">"message"</span>, (dados) => {
+    <span class="kw">let</span> msg;
+    <span class="kw">try</span> { msg = JSON.<span class="fn">parse</span>(dados); }
+    <span class="kw">catch</span> { <span class="kw">return</span>; }
+
+    <span class="kw">if</span> (msg.tipo === <span class="str">"entrar"</span>) {
+      ws.sala = msg.sala;
+      <span class="kw">if</span> (!salas.<span class="fn">has</span>(msg.sala)) salas.<span class="fn">set</span>(msg.sala, <span class="kw">new</span> <span class="tp">Set</span>());
+      salas.<span class="fn">get</span>(msg.sala).<span class="fn">add</span>(ws);
+    } <span class="kw">else if</span> (msg.tipo === <span class="str">"mensagem"</span> && ws.sala) {
+      <span class="kw">const</span> payload = JSON.<span class="fn">stringify</span>({ de: msg.usuario, texto: msg.texto });
+      <span class="kw">for</span> (<span class="kw">const</span> cliente <span class="kw">of</span> salas.<span class="fn">get</span>(ws.sala) ?? []) {
+        <span class="kw">if</span> (cliente !== ws && cliente.readyState === WebSocket.OPEN)
+          cliente.<span class="fn">send</span>(payload);
+      }
+    }
+  });
+  ws.<span class="fn">on</span>(<span class="str">"close"</span>, () => salas.<span class="fn">get</span>(ws.sala)?.delete(ws));
+});
+
+<span class="com">// Heartbeat: remover clientes inativos a cada 30s</span>
+<span class="fn">setInterval</span>(() => {
+  wss.clients.<span class="fn">forEach</span>((ws) => {
+    <span class="kw">if</span> (!ws.isAlive) <span class="kw">return</span> ws.<span class="fn">terminate</span>();
+    ws.isAlive = <span class="kw">false</span>;
+    ws.<span class="fn">ping</span>();
+  });
+}, <span class="num">30_000</span>);
+
+httpServer.<span class="fn">listen</span>(<span class="num">8080</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="docker">Deploy com Docker Multi-Stage</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dockerfile &mdash; Node.js multi-stage com usuario nao-root</div>
+          <pre class="example">FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+RUN addgroup -S nodejs && adduser -S node -G nodejs
+COPY --from=deps /app/node_modules ./node_modules
+COPY src ./src
+USER node
+ENV NODE_ENV=production PORT=3000
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s \
+  CMD wget -qO- http://localhost:3000/health || exit 1
+CMD ["node", "src/app.js"]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>EXPRESS DOCS. <strong>Express — Fast, unopinionated, minimalist web framework for Node.js</strong>. Disponível em: &lt;https://expressjs.com&gt;. Acesso em: 2025.</li>
+            <li>FASTIFY DOCS. <strong>Fastify — Fast and low overhead web framework for Node.js</strong>. Disponível em: &lt;https://www.fastify.io&gt;. Acesso em: 2025.</li>
+            <li>NODE.JS. <strong>Node.js Security Best Practices</strong>. Disponível em: &lt;https://nodejs.org/en/docs/guides/security-best-practices&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript: Banco de Dados</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript: CLIs com Commander e Ink</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Fastify serializa JSON 2x mais rapido que Express via fast-json-stringify com AOT compilation</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

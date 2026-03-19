@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SAML 2.0: fluxo de autenticação, asserções XML, vulnerabilidades (XSW, XXE, signature exclusion) e defesas em Identity Providers." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SAML 2.0 | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>SAML 2.0 — Security Assertion Markup Language</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é SAML?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>SAML 2.0 — Security Assertion Markup Language</h1>
+          <p>Padrão XML para SSO corporativo — Identity Provider, Service Provider e asserções.</p>
+        </div>
+
+        <p class="intro-highlight">SAML 2.0 é um padrão XML para federação de identidade em ambientes corporativos. Permite SSO entre organizações diferentes — o usuário autentica no Identity Provider (IdP) e recebe asserções XML assinadas que o Service Provider (SP) valida. É amplamente usado em ambientes enterprise com Okta, Azure AD, ADFS.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Componente</th><th>Papel</th><th>Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Identity Provider (IdP)</strong></td><td>Autentica o usuário e emite asserções</td><td>Okta, Azure AD, ADFS, Google Workspace</td></tr>
+              <tr><td><strong>Service Provider (SP)</strong></td><td>Confia no IdP; fornece o serviço</td><td>Salesforce, Jira, aplicação interna</td></tr>
+              <tr><td><strong>SAML Assertion</strong></td><td>Documento XML assinado com atributos do usuário</td><td>email, grupos, roles, validade</td></tr>
+              <tr><td><strong>SAML Response</strong></td><td>Wrapper que contém uma ou mais asserções</td><td>Enviado por POST do browser (SSO POST binding)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="fluxo" class="section-title">Fluxo SP-Initiated SSO</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>1. Usuário acessa o SP</h3>
+            <p>Acessa <span class="code-inline">app.empresa.com</span> sem sessão.</p>
+          </div>
+          <div class="card">
+            <h3>2. SP redireciona ao IdP</h3>
+            <p>SP gera <span class="code-inline">SAMLRequest</span> (AuthnRequest XML, Base64+deflate) e redireciona o browser para o IdP.</p>
+          </div>
+          <div class="card card--success">
+            <h3>3. Usuário autentica no IdP</h3>
+            <p>Login com credenciais corporativas. O IdP gera uma <span class="code-inline">SAMLResponse</span> com asserção assinada.</p>
+          </div>
+          <div class="card card--success">
+            <h3>4. SP valida e cria sessão</h3>
+            <p>Browser faz POST da <span class="code-inline">SAMLResponse</span> para o SP. SP valida assinatura XML, extrai atributos e cria a sessão.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="vulnerabilidades" class="section-title">Vulnerabilidades</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">XML Signature Wrapping (XSW)</h3>
+            <p>Ataque mais sofisticado contra SAML. A assinatura cobre um elemento, mas o SP processa outro elemento não assinado injetado pelo atacante.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+&lt;!-- Estrutura original assinada: --&gt;
+&lt;Response&gt;
+  &lt;Assertion ID="real" Subject="atacante@evil.com"&gt;
+    &lt;Signature&gt;...cobre ID=real...&lt;/Signature&gt;
+  &lt;/Assertion&gt;
+&lt;/Response&gt;
+
+&lt;!-- XSW — injetar asserção não assinada antes: --&gt;
+&lt;Response&gt;
+  &lt;Assertion ID="evil" Subject="admin@empresa.com"&gt;
+    &lt;!-- sem assinatura -- SP lê este se for vulnerável --&gt;
+  &lt;/Assertion&gt;
+  &lt;Assertion ID="real" Subject="atacante@evil.com"&gt;
+    &lt;Signature&gt;...assinatura válida...&lt;/Signature&gt;
+  &lt;/Assertion&gt;
+&lt;/Response&gt;</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">XXE — XML External Entity</h3>
+            <p>A SAMLResponse é XML. Se o parser XML não tem XXE desabilitado, o atacante pode injetar entidades externas para ler arquivos locais do servidor SP ou fazer SSRF.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+&lt;!DOCTYPE foo [
+  &lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;
+]&gt;
+&lt;samlp:Response&gt;
+  &lt;saml:Issuer&gt;&amp;xxe;&lt;/saml:Issuer&gt;
+  ...</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Signature Exclusion</h3>
+            <p>SP aceita asserções sem assinatura. Atacante remove a tag <span class="code-inline">&lt;Signature&gt;</span> completamente e modifica atributos como email/role livremente.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Comment Injection</h3>
+            <p>Inserir comentário XML dentro de valores para bypassar comparação de strings: <span class="code-inline">adm&lt;!--comment--&gt;in</span>. Alguns parsers normalizam antes de comparar, outros não.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="defesas" class="section-title">Defesas e Configuração Segura</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Validar assinatura corretamente</p>
+            <p>Verificar que a assinatura cobre o elemento processado. Usar biblioteca SAML bem mantida (python3-saml, OneLogin). Não implementar SAML manualmente.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Desabilitar XXE</p>
+            <p>No parser XML: desabilitar <span class="code-inline">FEATURE_EXTERNAL_GENERAL_ENTITIES</span> e <span class="code-inline">FEATURE_EXTERNAL_PARAMETER_ENTITIES</span>. Em Java: <span class="code-inline">factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true)</span>.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Validar NotBefore / NotOnOrAfter</p>
+            <p>Asserções SAML têm janela de tempo. Validar estritamente + clock skew pequeno. Asserções expiradas ou futuras devem ser rejeitadas.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Validar Audience</p>
+            <p>O campo <span class="code-inline">&lt;AudienceRestriction&gt;</span> especifica para qual SP a asserção é válida. Validar que corresponde ao seu SP — evita replay em outro SP.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>SAML é complexo e a maioria das vulnerabilidades de alto impacto vem de implementações incorretas de validação XML. Se possível, migre para OpenID Connect (OIDC) que usa JWT — mais simples, mais bem suportado e menos propenso a ataques de parsing XML. Em ambientes enterprise, SAML ainda é necessário para integração com sistemas legados.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "XML como base de segurança traz toda a complexidade e surface de ataque do formato — valide com rigor matemático."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

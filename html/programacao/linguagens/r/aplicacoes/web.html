@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R para desenvolvimento web: Shiny, Plumber API REST, httr2, jsonlite, deploy em shinyapps.io e Docker, Quarto Shiny documents." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Desenvolvimento Web</h1>
+          <p>Shiny para apps reativos, Plumber para APIs REST, httr2 como cliente HTTP e múltiplas opções de deploy em nuvem.</p>
+        </div>
+        <p class="intro-highlight">
+          R não é uma linguagem de web de propósito geral, mas dentro do seu domínio de análise de dados é <strong>excepcional para construir dashboards, APIs analíticas e aplicações científicas interativas</strong>. O framework <strong>Shiny</strong> permite que estatísticos e cientistas de dados publiquem análises como aplicações web sem escrever uma linha de JavaScript.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shiny-fundamentos">Shiny — Fundamentos</h2>
+        <p>
+          Uma aplicação Shiny tem dois componentes principais: a <strong>UI</strong> (interface declarativa descrita em R) e o <strong>server</strong> (lógica reativa e computação). O framework gerencia automaticamente as dependências reativas — quando um input muda, apenas os outputs que dependem dele são recalculados.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">app-fundamentos.R — anatomia de um app Shiny</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"shiny"</span>)
+
+<span class="com"># ============ UI — define o layout e controles ============</span>
+ui &lt;- <span class="fn">fluidPage</span>(
+  <span class="fn">titlePanel</span>(<span class="str">"Análise de Regressão Interativa"</span>),
+
+  <span class="fn">sidebarLayout</span>(
+    <span class="fn">sidebarPanel</span>(
+      <span class="fn">selectInput</span>(<span class="str">"dataset"</span>, <span class="str">"Dataset:"</span>,
+                  choices = <span class="fn">c</span>(<span class="str">"mtcars"</span>, <span class="str">"iris"</span>, <span class="str">"airquality"</span>)),
+      <span class="fn">uiOutput</span>(<span class="str">"sel_x"</span>),   <span class="com"># UI dinâmica — preenchida pelo server</span>
+      <span class="fn">uiOutput</span>(<span class="str">"sel_y"</span>),
+      <span class="fn">checkboxInput</span>(<span class="str">"linha_regressao"</span>, <span class="str">"Exibir regressão linear"</span>, value = <span class="kw">TRUE</span>),
+      <span class="fn">downloadButton</span>(<span class="str">"baixar_plot"</span>, <span class="str">"Baixar Gráfico"</span>)
+    ),
+    <span class="fn">mainPanel</span>(
+      <span class="fn">plotOutput</span>(<span class="str">"grafico"</span>, height = <span class="str">"400px"</span>),
+      <span class="fn">verbatimTextOutput</span>(<span class="str">"sumario"</span>)
+    )
+  )
+)
+
+<span class="com"># ============ Server — lógica reativa ============</span>
+server &lt;- <span class="kw">function</span>(input, output, session) {
+
+  <span class="com"># reactive() — valor que recalcula quando inputs mudam</span>
+  dados &lt;- <span class="fn">reactive</span>({
+    <span class="fn">get</span>(input$dataset)   <span class="com"># carrega o dataset pelo nome</span>
+  })
+
+  <span class="com"># UI dinâmica que depende do dataset escolhido</span>
+  output$sel_x &lt;- <span class="fn">renderUI</span>({
+    <span class="fn">selectInput</span>(<span class="str">"x"</span>, <span class="str">"Eixo X:"</span>, choices = <span class="fn">names</span>(<span class="fn">dados</span>()))
+  })
+  output$sel_y &lt;- <span class="fn">renderUI</span>({
+    <span class="fn">selectInput</span>(<span class="str">"y"</span>, <span class="str">"Eixo Y:"</span>, choices = <span class="fn">names</span>(<span class="fn">dados</span>()))
+  })
+
+  <span class="com"># Gráfico reativo</span>
+  output$grafico &lt;- <span class="fn">renderPlot</span>({
+    <span class="fn">req</span>(input$x, input$y)   <span class="com"># req() cancela silenciosamente se NULL</span>
+    p &lt;- <span class="fn">plot</span>(<span class="fn">dados</span>()[[input$x]], <span class="fn">dados</span>()[[input$y]],
+              xlab = input$x, ylab = input$y, pch = <span class="num">19</span>, col = <span class="str">"steelblue"</span>)
+    <span class="kw">if</span> (input$linha_regressao) <span class="fn">abline</span>(<span class="fn">lm</span>(<span class="fn">dados</span>()[[input$y]] ~ <span class="fn">dados</span>()[[input$x]]),
+                                       col = <span class="str">"red"</span>, lwd = <span class="num">2</span>)
+  })
+
+  <span class="com"># Sumário da regressão</span>
+  output$sumario &lt;- <span class="fn">renderPrint</span>({
+    <span class="fn">req</span>(input$x, input$y)
+    <span class="kw">if</span> (input$linha_regressao)
+      <span class="fn">summary</span>(<span class="fn">lm</span>(<span class="fn">dados</span>()[[input$y]] ~ <span class="fn">dados</span>()[[input$x]]))
+  })
+
+  <span class="com"># Download de arquivo</span>
+  output$baixar_plot &lt;- <span class="fn">downloadHandler</span>(
+    filename = <span class="kw">function</span>() <span class="fn">paste0</span>(<span class="str">"plot-"</span>, <span class="fn">Sys.Date</span>(), <span class="str">".png"</span>),
+    content  = <span class="kw">function</span>(file) {
+      <span class="fn">png</span>(file, width = <span class="num">800</span>, height = <span class="num">600</span>)
+      <span class="fn">plot</span>(<span class="fn">dados</span>()[[input$x]], <span class="fn">dados</span>()[[input$y]])
+      <span class="fn">dev.off</span>()
+    }
+  )
+}
+
+<span class="fn">shinyApp</span>(ui, server)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shiny-modulos">Shiny — Módulos e Reatividade Avançada</h2>
+        <p>
+          <strong>Módulos Shiny</strong> encapsulam UI + server em unidades reutilizáveis com namespacing automático de IDs. São essenciais para apps grandes — sem módulos, IDs conflitam e o código torna-se unmaintainable.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">modulos.R — padrão de módulo Shiny</div>
+          <pre class="example"><span class="com"># ---- Definição do módulo ----</span>
+<span class="com"># O prefixo NS() garante IDs únicos no namespace do módulo</span>
+
+graficoUI &lt;- <span class="kw">function</span>(id) {
+  ns &lt;- <span class="fn">NS</span>(id)   <span class="com"># namespacing function</span>
+  <span class="fn">tagList</span>(
+    <span class="fn">selectInput</span>(<span class="fn">ns</span>(<span class="str">"variavel"</span>), <span class="str">"Variável:"</span>, choices = <span class="fn">names</span>(mtcars)),
+    <span class="fn">plotOutput</span>(<span class="fn">ns</span>(<span class="str">"plot"</span>))
+  )
+}
+
+graficoServer &lt;- <span class="kw">function</span>(id, dados) {
+  <span class="fn">moduleServer</span>(id, <span class="kw">function</span>(input, output, session) {
+    output$plot &lt;- <span class="fn">renderPlot</span>({
+      <span class="fn">hist</span>(dados()[[input$variavel]], col = <span class="str">"steelblue"</span>,
+           main = input$variavel)
+    })
+  })
+}
+
+<span class="com"># ---- App usando o módulo duas vezes ----</span>
+ui &lt;- <span class="fn">fluidPage</span>(
+  <span class="fn">fluidRow</span>(
+    <span class="fn">column</span>(<span class="num">6</span>, <span class="fn">graficoUI</span>(<span class="str">"plot1"</span>)),  <span class="com"># namespace: plot1-variavel, plot1-plot</span>
+    <span class="fn">column</span>(<span class="num">6</span>, <span class="fn">graficoUI</span>(<span class="str">"plot2"</span>))   <span class="com"># namespace: plot2-variavel, plot2-plot</span>
+  )
+)
+
+server &lt;- <span class="kw">function</span>(input, output, session) {
+  dados_reativos &lt;- <span class="fn">reactive</span>(mtcars)
+  <span class="fn">graficoServer</span>(<span class="str">"plot1"</span>, dados_reativos)
+  <span class="fn">graficoServer</span>(<span class="str">"plot2"</span>, dados_reativos)
+}
+
+<span class="fn">shinyApp</span>(ui, server)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="plumber">Plumber — API REST em R</h2>
+        <p>
+          <strong>Plumber</strong> transforma funções R em endpoints HTTP através de decoradores (comentários especiais). É ideal para expor modelos de ML treinados em R como serviços consumíveis por outras aplicações.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">plumber.R — API analítica completa</div>
+          <pre class="example"><span class="com"># plumber.R — salvar este arquivo e executar: plumber::pr_run(plumber::pr("plumber.R"))</span>
+<span class="fn">library</span>(<span class="str">"plumber"</span>)
+
+<span class="com">#* @apiTitle API de Análise Preditiva</span>
+<span class="com">#* @apiDescription Endpoints para previsão e análise estatística</span>
+
+<span class="com">#* Retorna estatísticas descritivas de um vetor numérico</span>
+<span class="com">#* @param dados String JSON de array numérico</span>
+<span class="com">#* @post /descritivas</span>
+<span class="kw">function</span>(dados) {
+  x &lt;- <span class="fn">jsonlite</span>::<span class="fn">fromJSON</span>(dados)
+  <span class="fn">list</span>(
+    media   = <span class="fn">mean</span>(x),
+    mediana = <span class="fn">median</span>(x),
+    desvio  = <span class="fn">sd</span>(x),
+    n       = <span class="fn">length</span>(x)
+  )
+}
+
+<span class="com">#* Previsão com modelo de regressão pré-treinado</span>
+<span class="com">#* @param peso Peso em kg</span>
+<span class="com">#* @param altura Altura em metros</span>
+<span class="com">#* @get /imc</span>
+<span class="kw">function</span>(peso, altura) {
+  peso   &lt;- <span class="fn">as.numeric</span>(peso)
+  altura &lt;- <span class="fn">as.numeric</span>(altura)
+  imc    &lt;- peso / altura^<span class="num">2</span>
+  <span class="fn">list</span>(imc = <span class="fn">round</span>(imc, <span class="num">2</span>),
+       categoria = <span class="fn">ifelse</span>(imc &lt; <span class="num">25</span>, <span class="str">"Normal"</span>, <span class="str">"Sobrepeso+"</span>))
+}
+
+<span class="com">#* Serialização de gráfico como PNG</span>
+<span class="com">#* @serializer png</span>
+<span class="com">#* @get /grafico</span>
+<span class="kw">function</span>() {
+  <span class="fn">plot</span>(mtcars$wt, mtcars$mpg,
+       xlab = <span class="str">"Peso"</span>, ylab = <span class="str">"Consumo"</span>,
+       pch = <span class="num">19</span>, col = <span class="str">"steelblue"</span>)
+}
+
+<span class="com"># Iniciar servidor</span>
+<span class="com"># pr("plumber.R") |&gt; pr_run(port = 8000)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="httr2-jsonlite">httr2 — Cliente HTTP e jsonlite</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">cliente-http.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"httr2"</span>)
+<span class="fn">library</span>(<span class="str">"jsonlite"</span>)
+
+<span class="com"># GET com autenticação Bearer</span>
+resp &lt;- <span class="fn">request</span>(<span class="str">"https://api.exemplo.com/dados"</span>) |&gt;
+  <span class="fn">req_headers</span>(Accept = <span class="str">"application/json"</span>) |&gt;
+  <span class="fn">req_auth_bearer_token</span>(<span class="fn">Sys.getenv</span>(<span class="str">"API_TOKEN"</span>)) |&gt;
+  <span class="fn">req_perform</span>()
+
+dados &lt;- resp |&gt; <span class="fn">resp_body_json</span>(simplifyVector = <span class="kw">TRUE</span>)
+
+<span class="com"># POST com corpo JSON</span>
+payload &lt;- <span class="fn">list</span>(nome = <span class="str">"Ana"</span>, nota = <span class="num">9.2</span>)
+resp_post &lt;- <span class="fn">request</span>(<span class="str">"https://api.exemplo.com/alunos"</span>) |&gt;
+  <span class="fn">req_body_json</span>(payload) |&gt;
+  <span class="fn">req_perform</span>()
+
+<span class="com"># Tratamento de erros HTTP</span>
+<span class="fn">resp_status</span>(resp_post)                 <span class="com"># 201 Created</span>
+resp_post |&gt; <span class="fn">resp_check_status</span>()        <span class="com"># lança erro se 4xx ou 5xx</span>
+
+<span class="com"># Rate limiting com retry automático</span>
+resp_limitado &lt;- <span class="fn">request</span>(<span class="str">"https://api.exemplo.com/lento"</span>) |&gt;
+  <span class="fn">req_retry</span>(max_tries = <span class="num">3</span>, backoff = \(i) <span class="num">2</span>^i) |&gt;
+  <span class="fn">req_throttle</span>(rate = <span class="num">10</span> / <span class="num">60</span>) |&gt;   <span class="com"># 10 requisições por minuto</span>
+  <span class="fn">req_perform</span>()
+
+<span class="com"># jsonlite — serialização e desserialização</span>
+json_str &lt;- <span class="fn">jsonlite</span>::<span class="fn">toJSON</span>(<span class="fn">list</span>(a = <span class="num">1</span>, b = <span class="fn">c</span>(<span class="num">2</span>, <span class="num">3</span>)), auto_unbox = <span class="kw">TRUE</span>)
+obj      &lt;- <span class="fn">jsonlite</span>::<span class="fn">fromJSON</span>(json_str)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deploy">Deploy de Aplicações Shiny</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Plataforma</th><th>Facilidade</th><th>Controle</th><th>Custo</th></tr></thead>
+            <tbody>
+              <tr><td>shinyapps.io</td><td>Alta</td><td>Baixo</td><td>Gratuito (limitado) / pago</td></tr>
+              <tr><td>Posit Connect</td><td>Alta</td><td>Médio</td><td>Pago (enterprise)</td></tr>
+              <tr><td>Docker + VPS</td><td>Média</td><td>Total</td><td>Custo VPS</td></tr>
+              <tr><td>Shinylive (WebAssembly)</td><td>Alta</td><td>Baixo</td><td>Gratuito (hosting estático)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dockerfile — app Shiny em container</div>
+          <pre class="example">FROM rocker/shiny:4.4.1
+
+<span class="com"># Instalar dependências do sistema</span>
+RUN apt-get update &amp;&amp; apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev
+
+<span class="com"># Instalar pacotes R</span>
+RUN Rscript -e "install.packages(c('dplyr','ggplot2','plotly'), repos='https://cran.rstudio.com/')"
+
+<span class="com"># Copiar app</span>
+COPY app/ /srv/shiny-server/meuapp/
+
+<span class="com"># Permissões</span>
+RUN chown -R shiny:shiny /srv/shiny-server/
+
+EXPOSE 3838
+CMD ["/usr/bin/shiny-server"]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>CHANG, Winston et al. <strong>shiny: Web Application Framework for R</strong>. R package version 1.8. Posit Software, 2024. Disponível em: <a href="https://shiny.posit.co/" target="_blank" rel="noopener">shiny.posit.co</a></li>
+          <li>SCHLOERKE, Barret; ALLEN, Jeff. <strong>plumber: An API Generator for R</strong>. R package, 2024. Disponível em: <a href="https://www.rplumber.io/" target="_blank" rel="noopener">rplumber.io</a></li>
+          <li>WICKHAM, Hadley. <strong>httr2: Perform HTTP Requests and Process the Responses</strong>. R package, 2024. Disponível em: <a href="https://httr2.r-lib.org/" target="_blank" rel="noopener">httr2.r-lib.org</a></li>
+          <li>MASTERING SHINY. <strong>Mastering Shiny</strong>. Hadley Wickham, 2021. Disponível em: <a href="https://mastering-shiny.org/" target="_blank" rel="noopener">mastering-shiny.org</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> R com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Shiny changed the game. For the first time, statistical analysts could publish their work as interactive web apps without learning HTML, CSS, or JavaScript." — Joe Cheng, criador do Shiny</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

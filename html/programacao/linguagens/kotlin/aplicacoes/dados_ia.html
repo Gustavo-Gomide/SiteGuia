@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Dados e IA com Kotlin: pipelines funcionais, ONNX Runtime, DL4J e integração com modelos de ML." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Dados e IA | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Dados e IA</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Dados e IA</h1>
+					<p>Kotlin opera com dados através de sequences funcionais eficientes, ONNX Runtime para inferência de modelos pré-treinados e DL4J para treinamento na JVM. É uma escolha natural quando o sistema já é JVM e precisa de coleta de dados, enriquecimento e IA embarcada.</p>
+				</div>
+				<p class="intro-highlight">A tipagem estática e as collections funcionais de Kotlin tornam pipelines de dados expressivos e seguros. Combinados com ONNX, permitem inferência sem dependência de Python em produção.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="data-pipelines">Pipelines de Dados Funcionais</h2>
+				<p>Kotlin Sequences processam dados de forma lazy — ideal para CSVs grandes onde não queremos carregar tudo na memória. Operações <code>map</code>, <code>filter</code>, <code>groupBy</code> e <code>fold</code> compõem pipelines declarativos.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Pipeline CSV com Sequences</div>
+					<pre class="example"><span class="kw">import</span> java.io.File
+
+<span class="kw">data class</span> <span class="fn">Venda</span>(<span class="kw">val</span> produto: String, <span class="kw">val</span> regiao: String, <span class="kw">val</span> valor: Double)
+
+<span class="kw">fun</span> <span class="fn">lerVendas</span>(caminho: String): Sequence&lt;Venda&gt; =
+    File(caminho).<span class="fn">useLines</span> { linhas -&gt;
+        linhas
+            .<span class="fn">drop</span>(<span class="str">1</span>) <span class="com">// cabeçalho</span>
+            .<span class="fn">map</span> { linha -&gt;
+                <span class="kw">val</span> (produto, regiao, valor) = linha.<span class="fn">split</span>(<span class="str">","</span>)
+                <span class="fn">Venda</span>(produto.<span class="fn">trim</span>(), regiao.<span class="fn">trim</span>(), valor.<span class="fn">trim</span>().<span class="fn">toDouble</span>())
+            }
+            .<span class="fn">toList</span>() <span class="com">// materializar dentro do useLines</span>
+            .<span class="fn">asSequence</span>()
+    }
+
+<span class="kw">val</span> relatorio = <span class="fn">lerVendas</span>(<span class="str">"vendas.csv"</span>)
+    .<span class="fn">filter</span> { it.valor &gt; <span class="str">0</span> }
+    .<span class="fn">groupBy</span> { it.regiao }
+    .<span class="fn">mapValues</span> { (_, vendas) -&gt;
+        mapOf(
+            <span class="str">"total"</span> to vendas.<span class="fn">sumOf</span> { it.valor },
+            <span class="str">"media"</span> to vendas.<span class="fn">map</span> { it.valor }.<span class="fn">average</span>(),
+            <span class="str">"count"</span> to vendas.<span class="fn">size</span>
+        )
+    }
+
+relatorio.<span class="fn">forEach</span> { (regiao, stats) -&gt; println(<span class="str">"$regiao: $stats"</span>) }</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="onnx-inferencia">ONNX Runtime — Inferência de Modelos</h2>
+				<p>ONNX Runtime tem binding Java/Kotlin oficial. Permite executar modelos exportados do PyTorch ou Scikit-learn diretamente na JVM, sem servidor Python — ideal para microsserviços de inferência de baixa latência.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — ONNX inferência</div>
+					<pre class="example"><span class="kw">import</span> ai.onnxruntime.*
+
+<span class="kw">fun</span> <span class="fn">inferir</span>(modeloPath: String, entrada: FloatArray): FloatArray {
+    <span class="kw">val</span> env = OrtEnvironment.<span class="fn">getEnvironment</span>()
+    <span class="kw">val</span> sessao = env.<span class="fn">createSession</span>(modeloPath, OrtSession.<span class="fn">SessionOptions</span>())
+
+    <span class="com">// Preparar tensor de entrada</span>
+    <span class="kw">val</span> shape = <span class="fn">longArrayOf</span>(<span class="str">1L</span>, entrada.size.<span class="fn">toLong</span>())
+    <span class="kw">val</span> tensor = OnnxTensor.<span class="fn">createTensor</span>(env, <span class="fn">floatArrayOf</span>(*entrada), shape)
+
+    <span class="com">// Inferência</span>
+    <span class="kw">val</span> nomeEntrada = sessao.inputNames.<span class="fn">first</span>()
+    <span class="kw">val</span> resultado = sessao.<span class="fn">run</span>(mapOf(nomeEntrada to tensor))
+
+    <span class="com">// Extrair saída</span>
+    <span class="kw">val</span> saida = resultado[<span class="str">0</span>].value <span class="kw">as</span> Array&lt;FloatArray&gt;
+    tensor.<span class="fn">close</span>(); resultado.<span class="fn">close</span>(); sessao.<span class="fn">close</span>()
+    <span class="kw">return</span> saida[<span class="str">0</span>]
+}
+
+<span class="com">// Uso:</span>
+<span class="kw">val</span> features = <span class="fn">floatArrayOf</span>(<span class="str">0.5f</span>, <span class="str">1.2f</span>, <span class="str">3.4f</span>)
+<span class="kw">val</span> predicao = <span class="fn">inferir</span>(<span class="str">"modelo.onnx"</span>, features)
+println(<span class="str">"Classe predita: ${predicao.indices.maxByOrNull { predicao[it] }}"</span>)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="dl4j-kotlin">DL4J — Deep Learning na JVM</h2>
+				<p>Deeplearning4j (DL4J) é a principal biblioteca de deep learning para a JVM. Kotlin se integra naturalmente, usando a API builders do DL4J com lambdas para configurar arquiteturas de redes neurais.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — DL4J rede neural simples</div>
+					<pre class="example"><span class="kw">import</span> org.deeplearning4j.nn.conf.NeuralNetConfiguration
+<span class="kw">import</span> org.deeplearning4j.nn.conf.layers.DenseLayer
+<span class="kw">import</span> org.deeplearning4j.nn.conf.layers.OutputLayer
+<span class="kw">import</span> org.deeplearning4j.nn.multilayer.MultiLayerNetwork
+<span class="kw">import</span> org.nd4j.linalg.activations.Activation
+<span class="kw">import</span> org.nd4j.linalg.lossfunctions.LossFunctions
+
+<span class="kw">val</span> conf = NeuralNetConfiguration.Builder()
+    .<span class="fn">seed</span>(<span class="str">42</span>)
+    .<span class="fn">list</span>()
+    .<span class="fn">layer</span>(<span class="fn">DenseLayer</span>.Builder()
+        .<span class="fn">nIn</span>(<span class="str">4</span>).<span class="fn">nOut</span>(<span class="str">16</span>)
+        .<span class="fn">activation</span>(Activation.RELU)
+        .<span class="fn">build</span>())
+    .<span class="fn">layer</span>(<span class="fn">OutputLayer</span>.Builder(LossFunctions.LossFunction.MCXENT)
+        .<span class="fn">nIn</span>(<span class="str">16</span>).<span class="fn">nOut</span>(<span class="str">3</span>)
+        .<span class="fn">activation</span>(Activation.SOFTMAX)
+        .<span class="fn">build</span>())
+    .<span class="fn">build</span>()
+
+<span class="kw">val</span> modelo = <span class="fn">MultiLayerNetwork</span>(conf)
+modelo.<span class="fn">init</span>()
+
+<span class="com">// Treinar com DataSetIterator ou INDArray direto</span>
+<span class="com">// modelo.fit(iterator, epochs = 10)</span>
+<span class="com">// val pred = modelo.output(entrada)</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="integracao-python">Integração com Python e Serviços ML</h2>
+				<p>Quando o modelo vive em Python (FastAPI/Flask), Kotlin atua como cliente via Ktor HttpClient. Alternativamente, GraalVM Polyglot permite executar scripts Python diretamente no processo JVM.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Cliente de serviço ML Python</div>
+					<pre class="example"><span class="kw">import</span> io.ktor.client.*
+<span class="kw">import</span> io.ktor.client.call.*
+<span class="kw">import</span> io.ktor.client.engine.cio.*
+<span class="kw">import</span> io.ktor.client.plugins.contentnegotiation.*
+<span class="kw">import</span> io.ktor.client.request.*
+<span class="kw">import</span> io.ktor.http.*
+<span class="kw">import</span> kotlinx.serialization.Serializable
+
+<span class="kw">@Serializable</span>
+<span class="kw">data class</span> <span class="fn">PredictRequest</span>(<span class="kw">val</span> features: List&lt;Double&gt;)
+<span class="kw">@Serializable</span>
+<span class="kw">data class</span> <span class="fn">PredictResponse</span>(<span class="kw">val</span> label: String, <span class="kw">val</span> confianca: Double)
+
+<span class="kw">suspend fun</span> <span class="fn">classificar</span>(features: List&lt;Double&gt;): PredictResponse {
+    <span class="kw">val</span> client = <span class="fn">HttpClient</span>(CIO) { <span class="fn">install</span>(ContentNegotiation) { <span class="fn">json</span>() } }
+    <span class="kw">return</span> client.<span class="fn">post</span>(<span class="str">"http://ml-service:5000/predict"</span>) {
+        <span class="fn">contentType</span>(ContentType.Application.Json)
+        <span class="fn">setBody</span>(<span class="fn">PredictRequest</span>(features))
+    }.<span class="fn">body</span>()
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>MICROSOFT. <strong>ONNX Runtime for Java</strong>. Disponível em: <a href="https://onnxruntime.ai/docs/api/java/" target="_blank" rel="noopener">onnxruntime.ai/docs/api/java</a>. Acesso em: mar. 2026.</li>
+						<li>ECLIPSE. <strong>Deeplearning4j — DL4J documentation</strong>. Disponível em: <a href="https://deeplearning4j.konduit.ai/" target="_blank" rel="noopener">deeplearning4j.konduit.ai</a>. Acesso em: mar. 2026.</li>
+						<li>KOTLIN. <strong>Sequences — lazy collections</strong>. Disponível em: <a href="https://kotlinlang.org/docs/sequences.html" target="_blank" rel="noopener">kotlinlang.org/docs/sequences</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="banco_dados.html">Banco de Dados</a></li>
+					<li><a href="web.html">Web com Kotlin</a></li>
+					<li><a href="terminal_cli.html">Terminal e CLI</a></li>
+					<li><a href="../guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Kotlin une pipelines funcionais expressivos com inferência ONNX e DL4J — IA de produção sem sair da JVM.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

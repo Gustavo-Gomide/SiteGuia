@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Facade: padrão estrutural que fornece uma interface simples para um subsistema complexo, escondendo detalhes." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Facade | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Interface simplificada para subsistema complexo</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Facade</h1>
+          <p class="page-subtitle">Estrutural — GoF</p>
+        </div>
+        <p class="intro-highlight">Facade fornece uma interface simplificada para um conjunto de interfaces num subsistema. Reduz a complexidade visível para o cliente sem remover a capacidade de acessar o subsistema diretamente quando necessário. Um dos padrões mais comuns e práticos.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estructura" class="section-title">Facade vs Adapter vs Mediator</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Padrão</th>
+                <th>Objetivo</th>
+                <th>Esconde impl.?</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Facade</strong></td>
+                <td>Simplificar acesso a subsistema complexo.</td>
+                <td>Sim, mas acesso direto ainda possível.</td>
+              </tr>
+              <tr>
+                <td><strong>Adapter</strong></td>
+                <td>Converter interface incompativel para a esperada.</td>
+                <td>Sim, protege o domínio da interface externa.</td>
+              </tr>
+              <tr>
+                <td><strong>Mediator</strong></td>
+                <td>Coordenar interação entre objetos que se conhecem.</td>
+                <td>Não — coordena, não simplifica interface.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — facade de envio de pedido</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// SUBSISTEMA — classes complexas e detalhadas
+class ValidadorPedido {
+  validar(pedido: Pedido): ValidationResult { /* ... */ return { ok: true }; }
+}
+
+class CalculadorFrete {
+  calcular(cep: string, itens: Item[]): number { /* ... */ return 15; }
+}
+
+class ProcessadorPagamento {
+  processar(valor: number, cartao: Cartao): PaymentResult { /* ... */ return { sucesso: true }; }
+}
+
+class NotificadorEmail {
+  enviarConfirmacao(email: string, pedidoId: string): void { /* ... */ }
+}
+
+// FACADE — orquestra o subsistema com interface simples
+class PedidoFacade {
+  constructor(
+    private validador: ValidadorPedido,
+    private frete: CalculadorFrete,
+    private pagamento: ProcessadorPagamento,
+    private notificador: NotificadorEmail
+  ) {}
+
+  async finalizar(pedido: Pedido, cartao: Cartao, emailCliente: string): Promise&lt;string&gt; {
+    const validacao = this.validador.validar(pedido);
+    if (!validacao.ok) throw new Error('Pedido inválido');
+
+    const valorFrete = this.frete.calcular(pedido.cep, pedido.itens);
+    const total = pedido.subtotal + valorFrete;
+
+    const pagto = this.pagamento.processar(total, cartao);
+    if (!pagto.sucesso) throw new Error('Pagamento recusado');
+
+    this.notificador.enviarConfirmacao(emailCliente, pedido.id);
+    return pedido.id;
+  }
+}
+
+// Cliente usa apenas a facade — simples e legível
+await facadePedido.finalizar(pedido, cartao, 'cliente@email.com');</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Subsistema complexo com várias classes que o cliente precisa coordenar. Wrapper de SDK externo complexo.</p>
+          </div>
+          <div class="card">
+            <h3>Não bloqueia acesso</h3>
+            <p>Facade não encapsula completamente — quem precisa de controle granular ainda acessa as classes do subsistema.</p>
+          </div>
+          <div class="card">
+            <h3>Ponto único de entrada</h3>
+            <p>Centraliza a orquestração. Mudanças no subsistema ficam encapsuladas nela, sem afetar o cliente.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>O subsistema já é simples. Uma facade sobre uma única classe é indireção gratuita.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Facade é uma das melhores ferramentas para simplificar onboarding em sistemas legados. Veja <a href="/html/engenharia_software/design/design_patterns/structural/adapter.html">Adapter</a> para converter interfaces incompatíveis.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A facade não é uma muralha — é uma porta principal. O subsistema permanece acessível; a facade simplifica o caminho comum."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

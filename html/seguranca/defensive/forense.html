@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Forense Digital: chain of custody, aquisição de disco e memória, análise forense de rede, ferramentas e considerações legais para investigação de incidentes." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Forense Digital | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Forense Digital</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Forense Digital?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Forense Digital</h1>
+          <p>Identificar, preservar e analisar evidências digitais para investigações e perícias.</p>
+        </div>
+
+        <p class="intro-highlight">Forense digital é a disciplina de identificar, preservar, analisar e apresentar evidências digitais de forma que possa ser usada em investigações e, quando necessário, em processos legais. A integridade das evidências é tão importante quanto o que elas revelam.</p>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p><strong>DFIR:</strong> Digital Forensics and Incident Response — as duas disciplinas são frequentemente combinadas. Forense foca na coleta e análise de evidências; IR foca na resposta ao incidente. Na prática, um bom investigador faz as duas coisas, em paralelo, desde o início.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="chain" class="section-title">Chain of Custody — Cadeia de Custódia</h2>
+        <div class="section-divider"></div>
+
+        <p>Chain of custody é a documentação ininterrupta de quem coletou, transferiu e analisou cada evidência. Sem essa rastreabilidade, as evidências podem ser inadmissíveis em processos judiciais.</p>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> O que documentar</h3>
+            <ul>
+              <li>Quem coletou a evidência, quando, onde e como</li>
+              <li>Hash criptográfico (SHA-256) da evidência no momento da coleta</li>
+              <li>Cada transferência de custódia — quem entregou, quem recebeu</li>
+              <li>Armazenamento: acesso controlado, lacres físicos se necessário</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Princípio da não-alteração</h3>
+            <p>Nunca analise a evidência original. Sempre trabalhe com <strong>cópias forenses bit-a-bit</strong> (imagens). O hash verifica que a cópia é idêntica ao original — qualquer alteração invalida a evidência.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="disco" class="section-title">Forense de Disco</h2>
+        <div class="section-divider"></div>
+
+        <p>Inclui análise de sistemas de arquivos, arquivos deletados, metadados, artefatos do sistema operacional e timelines de atividade.</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Aquisição de imagem</h3>
+            <p>Use <span class="code-inline">dd</span>, <span class="code-inline">dcfldd</span> ou FTK Imager para criar cópia forense bit-a-bit. Conecte o disco via write blocker (hardware) para garantir que nada é escrito no original.</p>
+          </div>
+          <div class="card">
+            <h3>Artefatos Windows</h3>
+            <p>Prefetch (programs executados), Jump Lists, Shellbags (pastas acessadas), MFT ($MFT — Master File Table), Event Logs, Registro (NTUSER.DAT), LNK files (atalhos), Recycle Bin.</p>
+          </div>
+          <div class="card">
+            <h3>Artefatos Linux</h3>
+            <p><span class="code-inline">/var/log/</span>, <span class="code-inline">~/.bash_history</span>, <span class="code-inline">/etc/cron.d/</span>, <span class="code-inline">/tmp/</span>, <span class="code-inline">/proc/</span> (processo ao vivo), systemd journal, SSH known_hosts, authorized_keys.</p>
+          </div>
+          <div class="card">
+            <h3>Arquivos deletados</h3>
+            <p>Quando um arquivo é deletado, o conteúdo nem sempre é apagado — só a referência no sistema de arquivos. Ferramentas como <span class="code-inline">photorec</span>, Autopsy e Scalpel podem recuperar dados de espaço "livre".</p>
+          </div>
+        </div>
+
+        <pre class="code-block">
+# Criar imagem forense com verificação de hash:
+# Conectar disco via write-blocker, identificar device:
+fdisk -l
+
+# Criar imagem bit-a-bit com hash simultâneo:
+dcfldd if=/dev/sdb of=/evidence/disco.img \
+    hash=sha256 \
+    hashlog=/evidence/disco.sha256.log
+
+# Verificar integridade da imagem:
+sha256sum /evidence/disco.img</pre>
+      </section>
+
+      <section>
+        <h2 id="memoria" class="section-title">Forense de Memória (RAM)</h2>
+        <div class="section-divider"></div>
+
+        <p>A memória RAM contém dados que não existem em disco: processos em execução, conexões de rede, credenciais em memória, malware fileless. É a evidência mais volátil — deve ser coletada primeiro, antes do disco.</p>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Coleta de RAM</h3>
+            <ul>
+              <li><strong>Windows:</strong> WinPmem, Magnet RAM Capture, DumpIt, Belkasoft RAM Capturer</li>
+              <li><strong>Linux:</strong> LiME (Linux Memory Extractor) — módulo de kernel</li>
+              <li><strong>VMware:</strong> suspender VM cria arquivo <span class="code-inline">.vmem</span> automaticamente</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Análise com Volatility</h3>
+            <ul>
+              <li><span class="code-inline">pslist / pstree</span> — lista processos</li>
+              <li><span class="code-inline">netscan</span> — conexões de rede ativas e fechadas</li>
+              <li><span class="code-inline">malfind</span> — detecta código injetado em processos legítimos</li>
+              <li><span class="code-inline">lsadump</span> — extrai hashes NTLM da memória (como Mimikatz)</li>
+              <li><span class="code-inline">cmdline / consoles</span> — comandos PowerShell/CMD executados</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="ferramentas" class="section-title">Ferramentas de Forense</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Ferramenta</th>
+                <th>Tipo</th>
+                <th>Uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Autopsy / Sleuth Kit</td><td>Open source</td><td>Análise de disco, browser artifacts, carving</td></tr>
+              <tr><td>Volatility 3</td><td>Open source</td><td>Análise de imagem de memória RAM</td></tr>
+              <tr><td>Wireshark / tshark</td><td>Open source</td><td>Análise de capturas de rede (.pcap)</td></tr>
+              <tr><td>FTK (Forensic Toolkit)</td><td>Comercial</td><td>Suíte completa de forense de disco</td></tr>
+              <tr><td>MAGNET AXIOM</td><td>Comercial</td><td>Forense de dispositivos móveis e cloud</td></tr>
+              <tr><td>Velociraptor</td><td>Open source</td><td>Coleta de artefatos forenses em escala (DFIR em flota)</td></tr>
+              <tr><td>KAPE</td><td>Gratuito</td><td>Coleta rápida de artefatos forenses Windows</td></tr>
+              <tr><td>Plaso / log2timeline</td><td>Open source</td><td>Criação de supertimelines de eventos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Forense digital exige paciência e rigor metodológico. Um erro na coleta pode destruir evidências irreversíveis. Para praticar, use plataformas CTF com desafios forenses (HackTheBox, CyberDefenders, BlueTeamLabs Online) e o projeto DFIR.training.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A evidência que você não coletou nas primeiras horas pode nunca mais existir. Na forense digital, a ordem de volatilidade decide a ordem de coleta."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

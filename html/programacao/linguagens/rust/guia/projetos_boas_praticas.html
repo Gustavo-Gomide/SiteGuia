@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Boas praticas para projetos Rust: workspaces, erros, newtypes, builder pattern, testes, CI, MSRV e semver." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Rust - Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Rust - Projetos e Boas Praticas</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="rust" aria-hidden="true"></span></div>
+					<h1>Projetos e Boas Praticas</h1>
+					<p>Arquitetura, qualidade e manutencao de longo prazo em codigo Rust.</p>
+				</div>
+				<p class="intro-highlight">Codigo Rust sustentavel depende de estrutura de repositorio, politica de versao, testes efetivos e manejo consistente de erros.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="estrutura-e-erros">Workspace e Error Handling na Pratica</h2>
+				<p>Separe responsabilidades em crates: dominio, adapters, binarios. Em bibliotecas, prefira tipos de erro explicitos com <code class="code-inline">thiserror</code>; em binarios, agregue contexto com <code class="code-inline">anyhow</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">erro de biblioteca + erro de app</div>
+					<pre class="example"><span class="kw">use</span> thiserror::Error;
+
+<span class="attr">#[derive(Error, Debug)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> RepoError {
+		<span class="attr">#[error("registro nao encontrado: {0}")]</span>
+		NotFound(<span class="kw">u64</span>),
+}
+
+<span class="com">// no binario</span>
+<span class="kw">use</span> anyhow::Context;
+<span class="kw">let</span> cfg = <span class="fn">carregar_cfg</span>().<span class="fn">context</span>(<span class="str">"falha ao carregar config"</span>)?;</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="padroes-e-tipagem">Newtypes, Builder Pattern e API Clara</h2>
+				<p>Newtypes evitam confusao semantica entre valores do mesmo tipo base (ex.: <code class="code-inline">String</code> para email e user_id). Builder simplifica objetos com muitos campos opcionais sem construtores gigantes.</p>
+				<div class="panel">
+					<ul>
+						<li><code class="code-inline">struct UserId(String);</code> para type safety.</li>
+						<li><code class="code-inline">ConfigBuilder::new().timeout(...).retries(...).build()</code> para configuracao legivel.</li>
+						<li>Expose o minimo necessario com <code class="code-inline">pub</code>; mantenha invariantes dentro do modulo.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="testes-ci-versao">Testes, CI, MSRV, Changelog e SemVer</h2>
+				<p>Combine testes unitarios, integration tests e doc tests. Em CI, execute formatacao, lint e suite completa. Defina MSRV (Minimum Supported Rust Version) para previsibilidade de usuarios e times.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">github actions (resumo)</div>
+					<pre class="example"><span class="kw">name</span>: ci
+<span class="kw">on</span>: [push, pull_request]
+jobs:
+	check:
+		runs-on: ubuntu-latest
+		steps:
+			- uses: actions/checkout@v4
+			- uses: dtolnay/rust-toolchain@stable
+			- run: cargo fmt --all -- --check
+			- run: cargo clippy --all-targets --all-features -- -D warnings
+			- run: cargo test --all</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Documente MSRV no README e respeite semver: mudanca breaking requer major version.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<div class="panel"><ul>
+					<li>RUST API GUIDELINES TEAM. <em>Rust API Guidelines</em>. Disponivel em: <a href="https://rust-lang.github.io/api-guidelines/" target="_blank" rel="noopener">api-guidelines</a>.</li>
+					<li>CARGO BOOK. Testing and Workspaces. Disponivel em: <a href="https://doc.rust-lang.org/cargo/" target="_blank" rel="noopener">Cargo Book</a>.</li>
+					<li>SEMVER.ORG. Semantic Versioning 2.0.0. Disponivel em: <a href="https://semver.org/" target="_blank" rel="noopener">semver.org</a>.</li>
+				</ul></div>
+			</section>
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/rust/aplicacoes/web.html">Aplicacoes Web</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/rust/aplicacoes/terminal_cli.html">Aplicacoes CLI</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Um projeto Rust maduro e aquele que continua facil de evoluir depois de 18 meses.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

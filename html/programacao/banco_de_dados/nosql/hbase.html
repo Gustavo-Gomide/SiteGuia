@@ -1,0 +1,391 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Apache HBase: banco NoSQL de familia de colunas sobre HDFS/Hadoop, para petabytes de dados." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Apache HBase | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Apache HBase</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Apache HBase</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Apache HBase</h1>
+          <p>Banco de dados de família de colunas sobre HDFS — bilhões de linhas, petabytes de dados.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>HBase</strong> é um banco de dados NoSQL distribuído de família de colunas, modelado sobre o
+          <strong>Google Bigtable</strong> (Chang et al., 2006). Foi projetado para acesso aleatório em tempo real a
+          tabelas gigantescas — bilhões de linhas por milhões de colunas — rodando sobre clusters Hadoop com
+          hardware comum de prateleira.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">1. O Que É o HBase?</h2>
+        <p>
+          Pense no HBase como uma <strong>planilha infinita e distribuída</strong>: linhas identificadas por uma
+          <em>Row Key</em> única, colunas agrupadas em <em>Column Families</em> e cada célula versionada no tempo.
+          Mas diferente de uma planilha, uma tabela HBase pode ter 10 bilhões de linhas e ser consultada em
+          milissegundos — porque os dados de cada Row Key estão sempre colocalizados no mesmo servidor (Region).
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Origem:</strong> Chang et al. publicaram "Bigtable: A Distributed Storage System for Structured Data"
+            no OSDI 2006. O HBase foi criado em 2007 para replicar esse design sobre o ecossistema open-source Hadoop/HDFS.
+          </p>
+        </div>
+        <p>
+          O modelo de dados é intencionalemnte simples: quatro dimensões identificam cada valor —
+          <code class="code-inline">(Row Key, Column Family, Column Qualifier, Timestamp)</code> → valor em bytes.
+          Não há tipos, não há schema para colunas — qualquer número de qualificadores pode ser adicionado
+          livremente dentro de uma Column Family.
+        </p>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Conceito</th>
+                  <th>SQL Relacional</th>
+                  <th>HBase</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Organização de dados</td><td>Tabelas com colunas fixas</td><td>Tabelas com Row Key + Column Families</td></tr>
+                <tr><td>Schema</td><td>Rígido (ALTER TABLE)</td><td>Column Families fixas, qualificadores livres</td></tr>
+                <tr><td>Índice primário</td><td>Primary Key (qualquer tipo)</td><td>Row Key (bytes, ordenada lexicograficamente)</td></tr>
+                <tr><td>Consultas</td><td>WHERE em qualquer coluna</td><td>Get por Row Key ou Scan por range de keys</td></tr>
+                <tr><td>Joins</td><td>Naturais com JOINs</td><td>Não existem — modelar na Row Key</td></tr>
+                <tr><td>Versionamento</td><td>Não nativo</td><td>Cada célula guarda N versões por timestamp</td></tr>
+                <tr><td>Escala</td><td>Vertical (scale-up)</td><td>Horizontal automático por Region splitting</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona por Dentro</h2>
+        <p>
+          O fluxo de escrita do HBase segue a arquitetura LSM (Log-Structured Merge-Tree), a mesma
+          usada pelo Cassandra e pelo LevelDB. Entender esse fluxo é essencial para projetar corretamente
+          o compactação e a performance de leitura.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pipeline de escrita e leitura — HBase</div>
+          <pre class="example"><span class="com">ESCRITA (Write Path):</span>
+<span class="tp">Client</span>
+  └─► <span class="kw">WAL</span> (Write-Ahead Log no HDFS)   <span class="com">  ← durabilidade: se o RegionServer cair,</span>
+  └─► <span class="kw">MemStore</span> (RAM, por Region)      <span class="com">    o WAL garante que nenhum dado se perde</span>
+        │
+        ├─ [quando MemStore atinge ~128 MB]
+        ▼
+      <span class="kw">HFile</span> (imutável, no HDFS)         <span class="com">  ← flush: MemStore vira HFile no HDFS</span>
+        │
+        ├─ [N HFiles acumulados]
+        ▼
+      <span class="kw">Compaction</span>                        <span class="com">  ← Minor: mescla poucos HFiles</span>
+                                        <span class="com">     Major: mescla TODOS + apaga tombstones</span>
+
+<span class="com">LEITURA (Read Path) — "merge view":</span>
+<span class="tp">Client</span> →  <span class="kw">BlockCache</span> (RAM, LRU)      <span class="com">  ← L1: dados quentes em memória</span>
+          └─ miss ─► <span class="kw">MemStore</span>          <span class="com">  ← L2: dados ainda não flushed</span>
+          └─ miss ─► <span class="kw">HFiles</span> (HDFS)      <span class="com">  ← L3: dados persistidos (com BloomFilter)</span>
+                      └── merge → versão mais recente retornada</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>RegionServer e Regions</h3>
+            <p>
+              A tabela é dividida em <strong>Regions</strong> — faixas contíguas de Row Keys.
+              Cada Region é atendida por um <strong>RegionServer</strong>. Quando uma Region cresce
+              muito (~10 GB), o HBase a divide automaticamente em duas (Region Split).
+              O HMaster coordena qual servidor cuida de qual Region.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>WAL e Durabilidade</h3>
+            <p>
+              Toda escrita vai primeiro ao <strong>Write-Ahead Log</strong> (arquivo sequencial no HDFS)
+              antes de entrar no MemStore em RAM. Se o RegionServer cair, o WAL é reproduzido para
+              reconstruir o estado perdido — zero perda de dados, mesmo com falha de hardware.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>BloomFilter e BlockCache</h3>
+            <p>
+              Cada HFile carrega um <strong>BloomFilter</strong> que responde em O(1): "esta Row Key
+              existe neste HFile?". Isso evita leituras desnecessárias de disco. O <strong>BlockCache</strong>
+              (padrão: BucketCache off-heap) mantém blocos de dados quentes em memória, evitando
+              repetir acesso ao HDFS.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- MODELAGEM DE ROW KEYS -->
+      <section>
+        <h2 id="modelagem" class="section-title">3. Modelagem de Row Keys — A Decisão Arquitetural</h2>
+        <p>
+          No HBase, <strong>a Row Key é o único índice real</strong>. Toda consulta eficiente passa por ela.
+          Projetar mal a Row Key é o erro número um de quem começa com HBase — e pode significar a diferença
+          entre 5 ms e 30 segundos de latência.
+        </p>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Hot Region (anti-pattern crítico):</strong> Se sua Row Key começa com um valor sequencial
+            (timestamp crescente, ID auto-increment), <em>todas</em> as escritas irão para a mesma Region —
+            o servidor fica sobrecarregado enquanto os outros ficam ociosos. Isso se chama <strong>hot spotting</strong>.
+          </p>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Anti-Pattern: Timestamp como Prefixo</h3>
+            <p>
+              <code class="code-inline">2024-01-15T10:30:00:sensor001</code> — escritas sempre
+              no mesmo "fim" da tabela. A Region que armazena os keys mais recentes fica quente
+              e todas as outras ficam frias. Nunca use timestamp crescente como prefixo de Row Key.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Salting</h3>
+            <p>
+              Adicione um prefixo aleatório (salt) de 1 byte calculado como
+              <code class="code-inline">hash(key) % N</code>. Distribui escritas uniformemente por N Regions.
+              Exemplo: <code class="code-inline">3:sensor001:2024-01-15T10:30:00</code>.
+              O trade-off: leitura de um range completo exige N Scans paralelos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Reverse Timestamp</h3>
+            <p>
+              Para séries temporais onde você sempre quer os N registros mais recentes:
+              use <code class="code-inline">Long.MAX_VALUE - timestamp</code> como prefixo.
+              O dado mais novo vai para o início da tabela. Um Scan retorna os mais recentes
+              primeiro, sem inversão posterior.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Composite Key</h3>
+            <p>
+              Combine entidades para colocar dados relacionados no mesmo Range —
+              <code class="code-inline">CLIENTE_101:PEDIDO:2024-01-15</code> garante que
+              todos os pedidos de um cliente ficam em Regions próximas. Um único Scan
+              retorna todo o histórico de pedidos de um cliente com IO mínimo.
+            </p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">hbase-shell.sh — operações com Row Key bem projetada</div>
+          <pre class="example"><span class="com"># Criar tabela: Column Families são definidas na criação</span>
+<span class="kw">create</span> <span class="str">'eventos'</span>,
+  {<span class="tp">NAME</span> =&gt; <span class="str">'meta'</span>, <span class="tp">VERSIONS</span> =&gt; <span class="num">1</span>, <span class="tp">COMPRESSION</span> =&gt; <span class="str">'SNAPPY'</span>},
+  {<span class="tp">NAME</span> =&gt; <span class="str">'payload'</span>, <span class="tp">VERSIONS</span> =&gt; <span class="num">3</span>, <span class="tp">BLOOMFILTER</span> =&gt; <span class="str">'ROW'</span>}
+
+<span class="com"># Inserir — reverse timestamp como prefixo evita hotspot</span>
+<span class="kw">put</span> <span class="str">'eventos'</span>, <span class="str">'sensor_42:9223370451775808:2024-01-15'</span>, <span class="str">'payload:temp'</span>, <span class="str">'23.5'</span>
+<span class="kw">put</span> <span class="str">'eventos'</span>, <span class="str">'sensor_42:9223370451775808:2024-01-15'</span>, <span class="str">'meta:unidade'</span>, <span class="str">'celsius'</span>
+
+<span class="com"># Get por Row Key exata — O(log N)</span>
+<span class="kw">get</span> <span class="str">'eventos'</span>, <span class="str">'sensor_42:9223370451775808:2024-01-15'</span>
+
+<span class="com"># Scan por range (todos os eventos do sensor_42 mais recentes primeiro)</span>
+<span class="kw">scan</span> <span class="str">'eventos'</span>, {
+  <span class="tp">STARTROW</span> =&gt; <span class="str">'sensor_42:'</span>,
+  <span class="tp">ENDROW</span>   =&gt; <span class="str">'sensor_42:~'</span>,
+  <span class="tp">LIMIT</span>    =&gt; <span class="num">100</span>,
+  <span class="tp">FILTER</span>   =&gt; <span class="str">"SingleColumnValueFilter('payload','temp',&gt;,'binary:20.0')"</span>
+}
+
+<span class="com"># Deletar — insere tombstone (apagado fisicamente na Major Compaction)</span>
+<span class="kw">delete</span> <span class="str">'eventos'</span>, <span class="str">'sensor_42:9223370451775808:2024-01-15'</span>, <span class="str">'payload:temp'</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">4. Quando Usar (e Quando Não Usar)</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="info" aria-hidden="true"></span> Use HBase quando...</h3>
+            <ul>
+              <li><strong>Volume massivo:</strong> bilhões de linhas com acesso aleatório por Row Key em milissegundos.</li>
+              <li><strong>Séries temporais IoT:</strong> ingestão de milhares de eventos/segundo (sensores, telemetria, logs de máquina).</li>
+              <li><strong>Clickstream / comportamento:</strong> histórico completo de ações de usuários com prefixo <code class="code-inline">USER_ID:timestamp</code>.</li>
+              <li><strong>Integração Hadoop:</strong> quando o dado já está no HDFS e você precisa de acesso online (Spark + HBase, Hive + HBase).</li>
+              <li><strong>Web crawling / índice invertido:</strong> URLs como Row Key, conteúdo e metadados em Column Families — o caso de uso original do Bigtable.</li>
+              <li><strong>Dados esparsos:</strong> colunas que existem apenas em algumas linhas sem desperdício de storage (NULL não ocupa espaço).</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="alerta" aria-hidden="true"></span> Evite HBase quando...</h3>
+            <ul>
+              <li><strong>Consultas ad-hoc complexas:</strong> "WHERE cidade = 'SP' AND idade &gt; 30" exige full Scan — use PostgreSQL ou Elasticsearch.</li>
+              <li><strong>Dados pequenos:</strong> overhead de um cluster HBase/HDFS não justifica tabelas com menos de 100 milhões de linhas.</li>
+              <li><strong>Baixa latência crítica (&lt; 1 ms):</strong> Redis ou Memcached são a escolha certa para cache ultra-rápido.</li>
+              <li><strong>Equipe sem expertise Hadoop:</strong> operação de cluster HBase requer conhecimento de tuning de JVM, HDFS e ZooKeeper.</li>
+              <li><strong>ACID completo:</strong> HBase garante atomicidade apenas dentro de uma linha (single-row), não multi-row.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANÇADO -->
+      <section>
+        <h2 id="avancado" class="section-title">5. Tópicos Avançados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Apache Phoenix — SQL Sobre HBase</h3>
+            <p>
+              Camada SQL completa que compila queries para operações nativas do HBase.
+              Suporta <code class="code-inline">SELECT</code>, <code class="code-inline">JOIN</code>,
+              índices secundários, e se integra ao JDBC/ODBC. Latência tipicamente
+              abaixo de 10 ms para queries simples. Usado extensivamente no operacional
+              do Salesforce, eBay e Bloomberg.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Coprocessors</h3>
+            <p>
+              Código Java executado <em>dentro</em> do RegionServer, colocado junto ao dado —
+              análogo a stored procedures. <strong>Observer Coprocessors</strong> reagem a eventos
+              (pre/post Get, pre/post Put). <strong>Endpoint Coprocessors</strong> implementam
+              agregações distribuídas (SUM, COUNT) sem mover dados para o cliente.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Compaction e Tombstones</h3>
+            <p>
+              Deleções no HBase são <em>marcas de lápide</em> (tombstones) — o dado não é removido
+              imediatamente. Durante a <strong>Major Compaction</strong>, todos os HFiles de uma Region
+              são mesclados e tombstones + versões expiradas são fisicamente apagados.
+              Programe Major Compactions em horários de baixo tráfego para evitar impacto
+              de I/O em produção.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Replication e High Availability</h3>
+            <p>
+              HBase suporta replicação assíncrona entre clusters para DR (Disaster Recovery).
+              O <strong>HMaster ativo/standby</strong> (via ZooKeeper) garante que a coordenação
+              de Regions nunca fique sem responsável. ZooKeeper armazena o catálogo de
+              Regions (<code class="code-inline">hbase:meta</code>) e a eleição de líderes.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Armadilha de produção — Region Server GC Pause:</strong> RegionServers rodam na JVM.
+            Um GC pause de &gt; 15-30 segundos pode fazer o ZooKeeper considerar o servidor morto e
+            iniciar uma reassignação de Regions — causando downtime temporário. Use
+            <strong>G1GC ou ZGC</strong> com heap de 8–16 GB máximo, e prefira mover dados quentes para
+            BlockCache off-heap (BucketCache) para reduzir pressão de GC.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">6. Ecossistema</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Apache Phoenix</h3>
+            <p>SQL sobre HBase com índices secundários, JOINs e JDBC. Abstrai completamente o modelo de Row Key — o desenvolvedor escreve SQL, o Phoenix compila para Scans e Get eficientes.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Apache Spark + HBase</h3>
+            <p>Conector nativo HBase-Spark lê Regions em paralelo como RDD/DataFrame. Ideal para ETL massivo: processar petabytes no Spark e persistir resultados de volta ao HBase.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>OpenTSDB</h3>
+            <p>Banco de séries temporais construído sobre HBase. Row Key engineered para distribuição eficiente: <code class="code-inline">métrica:timestamp:tags</code>. Processa bilhões de pontos de dados por dia.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Cloudera CDP / HDP</h3>
+            <p>Distribuições empresariais Hadoop com HBase gerenciado, monitoramento, segurança Kerberos, e integração com HDFS, YARN, Kafka e Spark em um único cluster.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>HBase REST Gateway</h3>
+            <p>Servidor REST que expõe tabelas HBase via HTTP/JSON. Permite acesso de qualquer linguagem sem cliente HBase nativo — útil para integração com microserviços não-JVM.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Apache Hive + HBase</h3>
+            <p>O Hive Storage Handler mapeia tabelas HBase como tabelas Hive. Permite queries HiveQL analíticas sobre dados operacionais do HBase sem mover dados — Lambda Architecture simplificada.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CHANG, Fay et al. <strong>Bigtable: A Distributed Storage System for Structured Data</strong>. OSDI 2006. Google, 2006. Disponível em: <a href="https://research.google/pubs/pub27898/" target="_blank" rel="noopener">research.google/pubs/pub27898</a>.</li>
+            <li>APACHE SOFTWARE FOUNDATION. <strong>Apache HBase Reference Guide</strong>. Disponível em: <a href="https://hbase.apache.org/book.html" target="_blank" rel="noopener">hbase.apache.org/book.html</a>. Acesso em: 2025.</li>
+            <li>GEORGE, Lars. <strong>HBase: The Definitive Guide</strong>. 2. ed. O'Reilly Media, 2019.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled: A Brief Guide to the Emerging World of Polyglot Persistence</strong>. Addison-Wesley, 2012.</li>
+            <li>APACHE PHOENIX. <strong>Apache Phoenix — OLTP and Operational Analytics for Hadoop</strong>. Disponível em: <a href="https://phoenix.apache.org/" target="_blank" rel="noopener">phoenix.apache.org</a>. Acesso em: 2025.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>HBase entrega acesso aleatório em milissegundos a bilhões de linhas — mas a chave do sucesso é projetar a Row Key antes de escrever uma linha de código.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/cassandra.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Cassandra — Wide Column Masterless</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/dynamodb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>DynamoDB — Serverless AWS</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Design your schema for your queries, not your queries for your schema." — HBase Design Principle
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas praticas com LuaJIT: arquitetura, observabilidade, fallback, testes, CI e padroes de manutencao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT - Projetos e Boas Praticas | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>LuaJIT - Projetos e Boas Praticas</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">LuaJIT - Projetos e Boas Praticas</h2>
+        <div class="page-header">
+          <span data-svg="lua" aria-hidden="true"></span>
+          <h1>Como transformar performance em padrao de engenharia</h1>
+          <p>Projetos LuaJIT sustentaveis precisam de desenho de arquitetura, observabilidade, testes e estrategia de portabilidade.</p>
+        </div>
+        <p class="intro-highlight">
+          Alta performance sem boas praticas vira fragilidade; alta performance com governanca vira vantagem competitiva de longo prazo.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="principios" class="section-title">Principios de projeto para equipes</h2>
+        <p>
+          Em times, o maior risco nao e "falta de velocidade", e sim velocidade sem previsibilidade. Por isso, projetos LuaJIT maduros
+          adotam um principio simples: codigo de negocio legivel em Lua, hotspots isolados e contratos tecnicos explicitados.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura-camadas" class="section-title">Arquitetura em camadas: dominio, infraestrutura e hot path</h2>
+        <p>
+          Separar camadas facilita evolucao de produto sem destruir desempenho. O dominio permanece claro e testavel,
+          enquanto o hot path recebe otimizaao cirurgica sem contaminar toda a base.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura sugerida de projeto LuaJIT</div>
+          <pre class="example">project/
+  app/
+    <span class="fn">main</span>.lua
+    domain/
+      rules.lua
+      use_cases.lua
+    infra/
+      http_client.lua
+      storage.lua
+      metrics.lua
+    hotpath/
+      vector_ops.lua
+      ffi_hash.lua
+  spec/
+    domain_spec.lua
+    integration_spec.lua
+    perf_spec.lua</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="padroes-codigo" class="section-title">Padroes de codigo para manter manutencao e velocidade</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Lua - wrapper de timing e erro para funcoes criticas</div>
+          <pre class="example"><span class="kw">local</span> clock = os.clock
+
+<span class="kw">local</span> <span class="kw">function</span> <span class="fn">timed_call</span>(name, fn)
+  <span class="kw">local</span> t0 = <span class="fn">clock</span>()
+  <span class="kw">local</span> ok, result = pcall(fn)
+  <span class="kw">local</span> dt = <span class="fn">clock</span>() - t0
+  print(<span class="str">"op="</span>, name, <span class="str">"ok="</span>, ok, <span class="str">"sec="</span>, dt)
+  <span class="kw">return</span> ok, result
+<span class="kw">end</span>
+
+<span class="kw">local</span> ok, value = <span class="fn">timed_call</span>(<span class="str">"hash"</span>, <span class="kw">function</span>()
+  <span class="kw">return</span> <span class="kw">require</span>(<span class="str">"hotpath.ffi_hash"</span>).<span class="fn">sha256</span>(<span class="str">"payload"</span>)
+<span class="kw">end</span>)
+
+<span class="kw">if</span> ok <span class="kw">then</span> print(value) <span class="kw">end</span></pre>
+        </div>
+        <p>
+          Esse padrao facilita observabilidade local e reduz o custo de depuracao em producao ao redor de integracoes FFI.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="uso-producao" class="section-title">Casos de uso de boas praticas em producao</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>API gateway</strong>
+            <p>OpenResty + politicas versionadas + observabilidade por rota.</p>
+          </div>
+          <div class="card">
+            <strong>Servicos de risco/fraude</strong>
+            <p>Regras de negocio em Lua e kernels numericos em modulo dedicado.</p>
+          </div>
+          <div class="card">
+            <strong>Telemetria em tempo real</strong>
+            <p>Pipelines de agregacao com foco em latencia p95 e p99.</p>
+          </div>
+          <div class="card">
+            <strong>CLI de processamento</strong>
+            <p>Fallback para Lua padrao em ambientes sem suporte a LuaJIT.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fallback-ci" class="section-title">Avancado: fallback de runtime, testes e CI orientados a regressao</h2>
+        <p>
+          Estrategia de fallback permite rodar o mesmo dominio em Lua 5.1/5.4 quando LuaJIT nao esta disponivel.
+          Em paralelo, CI deve validar paridade funcional e proteger baseline de performance.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Lua - troca de backend por deteccao de runtime</div>
+          <pre class="example"><span class="kw">local</span> is_luajit = (jit <span class="kw">and</span> jit.version) <span class="kw">and</span> <span class="kw">true</span> <span class="kw">or</span> <span class="kw">false</span>
+
+<span class="kw">local</span> backend = is_luajit
+  <span class="kw">and</span> <span class="kw">require</span>(<span class="str">"hotpath.ffi_hash"</span>)
+  <span class="kw">or</span> <span class="kw">require</span>(<span class="str">"hotpath.pure_lua_hash"</span>)
+
+print(backend.<span class="fn">sha256</span>(<span class="str">"payload"</span>))</pre>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Politica minima de qualidade para times</p>
+          <ul>
+            <li>Pipeline com matriz: Lua 5.1, LuaJIT e ambiente alvo de deploy.</li>
+            <li>Teste de equivalencia entre implementacao FFI e implementacao pura.</li>
+            <li>Guard-rail de performance por mediana e p95.</li>
+            <li>Bloqueio de merge em regressao acima do limiar acordado.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> O erro comum e tratar benchmark como "teste opcional". Em LuaJIT, benchmark e parte do contrato de qualidade.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao-praticas" class="section-title">Comparacao de maturidade em projetos</h2>
+        <div class="panel">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Perfil</th>
+                <th>Caracteristica</th>
+                <th>Consequencia</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Projeto ad hoc</td>
+                <td>FFI disperso e sem contratos</td>
+                <td>Debug dificil e risco alto de regressao</td>
+              </tr>
+              <tr>
+                <td>Projeto intermediario</td>
+                <td>Arquitetura parcialmente separada</td>
+                <td>Melhor manutencao, mas tuning inconsistente</td>
+              </tr>
+              <tr>
+                <td>Projeto maduro</td>
+                <td>Camadas claras, CI forte e benchmark versionado</td>
+                <td>Performance previsivel e evolucao segura</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fontes" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li><a href="https://luajit.org/" target="_blank" rel="noopener">PALL, Mike. LuaJIT Official Documentation. 2026.</a></li>
+            <li><a href="https://openresty.org/en/best-practices.html" target="_blank" rel="noopener">OpenResty Team. OpenResty Best Practices. 2026.</a></li>
+            <li><a href="https://lunarmodules.github.io/busted/" target="_blank" rel="noopener">LunarModules. Busted Testing Framework. 2026.</a></li>
+            <li><a href="https://martinfowler.com/articles/practical-test-pyramid.html" target="_blank" rel="noopener">FOWLER, Martin. The Practical Test Pyramid. 2018.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto LuaJIT de alto nivel nao nasce de truques isolados: nasce de processo tecnico consistente do commit ao deploy.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/fundamentos.html">LuaJIT - Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/bibliotecas_frameworks.html">LuaJIT - Bibliotecas e Frameworks</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

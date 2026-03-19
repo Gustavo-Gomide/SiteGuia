@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OCaml para embedded e IoT: edge gateways, MirageOS unikernels, FFI com C e padroes de confiabilidade para dispositivos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml - Aplicacoes em Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml - Aplicacoes em Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>OCaml em dispositivos e borda</h1>
+          <p>Uso pratico de OCaml em gateways IoT, sistemas de telemetria e componentes de alto requisito de confiabilidade.</p>
+        </div>
+        <p class="intro-highlight">No IoT real, OCaml costuma atuar melhor no edge inteligente e no plano de controle, onde tipos fortes e concorrencia segura reduzem falhas operacionais.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Escopo realista para embedded com OCaml</h2>
+        <p>Para microcontroladores ultrarrestritos (MCUs sem MMU), C/Rust ainda predominam. Ja em Linux embarcado (Raspberry Pi, gateways ARM), OCaml e altamente viavel para servicos de orquestracao, coleta e validacao.</p>
+        <div class="grid grid--2">
+          <div class="card"><h3>Bom encaixe</h3><p>Gateways MQTT, regras de negocio, edge analytics, sincronizacao offline.</p></div>
+          <div class="card"><h3>Menor encaixe</h3><p>Firmware bare-metal com hard realtime estrito e memoria minima.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura">Arquitetura tipica de edge gateway</h2>
+        <svg viewBox="0 0 930 210" role="img" aria-label="Arquitetura edge IoT com OCaml" class="w-full rounded-md border p-sm">
+          <rect x="20" y="80" width="180" height="50" rx="10" fill="currentColor" opacity="0.08"></rect>
+          <text x="55" y="110" fill="currentColor">Sensores</text>
+          <rect x="250" y="80" width="190" height="50" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="280" y="110" fill="currentColor">Daemon OCaml</text>
+          <rect x="490" y="80" width="180" height="50" rx="10" fill="currentColor" opacity="0.08"></rect>
+          <text x="532" y="110" fill="currentColor">Broker MQTT</text>
+          <rect x="720" y="80" width="180" height="50" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="765" y="110" fill="currentColor">Cloud</text>
+          <line x1="200" y1="105" x2="250" y2="105" stroke="currentColor"></line>
+          <line x1="440" y1="105" x2="490" y2="105" stroke="currentColor"></line>
+          <line x1="670" y1="105" x2="720" y2="105" stroke="currentColor"></line>
+          <text x="25" y="165" fill="currentColor">OCaml agrega validacao, buffer local e regras antes da nuvem.</text>
+        </svg>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso-pratico">Exemplo: validacao e publicacao MQTT</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">gateway.ml</div>
+          <pre class="example"><span class="kw">type</span> <span class="tp">leitura</span> = { sensor_id : <span class="tp">string</span>; temp_c : <span class="tp">float</span>; ts : <span class="tp">int</span> }
+
+<span class="kw">let</span> <span class="fn">valida</span> l =
+  l.temp_c > -. <span class="num">40.0</span> && l.temp_c < <span class="num">125.0</span>
+
+<span class="kw">let</span> <span class="fn">normaliza</span> l =
+  { l <span class="kw">with</span> temp_c = <span class="tp">Float</span>.<span class="fn">round</span> (l.temp_c *. <span class="num">100.0</span>) /. <span class="num">100.0</span> }
+
+<span class="kw">let</span> <span class="fn">publicar</span> _cliente l =
+  <span class="kw">if</span> <span class="fn">valida</span> l <span class="kw">then</span>
+    <span class="kw">let</span> payload =
+      <span class="tp">Printf</span>.<span class="fn">sprintf</span> {|{"sensor":"%s","temp":%.2f,"ts":%d}|}
+        l.sensor_id l.temp_c l.ts <span class="kw">in</span>
+    ignore payload
+  <span class="kw">else</span>
+    <span class="fn">Printf.eprintf</span> <span class="str">"Leitura invalida: %s\n"</span> l.sensor_id</pre>
+        </div>
+        <p>Mesmo sem mostrar o cliente MQTT completo, o exemplo ilustra o ponto central: invariantes de dominio capturados antes da transmissao.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos avancados para confiabilidade</h2>
+        <div class="panel">
+          <ul>
+            <li>Store-and-forward local com disco para tolerar quedas de conectividade.</li>
+            <li>Supervisao de processo via systemd e health checks periodicos.</li>
+            <li>Cross-compilation controlada para ARM e imagens minimas de deploy.</li>
+            <li>Uso de MirageOS para appliances de rede com superficie de ataque reduzida.</li>
+          </ul>
+        </div>
+        <div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Em IoT, o erro mais caro e ignorar comportamento offline. Planeje fila local, retry com backoff e idempotencia desde o inicio.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>MIRAGEOS. <strong>MirageOS Documentation</strong>. Disponivel em: <a href="https://mirage.io/" target="_blank" rel="noopener">https://mirage.io/</a>.</li>
+            <li>OASIS. <strong>MQTT Version 5.0 Specification</strong>. Disponivel em: <a href="https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html" target="_blank" rel="noopener">https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html</a>.</li>
+            <li>REAL WORLD OCAML. <strong>Concurrency and Systems Programming</strong>. Disponivel em: <a href="https://dev.realworldocaml.org/" target="_blank" rel="noopener">https://dev.realworldocaml.org/</a>.</li>
+            <li>RFC 7252. <strong>The Constrained Application Protocol (CoAP)</strong>. Disponivel em: <a href="https://www.rfc-editor.org/rfc/rfc7252" target="_blank" rel="noopener">https://www.rfc-editor.org/rfc/rfc7252</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/terminal_cli.html">OCaml - Terminal e CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/banco_dados.html">OCaml - Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/projetos_boas_praticas.html">OCaml - Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em edge computing, cada bug evitado antes do deploy representa centenas de dispositivos saudaveis em campo.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

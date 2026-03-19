@@ -1,0 +1,124 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly ARM AArch64: instruções fundamentais, AAPCS64, syscalls Linux ARM64, NEON SIMD e exemplos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly ARM | Assembly | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="code"></span>
+          <div>
+            <h1 class="page-title">Assembly ARM (AArch64)</h1>
+            <p class="page-subtitle">RISC de 64 bits: instruções fixas de 32 bits, load/store, NEON e AAPCS64</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O ARM AArch64 é a ISA RISC de 64 bits que domin a o mercado mobile (iOS, Android),
+          servidores (AWS Graviton, Ampere Altra) e desktops (Apple Silicon M-series).
+          Todas as instruções têm 32 bits de tamanho fixo; apenas LOAD e STORE acessam memória;
+          a ALU só opera sobre registradores.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — INSTRUÇÕES ═══════════════════ -->
+      <section id="instrucoes">
+        <h2 id="instrucoes" class="section-title">Instruções Fundamentais</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Instrução</th><th>Sintaxe</th><th>O que faz</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>MOV</td><td><code class="code-inline">MOV X0, X1</code></td><td>Copia X1 para X0</td></tr>
+              <tr><td>MOVZ</td><td><code class="code-inline">MOVZ X0, #42</code></td><td>Move imediato 16-bit, zerando o restante</td></tr>
+              <tr><td>LDR</td><td><code class="code-inline">LDR X0, [X1]</code></td><td>Carrega 64-bit da memória endereçada por X1</td></tr>
+              <tr><td>STR</td><td><code class="code-inline">STR X0, [X1, #8]</code></td><td>Armazena X0 em mem[X1+8]</td></tr>
+              <tr><td>ADD / SUB</td><td><code class="code-inline">ADD X0, X1, X2</code></td><td>X0 = X1 + X2</td></tr>
+              <tr><td>AND / ORR / EOR</td><td><code class="code-inline">AND X0, X1, X2</code></td><td>Operações lógicas bit a bit</td></tr>
+              <tr><td>CMP</td><td><code class="code-inline">CMP X0, X1</code></td><td>Atualiza flags (NZCV); não armazena resultado</td></tr>
+              <tr><td>B / BL</td><td><code class="code-inline">B label</code></td><td>Branch incondicional; BL salva endereço em LR (X30)</td></tr>
+              <tr><td>B.cond</td><td><code class="code-inline">B.EQ loop</code></td><td>Branch condicional: EQ, NE, LT, GT, LE, GE, CS, CC...</td></tr>
+              <tr><td>RET</td><td><code class="code-inline">RET</code></td><td>Retorna para endereço em LR (X30)</td></tr>
+              <tr><td>SVC</td><td><code class="code-inline">SVC #0</code></td><td>Supervisor Call: realiza syscall (X8 = número, X0–X5 = args)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — EXEMPLO ═══════════════════ -->
+      <section id="exemplo">
+        <h2 id="exemplo" class="section-title">Exemplo: Hello World Linux AArch64</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GNU Assembler (GAS) AArch64 — syscall Linux</div>
+          <pre class="code-block">.section .data
+msg: .ascii "Hello, ARM!\n"
+len = . - msg
+
+.section .text
+.global _start
+_start:
+    // write(1, msg, len)
+    mov x8, #64        // syscall: write
+    mov x0, #1         // fd: stdout
+    adr x1, msg        // endereço do buffer
+    mov x2, #len       // tamanho
+    svc #0             // chamada ao kernel
+
+    // exit(0)
+    mov x8, #93        // syscall: exit
+    mov x0, #0         // exit code
+    svc #0
+
+// Build:
+// as -o hello.o hello.s
+// ld -o hello hello.o
+// ./hello</pre>
+        </div>
+        <p class="note">Os números de syscall no Linux AArch64 diferem do x86-64. Use <code class="code-inline">/usr/include/asm/unistd.h</code> ou a tabela em <code class="code-inline">syscall.tbl</code> do kernel para a lista completa.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Compare com a ISA CISC em
+          <a href="/html/hardware_arquitetura/assembly/x86_64.html">x86-64</a> e veja a filosofia RISC em
+          <a href="/html/hardware_arquitetura/arquitetura_cpu/risc.html">RISC</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"ARM é a prova de que simplificar o conjunto de instruções pode conquistar o mundo."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

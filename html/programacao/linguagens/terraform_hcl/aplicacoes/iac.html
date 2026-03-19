@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Aplicacao pratica de IaC com Terraform: rede, compute, storage e pipeline de deploy." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Terraform e HCL: Aplicacao IaC | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Terraform e HCL: Aplicacao IaC</strong></p></div>
+
+			<section>
+				<h2 class="section-title" id="provisionamento-completo-de-stack">Provisionamento Completo de Stack</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="terraform" aria-hidden="true"></span></div>
+					<h1>Rede + Compute + Storage com pipeline reproduzivel</h1>
+					<p>Exemplo pratico de IaC para uma aplicacao web de medio porte.</p>
+				</div>
+				<p class="intro-highlight">A meta aqui e transformar arquitetura em codigo auditavel, do subnet ao bucket, com entrega controlada em CI/CD.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="arquitetura">Arquitetura do Exemplo</h2>
+				<p>O cenario inclui VPC, sub-redes publicas/privadas, grupo de seguranca, instancias de aplicacao e bucket para artefatos/logs.</p>
+				<svg viewBox="0 0 860 220" role="img" aria-label="Diagrama simplificado de arquitetura IaC" class="w-full">
+					<rect x="20" y="20" width="820" height="180" rx="12" fill="currentColor" opacity="0.08"></rect>
+					<rect x="60" y="70" width="220" height="90" rx="10" fill="currentColor" opacity="0.18"></rect>
+					<text x="170" y="120" text-anchor="middle" fill="currentColor">VPC + Subnets</text>
+					<rect x="330" y="70" width="220" height="90" rx="10" fill="currentColor" opacity="0.18"></rect>
+					<text x="440" y="120" text-anchor="middle" fill="currentColor">EC2 / ASG</text>
+					<rect x="600" y="70" width="200" height="90" rx="10" fill="currentColor" opacity="0.18"></rect>
+					<text x="700" y="120" text-anchor="middle" fill="currentColor">S3 Logs/Artefatos</text>
+					<line x1="280" y1="115" x2="330" y2="115" stroke="currentColor" stroke-width="2"></line>
+					<line x1="550" y1="115" x2="600" y2="115" stroke="currentColor" stroke-width="2"></line>
+				</svg>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="codigo-real">Exemplo Real de Configuracao</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - stack simplificada</div>
+					  <pre class="example"><span class="com"># Composicao de stack por modulos de dominio</span>
+			<span class="kw">module</span> <span class="str">"network"</span> {
+	source      = <span class="str">"./modules/network"</span>
+	cidr_block  = <span class="str">"10.40.0.0/16"</span>
+	environment = var.environment
+}
+
+<span class="kw">module</span> <span class="str">"compute"</span> {
+	source          = <span class="str">"./modules/compute"</span>
+	subnet_ids      = module.network.private_subnet_ids
+	security_groups = [module.network.app_sg_id]
+	instance_count  = 2
+}
+
+<span class="kw">resource</span> <span class="str">"aws_s3_bucket"</span> <span class="fn">"artifacts"</span> {
+	bucket = <span class="str">"acme-${var.environment}-artifacts"</span>
+	tags   = local.common_tags
+}</pre>
+				</div>
+				<p>Em projetos reais, cada modulo fica em pasta separada com <code class="code-inline">variables.tf</code>, <code class="code-inline">outputs.tf</code> e <code class="code-inline">main.tf</code>.</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="pipeline">Pipeline de Entrega para IaC</h2>
+				<p>Pipeline recomendada por ambiente: validacao obrigatoria em PR e apply controlado por aprovacao.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">yaml - CI/CD com aprovacao</div>
+					<pre class="example"><span class="kw">stages</span>:
+	- lint
+	- plan
+	- approve
+	- apply
+
+<span class="kw">lint</span>:
+	script:
+		- <span class="fn">terraform</span> <span class="kw">fmt</span> -check -recursive
+		- <span class="fn">terraform</span> <span class="kw">validate</span>
+
+<span class="kw">plan</span>:
+	script:
+		- <span class="fn">terraform</span> <span class="kw">plan</span> -out=<span class="str">tfplan</span>
+
+<span class="kw">apply</span>:
+	script:
+		- <span class="fn">terraform</span> <span class="kw">apply</span> <span class="str">tfplan</span></pre>
+				</div>
+				<div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Nunca rode apply automatico em producao sem gate humano e trilha de auditoria.</p></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<ul>
+					<li>HASHICORP. <strong>Terraform Tutorials</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/tutorials" target="_blank" rel="noopener">developer.hashicorp.com/terraform/tutorials</a>. Acesso em: 13 mar. 2026.</li>
+					<li>AWS. <strong>Best Practices for Terraform on AWS</strong>. Disponivel em: <a href="https://docs.aws.amazon.com/prescriptive-guidance/latest/terraform-aws-provider-best-practices/" target="_blank" rel="noopener">docs.aws.amazon.com/.../terraform-aws-provider-best-practices</a>. Acesso em: 13 mar. 2026.</li>
+					<li>GOOGLE CLOUD. <strong>Infrastructure as Code</strong>. Disponivel em: <a href="https://cloud.google.com/docs/terraform" target="_blank" rel="noopener">cloud.google.com/docs/terraform</a>. Acesso em: 13 mar. 2026.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/aplicacoes/nuvem.html"><span data-svg="seta-direita" aria-hidden="true"></span> Aplicacao Terraform em multi-cloud</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas praticas de projeto</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> IaC de verdade nao e script isolado: e arquitetura, processo e governanca funcionando juntos.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

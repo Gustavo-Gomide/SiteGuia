@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para aplicações desktop com GUI: GTK4, GObject, g_signal_connect, Cairo 2D, comparação GTK vs Qt em C." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="janela" aria-hidden="true"></span></div>
+          <h1>C para GUI Desktop</h1>
+          <p>GTK4, GObject, Cairo 2D, GIMP e as bases da programação orientada a eventos em C puro com interfaces gráficas nativas.</p>
+        </div>
+        <p class="intro-highlight">
+          O GIMP, Inkscape, Audacity, GNOME Shell e centenas de aplicações Linux foram construídas em C com GTK. A combinação GLib + GTK + Cairo oferece todo o poder de GUI nativa sem abandonar o controle absoluto que C proporciona.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gtk4-basico">GTK4: Janela, Botão e GObject</h2>
+        <p>GTK4 é baseado no sistema de objetos GObject — um sistema OOP em C puro que usa macros para herança, sinais e propriedades. Toda interface GTK é um grafo de GObjects conectados por sinais.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; GTK4: aplicação mínima com botão e callback</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;gtk/gtk.h&gt;</span>
+
+<span class="kw">static</span> <span class="tp">int</span> contador = <span class="num">0</span>;
+
+<span class="kw">static</span> <span class="tp">void</span> <span class="fn">ao_clicar</span>(<span class="tp">GtkButton</span> *btn, <span class="tp">gpointer</span> label) {
+    contador++;
+    <span class="tp">char</span> texto[<span class="num">64</span>];
+    <span class="fn">snprintf</span>(texto, <span class="kw">sizeof</span>(texto), <span class="str">"Cliques: %d"</span>, contador);
+    <span class="fn">gtk_label_set_text</span>(<span class="tp">GTK_LABEL</span>(label), texto);
+    (<span class="tp">void</span>)btn;
+}
+
+<span class="kw">static</span> <span class="tp">void</span> <span class="fn">ativar</span>(<span class="tp">GtkApplication</span> *app, <span class="tp">gpointer</span> dados) {
+    (<span class="tp">void</span>)dados;
+
+    <span class="tp">GtkWidget</span> *janela = <span class="fn">gtk_application_window_new</span>(app);
+    <span class="fn">gtk_window_set_title</span>(<span class="tp">GTK_WINDOW</span>(janela), <span class="str">"Contador GTK4"</span>);
+    <span class="fn">gtk_window_set_default_size</span>(<span class="tp">GTK_WINDOW</span>(janela), <span class="num">300</span>, <span class="num">200</span>);
+
+    <span class="com">/* Layout vertical (GtkBox substitui GtkVBox do GTK3) */</span>
+    <span class="tp">GtkWidget</span> *caixa = <span class="fn">gtk_box_new</span>(GTK_ORIENTATION_VERTICAL, <span class="num">12</span>);
+    <span class="fn">gtk_widget_set_margin_top</span>(caixa, <span class="num">20</span>);
+    <span class="fn">gtk_widget_set_margin_bottom</span>(caixa, <span class="num">20</span>);
+    <span class="fn">gtk_widget_set_margin_start</span>(caixa, <span class="num">20</span>);
+    <span class="fn">gtk_widget_set_margin_end</span>(caixa, <span class="num">20</span>);
+    <span class="fn">gtk_window_set_child</span>(<span class="tp">GTK_WINDOW</span>(janela), caixa);
+
+    <span class="tp">GtkWidget</span> *label = <span class="fn">gtk_label_new</span>(<span class="str">"Cliques: 0"</span>);
+    <span class="fn">gtk_box_append</span>(<span class="tp">GTK_BOX</span>(caixa), label);
+
+    <span class="tp">GtkWidget</span> *botao = <span class="fn">gtk_button_new_with_label</span>(<span class="str">"Clique aqui!"</span>);
+    <span class="fn">gtk_box_append</span>(<span class="tp">GTK_BOX</span>(caixa), botao);
+
+    <span class="com">/* Conectar sinal "clicked" ao callback */</span>
+    <span class="fn">g_signal_connect</span>(botao, <span class="str">"clicked"</span>, <span class="tp">G_CALLBACK</span>(ao_clicar), label);
+
+    <span class="fn">gtk_widget_show</span>(janela);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">int</span> argc, <span class="tp">char</span> *argv[]) {
+    <span class="tp">GtkApplication</span> *app = <span class="fn">gtk_application_new</span>(
+        <span class="str">"br.dev.exemplo.contador"</span>, G_APPLICATION_DEFAULT_FLAGS
+    );
+    <span class="fn">g_signal_connect</span>(app, <span class="str">"activate"</span>, <span class="tp">G_CALLBACK</span>(ativar), NULL);
+    <span class="tp">int</span> status = <span class="fn">g_application_run</span>(<span class="tp">G_APPLICATION</span>(app), argc, argv);
+    <span class="fn">g_object_unref</span>(app);
+    <span class="kw">return</span> status;
+}
+<span class="com">/* gcc -o app app.c $(pkg-config --cflags --libs gtk4) */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cairo">Cairo: Desenho 2D em C</h2>
+        <p>Cairo é uma biblioteca de gráficos vetoriais 2D com backends para X11, Win32, Quartz (macOS), PDF, SVG e PNG. O GTK usa Cairo internamente para renderizar todos os widgets.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; Cairo: superfície PNG com bezier e gradiente</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;cairo/cairo.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;math.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">cairo_surface_t</span> *surf = <span class="fn">cairo_image_surface_create</span>(
+        CAIRO_FORMAT_ARGB32, <span class="num">400</span>, <span class="num">300</span>);
+    <span class="tp">cairo_t</span> *cr = <span class="fn">cairo_create</span>(surf);
+
+    <span class="com">/* Fundo gradiente */</span>
+    <span class="tp">cairo_pattern_t</span> *grad = <span class="fn">cairo_pattern_create_linear</span>(<span class="num">0</span>, <span class="num">0</span>, <span class="num">400</span>, <span class="num">300</span>);
+    <span class="fn">cairo_pattern_add_color_stop_rgb</span>(grad, <span class="num">0</span>,   <span class="num">0.06</span>, <span class="num">0.06</span>, <span class="num">0.15</span>);
+    <span class="fn">cairo_pattern_add_color_stop_rgb</span>(grad, <span class="num">1.0</span>, <span class="num">0.15</span>, <span class="num">0.05</span>, <span class="num">0.30</span>);
+    <span class="fn">cairo_set_source</span>(cr, grad);
+    <span class="fn">cairo_paint</span>(cr);
+    <span class="fn">cairo_pattern_destroy</span>(grad);
+
+    <span class="com">/* Círculo com borda */</span>
+    <span class="fn">cairo_set_source_rgba</span>(cr, <span class="num">0.54</span>, <span class="num">0.86</span>, <span class="num">0.92</span>, <span class="num">0.9</span>);
+    <span class="fn">cairo_arc</span>(cr, <span class="num">200</span>, <span class="num">150</span>, <span class="num">80</span>, <span class="num">0</span>, <span class="num">2</span> * M_PI);
+    <span class="fn">cairo_fill_preserve</span>(cr);
+    <span class="fn">cairo_set_source_rgb</span>(cr, <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>);
+    <span class="fn">cairo_set_line_width</span>(cr, <span class="num">2</span>);
+    <span class="fn">cairo_stroke</span>(cr);
+
+    <span class="com">/* Texto */</span>
+    <span class="fn">cairo_set_source_rgb</span>(cr, <span class="num">1</span>, <span class="num">1</span>, <span class="num">1</span>);
+    <span class="fn">cairo_select_font_face</span>(cr, <span class="str">"Sans"</span>, CAIRO_FONT_SLANT_NORMAL,
+                            CAIRO_FONT_WEIGHT_BOLD);
+    <span class="fn">cairo_set_font_size</span>(cr, <span class="num">20</span>);
+    <span class="fn">cairo_move_to</span>(cr, <span class="num">130</span>, <span class="num">160</span>);
+    <span class="fn">cairo_show_text</span>(cr, <span class="str">"Cairo em C"</span>);
+
+    <span class="fn">cairo_surface_write_to_png</span>(surf, <span class="str">"saida.png"</span>);
+    <span class="fn">cairo_destroy</span>(cr);
+    <span class="fn">cairo_surface_destroy</span>(surf);
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o cairo_ex cairo_ex.c $(pkg-config --cflags --libs cairo) -lm */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gtk-cairo">GTK4 + Cairo: Widget de Desenho Personalizado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; GtkDrawingArea com função de draw via Cairo</div>
+          <pre class="example"><span class="kw">static</span> <span class="tp">void</span> <span class="fn">draw_func</span>(<span class="tp">GtkDrawingArea</span> *da, <span class="tp">cairo_t</span> *cr,
+                       <span class="tp">int</span> w, <span class="tp">int</span> h, <span class="tp">gpointer</span> dados) {
+    (<span class="tp">void</span>)da; (<span class="tp">void</span>)dados;
+
+    <span class="com">/* Grade de fundo */</span>
+    <span class="fn">cairo_set_source_rgb</span>(cr, <span class="num">0.15</span>, <span class="num">0.15</span>, <span class="num">0.18</span>);
+    <span class="fn">cairo_paint</span>(cr);
+
+    <span class="fn">cairo_set_source_rgba</span>(cr, <span class="num">0.3</span>, <span class="num">0.3</span>, <span class="num">0.3</span>, <span class="num">0.5</span>);
+    <span class="fn">cairo_set_line_width</span>(cr, <span class="num">0.5</span>);
+    <span class="kw">for</span> (<span class="tp">int</span> x = <span class="num">0</span>; x &lt;= w; x += <span class="num">20</span>) {
+        <span class="fn">cairo_move_to</span>(cr, x, <span class="num">0</span>);
+        <span class="fn">cairo_line_to</span>(cr, x, h);
+    }
+    <span class="kw">for</span> (<span class="tp">int</span> y = <span class="num">0</span>; y &lt;= h; y += <span class="num">20</span>) {
+        <span class="fn">cairo_move_to</span>(cr, <span class="num">0</span>, y);
+        <span class="fn">cairo_line_to</span>(cr, w, y);
+    }
+    <span class="fn">cairo_stroke</span>(cr);
+
+    <span class="com">/* Curva de Bézier cúbica */</span>
+    <span class="fn">cairo_set_source_rgb</span>(cr, <span class="num">0.54</span>, <span class="num">0.86</span>, <span class="num">0.92</span>);
+    <span class="fn">cairo_set_line_width</span>(cr, <span class="num">2.5</span>);
+    <span class="fn">cairo_move_to</span>(cr, <span class="num">30</span>,   h/<span class="num">2</span>);
+    <span class="fn">cairo_curve_to</span>(cr, w/<span class="num">4</span>,  <span class="num">20</span>,
+                       w*<span class="num">3</span>/<span class="num">4</span>, h - <span class="num">20</span>,
+                       w - <span class="num">30</span>, h/<span class="num">2</span>);
+    <span class="fn">cairo_stroke</span>(cr);
+}
+
+<span class="kw">static</span> <span class="tp">void</span> <span class="fn">ativar</span>(<span class="tp">GtkApplication</span> *app, <span class="tp">gpointer</span> dados) {
+    (<span class="tp">void</span>)dados;
+    <span class="tp">GtkWidget</span> *win = <span class="fn">gtk_application_window_new</span>(app);
+    <span class="fn">gtk_window_set_default_size</span>(<span class="tp">GTK_WINDOW</span>(win), <span class="num">600</span>, <span class="num">400</span>);
+
+    <span class="tp">GtkWidget</span> *area = <span class="fn">gtk_drawing_area_new</span>();
+    <span class="fn">gtk_drawing_area_set_draw_func</span>(<span class="tp">GTK_DRAWING_AREA</span>(area),
+                                    draw_func, NULL, NULL);
+    <span class="fn">gtk_window_set_child</span>(<span class="tp">GTK_WINDOW</span>(win), area);
+    <span class="fn">gtk_widget_show</span>(win);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">GTK (C) vs Qt (C++) — Comparativo</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Aspecto</th><th>GTK4 (C)</th><th>Qt6 (C++)</th></tr></thead>
+            <tbody>
+              <tr><td>Linguagem principal</td><td>C (GObject)</td><td>C++ (moc)</td></tr>
+              <tr><td>Licença</td><td>LGPL 2.1+</td><td>LGPL 3+ / GPL / Comercial</td></tr>
+              <tr><td>Arquivo binário típico</td><td>~10–50 MB</td><td>~30–100 MB</td></tr>
+              <tr><td>Design responsivo</td><td>CSS-like (temas GtkCSS)</td><td>QML + QSS</td></tr>
+              <tr><td>Mobile (Android/iOS)</td><td>Limitado</td><td>Qt for Mobile</td></tr>
+              <tr><td>3D integrado</td><td>Via OpenGL externo</td><td>Qt3D / Qt Quick 3D</td></tr>
+              <tr><td>Curva de aprendizado</td><td>Íngreme (GObject boilerplate)</td><td>Alta (moc, templates)</td></tr>
+              <tr><td>Ecossistema Linux</td><td>Nativo, GNOME</td><td>KDE, Plasma</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GTK PROJECT. <strong>GTK 4 Documentation</strong>. Disponível em: &lt;https://docs.gtk.org/gtk4/&gt;. Acesso em: 2025.</li>
+            <li>CAIRO PROJECT. <strong>Cairo: A 2D Graphics Library</strong>. Disponível em: &lt;https://www.cairographics.org/documentation/&gt;. Acesso em: 2025.</li>
+            <li>DREPPER, Ulrich. <strong>Writing a Widget Using Cairo and GTK+</strong>. Red Hat, 2007.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Jogos (SDL2, OpenGL)</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C na Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "GTK is not just a toolkit — it is a complete object system in C." &mdash; Tim Janik, criador do GObject</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

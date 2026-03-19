@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Introdução a compiladores: pipeline completo, fases de compilação, diferença para interpretadores, JIT e AOT — do código-fonte ao binário." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Introdução a Compiladores | Computação Teórica | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Compiladores</h1>
+        <p>Do código-fonte ao binário — cada fase do pipeline explicada em detalhe.</p>
+      </div>
+      <p class="intro-highlight">
+        Um <strong>compilador</strong> é um programa que traduz código escrito em uma linguagem de alto nível
+        para uma representação equivalente de mais baixo nível — geralmente código de máquina ou bytecode.
+        Esse processo é dividido em fases bem definidas, e compreendê-las é fundamental para construir
+        linguagens, otimizadores e ferramentas de análise estática.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="o-que-e" class="section-title">O Que é um Compilador?</h2>
+      <div class="card">
+        <p>Um compilador recebe um <strong>programa-fonte</strong> (texto) e produz um <strong>programa-alvo</strong>
+        (binário, bytecode ou outra representação). O processo envolve análise e síntese:</p>
+        <ul>
+          <li><strong>Front-end</strong> (análise): lê o fonte, verifica correção e constrói representações intermediárias.</li>
+          <li><strong>Middle-end</strong> (otimização): aplica transformações independentes de máquina.</li>
+          <li><strong>Back-end</strong> (síntese): gera código para a arquitetura-alvo.</li>
+        </ul>
+        <h3>Compilador vs. Interpretador vs. JIT</h3>
+        <table>
+          <thead>
+            <tr><th>Estratégia</th><th>Como funciona</th><th>Exemplos</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Compilação <abbr title="Ahead-of-Time — tradução completa do código-fonte antes de qualquer execução; produz binário nativo próprio da arquitetura-alvo">AOT</abbr></strong></td><td>Tradução completa antes da execução; produz binário nativo</td><td><abbr title="GNU Compiler Collection — conjunto de compiladores para C, C++, Fortran e outras linguagens">GCC</abbr>/Clang (C/C++), Rustc, Go</td></tr>
+            <tr><td><strong>Interpretação pura</strong></td><td>Executa a <abbr title="Abstract Syntax Tree — Árvore Sintática Abstrata; representa a estrutura gramatical do programa como uma árvore de nós">AST</abbr> ou tokens diretamente, sem gerar binário separado</td><td>Ruby <abbr title="MRI — Matz's Ruby Interpreter, a implementação de referência do Ruby versao 1.x; interpretava a AST diretamente">MRI</abbr> 1.x, primeiros interpretadores de shell</td></tr>
+            <tr><td><strong>Bytecode + <abbr title="Virtual Machine — Máquina Virtual; software que emula um processador e executa instruções de bytecode">VM</abbr></strong></td><td>Compila para bytecode portável; a <abbr title="Virtual Machine">VM</abbr> executa instruções de pilha</td><td>Java (<abbr title="Java Virtual Machine — a máquina virtual que executa bytecode .class; permite “write once, run anywhere”">JVM</abbr>), <strong>Python</strong> (.pyc / CPython), Lua</td></tr>
+            <tr><td><strong><abbr title="Just-In-Time — compilação das partes mais executadas do programa para código nativo durante a execução, combinando flexibilidade de bytecode com velocidade de código nativo">JIT</abbr></strong></td><td>Compila funções &ldquo;quentes&rdquo; para código nativo em tempo de execução</td><td>V8 (JS), <abbr title="Java Virtual Machine">JVM</abbr> HotSpot, PyPy, LuaJIT</td></tr>
+          </tbody>
+        </table>
+        <div class="message-block" style="margin-top:1rem">
+          <h3 class="panel-title">Por que Python é chamada de &ldquo;linguagem interpretada&rdquo;?</h3>
+          <p>Quando alguém diz que Python é interpretada, está usando uma <em>simplificação popular</em>.
+          Na realidade, o interpretador CPython <strong>compila</strong> o arquivo <code>.py</code>
+          para <em>bytecode</em> (armazenado em <code>.pyc</code>) e depois uma
+          <abbr title="Virtual Machine">VM</abbr> interna executa esse bytecode instrução por instrução.
+          O que diferencia Python de linguagens como C não é a ausência de compilação, mas sim:</p>
+          <ul>
+            <li>O passo de compilação é <strong>automático e transparente</strong> — você executa <code>python script.py</code> e não precisa invocar um compilador manualmente.</li>
+            <li>O bytecode gerado não é código de máquina nativo, mas um formato portável executado pela <abbr title="Virtual Machine">VM</abbr>.</li>
+            <li>O termo &ldquo;interpretada&rdquo; popularizou-se porque do ponto de vista do usuário o comportamento é o de um interpretador: edite o <code>.py</code> e execute imediatamente, sem etapa de build.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="pipeline" class="section-title">Pipeline de Compilação</h2>
+      <div class="card">
+        <p>O pipeline clássico (baseado no livro de Aho, Lam, Sethi e Ullman — <em>&ldquo;Dragon Book&rdquo;</em>) divide a compilação em seis fases sequenciais:</p>
+        <ol>
+          <li><strong>Análise Léxica</strong> — transforma o fluxo de caracteres em <em>tokens</em> (unidades mínimas de significado).</li>
+          <li><strong>Análise Sintática</strong> — constrói a <abbr title="Abstract Syntax Tree — Árvore Sintática Abstrata; cada nó representa uma construção da linguagem como expressões, declarações ou blocos">AST</abbr> a partir dos tokens.</li>
+          <li><strong>Análise Semântica</strong> — verifica tipos, escopo e significado usando a <abbr title="AST">AST</abbr> e a tabela de símbolos.</li>
+          <li><strong>Geração de <abbr title="Intermediate Representation — Representação Intermediária; formato interno do compilador independente da arquitetura-alvo; permite otimizar antes de gerar código">IR</abbr></strong> — converte a <abbr title="Abstract Syntax Tree">AST</abbr> em formato como <abbr title="Three-Address Code — Código de Três Endereços; cada instrução tem no máximo dois operandos e um resultado">TAC</abbr> ou <abbr title="Static Single Assignment — forma de IR onde cada variável é atribuída exatamente uma vez; facilita análise de fluxo e otimização">SSA</abbr>.</li>
+          <li><strong>Otimização</strong> — aplica transformações na <abbr title="Intermediate Representation">IR</abbr> para melhorar desempenho ou reduzir tamanho sem alterar o comportamento.</li>
+          <li><strong>Geração de Código</strong> — produz código de máquina ou bytecode para a arquitetura-alvo a partir da <abbr title="Intermediate Representation">IR</abbr> otimizada.</li>
+        </ol>
+        <!-- Pipeline de compilação -->
+        <svg viewBox="0 0 700 80" width="100%" role="img" aria-label="Pipeline de compilação">
+          <defs>
+            <marker id="pip-ac" viewBox="0 0 8 6" refX="7" refY="3" markerWidth="5" markerHeight="4" orient="auto">
+              <polygon points="0,0 8,3 0,6" style="fill:var(--accent)"/>
+            </marker>
+          </defs>
+          <rect x="11" y="15" width="90" height="50" rx="4" style="fill:var(--accent);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="56" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:#000;font:12px monospace">Fonte</text>
+          <line x1="101" y1="40" x2="108" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="109" y="15" width="90" height="50" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="154" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:12px monospace">Léxica</text>
+          <line x1="199" y1="40" x2="206" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="207" y="15" width="90" height="50" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="252" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:12px monospace">Sintática</text>
+          <line x1="297" y1="40" x2="304" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="305" y="15" width="90" height="50" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="350" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:12px monospace">Semântica</text>
+          <line x1="395" y1="40" x2="402" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="403" y="15" width="90" height="50" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="448" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:12px monospace">IR</text>
+          <line x1="493" y1="40" x2="500" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="501" y="15" width="90" height="50" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="546" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:12px monospace">Otimiz.</text>
+          <line x1="591" y1="40" x2="598" y2="40" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pip-ac)"/>
+          <rect x="599" y="15" width="90" height="50" rx="4" style="fill:var(--accent);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="644" y="40" text-anchor="middle" dominant-baseline="middle" style="fill:#000;font:12px monospace">Binário</text>
+        </svg>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tabela-simbolos" class="section-title">A Tabela de Símbolos</h2>
+      <div class="card">
+        <p>Todas as fases compartilham uma estrutura de dados central: a <strong>tabela de símbolos</strong>. Ela mapeia identificadores (variáveis, funções, tipos) para seus atributos (tipo, escopo, endereço).</p>
+        <ul>
+          <li>A análise léxica insere novos identificadores.</li>
+          <li>A análise semântica verifica e anota tipos.</li>
+          <li>A geração de código consulta endereços e convenções de chamada.</li>
+        </ul>
+        <pre class="example">// Exemplo de entrada da tabela de símbolos
+{ nome: "x", tipo: "int", escopo: "funcao:main", offset: 4 }
+{ nome: "soma", tipo: "fn(int,int)->int", escopo: "global", addr: 0x1004 }</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="historia" class="section-title">Breve História</h2>
+      <div class="card">
+        <ul>
+          <li><strong>1952</strong> — Grace Hopper desenvolve o A-0, considerado o primeiro compilador.</li>
+          <li><strong>1957</strong> — FORTRAN I (IBM, John Backus): primeiro compilador amplamente adotado; prova que código gerado automaticamente pode ser eficiente.</li>
+          <li><strong>1960</strong> — ALGOL 60 introduz estrutura de blocos, recursão e escopo léxico, moldando a teoria de compiladores por décadas.</li>
+          <li><strong>1975</strong> — "Principles of Compiler Design" (Aho e Ullman) sistematiza a área.</li>
+          <li><strong>1986</strong> — Segunda edição ("Dragon Book", Aho, Sethi, Ullman) torna-se referência canônica.</li>
+          <li><strong>2003</strong> — LLVM (Chris Lattner) introduz IR modular e reusável, revolucionando compiladores.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="ferramentas" class="section-title">Ferramentas e Geradores</h2>
+      <div class="card">
+        <table>
+          <thead>
+            <tr><th>Ferramenta</th><th>Fase</th><th>Descrição</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Flex / Lex</td><td>Léxica</td><td>Gera analisadores léxicos a partir de expressões regulares (<abbr title="Expressão Regular — padrão que descreve um conjunto de strings; base da análise léxica">regex</abbr>)</td></tr>
+            <tr><td>Bison / <abbr title="Yet Another Compiler Compiler — ferramenta clássica Unix que gera parsers LALR(1) a partir de uma gramática BNF">Yacc</abbr></td><td>Sintática</td><td>Gera parsers <abbr title="Look-Ahead Left-to-Right Rightmost derivation — tipo de parser bottom-up extremamente eficiente e presente na maioria dos compiladores de produção">LALR</abbr>(1) a partir de gramáticas <abbr title="Backus-Naur Form — notação padronizada para descrever a sintaxe de linguagens formais; inventada por John Backus e Peter Naur para o ALGOL 60">BNF</abbr></td></tr>
+            <tr><td><abbr title="ANother Tool for Language Recognition — gerador de parsers moderno que suporta gramáticas LL(*) e produz código em Java, Python, C# e outras linguagens">ANTLR</abbr></td><td>Léxica + Sintática</td><td>Gera parsers <abbr title="Left-to-Right Leftmost derivation — parser top-down de descida recursiva">LL</abbr>(*) em múltiplas linguagens-alvo</td></tr>
+            <tr><td><abbr title="Low Level Virtual Machine — framework de compilação modular criado por Chris Lattner em 2003; usado como backend pelo Clang, Rust, Swift e muitos outros compiladores">LLVM</abbr> IR</td><td>IR + Otimização</td><td>Representação intermediária <abbr title="Static Single Assignment">SSA</abbr> com passes de otimização modulares</td></tr>
+            <tr><td><abbr title="GNU Compiler Collection">GCC</abbr> <abbr title="Register Transfer Language — representação interna do GCC que descreve operações sobre registradores e memória, utilizada na fase de geração de código">RTL</abbr></td><td>Geração</td><td>Representação de registradores para múltiplas arquiteturas</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/analise_lexica.html">Análise Léxica</a> —
+        <a href="/html/computacao_teorica/compiladores/analise_sintatica.html">Análise Sintática</a> —
+        <a href="/html/computacao_teorica/compiladores/analise_semantica.html">Análise Semântica</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "Um compilador é em si mesmo um programa — e construí-lo é aprender computação em seu nível mais profundo."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

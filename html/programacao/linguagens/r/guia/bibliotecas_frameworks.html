@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Principais bibliotecas e frameworks do R: Tidyverse, data.table, tidymodels, Bioconductor, Shiny, plotly e forecast." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R — Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>Bibliotecas e Frameworks R</h1>
+          <p>O ecossistema de pacotes que transformou R na plataforma principal de ciência de dados e bioinformática.</p>
+        </div>
+        <p class="intro-highlight">
+          Com mais de 21 000 pacotes no CRAN e 2 000 no Bioconductor, o ecossistema R cobre desde manipulação de tabelas a modelos de machine learning, de apps web reativos a análise de genomas. O <strong>Tidyverse</strong> unificou a API de manipulação de dados; o <strong>data.table</strong> fornece performance de nível C; e o <strong>Tidymodels</strong> padronizou o fluxo de modelagem preditiva.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tidyverse">Tidyverse</h2>
+        <p>
+          O <strong>Tidyverse</strong> é uma coleção de pacotes R desenvolvidos por Hadley Wickham e colaboradores na Posit (ex-RStudio), com uma filosofia comum: dados <em>tidy</em> (uma observação por linha, uma variável por coluna), pipes para composição e APIs consistentes. Um único <code>library(tidyverse)</code> carrega os oito pacotes principais.
+        </p>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Pacote</th><th>Função Central</th><th>Operação Principal</th></tr></thead>
+            <tbody>
+              <tr><td><code>ggplot2</code></td><td>Visualização de dados</td><td>Gráficos com Grammar of Graphics</td></tr>
+              <tr><td><code>dplyr</code></td><td>Manipulação de data frames</td><td>filter, select, mutate, summarise, group_by</td></tr>
+              <tr><td><code>tidyr</code></td><td>Organização tabular</td><td>pivot_longer, pivot_wider, nest, unnest</td></tr>
+              <tr><td><code>readr</code></td><td>Leitura de dados</td><td>read_csv, read_tsv, read_delim</td></tr>
+              <tr><td><code>purrr</code></td><td>Programação funcional</td><td>map, walk, reduce, safely</td></tr>
+              <tr><td><code>tibble</code></td><td>Data frame melhorado</td><td>tibble(), as_tibble(), glimpse()</td></tr>
+              <tr><td><code>stringr</code></td><td>Manipulação de strings</td><td>str_detect, str_replace, str_glue</td></tr>
+              <tr><td><code>forcats</code></td><td>Fatores</td><td>fct_infreq, fct_reorder, fct_lump</td></tr>
+              <tr><td><code>lubridate</code></td><td>Datas e horários</td><td>ymd(), dmy(), floor_date(), interval()</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tidyverse-pipeline.R — análise completa com pipe</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"tidyverse"</span>)
+
+<span class="com"># Pipeline completo de análise</span>
+resultado &lt;- <span class="fn">read_csv</span>(<span class="str">"vendas.csv"</span>) |&gt;
+  <span class="fn">filter</span>(!<span class="fn">is.na</span>(valor), regiao != <span class="str">"Desconhecida"</span>) |&gt;
+  <span class="fn">mutate</span>(
+    data      = <span class="fn">ymd</span>(data),
+    trimestre = <span class="fn">quarter</span>(data),
+    valor_k   = valor / <span class="num">1000</span>
+  ) |&gt;
+  <span class="fn">group_by</span>(regiao, trimestre) |&gt;
+  <span class="fn">summarise</span>(
+    total    = <span class="fn">sum</span>(valor_k),
+    media    = <span class="fn">mean</span>(valor_k),
+    n_vendas = <span class="fn">n</span>(),
+    .groups  = <span class="str">"drop"</span>
+  ) |&gt;
+  <span class="fn">arrange</span>(<span class="fn">desc</span>(total))
+
+<span class="com"># ggplot2 — gráfico publicável em uma pipeline</span>
+resultado |&gt;
+  <span class="fn">ggplot</span>(<span class="fn">aes</span>(x = <span class="fn">factor</span>(trimestre), y = total, fill = regiao)) +
+  <span class="fn">geom_col</span>(position = <span class="str">"dodge"</span>) +
+  <span class="fn">scale_fill_brewer</span>(palette = <span class="str">"Set2"</span>) +
+  <span class="fn">labs</span>(
+    title    = <span class="str">"Vendas por Trimestre e Região"</span>,
+    subtitle = <span class="str">"Em R$ mil"</span>,
+    x        = <span class="str">"Trimestre"</span>, y = <span class="str">"Total (R$ k)"</span>,
+    fill     = <span class="str">"Região"</span>
+  ) +
+  <span class="fn">theme_minimal</span>()
+
+<span class="com"># tidyr — pivot para análise matricial</span>
+resultado |&gt;
+  <span class="fn">select</span>(regiao, trimestre, total) |&gt;
+  <span class="fn">pivot_wider</span>(names_from = trimestre, values_from = total)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="data-table">data.table — Alta Performance</h2>
+        <p>
+          <strong>data.table</strong> é uma extensão do data.frame nativo com performance de nível C para operações sobre grandes conjuntos de dados. Suporta tabelas de bilhões de linhas em memória RAM — uma área onde o dplyr convencional teria dificuldades. A sintaxe <code>DT[i, j, by]</code> é compacta e muito expressiva.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">data-table.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"data.table"</span>)
+
+<span class="com"># Criar data.table (ou converter)</span>
+dt &lt;- <span class="fn">data.table</span>(
+  id     = <span class="num">1</span>:<span class="num">1e6</span>,
+  grupo  = <span class="fn">sample</span>(<span class="fn">c</span>(<span class="str">"A"</span>,<span class="str">"B"</span>,<span class="str">"C"</span>), <span class="num">1e6</span>, replace = <span class="kw">TRUE</span>),
+  valor  = <span class="fn">rnorm</span>(<span class="num">1e6</span>)
+)
+<span class="fn">setDT</span>(df_existente)   <span class="com"># converte data.frame NO LUGAR (sem cópia)</span>
+
+<span class="com"># Sintaxe DT[i, j, by]</span>
+<span class="com"># i = filtro de linhas, j = expressão de colunas, by = agrupamento</span>
+dt[valor &gt; <span class="num">0</span>, .(<span class="fn">mean</span>(valor), <span class="fn">.N</span>), by = grupo]
+<span class="com">#    grupo        V1      N</span>
+<span class="com"># 1:     A  0.7978...  250089</span>
+
+<span class="com"># Modificação POR REFERÊNCIA — sem cópia (eficiente)</span>
+dt[, valor_abs := <span class="fn">abs</span>(valor)]           <span class="com"># nova coluna</span>
+dt[grupo == <span class="str">"A"</span>, nota := <span class="str">"excelente"</span>]  <span class="com"># condicional</span>
+
+<span class="com"># Chaves e joins rápidos</span>
+<span class="fn">setkey</span>(dt, grupo)                        <span class="com"># ordena e indexa por grupo</span>
+dt[<span class="str">"A"</span>]                                 <span class="com"># join ultra-rápido por chave</span>
+
+dt2 &lt;- <span class="fn">data.table</span>(grupo = <span class="fn">c</span>(<span class="str">"A"</span>,<span class="str">"B"</span>), descricao = <span class="fn">c</span>(<span class="str">"Alta"</span>,<span class="str">"Baixa"</span>))
+<span class="fn">setkey</span>(dt2, grupo)
+dt[dt2]   <span class="com"># inner join automático por chaves</span>
+
+<span class="com"># Leitura de CSV de alta performance</span>
+grande &lt;- <span class="fn">fread</span>(<span class="str">"arquivo-gigante.csv"</span>)   <span class="com"># multi-thread, detecta tipos</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tidymodels">Tidymodels — Machine Learning</h2>
+        <p>
+          <strong>tidymodels</strong> é um meta-pacote que unifica o fluxo de machine learning em R com a mesma filosofia tidy. Seus componentes principais são: <code>recipes</code> (pré-processamento), <code>parsnip</code> (interface unificada de modelos), <code>workflows</code> (une recipe + modelo), <code>tune</code> (hiperparâmetros) e <code>rsample</code> (cross-validation).
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tidymodels-workflow.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"tidymodels"</span>)
+
+<span class="com"># 1. Split treino/teste</span>
+splits &lt;- <span class="fn">initial_split</span>(mtcars, prop = <span class="num">0.8</span>)
+treino &lt;- <span class="fn">training</span>(splits)
+teste  &lt;- <span class="fn">testing</span>(splits)
+
+<span class="com"># 2. Receita de pré-processamento</span>
+receita &lt;- <span class="fn">recipe</span>(mpg ~ ., data = treino) |&gt;
+  <span class="fn">step_normalize</span>(<span class="fn">all_numeric_predictors</span>()) |&gt;
+  <span class="fn">step_nzv</span>(<span class="fn">all_predictors</span>())   <span class="com"># remove variância próxima de zero</span>
+
+<span class="com"># 3. Especificação do modelo com parsnip</span>
+modelo_rf &lt;- <span class="fn">rand_forest</span>(
+  trees = <span class="fn">tune</span>(),   <span class="com"># será tunado</span>
+  mtry  = <span class="fn">tune</span>()
+) |&gt;
+  <span class="fn">set_engine</span>(<span class="str">"ranger"</span>) |&gt;
+  <span class="fn">set_mode</span>(<span class="str">"regression"</span>)
+
+<span class="com"># 4. Workflow = receita + modelo</span>
+wf &lt;- <span class="fn">workflow</span>() |&gt;
+  <span class="fn">add_recipe</span>(receita) |&gt;
+  <span class="fn">add_model</span>(modelo_rf)
+
+<span class="com"># 5. Tuning com cross-validation</span>
+cv_folds &lt;- <span class="fn">vfold_cv</span>(treino, v = <span class="num">5</span>)
+grid &lt;- <span class="fn">tune_grid</span>(wf, resamples = cv_folds, grid = <span class="num">10</span>)
+
+<span class="com"># 6. Selecionar melhor e finalizar</span>
+melhor &lt;- <span class="fn">select_best</span>(grid, metric = <span class="str">"rmse"</span>)
+wf_final &lt;- <span class="fn">finalize_workflow</span>(wf, melhor)
+fit_final &lt;- <span class="fn">last_fit</span>(wf_final, splits)
+
+<span class="com"># 7. Métricas no conjunto de teste</span>
+<span class="fn">collect_metrics</span>(fit_final)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bioconductor">Bioconductor — Bioinformática</h2>
+        <p>
+          <strong>Bioconductor</strong> (bioconductor.org) é o repositório especializado em ferramentas computacionais para bioinformática. Fundado em 2001 por Robert Gentleman, abriga mais de 2 000 pacotes para análise de RNA-seq, genômica, epigenômica e proteômica.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bioconductor.R — instalação e exemplo RNA-seq</div>
+          <pre class="example"><span class="com"># Instalação via BiocManager</span>
+<span class="kw">if</span> (!<span class="fn">requireNamespace</span>(<span class="str">"BiocManager"</span>, quietly = <span class="kw">TRUE</span>))
+  <span class="fn">install.packages</span>(<span class="str">"BiocManager"</span>)
+<span class="fn">BiocManager</span>::<span class="fn">install</span>(<span class="fn">c</span>(<span class="str">"DESeq2"</span>, <span class="str">"GenomicRanges"</span>, <span class="str">"Biostrings"</span>))
+
+<span class="com"># DESeq2 — expressão diferencial de genes (RNA-seq)</span>
+<span class="fn">library</span>(<span class="str">"DESeq2"</span>)
+
+<span class="com"># Criar objeto DESeqDataSet</span>
+dds &lt;- <span class="fn">DESeqDataSetFromMatrix</span>(
+  countData = counts_matrix,   <span class="com"># matriz de contagens (genes x amostras)</span>
+  colData   = amostra_meta,    <span class="com"># metadados das amostras</span>
+  design    = ~ condicao       <span class="com"># fórmula do modelo</span>
+)
+
+<span class="com"># Normalização e análise</span>
+dds &lt;- <span class="fn">DESeq</span>(dds)
+res &lt;- <span class="fn">results</span>(dds, contrast = <span class="fn">c</span>(<span class="str">"condicao"</span>, <span class="str">"tratamento"</span>, <span class="str">"controle"</span>))
+
+<span class="com"># Genes diferencialmente expressos</span>
+sig &lt;- <span class="fn">as.data.frame</span>(res[res$padj &lt; <span class="num">0.05</span> &amp; !<span class="fn">is.na</span>(res$padj), ])
+<span class="fn">plotMA</span>(res, main = <span class="str">"Expressão Diferencial"</span>)   <span class="com"># volcano-like plot</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shiny">Shiny — Apps Web Reativos</h2>
+        <p>
+          <strong>Shiny</strong> permite criar aplicações web interativas diretamente em R, sem escrever JavaScript. A UI é declarativa; o servidor é reativo. Qualquer análise R pode se tornar um app acessível por navegador.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">app.R — Shiny mínimo funcional</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"shiny"</span>)
+
+ui &lt;- <span class="fn">fluidPage</span>(
+  <span class="fn">titlePanel</span>(<span class="str">"Histograma Interativo"</span>),
+  <span class="fn">sidebarLayout</span>(
+    <span class="fn">sidebarPanel</span>(
+      <span class="fn">sliderInput</span>(<span class="str">"bins"</span>, <span class="str">"Número de bins:"</span>, min = <span class="num">5</span>, max = <span class="num">100</span>, value = <span class="num">30</span>),
+      <span class="fn">selectInput</span>(<span class="str">"variavel"</span>, <span class="str">"Variável:"</span>, choices = <span class="fn">names</span>(mtcars))
+    ),
+    <span class="fn">mainPanel</span>(<span class="fn">plotOutput</span>(<span class="str">"histograma"</span>))
+  )
+)
+
+server &lt;- <span class="kw">function</span>(input, output, session) {
+  output$histograma &lt;- <span class="fn">renderPlot</span>({
+    <span class="fn">hist</span>(
+      mtcars[[input$variavel]],
+      breaks = input$bins,
+      col    = <span class="str">"steelblue"</span>,
+      main   = <span class="fn">paste</span>(<span class="str">"Histograma de"</span>, input$variavel),
+      xlab   = input$variavel
+    )
+  })
+}
+
+<span class="fn">shinyApp</span>(ui, server)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="visualizacao">Visualização Interativa: plotly e highcharter</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">visualizacao-interativa.R</div>
+          <pre class="example"><span class="com"># plotly — converte ggplot2 em gráfico interativo HTML</span>
+<span class="fn">library</span>(<span class="str">"plotly"</span>)
+p &lt;- <span class="fn">ggplot</span>(mtcars, <span class="fn">aes</span>(wt, mpg, color = <span class="fn">factor</span>(cyl))) +
+  <span class="fn">geom_point</span>(size = <span class="num">3</span>)
+<span class="fn">ggplotly</span>(p)   <span class="com"># converte para Plotly.js interativo</span>
+
+<span class="com"># plotly nativa</span>
+<span class="fn">plot_ly</span>(
+  data   = mtcars,
+  x      = ~wt, y = ~mpg,
+  color  = ~<span class="fn">factor</span>(cyl),
+  type   = <span class="str">"scatter"</span>, mode = <span class="str">"markers"</span>,
+  text   = ~<span class="fn">rownames</span>(mtcars),
+  hoverinfo = <span class="str">"text+x+y"</span>
+) |&gt;
+  <span class="fn">layout</span>(title = <span class="str">"Peso vs Consumo"</span>)
+
+<span class="com"># highcharter — wrapper de Highcharts.js</span>
+<span class="fn">library</span>(<span class="str">"highcharter"</span>)
+<span class="fn">hchart</span>(mtcars, <span class="str">"scatter"</span>, <span class="fn">hcaes</span>(x = wt, y = mpg, group = <span class="fn">factor</span>(cyl))) |&gt;
+  <span class="fn">hc_title</span>(text = <span class="str">"Peso vs Consumo"</span>) |&gt;
+  <span class="fn">hc_tooltip</span>(pointFormat = <span class="str">"mpg: {point.y}"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="series-temporais">Séries Temporais: forecast e prophet</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">series-temporais.R</div>
+          <pre class="example"><span class="com"># forecast — pacote de referência para séries temporais</span>
+<span class="fn">library</span>(<span class="str">"forecast"</span>)
+ts_vendas &lt;- <span class="fn">ts</span>(vendas_mensais, start = <span class="fn">c</span>(<span class="num">2020</span>, <span class="num">1</span>), frequency = <span class="num">12</span>)
+
+<span class="fn">autoplot</span>(ts_vendas)           <span class="com"># gráfico automático</span>
+modelo &lt;- <span class="fn">auto.arima</span>(ts_vendas)  <span class="com"># seleciona ARIMA automaticamente</span>
+previsao &lt;- <span class="fn">forecast</span>(modelo, h = <span class="num">12</span>)   <span class="com"># 12 períodos à frente</span>
+<span class="fn">autoplot</span>(previsao)
+<span class="fn">accuracy</span>(modelo)              <span class="com"># MAE, RMSE, MAPE</span>
+
+<span class="com"># prophet (Meta) — séries com tendências e sazonalidades</span>
+<span class="fn">library</span>(<span class="str">"prophet"</span>)
+df_prophet &lt;- <span class="fn">data.frame</span>(
+  ds = <span class="fn">seq</span>.<span class="fn">Date</span>(<span class="fn">as.Date</span>(<span class="str">"2020-01-01"</span>), by = <span class="str">"month"</span>, length.out = <span class="num">48</span>),
+  y  = vendas_mensais
+)
+m &lt;- <span class="fn">prophet</span>(df_prophet)
+futuro &lt;- <span class="fn">make_future_dataframe</span>(m, periods = <span class="num">12</span>, freq = <span class="str">"month"</span>)
+prev &lt;- <span class="fn">predict</span>(m, futuro)
+<span class="fn">plot</span>(m, prev)
+<span class="fn">prophet_plot_components</span>(m, prev)   <span class="com"># tendência + sazonalidade</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>WICKHAM, Hadley et al. <strong>Welcome to the Tidyverse</strong>. Journal of Open Source Software, v. 4, n. 43, p. 1686, 2019. Disponível em: <a href="https://doi.org/10.21105/joss.01686" target="_blank" rel="noopener">doi.org/10.21105/joss.01686</a></li>
+          <li>DOWLE, Matt; SRINIVASAN, Arun. <strong>data.table: Extension of `data.frame`</strong>. R package version 1.15. 2024. Disponível em: <a href="https://rdatatable.gitlab.io/data.table/" target="_blank" rel="noopener">rdatatable.gitlab.io/data.table</a></li>
+          <li>KUHN, Max; WICKHAM, Hadley. <strong>Tidymodels: a collection of packages for modeling and machine learning using tidyverse principles</strong>. 2020. Disponível em: <a href="https://www.tidymodels.org/" target="_blank" rel="noopener">tidymodels.org</a></li>
+          <li>HYNDMAN, Rob J.; ATHANASOPOULOS, George. <strong>Forecasting: Principles and Practice</strong>. 3. ed. OTexts, 2021. Disponível em: <a href="https://otexts.com/fpp3/" target="_blank" rel="noopener">otexts.com/fpp3</a></li>
+          <li>GENTLEMAN, Robert et al. <strong>Bioconductor: open software development for computational biology and bioinformatics</strong>. Genome Biology, v. 5, n. R80, 2004.</li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Web com Shiny</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "ggplot2 is the most elegant data visualization package in any programming language." — Nathan Yau, FlowingData</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

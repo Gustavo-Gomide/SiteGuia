@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Scheme — Recursos Avancados: call/cc, tail calls, ports de IO e valores multiplos." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Scheme — Recursos Avancados | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Scheme — Recursos Avancados</strong></p></div>
+
+			<section>
+				<h2 id="hero" class="section-title">Scheme — Recursos Avancados</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="Scheme"><span data-svg="lisp" aria-hidden="true"></span></div>
+					<h1>Controle de fluxo de alto nivel em Scheme</h1>
+					<p>Continuations, TCO, IO por ports e valores multiplos tornam Scheme extremamente expressivo.</p>
+				</div>
+				<p class="intro-highlight">Esses recursos parecem abstratos no inicio, mas resolvem problemas reais de controle, performance e composicao.</p>
+			</section>
+
+			<section>
+				<h2 id="continuations" class="section-title">Continuations com call/cc</h2>
+				<div class="panel">
+					<svg viewBox="0 0 720 170" role="img" aria-label="Fluxo com call/cc" class="w-full">
+						<rect x="40" y="60" width="170" height="50" rx="8" fill="currentColor" opacity="0.08"></rect>
+						<text x="58" y="90" fill="currentColor">Fluxo normal</text>
+						<rect x="280" y="60" width="190" height="50" rx="8" fill="currentColor" opacity="0.08"></rect>
+						<text x="300" y="90" fill="currentColor">captura continuation</text>
+						<rect x="540" y="60" width="130" height="50" rx="8" fill="currentColor" opacity="0.08"></rect>
+						<text x="560" y="90" fill="currentColor">salto</text>
+						<line x1="210" y1="85" x2="280" y2="85" stroke="currentColor"></line>
+						<line x1="470" y1="85" x2="540" y2="85" stroke="currentColor"></line>
+					</svg>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Scheme — call-with-current-continuation</div>
+					<pre class="example">(define (buscar-primeiro-negativo xs)
+	(call/cc
+	 (lambda (escape)
+		 (for-each
+			(lambda (x)
+				(when (&lt; x 0)
+					(escape x)))
+			xs)
+		 #f)))
+
+(buscar-primeiro-negativo '(4 8 -3 9)) <span class="com">; -3</span>
+
+<span class="com">; backtracking simplificado e "exceptions" com continuation:</span>
+(define (safe-div a b)
+	(call/cc
+	 (lambda (throw)
+		 (if (= b 0)
+				 (throw 'erro-divisao-por-zero)
+				 (/ a b)))))</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="tail-calls" class="section-title">Tail calls e trampolining</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Scheme — TCO e trampoline pattern</div>
+					<pre class="example"><span class="com">; R7RS exige proper tail calls</span>
+(define (soma-tail n acc)
+	(if (= n 0)
+			acc
+			(soma-tail (- n 1) (+ acc n))))
+
+<span class="com">; trampoline basico</span>
+(define (trampoline thunk)
+	(let loop ((t thunk))
+		(if (procedure? t)
+				(loop (t))
+				t)))
+
+(define (f n acc)
+	(if (= n 0)
+			acc
+			(lambda () (f (- n 1) (+ acc n)))))
+
+(trampoline (lambda () (f 100000 0)))</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="ports-io" class="section-title">Ports e I/O</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Scheme — open-input-file, with-input-from-file, read e write</div>
+					<pre class="example">(define p (open-input-file "dados.scm"))
+(define x (read p))
+(close-input-port p)
+
+(with-input-from-file "dados.scm"
+	(lambda ()
+		(let ((v (read)))
+			(display v)
+			(newline))))
+
+(define out (open-output-string))
+(write '(1 2 3) out)
+(define s (get-output-string out))
+(display s)</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="valores-multiplos" class="section-title">Valores multiplos</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Scheme — values, call-with-values e define-values</div>
+					<pre class="example">(define (div-mod a b)
+	(values (quotient a b) (remainder a b)))
+
+(call-with-values
+ (lambda () (div-mod 17 5))
+ (lambda (q r)
+	 (display q)
+	 (display " ")
+	 (display r)
+	 (newline)))
+
+(define-values (q r) (div-mod 23 7))
+(list q r)</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="info" aria-hidden="true"></span> Valores multiplos evitam criar pares/tuplas temporarias em APIs que naturalmente retornam mais de um resultado.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<div class="panel">
+					<ul>
+						<li>DANVY, O.; FILINSKI, A. <strong>Abstracting Control</strong>. LISP and Symbolic Computation, 1990.</li>
+						<li>R7RS WORKING GROUP. <strong>R7RS Small</strong>. Disponivel em: &lt;https://small.r7rs.org/&gt;. Acesso em: 12 mar. 2026.</li>
+						<li>DYBVIG, R. K. <strong>The Scheme Programming Language</strong>. 4. ed. MIT Press, 2009.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Scheme, avancado nao significa complicado; significa controlar explicitamente o fluxo de execucao.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/scheme/guia/macros.html">Scheme — Macros com syntax-rules</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/scheme/guia/fundamentos.html">Scheme — Fundamentos</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

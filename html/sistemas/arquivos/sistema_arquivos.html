@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sistemas de arquivos: conceitos, estrutura VFS do Linux, tipos (ext4, NTFS, FAT32, APFS, btrfs, ZFS), journaling e escolha do sistema de arquivos adequado." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Sistema de Arquivos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Sistema de Arquivos</h1>
+            <p class="page-subtitle">Como o kernel organiza, armazena e recupera dados em dispositivos de bloco</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Um sistema de arquivos organiza dados em disco como arquivos e diretórios, gerenciando espaço livre, metadados e integridade. O VFS (Virtual File System) do Linux abstrai as diferenças entre implementações concretas, permitindo que uma chamada <code>read()</code> funcione identicamente sobre ext4, btrfs, NFS ou tmpfs.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — VFS ═══════════════════ -->
+      <section id="vfs">
+        <h2>VFS — Virtual File System</h2>
+        <p>O VFS é uma camada de indireção no kernel Linux que define uma interface uniforme para todos os sistemas de arquivos concretos. Ele exporta quatro objetos principais:</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">superblock</h3>
+            <p>Metadados do volume montado: tipo de FS, tamanho do bloco, número de inodes, ponteiro para o inode raiz. Criado em memória no momento do mount.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">inode</h3>
+            <p>Metadados de um arquivo individual: dono (UID/GID), permissões, timestamps (atime/mtime/ctime), tamanho, ponteiros para blocos de dados. O nome do arquivo não vive no inode.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">dentry</h3>
+            <p>Entrada de diretório que associa um nome a um inode. Mantida em cache (dcache) pelo kernel para evitar percursos repetidos de pathname lookup.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">file</h3>
+            <p>Instância de um arquivo aberto. Contém offset de leitura/escrita, flags O_RDONLY/O_WRONLY etc. e ponteiro para o dentry. Uma mesma dentry pode ter múltiplos objetos file (vários processos abrindo o mesmo arquivo).</p>
+          </div>
+        </div>
+        <p>O caminho de uma chamada <code>read(fd, buf, n)</code> percorre: VFS (namespace lookup, permissões) → FS específico (ext4, btrfs…) → block layer (elevator, plug/unplug) → driver de bloco → hardware.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — TIPOS ═══════════════════ -->
+      <section id="tipos">
+        <h2>Tipos de Sistemas de Arquivos</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>FS</th>
+                <th>Plataforma</th>
+                <th>Tamanho max. arquivo</th>
+                <th>Permissões</th>
+                <th>Journaling</th>
+                <th>Caso de uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>FAT32</td><td>Universal</td><td>4 GB</td><td>Nenhuma</td><td>Nao</td><td>Pendrives, boot EFI</td></tr>
+              <tr><td>exFAT</td><td>Universal</td><td>128 PB</td><td>Nenhuma</td><td>Nao</td><td>Cartoes SD &gt; 32 GB, cameras</td></tr>
+              <tr><td>NTFS</td><td>Windows</td><td>16 EB</td><td>ACL NTFS</td><td>Sim ($LogFile)</td><td>Sistema Windows</td></tr>
+              <tr><td>ext4</td><td>Linux</td><td>16 TB</td><td>Unix + ACL</td><td>Sim (ordered)</td><td>Servidor e desktop Linux</td></tr>
+              <tr><td>btrfs</td><td>Linux</td><td>16 EB</td><td>Unix + ACL</td><td>CoW</td><td>Home servers, snapshots</td></tr>
+              <tr><td>ZFS</td><td>Linux/BSD/Solaris</td><td>16 EB</td><td>NFSv4 ACL</td><td>CoW + ZIL</td><td>Storage enterprise, NAS</td></tr>
+              <tr><td>APFS</td><td>macOS/iOS</td><td>8 EB</td><td>POSIX + ACL</td><td>CoW</td><td>SSDs Apple</td></tr>
+              <tr><td>tmpfs</td><td>Linux</td><td>RAM disponivel</td><td>Unix</td><td>N/A (RAM)</td><td>/tmp, /run, ramdisks</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — JOURNALING ═══════════════════ -->
+      <section id="journaling">
+        <h2>Journaling</h2>
+        <p>Journaling registra a <em>intenção</em> de uma operação antes de executá-la (Write-Ahead Log — WAL). Após uma queda de energia, o kernel replaya o journal em segundos, em vez de rodar um <code>fsck</code> completo que pode demorar horas em volumes grandes.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">writeback</h3>
+            <p>Apenas metadados são journaled. Dados podem aparecer no disco antes dos metadados, mas sem garantia de ordem. Mais rápido, menos seguro para dados de arquivo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">ordered (padrão ext4)</h3>
+            <p>Dados de arquivo são escritos no disco antes dos metadados correspondentes serem commitados no journal. Garante que nenhum metadado aponte para blocos de dados corruptos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">data journal</h3>
+            <p>Tanto dados quanto metadados são escritos no journal. Máxima proteção, mas dobra as escritas de dados. Indicado para sistemas críticos onde perda de dados é inaceitável.</p>
+          </div>
+        </div>
+        <p>Para verificar e alterar o modo de journal de um volume ext4:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — tune2fs</div>
+          <pre class="code-block"># Ver parâmetros atuais do journal
+tune2fs -l /dev/sda1 | grep -i journal
+
+# Alterar para modo data journal (requer remontagem)
+tune2fs -o journal_data /dev/sda1
+
+# Verificar modo ativo no kernel
+dmesg | grep "EXT4-fs.*mounted filesystem"</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — SYSCALLS ═══════════════════ -->
+      <section id="syscalls">
+        <h2>Operações Fundamentais — Syscalls de Arquivo</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Syscall</th>
+                <th>Semântica</th>
+                <th>Retorno</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>open(path, flags)</td><td>Abre ou cria um arquivo; retorna file descriptor</td><td>fd ou -1</td></tr>
+              <tr><td>read(fd, buf, n)</td><td>Le ate n bytes do fd para buf; avanca offset</td><td>bytes lidos ou 0 (EOF)</td></tr>
+              <tr><td>write(fd, buf, n)</td><td>Escreve n bytes de buf no fd; avanca offset</td><td>bytes escritos</td></tr>
+              <tr><td>close(fd)</td><td>Libera o file descriptor</td><td>0 ou -1</td></tr>
+              <tr><td>stat(path, &amp;sb)</td><td>Metadados do arquivo (segue symlinks)</td><td>0 ou -1</td></tr>
+              <tr><td>lstat(path, &amp;sb)</td><td>Metadados do proprio symlink</td><td>0 ou -1</td></tr>
+              <tr><td>fstat(fd, &amp;sb)</td><td>Metadados via fd ja aberto</td><td>0 ou -1</td></tr>
+              <tr><td>lseek(fd, off, whence)</td><td>Reposiciona offset (SEEK_SET/CUR/END)</td><td>novo offset</td></tr>
+              <tr><td>truncate(path, len)</td><td>Define tamanho do arquivo para len bytes</td><td>0 ou -1</td></tr>
+              <tr><td>rename(old, new)</td><td>Renomeia/move arquivo atomicamente (mesmo FS)</td><td>0 ou -1</td></tr>
+              <tr><td>unlink(path)</td><td>Remove entrada de diretorio (decrementa link count)</td><td>0 ou -1</td></tr>
+              <tr><td>mkdir(path, mode)</td><td>Cria diretorio com permissoes mode</td><td>0 ou -1</td></tr>
+              <tr><td>rmdir(path)</td><td>Remove diretorio vazio</td><td>0 ou -1</td></tr>
+              <tr><td>link(old, new)</td><td>Cria hard link (nova dentry para mesmo inode)</td><td>0 ou -1</td></tr>
+              <tr><td>symlink(target, path)</td><td>Cria link simbolico</td><td>0 ou -1</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/estrutura_diretorios.html">Estrutura de Diretórios</a> e <a href="/html/sistemas/arquivos/permissoes.html">Permissões de Arquivo</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"No Unix, tudo é arquivo — e o sistema de arquivos é o alicerce de tudo o mais."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

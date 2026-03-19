@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Perl na Web: PSGI/Plack, Mojolicious e Dancer2, APIs REST, autenticação, templates, deploy e manutenção de sistemas legados CGI." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Perl - Aplicacoes Web | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Perl - Aplicações Web</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="perl" aria-hidden="true"></span></div>
+					<h1>Perl na Web</h1>
+					<p>De CGI legado a APIs modernas com PSGI/Plack, Mojolicious e Dancer2.</p>
+				</div>
+				<p class="intro-highlight">
+					Embora Perl tenha ficado marcado pela era CGI, o ecossistema evoluiu com middleware padronizado, servidores persistentes,
+					roteamento moderno e suporte robusto a APIs REST. Em ambientes corporativos, Perl continua relevante tanto para manter
+					sistemas críticos quanto para construir serviços leves de integração.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="arquitetura-psgi">PSGI e Plack: A Base Moderna</h2>
+				<p>
+					O padrão <strong>PSGI</strong> para Perl cumpre papel similar ao WSGI/Python e Rack/Ruby: separa aplicação de servidor.
+					Com <strong>Plack</strong>, você conecta sua app a middlewares de log, compressão, autenticação e controle de erro.
+				</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">app.psgi - app mínima PSGI</div>
+					<pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">JSON</span> <span class="str">qw(encode_json)</span>;
+
+<span class="kw">my</span> <span class="tp">$app</span> = <span class="kw">sub</span> {
+		<span class="kw">my</span> <span class="tp">$env</span> = <span class="tp">shift</span>;
+		<span class="kw">my</span> <span class="tp">$payload</span> = { status =&gt; <span class="str">"ok"</span>, path =&gt; <span class="tp">$env</span>-&gt;{<span class="str">PATH_INFO</span>} };
+
+		<span class="kw">return</span> [
+				<span class="num">200</span>,
+				[ <span class="str">"Content-Type"</span> =&gt; <span class="str">"application/json; charset=utf-8"</span> ],
+				[ <span class="fn">encode_json</span>(<span class="tp">$payload</span>) ]
+		];
+};
+
+<span class="kw">return</span> <span class="tp">$app</span>;</pre>
+				</div>
+				<p>
+					Em produção, prefira servidores persistentes como Starman, uWSGI (plugin PSGI) ou Hypnotoad (Mojolicious), evitando
+					o custo de inicialização por requisição típico do CGI clássico.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="frameworks">Mojolicious e Dancer2</h2>
+				<div class="grid-cards">
+					<div class="card">
+						<strong>Mojolicious</strong>
+						<p>Framework full-stack com roteamento, WebSocket, templates, autenticação e servidor embutido. Excelente para APIs e apps em tempo real.</p>
+					</div>
+					<div class="card">
+						<strong>Dancer2</strong>
+						<p>Microframework minimalista com sintaxe direta para rotas REST, ideal para serviços internos e prototipagem rápida.</p>
+					</div>
+					<div class="card">
+						<strong>Catalyst</strong>
+						<p>Framework maduro para sistemas corporativos maiores, com arquitetura MVC e ecossistema de plugins consolidado.</p>
+					</div>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">api_mojo.pl - rota REST com Mojolicious::Lite</div>
+					<pre class="example"><span class="kw">use</span> <span class="tp">Mojolicious::Lite</span> -<span class="str">signatures</span>;
+
+<span class="fn">get</span> <span class="str">'/health'</span> =&gt; <span class="kw">sub</span> (<span class="tp">$c</span>) {
+	<span class="tp">$c</span>-&gt;<span class="fn">render</span>(json =&gt; { ok =&gt; <span class="tp">JSON::PP::true</span>, service =&gt; <span class="str">'perl-api'</span> });
+};
+
+<span class="fn">post</span> <span class="str">'/users'</span> =&gt; <span class="kw">sub</span> (<span class="tp">$c</span>) {
+	<span class="kw">my</span> <span class="tp">$data</span> = <span class="tp">$c</span>-&gt;<span class="fn">req</span>-&gt;<span class="fn">json</span> // {};
+	<span class="kw">return</span> <span class="tp">$c</span>-&gt;<span class="fn">render</span>(status =&gt; <span class="num">422</span>, json =&gt; { erro =&gt; <span class="str">'nome obrigatório'</span> })
+		<span class="kw">unless</span> <span class="tp">$data</span>-&gt;{<span class="str">nome</span>};
+
+	<span class="tp">$c</span>-&gt;<span class="fn">render</span>(status =&gt; <span class="num">201</span>, json =&gt; { id =&gt; <span class="num">1</span>, nome =&gt; <span class="tp">$data</span>-&gt;{<span class="str">nome</span>} });
+};
+
+<span class="fn">app</span>-&gt;<span class="fn">start</span>;</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="seguranca-e-deploy">Segurança, Performance e Deploy</h2>
+				<p>
+					Em web, o maior risco não é linguagem, e sim arquitetura: entrada não validada, sessão fraca, SQL sem bind, logs sem correlação,
+					e deploy sem observabilidade. Em Perl, recomenda-se:
+				</p>
+				<ul>
+					<li>Validação de entrada com regras explícitas e mensagens coerentes para API.</li>
+					<li>Prepared statements com DBI/DBIx::Class para evitar SQL injection.</li>
+					<li>Hash de senhas com Argon2 ou bcrypt, nunca SHA simples.</li>
+					<li>Middleware de segurança (headers, limite de payload, rate limit).</li>
+					<li>Containerização e health checks para rollback rápido.</li>
+				</ul>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">plackup - execução em dev/produção</div>
+					<pre class="example"><span class="com"># Desenvolvimento com autoreload</span>
+plackup -r -R lib,views app.psgi
+
+<span class="com"># Produção com Starman (workers)</span>
+starman --workers <span class="num">4</span> --listen :<span class="num">5000</span> app.psgi
+
+<span class="com"># Proxy reverso com Nginx -> Starman</span>
+<span class="com"># Benefícios: TLS, compressão, cache de estáticos e balanceamento</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="legado-cgi">Manutenção de Legado CGI</h2>
+				<p>
+					Muitas empresas ainda têm sistemas CGI críticos. A estratégia recomendada é migração incremental: encapsular regras de negócio em módulos,
+					criar camadas de teste, e expor endpoints gradualmente via PSGI/Mojolicious, mantendo compatibilidade operacional.
+				</p>
+				<div class="panel">
+					<p><strong>Plano prático:</strong> 1) extrair funções puras, 2) cobrir com testes (Test::More), 3) criar adapter PSGI, 4) ativar métricas,
+					5) migrar rotas por domínio de negócio.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel"><ul>
+					<li>Plack / PSGI - <a href="https://metacpan.org/pod/Plack" target="_blank" rel="noopener">metacpan.org/pod/Plack</a></li>
+					<li>Mojolicious Guides - <a href="https://docs.mojolicious.org/" target="_blank" rel="noopener">docs.mojolicious.org</a></li>
+					<li>Dancer2 Documentation - <a href="https://metacpan.org/pod/Dancer2" target="_blank" rel="noopener">metacpan.org/pod/Dancer2</a></li>
+					<li>DBI (Perl Database Interface) - <a href="https://metacpan.org/pod/DBI" target="_blank" rel="noopener">metacpan.org/pod/DBI</a></li>
+				</ul></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/terminal_cli.html">Perl em Terminal e CLI</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/automacao.html">Perl para Automação</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/perl/guia/ecossistema_tooling.html">Ecossistema e Tooling de Perl</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Perl na web é menos hype e mais engenharia pragmática: integra legado, entrega APIs rápidas e mantém operações estáveis.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

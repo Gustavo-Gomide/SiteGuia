@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Automação com Perl: renomear arquivos em massa, processar logs com regex, scraping com LWP e HTML::TreeBuilder, email com MIME::Lite, Text::CSV e SSH com Net::SSH2." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Perl — Automação | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Perl &mdash; Automação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="perl" aria-hidden="true"></span></div>
+          <h1>Automação com Perl</h1>
+          <p>Manipulação de arquivos em massa, processamento de logs, scraping, envio de email, parsers de CSV e automação SSH.</p>
+        </div>
+        <p class="intro-highlight">
+          Perl nasceu para automação: Larry Wall o criou para processar relatórios e manipular o sistema de arquivos Unix de forma que awk e shell não conseguiam. Décadas depois, ainda é uma das ferramentas mais produtivas para tarefas de sysadmin, processamento de dados e integração de sistemas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquivos-massa">Renomear Arquivos em Massa</h2>
+        <p>
+          A combinação de <code class="code-inline">opendir</code>/<code class="code-inline">readdir</code> com expressões regulares no operador <code class="code-inline">s///</code> torna a renomeação em massa de arquivos trivial. Para recursividade, usa-se <code class="code-inline">File::Find</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">renomear_fotos.pl — adicionar prefixo de data</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>;
+<span class="kw">use</span> <span class="tp">POSIX</span> <span class="str">qw(strftime)</span>;
+
+<span class="kw">my</span> <span class="tp">$diretorio</span> = <span class="tp">$ARGV</span>[<span class="num">0</span>] // <span class="str">"."</span>;    <span class="com"># diretório como argumento ou atual</span>
+
+<span class="fn">opendir</span> <span class="kw">my</span> <span class="tp">$dh</span>, <span class="tp">$diretorio</span>;
+<span class="kw">my</span> <span class="tp">@arquivos</span> = <span class="fn">grep</span> { /\.(jpg|jpeg|png|gif)$/i } <span class="fn">readdir</span>(<span class="tp">$dh</span>);
+<span class="fn">closedir</span> <span class="tp">$dh</span>;
+
+<span class="fn">say</span> <span class="str">"Encontrados "</span> . <span class="fn">scalar</span>(<span class="tp">@arquivos</span>) . <span class="str">" arquivos de imagem"</span>;
+
+<span class="kw">my</span> <span class="tp">$data_prefix</span> = <span class="fn">strftime</span>(<span class="str">"%Y%m%d_"</span>, <span class="fn">localtime</span>);
+<span class="kw">my</span> <span class="tp">$renomeados</span> = <span class="num">0</span>;
+
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$arquivo</span> (<span class="fn">sort</span> <span class="tp">@arquivos</span>) {
+    <span class="kw">my</span> <span class="tp">$novo_nome</span> = <span class="tp">$data_prefix</span> . <span class="fn">lc</span>(<span class="tp">$arquivo</span>);
+    <span class="tp">$novo_nome</span> =~ <span class="kw">s</span><span class="str">/\s+/_/g</span>;              <span class="com"># substituir espaços por _</span>
+    
+    <span class="kw">my</span> <span class="tp">$origem</span>  = <span class="str">"$diretorio/$arquivo"</span>;
+    <span class="kw">my</span> <span class="tp">$destino</span> = <span class="str">"$diretorio/$novo_nome"</span>;
+    
+    <span class="kw">if</span> (<span class="tp">$origem</span> ne <span class="tp">$destino</span>) {
+        <span class="fn">rename</span> <span class="tp">$origem</span>, <span class="tp">$destino</span>;
+        <span class="fn">printf</span> <span class="str">"%-40s  ==&gt;  %s\n"</span>, <span class="tp">$arquivo</span>, <span class="tp">$novo_nome</span>;
+        <span class="tp">$renomeados</span>++;
+    }
+}
+
+<span class="fn">say</span> <span class="str">"Renomeados: $renomeados arquivos"</span>;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">renomear_recursivo.pl — File::Find</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">File::Find</span>;
+<span class="kw">use</span> <span class="tp">File::Basename</span>;
+
+<span class="com"># Converter todos os .txt em .md recursivamente</span>
+<span class="fn">find</span>({
+    wanted =&gt; <span class="kw">sub</span> {
+        <span class="kw">return</span> <span class="kw">unless</span> -f <span class="kw">and</span> <span class="str">/\.txt$/i</span>;   <span class="com"># apenas arquivos .txt</span>
+        <span class="kw">my</span> <span class="tp">$antigo</span> = <span class="tp">$_</span>;
+        (<span class="kw">my</span> <span class="tp">$novo</span> = <span class="tp">$_</span>) =~ <span class="kw">s</span><span class="str">/\.txt$/.md/i</span>;
+        <span class="fn">rename</span> <span class="tp">$antigo</span>, <span class="tp">$novo</span>;
+        <span class="fn">say</span> <span class="str">"$antigo → $novo"</span>;
+    },
+    no_chdir =&gt; <span class="num">0</span>,
+}, <span class="str">"."</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processar-logs">Processar Logs com Regex</h2>
+        <p>
+          Processamento de logs é onde Perl reina. Combinando leitura de arquivo linha por linha com expressões regulares, é possível extrair métricas, detectar anomalias e gerar relatórios de logs de qualquer formato.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">analisar_log.pl — log Apache/Nginx</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>;
+
+<span class="com"># Formato Combined Log do Apache/Nginx:
+# 192.168.1.1 - - [15/Mar/2024:10:30:00 +0000] "GET /index.html HTTP/1.1" 200 1234</span>
+
+<span class="kw">my</span> <span class="tp">$log_regex</span> = <span class="kw">qr</span><span class="str">/
+    ^(\d+\.\d+\.\d+\.\d+)          # IP do cliente
+    \s+-\s+-\s+
+    \[([^\]]+)\]                    # data/hora
+    \s+"(\w+)\s+(\S+)\s+HTTP\/\S+"  # método e URL
+    \s+(\d{3})                      # código HTTP
+    \s+(\d+|-)                      # bytes enviados
+/x</span>;
+
+<span class="kw">my</span> <span class="tp">%estatisticas</span> = (
+    total      =&gt; <span class="num">0</span>,
+    erros_4xx  =&gt; <span class="num">0</span>,
+    erros_5xx  =&gt; <span class="num">0</span>,
+    ips        =&gt; {},
+    urls       =&gt; {},
+    codigos    =&gt; {},
+);
+
+<span class="kw">my</span> <span class="tp">$arquivo</span> = <span class="tp">$ARGV</span>[<span class="num">0</span>] // <span class="str">'/var/log/nginx/access.log'</span>;
+
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$fh</span>, <span class="str">'&lt;'</span>, <span class="tp">$arquivo</span>;
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$linha</span> = &lt;<span class="tp">$fh</span>&gt;) {
+    <span class="fn">chomp</span> <span class="tp">$linha</span>;
+    <span class="tp">$estatisticas</span>{total}++;
+    
+    <span class="kw">if</span> (<span class="tp">$linha</span> =~ <span class="tp">$log_regex</span>) {
+        <span class="kw">my</span> (<span class="tp">$ip</span>, <span class="tp">$data</span>, <span class="tp">$metodo</span>, <span class="tp">$url</span>, <span class="tp">$codigo</span>, <span class="tp">$bytes</span>) =
+            (<span class="tp">$1</span>, <span class="tp">$2</span>, <span class="tp">$3</span>, <span class="tp">$4</span>, <span class="tp">$5</span>, <span class="tp">$6</span>);
+        
+        <span class="tp">$estatisticas</span>{ips}{<span class="tp">$ip</span>}++;
+        <span class="tp">$estatisticas</span>{urls}{<span class="tp">$url</span>}++;
+        <span class="tp">$estatisticas</span>{codigos}{<span class="tp">$codigo</span>}++;
+        <span class="tp">$estatisticas</span>{erros_4xx}++ <span class="kw">if</span> <span class="tp">$codigo</span> =~ <span class="str">/^4/</span>;
+        <span class="tp">$estatisticas</span>{erros_5xx}++ <span class="kw">if</span> <span class="tp">$codigo</span> =~ <span class="str">/^5/</span>;
+    }
+}
+<span class="kw">close</span> <span class="tp">$fh</span>;
+
+<span class="com"># Relatório</span>
+<span class="fn">printf</span> <span class="str">"Total de requisições: %d\n"</span>, <span class="tp">$estatisticas</span>{total};
+<span class="fn">printf</span> <span class="str">"Erros 4xx: %d (%.1f%%)\n"</span>,
+    <span class="tp">$estatisticas</span>{erros_4xx},
+    <span class="tp">$estatisticas</span>{erros_4xx} / <span class="tp">$estatisticas</span>{total} * <span class="num">100</span>;
+<span class="fn">printf</span> <span class="str">"Erros 5xx: %d\n"</span>, <span class="tp">$estatisticas</span>{erros_5xx};
+
+<span class="fn">say</span> <span class="str">"\nTop 5 URLs:"</span>;
+<span class="kw">my</span> <span class="tp">@top_urls</span> = (<span class="fn">sort</span> { <span class="tp">$estatisticas</span>{urls}{<span class="tp">$b</span>} &lt;=&gt; <span class="tp">$estatisticas</span>{urls}{<span class="tp">$a</span>} }
+                 <span class="fn">keys</span> <span class="tp">%{$estatisticas</span>{urls}})[<span class="num">0</span>..<span class="num">4</span>];
+<span class="fn">printf</span> <span class="str">"  %-40s %d\n"</span>, <span class="tp">$_</span>, <span class="tp">$estatisticas</span>{urls}{<span class="tp">$_</span>} <span class="kw">for</span> <span class="tp">@top_urls</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="lwp-scraping">LWP e HTML::TreeBuilder: Web Scraping</h2>
+        <p>
+          <strong>LWP::UserAgent</strong> realiza requisições HTTP em Perl. Combinado com <strong>HTML::TreeBuilder</strong> (ou <strong>Mojo::DOM</strong>), permite extrair dados de páginas HTML de forma programática.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">scraper.pl — extrair dados de uma página</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">LWP::UserAgent</span>;
+<span class="kw">use</span> <span class="tp">HTML::TreeBuilder</span>;
+<span class="kw">use</span> <span class="tp">Encode</span> <span class="str">qw(decode)</span>;
+
+<span class="kw">my</span> <span class="tp">$ua</span> = <span class="tp">LWP::UserAgent</span>-&gt;<span class="fn">new</span>(
+    agent   =&gt; <span class="str">'MeuBot/1.0 (perl script educacional)'</span>,
+    timeout =&gt; <span class="num">15</span>,
+);
+
+<span class="com"># Requisição GET</span>
+<span class="kw">my</span> <span class="tp">$resposta</span> = <span class="tp">$ua</span>-&gt;<span class="fn">get</span>(<span class="str">'https://example.com'</span>);
+
+<span class="kw">unless</span> (<span class="tp">$resposta</span>-&gt;<span class="fn">is_success</span>) {
+    <span class="fn">die</span> <span class="str">"Erro HTTP "</span> . <span class="tp">$resposta</span>-&gt;<span class="fn">code</span> . <span class="str">": "</span> . <span class="tp">$resposta</span>-&gt;<span class="fn">message</span>;
+}
+
+<span class="kw">my</span> <span class="tp">$html</span> = <span class="tp">$resposta</span>-&gt;<span class="fn">decoded_content</span>;
+
+<span class="com"># Parsear HTML com TreeBuilder</span>
+<span class="kw">my</span> <span class="tp">$tree</span> = <span class="tp">HTML::TreeBuilder</span>-&gt;<span class="fn">new_from_content</span>(<span class="tp">$html</span>);
+
+<span class="com"># Extrair o título</span>
+<span class="kw">my</span> <span class="tp">$title</span> = <span class="tp">$tree</span>-&gt;<span class="fn">look_down</span>(_tag =&gt; <span class="str">'title'</span>);
+<span class="fn">say</span> <span class="str">"Título: "</span> . (<span class="tp">$title</span> ? <span class="tp">$title</span>-&gt;<span class="fn">as_text</span> : <span class="str">"N/A"</span>);
+
+<span class="com"># Extrair todos os links</span>
+<span class="kw">my</span> <span class="tp">@links</span> = <span class="tp">$tree</span>-&gt;<span class="fn">look_down</span>(_tag =&gt; <span class="str">'a'</span>, href =&gt; <span class="kw">qr</span><span class="str">/.+/</span>);
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$link</span> (<span class="tp">@links</span>) {
+    <span class="kw">my</span> <span class="tp">$href</span> = <span class="tp">$link</span>-&gt;<span class="fn">attr</span>(<span class="str">'href'</span>);
+    <span class="kw">my</span> <span class="tp">$texto</span> = <span class="tp">$link</span>-&gt;<span class="fn">as_text</span>;
+    <span class="fn">printf</span> <span class="str">"%-50s  %s\n"</span>, <span class="tp">$href</span>, <span class="tp">$texto</span>;
+}
+
+<span class="com"># Extrair tabela específica (por ID)</span>
+<span class="kw">my</span> <span class="tp">$tabela</span> = <span class="tp">$tree</span>-&gt;<span class="fn">look_down</span>(_tag =&gt; <span class="str">'table'</span>, id =&gt; <span class="str">'dados-principais'</span>);
+<span class="kw">if</span> (<span class="tp">$tabela</span>) {
+    <span class="kw">my</span> <span class="tp">@linhas</span> = <span class="tp">$tabela</span>-&gt;<span class="fn">look_down</span>(_tag =&gt; <span class="str">'tr'</span>);
+    <span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$tr</span> (<span class="tp">@linhas</span>) {
+        <span class="kw">my</span> <span class="tp">@cels</span> = <span class="fn">map</span> { <span class="tp">$_</span>-&gt;<span class="fn">as_text</span> } <span class="tp">$tr</span>-&gt;<span class="fn">look_down</span>(_tag =&gt; <span class="kw">qr</span><span class="str">/^t[dh]$/</span>);
+        <span class="fn">say</span> <span class="fn">join</span>(<span class="str">" | "</span>, <span class="tp">@cels</span>);
+    }
+}
+
+<span class="tp">$tree</span>-&gt;<span class="fn">delete</span>;  <span class="com"># liberar memória</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="email">Envio de Email com MIME::Lite</h2>
+        <p>
+          <strong>MIME::Lite</strong> é uma das formas mais simples de enviar emails em Perl, suportando texto simples, HTML, anexos e endereçamento completo. Para casos mais complexos (autenticação SMTP, TLS), usa-se <strong>Email::Sender</strong>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">enviar_email.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">MIME::Lite</span>;
+
+<span class="com"># Email texto simples</span>
+<span class="kw">my</span> <span class="tp">$msg</span> = <span class="tp">MIME::Lite</span>-&gt;<span class="fn">new</span>(
+    From    =&gt; <span class="str">'remetente@empresa.com'</span>,
+    To      =&gt; <span class="str">'destinatario@exemplo.com'</span>,
+    Cc      =&gt; <span class="str">'copia@exemplo.com'</span>,
+    Subject =&gt; <span class="str">'Relatório automático — Perl'</span>,
+    Type    =&gt; <span class="str">'text/plain; charset=UTF-8'</span>,
+    Data    =&gt; <span class="str">"Olá,\n\nSeguem os dados do processamento.\n\nAtt."</span>,
+);
+
+<span class="com"># Adicionar anexo</span>
+<span class="tp">$msg</span>-&gt;<span class="fn">attach</span>(
+    Type     =&gt; <span class="str">'text/csv'</span>,
+    Path     =&gt; <span class="str">'/tmp/relatorio.csv'</span>,
+    Filename =&gt; <span class="str">'relatorio.csv'</span>,
+    Disposition =&gt; <span class="str">'attachment'</span>,
+);
+
+<span class="com"># Enviar via sendmail local</span>
+<span class="tp">$msg</span>-&gt;<span class="fn">send</span>(<span class="str">'sendmail'</span>);
+
+<span class="com"># Enviar via SMTP com autenticação</span>
+<span class="tp">MIME::Lite</span>-&gt;<span class="fn">send</span>(<span class="str">'smtp'</span>, <span class="str">'smtp.gmail.com'</span>,
+    Port     =&gt; <span class="num">587</span>,
+    AuthUser =&gt; <span class="str">'usuario@gmail.com'</span>,
+    AuthPass =&gt; <span class="str">'senha_de_app'</span>,
+);
+<span class="tp">$msg</span>-&gt;<span class="fn">send</span>();
+
+<span class="fn">say</span> <span class="str">"Email enviado com sucesso"</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="text-csv">Text::CSV: Parsear e Gerar CSV</h2>
+        <p>
+          O módulo <strong>Text::CSV</strong> (ou sua versão XS em C: <strong>Text::CSV_XS</strong>) é o padrão para manipulação de arquivos CSV em Perl. Lida corretamente com campos com vírgulas, aspas e quebras de linha.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">csv_processamento.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>;
+<span class="kw">use</span> <span class="tp">Text::CSV</span> <span class="str">qw(csv)</span>;
+
+<span class="com"># Leitura básica com função csv()</span>
+<span class="kw">my</span> <span class="tp">$dados</span> = <span class="fn">csv</span>(
+    in      =&gt; <span class="str">'vendas.csv'</span>,
+    headers =&gt; <span class="str">'auto'</span>,          <span class="com"># primeira linha = cabeçalho</span>
+    encoding =&gt; <span class="str">'utf-8'</span>,
+);
+
+<span class="com"># $dados é um arrayref de hashrefs</span>
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$linha</span> (<span class="tp">@$dados</span>) {
+    <span class="fn">printf</span> <span class="str">"%-20s R$ %8.2f\n"</span>, <span class="tp">$linha</span>-&gt;{produto}, <span class="tp">$linha</span>-&gt;{valor};
+}
+
+<span class="com"># Escrever CSV</span>
+<span class="fn">csv</span>(
+    in      =&gt; <span class="tp">$dados</span>,
+    out     =&gt; <span class="str">'saida.csv'</span>,
+    headers =&gt; [<span class="str">qw(produto valor quantidade)</span>],
+    encoding =&gt; <span class="str">'utf-8'</span>,
+);
+
+<span class="com"># API orientada a objeto — mais controle</span>
+<span class="kw">my</span> <span class="tp">$csv</span> = <span class="tp">Text::CSV</span>-&gt;<span class="fn">new</span>({
+    binary      =&gt; <span class="num">1</span>,
+    sep_char    =&gt; <span class="str">';'</span>,   <span class="com"># usando ponto-e-vírgula</span>
+    quote_char  =&gt; <span class="str">'"'</span>,
+    auto_diag   =&gt; <span class="num">1</span>,
+});
+
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$in</span>, <span class="str">'&lt;:encoding(utf-8)'</span>, <span class="str">'entrada.csv'</span>;
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$out</span>, <span class="str">'&gt;:encoding(utf-8)'</span>, <span class="str">'saida_filtrada.csv'</span>;
+
+<span class="kw">my</span> <span class="tp">$cabecalho</span> = <span class="tp">$csv</span>-&gt;<span class="fn">getline</span>(<span class="tp">$in</span>);
+<span class="tp">$csv</span>-&gt;<span class="fn">say</span>(<span class="tp">$out</span>, <span class="tp">$cabecalho</span>);           <span class="com"># copiar cabeçalho</span>
+
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$row</span> = <span class="tp">$csv</span>-&gt;<span class="fn">getline</span>(<span class="tp">$in</span>)) {
+    <span class="kw">next</span> <span class="kw">unless</span> <span class="tp">$row</span>-&gt;[<span class="num">2</span>] &gt; <span class="num">100</span>;     <span class="com"># filtrar valor mínimo</span>
+    <span class="tp">$csv</span>-&gt;<span class="fn">say</span>(<span class="tp">$out</span>, <span class="tp">$row</span>);
+}
+
+<span class="kw">close</span> <span class="tp">$in</span>;
+<span class="kw">close</span> <span class="tp">$out</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ssh-automacao">Automação SSH com Net::SSH2</h2>
+        <p>
+          <strong>Net::SSH2</strong> permite executar comandos em servidores remotos via SSH diretamente de scripts Perl. Alternativas incluem <strong>Net::OpenSSH</strong> (wrapper do binário ssh) e <strong>Net::SSH::Perl</strong>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ssh_automacao.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Net::SSH2</span>;
+
+<span class="kw">my</span> <span class="tp">$ssh2</span> = <span class="tp">Net::SSH2</span>-&gt;<span class="fn">new</span>();
+
+<span class="com"># Conectar</span>
+<span class="tp">$ssh2</span>-&gt;<span class="fn">connect</span>(<span class="str">'servidor.exemplo.com'</span>, <span class="num">22</span>)
+    <span class="kw">or</span> <span class="fn">die</span> <span class="str">"Falha ao conectar: "</span> . <span class="tp">$ssh2</span>-&gt;<span class="fn">error</span>;
+
+<span class="com"># Autenticar com chave pública</span>
+<span class="tp">$ssh2</span>-&gt;<span class="fn">auth_publickey</span>(
+    <span class="str">'usuario'</span>,
+    <span class="str">"$ENV{HOME}/.ssh/id_rsa.pub"</span>,
+    <span class="str">"$ENV{HOME}/.ssh/id_rsa"</span>,
+) <span class="kw">or</span> <span class="fn">die</span> <span class="str">"Autenticação falhou"</span>;
+
+<span class="com"># Executar um comando</span>
+<span class="kw">my</span> <span class="tp">$canal</span> = <span class="tp">$ssh2</span>-&gt;<span class="fn">channel</span>();
+<span class="tp">$canal</span>-&gt;<span class="fn">exec</span>(<span class="str">'df -h / && uptime'</span>);
+
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$linha</span> = &lt;<span class="tp">$canal</span>&gt;) {
+    <span class="fn">print</span> <span class="tp">$linha</span>;
+}
+<span class="tp">$canal</span>-&gt;<span class="fn">close</span>();
+
+<span class="com"># Transferir arquivo via SFTP</span>
+<span class="kw">my</span> <span class="tp">$sftp</span> = <span class="tp">$ssh2</span>-&gt;<span class="fn">sftp</span>();
+<span class="tp">$sftp</span>-&gt;<span class="fn">put</span>(<span class="str">'/local/relatorio.csv'</span>, <span class="str">'/remote/uploads/relatorio.csv'</span>)
+    <span class="kw">or</span> <span class="fn">die</span> <span class="str">"SFTP falhou: "</span> . <span class="tp">$ssh2</span>-&gt;<span class="fn">error</span>;
+
+<span class="tp">$ssh2</span>-&gt;<span class="fn">disconnect</span>();
+<span class="fn">say</span> <span class="str">"Operações SSH concluídas"</span>;
+
+<span class="com"># Alternativa mais simples: Net::OpenSSH (usa o ssh do sistema)</span>
+<span class="kw">use</span> <span class="tp">Net::OpenSSH</span>;
+<span class="kw">my</span> <span class="tp">$ssh</span> = <span class="tp">Net::OpenSSH</span>-&gt;<span class="fn">new</span>(<span class="str">'usuario@servidor.com'</span>);
+<span class="kw">my</span> <span class="tp">@saida</span> = <span class="tp">$ssh</span>-&gt;<span class="fn">capture</span>(<span class="str">'ls /var/log/*.log | wc -l'</span>);
+<span class="fn">chomp</span> <span class="tp">@saida</span>;
+<span class="fn">say</span> <span class="str">"Arquivos de log: $saida[0]"</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SCHWARTZ, Randal L. <strong>Learning Perl</strong>. 8. ed. O'Reilly Media, 2022. Capítulos de filehandles e processos.</li>
+            <li>GUTTMAN, Uri. <strong>LWP::UserAgent — The World-Wide Web library for Perl</strong>. MetaCPAN. Disponível em: <a href="https://metacpan.org/pod/LWP::UserAgent" target="_blank" rel="noopener">https://metacpan.org/pod/LWP::UserAgent</a></li>
+            <li>HORIGUCHI, Toshiyuki. <strong>Text::CSV_XS</strong>. MetaCPAN. Disponível em: <a href="https://metacpan.org/pod/Text::CSV_XS" target="_blank" rel="noopener">https://metacpan.org/pod/Text::CSV_XS</a></li>
+            <li>CASTRILLO, Salvador. <strong>Net::OpenSSH</strong>. MetaCPAN. Disponível em: <a href="https://metacpan.org/pod/Net::OpenSSH" target="_blank" rel="noopener">https://metacpan.org/pod/Net::OpenSSH</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Terminal &amp; CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Web com Mojolicious</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Fundamentos</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Automação não substitui pessoas — libera pessoas para fazer o que apenas pessoas fazem bem." — Larry Wall
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

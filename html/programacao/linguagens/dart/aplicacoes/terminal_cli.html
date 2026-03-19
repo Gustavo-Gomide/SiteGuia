@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para terminal e CLI: args, stdin/stdout, ANSI colors, dart_console, dcli, dart:io Process, compilacao para binario nativo e boas praticas para scripts de linha de comando." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — Terminal e CLI</h1>
+          <p>Dart compila para <strong>binarios nativos autocontidos</strong> via <code>dart compile exe</code>, sem depender da VM em producao. O ecossistema possui <code>args</code> para parsing de flags, <code>dart_console</code> para controle full de terminal ANSI (cores, cursor, raw mode), <code>dcli</code> para scripting estilo shell e <code>dart:io</code> para subprocessos, redirecionamento de stdin/stdout e manipulacao do sistema de arquivos.</p>
+        </div>
+        <p class="intro-highlight">
+          Ferramentas CLI em Dart sao publicadas como <strong>executaveis globais</strong> via <code>dart pub global activate</code>. O proprio tooling Dart (dart, pub, dartfmt, dart2js) e escrito em Dart, demonstrando a maturidade do ecossistema para ferramentas de linha de comando robustas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dart-io">dart:io — stdin, stdout, stderr e argumentos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; dart:io basico: leitura, escrita e stdin interativo</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:io'</span>;
+
+<span class="kw">void</span> <span class="fn">main</span>(<span class="tp">List</span>&lt;<span class="tp">String</span>&gt; args) {
+  <span class="com">// Saida padrao e erro</span>
+  stdout.<span class="fn">writeln</span>(<span class="str">'Olá do stderr'</span>);
+  stderr.<span class="fn">writeln</span>(<span class="str">'Erro: algo falhou'</span>);
+
+  <span class="com">// Leitura sincrona de linha</span>
+  stdout.<span class="fn">write</span>(<span class="str">'Qual seu nome? '</span>);
+  <span class="kw">final</span> nome = stdin.<span class="fn">readLineSync</span>();
+  print(<span class="str">'Olá, $nome!'</span>);
+
+  <span class="com">// Verificar se ha dados no stdin (modo pipe)</span>
+  <span class="kw">if</span> (stdin.hasTerminal) {
+    print(<span class="str">'Rodando em terminal interativo'</span>);
+  } <span class="kw">else</span> {
+    <span class="com">// Leitura de pipe: cat arquivo.txt | meutool</span>
+    <span class="kw">final</span> linhas = stdin.<span class="fn">readLineSync</span>();
+    print(<span class="str">'Recebido do pipe: $linhas'</span>);
+  }
+
+  <span class="com">// Ler TODOS os bytes do stdin de forma sincrona</span>
+  <span class="kw">final</span> bytes = stdin.<span class="fn">readAsBytesSync</span>();
+  print(<span class="str">'${bytes.length} bytes lidos'</span>);
+}
+
+<span class="com">// Leitura assincrona de stdin — melhor para longos fluxos</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">lerStdinAsync</span>() <span class="kw">async</span> {
+  <span class="kw">await</span> <span class="kw">for</span> (<span class="kw">final</span> linha <span class="kw">in</span> stdin.<span class="fn">transform</span>(<span class="tp">SystemEncoding</span>().<span class="fn">decoder</span>).<span class="fn">transform</span>(<span class="kw">const</span> <span class="tp">LineSplitter</span>())) {
+    print(<span class="str">'Linha: $linha'</span>);
+  }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart — Subprocessos com dart:io Process</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:io'</span>;
+
+<span class="com">// Executar processo e capturar saida</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">runProcess</span>() <span class="kw">async</span> {
+  <span class="com">// Simples: aguarda conclusao e coleta tudo</span>
+  <span class="kw">final</span> result = <span class="kw">await</span> <span class="tp">Process</span>.<span class="fn">run</span>(<span class="str">'git'</span>, [<span class="str">'log'</span>, <span class="str">'--oneline'</span>, <span class="str">'-5'</span>]);
+  print(result.stdout);
+  <span class="kw">if</span> (result.exitCode != <span class="num">0</span>) {
+    stderr.<span class="fn">writeln</span>(result.stderr);
+    <span class="fn">exit</span>(<span class="num">1</span>);
+  }
+
+  <span class="com">// Streaming: processa saida ao vivo</span>
+  <span class="kw">final</span> process = <span class="kw">await</span> <span class="tp">Process</span>.<span class="fn">start</span>(<span class="str">'dart'</span>, [<span class="str">'pub'</span>, <span class="str">'get'</span>],
+    workingDirectory: <span class="str">'./projeto'</span>,
+  );
+  process.stdout.<span class="fn">transform</span>(<span class="kw">const</span> <span class="tp">Utf8Decoder</span>()).<span class="fn">listen</span>(stdout.<span class="fn">write</span>);
+  process.stderr.<span class="fn">transform</span>(<span class="kw">const</span> <span class="tp">Utf8Decoder</span>()).<span class="fn">listen</span>(stderr.<span class="fn">write</span>);
+  <span class="kw">final</span> code = <span class="kw">await</span> process.exitCode;
+  <span class="kw">if</span> (code != <span class="num">0</span>) <span class="fn">exit</span>(code);
+}
+
+<span class="com">// Redirecionar stdin do processo pai para filho</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">runInterativo</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> proc = <span class="kw">await</span> <span class="tp">Process</span>.<span class="fn">start</span>(
+    <span class="str">'python3'</span>, [<span class="str">'-'</span>],
+    mode: <span class="tp">ProcessStartMode</span>.inheritStdio,
+  );
+  <span class="kw">await</span> proc.exitCode;  <span class="com">// stdin/stdout/stderr herdados do pai</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="args">Package args — Parsing de Flags e Subcomandos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + args &mdash; ArgParser completo com subcomandos</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:args/args.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:args/command_runner.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+
+<span class="com">// ---- Abordagem 1: ArgParser direto ----</span>
+<span class="kw">void</span> <span class="fn">parseManual</span>(<span class="tp">List</span>&lt;<span class="tp">String</span>&gt; args) {
+  <span class="kw">final</span> parser = <span class="tp">ArgParser</span>()
+    ..<span class="fn">addFlag</span>(<span class="str">'verbose'</span>,   abbr: <span class="str">'v'</span>, help: <span class="str">'Saida detalhada'</span>,         defaultsTo: <span class="kw">false</span>)
+    ..<span class="fn">addFlag</span>(<span class="str">'dry-run'</span>,   abbr: <span class="str">'n'</span>, help: <span class="str">'Nao executar de verdade'</span>,  negatable: <span class="kw">false</span>)
+    ..<span class="fn">addOption</span>(<span class="str">'output'</span>,  abbr: <span class="str">'o'</span>, help: <span class="str">'Arquivo de saida'</span>,         defaultsTo: <span class="str">'out.txt'</span>)
+    ..<span class="fn">addOption</span>(<span class="str">'format'</span>,             help: <span class="str">'Formato de saida'</span>,
+        allowed: [<span class="str">'json'</span>, <span class="str">'csv'</span>, <span class="str">'xml'</span>], defaultsTo: <span class="str">'json'</span>)
+    ..<span class="fn">addMultiOption</span>(<span class="str">'target'</span>, abbr: <span class="str">'t'</span>, help: <span class="str">'Alvos (pode repetir)'</span>);
+
+  <span class="tp">ArgResults</span> results;
+  <span class="kw">try</span> {
+    results = parser.<span class="fn">parse</span>(args);
+  } <span class="kw">on</span> <span class="tp">FormatException</span> <span class="kw">catch</span> (e) {
+    stderr.<span class="fn">writeln</span>(<span class="str">'Erro: ${e.message}'</span>);
+    stderr.<span class="fn">writeln</span>(parser.<span class="fn">usage</span>);
+    <span class="fn">exit</span>(<span class="num">64</span>); <span class="com">// sysexits.h EX_USAGE</span>
+  }
+
+  <span class="kw">final</span> verbose = results[<span class="str">'verbose'</span>]  <span class="kw">as</span> <span class="tp">bool</span>;
+  <span class="kw">final</span> output  = results[<span class="str">'output'</span>]   <span class="kw">as</span> <span class="tp">String</span>;
+  <span class="kw">final</span> targets = results[<span class="str">'target'</span>]   <span class="kw">as</span> <span class="tp">List</span>&lt;<span class="tp">String</span>&gt;;
+  <span class="kw">final</span> rest    = results.rest;  <span class="com">// argumentos posicionais apos flags</span>
+
+  <span class="kw">if</span> (verbose) print(<span class="str">'Output: $output  Targets: $targets  Extra: $rest'</span>);
+}
+
+<span class="com">// ---- Abordagem 2: CommandRunner — subcomandos estilo git/dart ----</span>
+<span class="kw">void</span> <span class="fn">main</span>(<span class="tp">List</span>&lt;<span class="tp">String</span>&gt; args) => <span class="tp">GerenciadorCLI</span>().<span class="fn">run</span>(args);
+
+<span class="kw">class</span> <span class="tp">GerenciadorCLI</span> <span class="kw">extends</span> <span class="tp">CommandRunner</span>&lt;<span class="kw">void</span>&gt; {
+  <span class="tp">GerenciadorCLI</span>() : <span class="kw">super</span>(<span class="str">'meutool'</span>, <span class="str">'Ferramenta CLI em Dart'</span>) {
+    <span class="fn">addCommand</span>(<span class="tp">BuildCommand</span>());
+    <span class="fn">addCommand</span>(<span class="tp">ServeCommand</span>());
+    argParser.<span class="fn">addFlag</span>(<span class="str">'quiet'</span>, abbr: <span class="str">'q'</span>);
+  }
+}
+
+<span class="kw">class</span> <span class="tp">BuildCommand</span> <span class="kw">extends</span> <span class="tp">Command</span>&lt;<span class="kw">void</span>&gt; {
+  <span class="at">@override</span> <span class="tp">String</span> <span class="kw">get</span> name        => <span class="str">'build'</span>;
+  <span class="at">@override</span> <span class="tp">String</span> <span class="kw">get</span> description => <span class="str">'Compila o projeto'</span>;
+  <span class="at">@override</span> <span class="tp">String</span> <span class="kw">get</span> usage        =>
+      <span class="str">'meutool build [--release] [--target &lt;platform&gt;]'</span>;
+
+  <span class="tp">BuildCommand</span>() {
+    argParser
+      ..<span class="fn">addFlag</span>(<span class="str">'release'</span>, defaultsTo: <span class="kw">false</span>)
+      ..<span class="fn">addOption</span>(<span class="str">'target'</span>, allowed: [<span class="str">'android'</span>, <span class="str">'ios'</span>, <span class="str">'web'</span>]);
+  }
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">run</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> release = argResults![<span class="str">'release'</span>] <span class="kw">as</span> <span class="tp">bool</span>;
+    <span class="kw">final</span> target  = argResults![<span class="str">'target'</span>]  <span class="kw">as</span> <span class="tp">String</span>?;
+    print(<span class="str">'Compilando${release ? " (release)" : ""}${target != null ? " para $target" : ""}...'</span>);
+  }
+}
+
+<span class="kw">class</span> <span class="tp">ServeCommand</span> <span class="kw">extends</span> <span class="tp">Command</span>&lt;<span class="kw">void</span>&gt; {
+  <span class="at">@override</span> <span class="tp">String</span> <span class="kw">get</span> name        => <span class="str">'serve'</span>;
+  <span class="at">@override</span> <span class="tp">String</span> <span class="kw">get</span> description => <span class="str">'Inicia servidor de desenvolvimento'</span>;
+
+  <span class="tp">ServeCommand</span>() {
+    argParser.<span class="fn">addOption</span>(<span class="str">'port'</span>, abbr: <span class="str">'p'</span>, defaultsTo: <span class="str">'8080'</span>);
+  }
+
+  <span class="at">@override</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">run</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> port = <span class="tp">int</span>.<span class="fn">parse</span>(argResults![<span class="str">'port'</span>] <span class="kw">as</span> <span class="tp">String</span>);
+    print(<span class="str">'Servidor em http://localhost:$port'</span>);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="console-ansi">dart_console — ANSI Colors, Cursor e Raw Mode</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dart_console &mdash; Cores ANSI, posicionamento de cursor e input raw</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dart_console/dart_console.dart'</span>;
+
+<span class="kw">void</span> <span class="fn">demonstrarConsole</span>() {
+  <span class="kw">final</span> console = <span class="tp">Console</span>();
+
+  <span class="com">// Limpar e obter tamanho</span>
+  console.<span class="fn">clearScreen</span>();
+  print(<span class="str">'Terminal: ${console.windowWidth}x${console.windowHeight}'</span>);
+
+  <span class="com">// Cores e estilos</span>
+  console
+    ..<span class="fn">setForegroundColor</span>(<span class="tp">ConsoleColor</span>.brightGreen)
+    ..<span class="fn">write</span>(<span class="str">'OK  '</span>)
+    ..<span class="fn">resetColorAttributes</span>()
+    ..<span class="fn">setForegroundColor</span>(<span class="tp">ConsoleColor</span>.red)
+    ..<span class="fn">write</span>(<span class="str">'FALHA  '</span>)
+    ..<span class="fn">resetColorAttributes</span>()
+    ..<span class="fn">setTextStyle</span>(bold: <span class="kw">true</span>, underline: <span class="kw">true</span>)
+    ..<span class="fn">writeLine</span>(<span class="str">'Titulo em negrito'</span>)
+    ..<span class="fn">resetColorAttributes</span>();
+
+  <span class="com">// Mover cursor manualmente — util para progress bars</span>
+  console.<span class="fn">cursorPosition</span> = <span class="kw">const</span> <span class="tp">Coordinate</span>(<span class="num">5</span>, <span class="num">0</span>);  <span class="com">// linha 5, coluna 0</span>
+  console.<span class="fn">write</span>(<span class="str">'Linha 5'</span>);
+
+  <span class="com">// Ocultar/exibir cursor</span>
+  console.<span class="fn">hideCursor</span>();
+  <span class="com">// ... animacao ...</span>
+  console.<span class="fn">showCursor</span>();
+}
+
+<span class="com">// Progress bar manual para operacoes longas</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">progressBar</span>(<span class="tp">int</span> total, <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="tp">Function</span>(<span class="tp">int</span>) task) <span class="kw">async</span> {
+  <span class="kw">final</span> console = <span class="tp">Console</span>();
+  console.<span class="fn">hideCursor</span>();
+  <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; total; i++) {
+    <span class="kw">await</span> <span class="fn">task</span>(i);
+    <span class="kw">final</span> pct    = ((i + <span class="num">1</span>) / total * <span class="num">100</span>).<span class="fn">round</span>();
+    <span class="kw">final</span> filled = (pct / <span class="num">5</span>).<span class="fn">round</span>();
+    <span class="kw">final</span> bar    = <span class="str">'#' * filled + '-' * (20 - filled)</span>;
+    console
+      ..<span class="fn">eraseLine</span>()
+      ..<span class="fn">write</span>(<span class="str">'\r[$bar] $pct%  (${i + 1}/$total)'</span>);
+  }
+  console.<span class="fn">writeLine</span>(<span class="str">''</span>);
+  console.<span class="fn">showCursor</span>();
+}
+
+<span class="com">// Input interativo com seta para cima/seta para baixo (menu)</span>
+<span class="kw">int</span> <span class="fn">menuInterativo</span>(<span class="tp">List</span>&lt;<span class="tp">String</span>&gt; opcoes) {
+  <span class="kw">final</span> console = <span class="tp">Console</span>();
+  <span class="kw">var</span> selecionado = <span class="num">0</span>;
+  console.<span class="fn">hideCursor</span>();
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    console.<span class="fn">clearScreen</span>();
+    <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; opcoes.length; i++) {
+      <span class="kw">if</span> (i == selecionado) {
+        console
+          ..<span class="fn">setForegroundColor</span>(<span class="tp">ConsoleColor</span>.yellow)
+          ..<span class="fn">writeLine</span>(<span class="str">'  &gt; ${opcoes[i]}'</span>)
+          ..<span class="fn">resetColorAttributes</span>();
+      } <span class="kw">else</span> {
+        console.<span class="fn">writeLine</span>(<span class="str">'    ${opcoes[i]}'</span>);
+      }
+    }
+    <span class="kw">final</span> key = console.<span class="fn">readKey</span>();
+    <span class="kw">if</span> (key.controlChar == <span class="tp">ControlCharacter</span>.arrowUp)   selecionado = (selecionado - <span class="num">1</span>) % opcoes.length;
+    <span class="kw">if</span> (key.controlChar == <span class="tp">ControlCharacter</span>.arrowDown) selecionado = (selecionado + <span class="num">1</span>) % opcoes.length;
+    <span class="kw">if</span> (key.controlChar == <span class="tp">ControlCharacter</span>.enter) <span class="kw">break</span>;
+    <span class="kw">if</span> (key.char == <span class="str">'q'</span>) { selecionado = -<span class="num">1</span>; <span class="kw">break</span>; }
+  }
+  console.<span class="fn">showCursor</span>();
+  <span class="kw">return</span> selecionado;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dcli">DCli — Scripting Estilo Shell em Dart</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dcli &mdash; Shell scripting fluente</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dcli/dcli.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="com">// Executar comandos — estilo backtick bash</span>
+  <span class="kw">final</span> branch = <span class="str">'git rev-parse --abbrev-ref HEAD'</span>.<span class="fn">firstLine</span>!;
+  print(<span class="str">'Branch atual: $branch'</span>);
+
+  <span class="kw">final</span> arquivos = <span class="str">'find . -name "*.dart" -type f'</span>.<span class="fn">toList</span>();
+  print(<span class="str">'${arquivos.length} arquivos Dart'</span>);
+
+  <span class="com">// Run e verificar exit code</span>
+  <span class="str">'dart format .'</span>.<span class="fn">run</span>();  <span class="com">// lanca excecao se != 0</span>
+
+  <span class="com">// Prompt interativo</span>
+  <span class="kw">final</span> nome   = <span class="fn">ask</span>(<span class="str">'Qual seu nome?'</span>, defaultValue: <span class="str">'user'</span>);
+  <span class="kw">final</span> senha  = <span class="fn">ask</span>(<span class="str">'Senha:'</span>, hidden: <span class="kw">true</span>);
+  <span class="kw">final</span> confirmar = <span class="fn">confirm</span>(<span class="str">'Continuar?'</span>);
+
+  <span class="kw">if</span> (confirmar) {
+    print(<span class="str">'Bem-vindo, $nome!'</span>);
+  }
+
+  <span class="com">// Manipulacao de arquivos</span>
+  <span class="tp">String</span> home = <span class="fn">env</span>[<span class="str">'HOME'</span>] ?? <span class="fn">env</span>[<span class="str">'USERPROFILE'</span>]!;
+  <span class="kw">final</span> config = <span class="fn">join</span>(home, <span class="str">'.myapp'</span>, <span class="str">'config.json'</span>);
+  <span class="fn">createDir</span>(<span class="fn">dirname</span>(config), recursive: <span class="kw">true</span>);
+  config.<span class="fn">write</span>(<span class="str">'{"nome": "$nome"}'</span>);
+  print(<span class="str">'Config salvo em: $config'</span>);
+
+  <span class="com">// Copiar/mover/deletar</span>
+  <span class="fn">copy</span>(<span class="str">'src.txt'</span>, <span class="str">'dest.txt'</span>);
+  <span class="fn">move</span>(<span class="str">'old.txt'</span>, <span class="str">'new.txt'</span>);
+  <span class="fn">delete</span>(<span class="str">'lixo.tmp'</span>);
+
+  <span class="com">// Glob / find</span>
+  <span class="fn">find</span>(<span class="str">'*.dart'</span>, workingDirectory: <span class="str">'lib'</span>)
+    .<span class="fn">forEach</span>((f) => print(f));
+
+  <span class="com">// Cores rapidas</span>
+  print(<span class="fn">red</span>(<span class="str">'Erro critico!'</span>));
+  print(<span class="fn">green</span>(<span class="str">'Sucesso!'</span>));
+  print(<span class="fn">yellow</span>(<span class="str">'Aviso:'</span>) + <span class="str">' algo estranho aconteceu'</span>);
+  print(<span class="fn">blue</span>(<span class="str">'Info'</span>));
+  print(<span class="fn">bold</span>(<span class="str">'Negrito'</span>));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="filesystem">dart:io — Sistema de Arquivos Completo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; File, Directory, FileSystemEntity, watch</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:io'</span>;
+<span class="kw">import</span> <span class="str">'dart:convert'</span>;
+
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">demoArquivos</span>() <span class="kw">async</span> {
+  <span class="com">// Leitura completa</span>
+  <span class="kw">final</span> conteudo = <span class="kw">await</span> <span class="tp">File</span>(<span class="str">'config.json'</span>).<span class="fn">readAsString</span>();
+  <span class="kw">final</span> json     = <span class="fn">jsonDecode</span>(conteudo);
+
+  <span class="com">// Escrita atomica (via temp + rename)</span>
+  <span class="kw">final</span> target = <span class="tp">File</span>(<span class="str">'dados.json'</span>);
+  <span class="kw">final</span> temp   = <span class="tp">File</span>(<span class="str">'dados.json.tmp'</span>);
+  <span class="kw">await</span> temp.<span class="fn">writeAsString</span>(<span class="fn">jsonEncode</span>(json), flush: <span class="kw">true</span>);
+  <span class="kw">await</span> temp.<span class="fn">rename</span>(target.path);
+
+  <span class="com">// Streaming para arquivos grandes</span>
+  <span class="kw">final</span> sink = <span class="tp">File</span>(<span class="str">'log.txt'</span>).<span class="fn">openWrite</span>(mode: <span class="tp">FileMode</span>.append);
+  <span class="kw">try</span> {
+    sink.<span class="fn">writeln</span>(<span class="str">'[${DateTime.now()}] Evento'</span>);
+  } <span class="kw">finally</span> {
+    <span class="kw">await</span> sink.<span class="fn">flush</span>();
+    <span class="kw">await</span> sink.<span class="fn">close</span>();
+  }
+
+  <span class="com">// Ler linha a linha (memoria eficiente)</span>
+  <span class="kw">final</span> stream = <span class="tp">File</span>(<span class="str">'grande.csv'</span>)
+    .<span class="fn">openRead</span>()
+    .<span class="fn">transform</span>(<span class="kw">const</span> <span class="tp">Utf8Decoder</span>())
+    .<span class="fn">transform</span>(<span class="kw">const</span> <span class="tp">LineSplitter</span>());
+  <span class="kw">await</span> <span class="kw">for</span> (<span class="kw">final</span> linha <span class="kw">in</span> stream) {
+    <span class="com">// processar sem carregar tudo na RAM</span>
+  }
+
+  <span class="com">// Listar diretorio recursivamente</span>
+  <span class="kw">await</span> <span class="kw">for</span> (<span class="kw">final</span> entity <span class="kw">in</span> <span class="tp">Directory</span>(<span class="str">'src'</span>).<span class="fn">list</span>(recursive: <span class="kw">true</span>)) {
+    <span class="kw">if</span> (entity <span class="kw">is</span> <span class="tp">File</span> && entity.path.<span class="fn">endsWith</span>(<span class="str">'.dart'</span>)) {
+      print(entity.path);
+    }
+  }
+
+  <span class="com">// Watch — executar ao mudar arquivo (hot reload manual)</span>
+  <span class="tp">Directory</span>(<span class="str">'lib'</span>).<span class="fn">watch</span>(recursive: <span class="kw">true</span>).<span class="fn">listen</span>((event) {
+    print(<span class="str">'Mudou: ${event.path} (${event.type.name})'</span>);
+  });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="compilacao">Compilacao para Binario Nativo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; dart compile exe, pub global e distribuicao</div>
+          <pre class="example"><span class="com"># Compilar para executavel nativo (AOT, sem VM)</span>
+dart compile exe bin/meutool.dart -o meutool
+dart compile exe bin/meutool.dart -o meutool.exe  <span class="com"># Windows</span>
+dart compile exe bin/meutool.dart --define=VERSION=1.0.0 -o meutool
+
+<span class="com"># Verificar tamanho resultante (~5 MB base)</span>
+ls -lh meutool
+
+<span class="com"># Compilar para JS (para Node.js ou browser)</span>
+dart compile js bin/meutool.dart -o meutool.js
+dart compile js bin/meutool.dart -O4 -o meutool.min.js  <span class="com"># optimizations</span>
+
+<span class="com"># Compilar arquivo de snapshot kernel (JIT mais rapido, nao nativo)</span>
+dart compile kernel bin/meutool.dart -o meutool.dill
+dart run meutool.dill  <span class="com"># precisa da VM</span>
+
+<span class="com"># Publicar como global para usuarios finais</span>
+dart pub global activate --source path .        <span class="com"># da pasta local</span>
+dart pub global activate meutool                <span class="com"># do pub.dev</span>
+dart pub global activate --source git https://github.com/user/meutool
+
+<span class="com"># pubspec.yaml — executaveis registrados</span>
+<span class="com"># executables:</span>
+<span class="com">#   meutool: bin/meutool          # nome_cmd: bin/arquivo</span>
+<span class="com">#   mt: bin/meutool               # alias</span>
+
+<span class="com"># Compilacao cross-platform com GitHub Actions</span>
+<span class="com"># strategy:</span>
+<span class="com">#   matrix:</span>
+<span class="com">#     os: [ubuntu-latest, macos-latest, windows-latest]</span>
+<span class="com"># steps:</span>
+<span class="com">#   - uses: dart-lang/setup-dart@v1</span>
+<span class="com">#   - run: dart compile exe bin/meutool.dart -o meutool-${{ matrix.os }}</span>
+<span class="com">#   - uses: softprops/action-gh-release@v1</span>
+<span class="com">#     with: { files: meutool-* }</span></pre>
+        </div>
+
+        <div class="panel">
+          <p class="panel-title">Comparativo de saidas de compilacao Dart</p>
+          <table class="table">
+            <thead><tr>
+              <th>Formato</th><th>Comando</th><th>Precisa VM?</th><th>Tamanho</th><th>Uso tipico</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>Nativo EXE</td><td><code>dart compile exe</code></td><td>Nao</td><td>~5–15 MB</td><td>CLI distribuivel, CI/CD</td></tr>
+              <tr><td>JIT Snapshot</td><td><code>dart compile kernel</code></td><td>Sim</td><td>~1 MB + VM</td><td>Dev interno, hot-reload</td></tr>
+              <tr><td>JavaScript</td><td><code>dart compile js</code></td><td>Node/browser</td><td>variavel</td><td>Web, NodeJS interop</td></tr>
+              <tr><td>AOT snapshot</td><td><code>dart compile aot-snapshot</code></td><td>AOT VM</td><td>~2 MB</td><td>Container com VM fixa</td></tr>
+              <tr><td>WASM</td><td><code>dart compile wasm</code></td><td>Browser WASM</td><td>variavel</td><td>Flutter Web (future)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boas-praticas">Boas Praticas e Anti-Padroes</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p><span data-svg="check" aria-hidden="true"></span> Usar <code>exit(0)</code> so apos liberar recursos (fechar sinks, processes)</p>
+            <p><span data-svg="check" aria-hidden="true"></span> Usar <code>ProcessSignal.sigint.watch()</code> para Ctrl+C gracioso</p>
+            <p><span data-svg="check" aria-hidden="true"></span> Checar <code>stdin.hasTerminal</code> antes de pedir input interativo</p>
+            <p><span data-svg="check" aria-hidden="true"></span> Retornar exit codes semanticos (sysexits.h: 64 uso, 65 dados, 70 soft, 74 io)</p>
+            <p><span data-svg="check" aria-hidden="true"></span> Prefixar <code>pub global activate</code> com lock de versao em scripts CI</p>
+            <p><span data-svg="check" aria-hidden="true"></span> Logar para stderr, dados uteis para stdout (facilita <code>| pipe</code>)</p>
+          </div>
+          <div class="panel panel--negative">
+            <p><span data-svg="xmark" aria-hidden="true"></span> Usar <code>print()</code> para stdout em ferramentas que devem suportar pipe</p>
+            <p><span data-svg="xmark" aria-hidden="true"></span> Usar ANSI colors sem checar <code>stdout.hasTerminal</code> (polui pipes)</p>
+            <p><span data-svg="xmark" aria-hidden="true"></span> Compilar com <code>dart run</code> em producao (JIT — performance e startup pior)</p>
+            <p><span data-svg="xmark" aria-hidden="true"></span> Usar <code>Process.runSync</code> para processos longos (bloqueia event loop)</p>
+            <p><span data-svg="xmark" aria-hidden="true"></span> Esquecer de fechar <code>IOSink</code> — dados podem nao ser flushed</p>
+            <p><span data-svg="xmark" aria-hidden="true"></span> Hardcodar paths com <code>/</code> ou <code>\\</code> — usar <code>path.join()</code></p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DART. <strong>dart:io library — Process, File, stdin/stdout</strong>. Disponível em: &lt;https://api.dart.dev/dart-io/dart-io-library.html&gt;. Acesso em: 2025.</li>
+            <li>DART. <strong>args package — Argument parsing for Dart apps</strong>. Disponível em: &lt;https://pub.dev/packages/args&gt;. Acesso em: 2025.</li>
+            <li>NOAKES, B. <strong>DCli — Dart CLI scripting</strong>. Disponível em: &lt;https://pub.dev/packages/dcli&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Jogos com Flame</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Para ferramentas CLI profissionais, <strong>separe outputs</strong>: dados uteis vao para <code>stdout.write()</code> e mensagens de status/progresso/erros para <code>stderr.writeln()</code> — isso permite que o usuario redirecione a saida com <code>meutool &gt; resultado.json</code> sem "poluir" o arquivo com logs de progresso.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

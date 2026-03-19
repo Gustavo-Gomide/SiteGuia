@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="COBOL Avançado: arquivos VSAM, SORT/MERGE, subprogramas CALL, tabelas internas (arrays), REDEFINES, programação orientada a objetos em COBOL-2002, acesso a banco de dados com EXEC SQL." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Avançado</h1>
+          <p>No nível avançado, COBOL revela suas capacidades imbatíveis para processamento de dados corporativos: <strong>SORT/MERGE</strong> para ordenação de arquivos enormes sem carregar na memória, <strong>VSAM</strong> para acesso indexado (ISAM) e randômico, <strong>tabelas internas</strong> com OCCURS/SEARCH para lookup tables, e <strong>EXEC SQL</strong> para embedded SQL em DB2 e Oracle.</p>
+        </div>
+        <p class="intro-highlight">
+          O COBOL-2002 adicionou OOP completa — classes, herança, factories, interfaces. Embora raramente usado em código novo de mainframe (COBOL legado raramente precisa de OOP), entender a sintaxe é essencial para modernizar sistemas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tabelas">Tabelas Internas (Arrays) — OCCURS</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">OCCURS, SEARCH, SEARCH ALL — tabelas e busca</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+       01 WS-TABELA-ESTADOS.
+         05 WS-ESTADO OCCURS 27 TIMES
+                      INDEXED BY WS-IDX-ESTADO.
+           10 WS-UF          PIC XX.
+           10 WS-NOME-ESTADO PIC X(20).
+           10 WS-POPULACAO   PIC 9(8).
+
+       01 WS-TABELA-TRIBUTOS.
+         05 WS-TRIBUTO OCCURS 1 TO 100 TIMES
+                       DEPENDING ON WS-QTDE-TRIBUTOS
+                       ASCENDING KEY IS WS-COD-TRIB
+                       INDEXED BY WS-IDX-TRIB.
+           10 WS-COD-TRIB    PIC 9(4).
+           10 WS-ALIQUOTA    PIC V9(4).
+
+       01 WS-QTDE-TRIBUTOS   PIC 9(3).
+       01 WS-ESTADO-BUSCA    PIC XX.
+
+       PROCEDURE DIVISION.
+<span class="com">      *> ── Carregar tabela manualmente ──────────────────────────</span>
+           MOVE 'SP' TO WS-UF(1)
+           MOVE 'São Paulo' TO WS-NOME-ESTADO(1)
+           MOVE 46649132 TO WS-POPULACAO(1)
+
+           MOVE 'RJ' TO WS-UF(2)
+           MOVE 'Rio de Janeiro' TO WS-NOME-ESTADO(2)
+           MOVE 17463349 TO WS-POPULACAO(2)
+
+<span class="com">      *> ── Percorrer com PERFORM VARYING ────────────────────────</span>
+           PERFORM VARYING WS-IDX-ESTADO FROM 1 BY 1
+               UNTIL WS-IDX-ESTADO > 27
+               DISPLAY WS-UF(WS-IDX-ESTADO) SPACE
+                       WS-NOME-ESTADO(WS-IDX-ESTADO)
+           END-PERFORM.
+
+<span class="com">      *> ── SEARCH — busca linear na tabela ─────────────────────</span>
+           MOVE 'MG' TO WS-ESTADO-BUSCA.
+           SET WS-IDX-ESTADO TO 1.
+           SEARCH WS-ESTADO
+               AT END
+                   DISPLAY 'Estado não encontrado'
+               WHEN WS-UF(WS-IDX-ESTADO) = WS-ESTADO-BUSCA
+                   DISPLAY 'Estado: ' WS-NOME-ESTADO(WS-IDX-ESTADO)
+           END-SEARCH.
+
+<span class="com">      *> ── SEARCH ALL — busca binária (tabela SORTED) ──────────</span>
+           SEARCH ALL WS-TRIBUTO
+               AT END
+                   DISPLAY 'Tributo não encontrado'
+               WHEN WS-COD-TRIB(WS-IDX-TRIB) = 1234
+                   DISPLAY 'Alíquota: ' WS-ALIQUOTA(WS-IDX-TRIB)
+           END-SEARCH.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sort-merge">SORT e MERGE — Ordenação de Arquivos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">SORT com INPUT PROCEDURE e OUTPUT PROCEDURE</div>
+          <pre class="example">       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+         FILE-CONTROL.
+           SELECT ARQ-ENTRADA ASSIGN TO 'ENTRADA.DAT'
+               ORGANIZATION IS SEQUENTIAL.
+           SELECT ARQ-SAIDA ASSIGN TO 'SAIDA.DAT'
+               ORGANIZATION IS SEQUENTIAL.
+           SELECT ARQ-SORT ASSIGN TO SORT-WORK.
+
+       DATA DIVISION.
+       FILE SECTION.
+         FD ARQ-ENTRADA.
+         01 REG-ENTRADA.
+           05 RE-CODIGO    PIC 9(6).
+           05 RE-NOME      PIC X(40).
+           05 RE-DATA      PIC 9(8).       <span class="com">*> AAAAMMDD</span>
+           05 RE-VALOR     PIC 9(10)V99.
+
+         SD ARQ-SORT.                      <span class="com">*> SD = Sort Description (não FD)</span>
+         01 REG-SORT.
+           05 RS-CODIGO    PIC 9(6).
+           05 RS-DATA      PIC 9(8).
+           05 RS-NOME      PIC X(40).
+           05 RS-VALOR     PIC 9(10)V99.
+
+       WORKING-STORAGE SECTION.
+         01 WS-TOTAL-REGISTROS PIC 9(7) VALUE 0.
+         01 WS-TOTAL-VALOR     PIC 9(12)V99 VALUE 0.
+
+       PROCEDURE DIVISION.
+       MAIN-SORT.
+<span class="com">      *> Ordenar por DATA ASCENDING e CODIGO ASCENDING</span>
+<span class="com">      *> com filtros no INPUT PROCEDURE</span>
+           SORT ARQ-SORT
+               ON ASCENDING KEY RS-DATA
+               ON ASCENDING KEY RS-CODIGO
+               INPUT PROCEDURE IS PREPARA-INPUT
+               OUTPUT PROCEDURE IS PROCESSA-OUTPUT.
+
+           DISPLAY 'Total: ' WS-TOTAL-REGISTROS
+                   ' Valor: ' WS-TOTAL-VALOR.
+           STOP RUN.
+
+       PREPARA-INPUT.
+           OPEN INPUT ARQ-ENTRADA.
+           PERFORM UNTIL EOF-ENTRADA
+               READ ARQ-ENTRADA AT END
+                   MOVE 'S' TO WS-EOF
+               NOT AT END
+<span class="com">      *>          Filtrar apenas registros de 2024</span>
+                   IF RE-DATA(1:4) = '2024'
+                       MOVE RE-CODIGO TO RS-CODIGO
+                       MOVE RE-DATA   TO RS-DATA
+                       MOVE RE-NOME   TO RS-NOME
+                       MOVE RE-VALOR  TO RS-VALOR
+                       RELEASE REG-SORT    <span class="com">*> enviar para sort</span>
+                   END-IF
+               END-READ
+           END-PERFORM.
+           CLOSE ARQ-ENTRADA.
+
+       PROCESSA-OUTPUT.
+           OPEN OUTPUT ARQ-SAIDA.
+           PERFORM UNTIL EOF-SORT
+               RETURN ARQ-SORT AT END    <span class="com">*> RETURN = ler do stream ordenado</span>
+                   MOVE 'S' TO WS-EOF-SORT
+               NOT AT END
+                   ADD 1 TO WS-TOTAL-REGISTROS
+                   ADD RS-VALOR TO WS-TOTAL-VALOR
+                   WRITE REG-SAIDA FROM REG-SORT
+               END-RETURN
+           END-PERFORM.
+           CLOSE ARQ-SAIDA.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="call">Subprogramas — CALL</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CALL estático e dinâmico — inter-program communication</div>
+          <pre class="example"><span class="com">      *> ── Programa chamador ────────────────────────────────────</span>
+       WORKING-STORAGE SECTION.
+       01 WS-ENTRADA         PIC 9(7)V99.
+       01 WS-RESULTADO       PIC 9(7)V99.
+       01 WS-STATUS-CALL     PIC 9(2).
+       01 WS-NOME-PROGRAMA   PIC X(8).
+
+       PROCEDURE DIVISION.
+<span class="com">      *> CALL estático — nome literal</span>
+           CALL 'CALCJUROS'
+               USING BY REFERENCE WS-ENTRADA
+                     BY CONTENT  1.5               <span class="com">*> taxa = 1.5%</span>
+                     BY REFERENCE WS-RESULTADO
+               ON EXCEPTION
+                   DISPLAY 'Programa CALCJUROS não encontrado'
+           END-CALL.
+
+<span class="com">      *> CALL dinâmico — nome em variável</span>
+           MOVE 'CALCJUROS' TO WS-NOME-PROGRAMA.
+           CALL WS-NOME-PROGRAMA
+               USING WS-ENTRADA WS-RESULTADO.
+
+<span class="com">      *> ── Subprograma chamado (CALCJUROS.cob) ──────────────────</span>
+       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CALCJUROS.
+
+       DATA DIVISION.
+       LINKAGE SECTION.                    <span class="com">*> LINKAGE = parâmetros recebidos</span>
+         01 LS-PRINCIPAL  PIC 9(7)V99.
+         01 LS-TAXA       PIC 9(3)V99.
+         01 LS-RESULTADO  PIC 9(7)V99.
+
+       PROCEDURE DIVISION USING LS-PRINCIPAL LS-TAXA LS-RESULTADO.
+           COMPUTE LS-RESULTADO ROUNDED =
+               LS-PRINCIPAL * (1 + LS-TAXA / 100).
+           EXIT PROGRAM.                   <span class="com">*> retornar ao chamador</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redefines">REDEFINES — Múltiplas Visões do Mesmo Campo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">REDEFINES — acesso alternativo ao mesmo espaço de memória</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+<span class="com">      *> REDEFINES permite ver o mesmo bytes de 2 formas diferentes</span>
+
+       01 WS-DATA-NUMERICA    PIC 9(8).          <span class="com">*> 20241225</span>
+       01 WS-DATA-FORMATADA REDEFINES WS-DATA-NUMERICA.
+         05 WS-ANO           PIC 9(4).           <span class="com">*> 2024</span>
+         05 WS-MES           PIC 9(2).           <span class="com">*> 12</span>
+         05 WS-DIA           PIC 9(2).           <span class="com">*> 25</span>
+
+<span class="com">      *> Registro com layout variável</span>
+       01 WS-REGISTRO.
+         05 WS-TIPO-REG      PIC X.
+         05 WS-DADOS-COMUNS  PIC X(79).
+
+       01 WS-REG-PESSOA REDEFINES WS-REGISTRO.
+         05 FILLER           PIC X.
+         05 WS-CPF           PIC X(11).
+         05 WS-NOME-PESSOA   PIC X(40).
+         05 WS-NASCIMENTO    PIC 9(8).
+         05 FILLER           PIC X(20).
+
+       01 WS-REG-EMPRESA REDEFINES WS-REGISTRO.
+         05 FILLER           PIC X.
+         05 WS-CNPJ          PIC X(14).
+         05 WS-RAZAO-SOCIAL  PIC X(60).
+         05 FILLER           PIC X(5).
+
+       PROCEDURE DIVISION.
+           MOVE 20241225 TO WS-DATA-NUMERICA.
+           DISPLAY WS-ANO '-' WS-MES '-' WS-DIA.  <span class="com">*> 2024-12-25</span>
+
+           EVALUATE WS-TIPO-REG
+               WHEN 'P'  PERFORM PROCESSAR-PESSOA
+               WHEN 'E'  PERFORM PROCESSAR-EMPRESA
+           END-EVALUATE.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="exec-sql">Embedded SQL — EXEC SQL</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">COBOL + DB2 — SELECT, INSERT, cursor com FETCH</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+       EXEC SQL INCLUDE SQLCA END-EXEC.      <span class="com">*> SQL Communication Area</span>
+
+       01 WS-ID-CLIENTE     PIC 9(6).
+       01 WS-NOME-CLIENTE   PIC X(40).
+       01 WS-SALDO          PIC 9(10)V99.
+
+       EXEC SQL
+           DECLARE C1 CURSOR FOR
+           SELECT NOME, SALDO
+           FROM CLIENTES
+           WHERE STATUS = 'A'
+             AND SALDO > :WS-SALDO
+           ORDER BY SALDO DESC
+       END-EXEC.
+
+       PROCEDURE DIVISION.
+<span class="com">      *> ── SELECT INTO (uma linha) ──────────────────────────────</span>
+           MOVE 12345 TO WS-ID-CLIENTE.
+           EXEC SQL
+               SELECT NOME, SALDO
+               INTO :WS-NOME-CLIENTE, :WS-SALDO
+               FROM CLIENTES
+               WHERE ID = :WS-ID-CLIENTE
+           END-EXEC.
+
+           EVALUATE SQLCODE
+               WHEN 0
+                   DISPLAY 'Cliente: ' WS-NOME-CLIENTE
+               WHEN 100
+                   DISPLAY 'Não encontrado (SQLCODE=100)'
+               WHEN OTHER
+                   DISPLAY 'Erro SQL: ' SQLCODE
+                   DISPLAY SQLERRM
+           END-EVALUATE.
+
+<span class="com">      *> ── Cursor para múltiplas linhas ─────────────────────────</span>
+           MOVE 5000.00 TO WS-SALDO.
+           EXEC SQL OPEN C1 END-EXEC.
+
+           PERFORM UNTIL SQLCODE = 100
+               EXEC SQL
+                   FETCH C1 INTO :WS-NOME-CLIENTE, :WS-SALDO
+               END-EXEC
+               IF SQLCODE = 0
+                   DISPLAY WS-NOME-CLIENTE SPACE WS-SALDO
+               END-IF
+           END-PERFORM.
+
+           EXEC SQL CLOSE C1 END-EXEC.
+
+<span class="com">      *> ── INSERT / UPDATE ───────────────────────────────────────</span>
+           EXEC SQL
+               INSERT INTO TRANSACOES (ID, CLIENT_ID, VALOR, DT_TRANSACAO)
+               VALUES (SEQ_TRANS.NEXTVAL, :WS-ID-CLIENTE,
+                       :WS-SALDO, CURRENT_DATE)
+           END-EXEC.
+
+           EXEC SQL COMMIT END-EXEC.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>IBM. <strong>DB2 for z/OS — Application Programming with COBOL</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/db2-for-zos&gt;. Acesso em: 2025.</li>
+            <li>GnuCOBOL Project. <strong>GnuCOBOL Programmer's Guide — SORT/MERGE</strong>. Disponível em: &lt;https://gnucobol.sourceforge.io&gt;. Acesso em: 2025.</li>
+            <li>STERN, N.; STERN, R.A.; LEY, J. <strong>COBOL for the 21st Century</strong>. 11. ed. Wiley, 2011. Cap. 6 — Working with Tables.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do COBOL</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <code>SEARCH ALL</code> exige que a tabela esteja ordenada (<code>ASCENDING KEY</code> declarado) e realiza busca binária em O(log n) — enquanto <code>SEARCH</code> faz busca linear O(n). Para tabelas de código fiscal com centenas de alíquotas ou tarifas, a diferença entre 100 comparações e 7 comparações importa quando o mesmo código executa milhões de vezes por dia em batch.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

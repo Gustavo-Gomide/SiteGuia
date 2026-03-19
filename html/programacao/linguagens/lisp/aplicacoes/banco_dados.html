@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Lisp em banco de dados: CLSQL e Postmodern, SQL parametrizado, migracoes e pool de conexao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Lisp - Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Lisp - Banco de Dados</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="hero">Persistencia em Lisp</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="lisp" aria-hidden="true"></span></div>
+          <h1>SQL robusto com Postmodern e CLSQL</h1>
+          <p>Aplicacoes Lisp em producao normalmente usam PostgreSQL com consultas parametrizadas, transacoes explicitas e observabilidade de query.</p>
+        </div>
+        <p class="intro-highlight">A qualidade da camada de dados em Lisp depende menos de "magic ORM" e mais de contratos claros de acesso, migracoes versionadas e monitoração de performance.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="bibliotecas" class="section-title">Bibliotecas e abordagem</h2>
+        <div class="grid grid--2">
+          <div class="card">
+            <h3>Postmodern</h3>
+            <p>Foco em PostgreSQL, SQL direto e boa integracao com transacoes. Boa opcao para times que querem controle da query.</p>
+          </div>
+          <div class="card">
+            <h3>CLSQL</h3>
+            <p>Camada de abstração mais ampla com drivers diversos. Pode acelerar prototipos, mas exige cuidado com tuning de query.</p>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Tema</th><th>Pratica recomendada</th><th>Erro comum</th></tr></thead>
+          <tbody>
+            <tr><td>SQL</td><td>Parametros nomeados/posicionais</td><td>Concatenar string de query</td></tr>
+            <tr><td>Migracoes</td><td>Scripts idempotentes e versionados</td><td>DDL manual em producao</td></tr>
+            <tr><td>Pool</td><td>Limite por servico e timeout</td><td>Conexao aberta sem controle</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="exemplo-sql" class="section-title">SQL parametrizado e transacao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Common Lisp - Postmodern com transacao segura</div>
+          <pre class="example"><span class="com">;; Exemplo didatico: inserir pedido e itens de forma atomica</span>
+(<span class="kw">defun</span> <span class="fn">criar-pedido</span> (cliente-id itens)
+  (postmodern:with-transaction ()
+    (<span class="kw">let*</span> ((pedido-id
+            (postmodern:query
+             <span class="str">\"insert into pedidos(cliente_id, criado_em) values($1, now()) returning id\"</span>
+             cliente-id
+             :single)))
+      (<span class="kw">dolist</span> (item itens)
+        (postmodern:execute
+         <span class="str">\"insert into pedido_itens(pedido_id, sku, qtd) values($1, $2, $3)\"</span>
+         pedido-id
+         (getf item :sku)
+         (getf item :qtd)))
+      pedido-id)))</pre>
+        </div>
+        <p>Quando tudo roda na mesma transacao, voce evita inconsistencias entre cabecalho do pedido e itens. Se uma insercao falhar, o rollback preserva integridade.</p>
+        <div class="panel">
+          <h3 class="panel-title">Migracoes</h3>
+          <p>Use um diretorio de scripts versionados (ex.: 001-init.sql, 002-index.sql) e registre o estado aplicado em tabela de controle.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tradeoffs-bd" class="section-title">Limites e trade-offs</h2>
+        <div class="panel">
+          <p>Lisp oferece liberdade para modelar DSL de consulta, mas essa liberdade pode virar codigo inconsistente se o time nao estabelecer padroes de naming, camada de repositorio e revisao de SQL.</p>
+        </div>
+        <div class="panel">
+          <p>Para equipes grandes, adotar convenções fortes (ex.: pacote exclusivo de persistencia) reduz acoplamento e facilita onboarding.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li><a href="https://marijnhaverbeke.nl/postmodern/" target="_blank" rel="noopener">POSTMODERN. Common Lisp PostgreSQL Library.</a></li>
+          <li><a href="https://clsql.common-lisp.dev/" target="_blank" rel="noopener">CLSQL. Documentation and Drivers.</a></li>
+          <li><a href="https://www.postgresql.org/docs/current/sql.html" target="_blank" rel="noopener">POSTGRESQL GLOBAL DEVELOPMENT GROUP. SQL Commands.</a></li>
+          <li><a href="https://12factor.net/backing-services" target="_blank" rel="noopener">WIGGINS, A. The Twelve-Factor App: Backing Services.</a></li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Lisp, uma camada de dados madura nasce de SQL bem projetado, transacoes claras e disciplina operacional.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/aplicacoes/web.html">Lisp para backend web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/aplicacoes/dados_ia.html">Lisp em dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/guia/introducao.html">Fundamentos de Lisp</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

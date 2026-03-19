@@ -1,0 +1,352 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SQL Server: T-SQL, edições, SSMS, Always On, Columnstore, SQL Server no Linux, stored procedures e exemplos práticos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SQL Server | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>SQL Server</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">SQL Server — A Potência da Microsoft</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>SQL Server — A Potência da Microsoft</h1>
+          <p>O SGBD da Microsoft para o ecossistema Windows, .NET e Azure.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Microsoft SQL Server</strong> é o SGBD padrão do ecossistema Microsoft: profundamente
+          integrado ao Windows, .NET e Azure, com edicões gratuitas para dev e licenças enterprise para produção crítica.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é SQL Server?</h2>
+        <p>
+          O <strong>Microsoft SQL Server</strong> é um SGBD relacional desenvolvido desde 1989 pela Microsoft.
+          Originalmente uma parceria com a Sybase, o SQL Server cresceu para se tornar o banco preferido em
+          empresas que operam no ecossistema Windows e Azure. Em 2017 passou a rodar nativamente no Linux e Docker.
+        </p>
+        <p>
+          Sua linguagem procedural, o <strong>T-SQL</strong> (Transact-SQL), é um superconjunto do SQL padrão
+          com extensões proprietárias para controle de fluxo, variáveis e tratamento de erros — semelhante
+          ao PL/SQL do Oracle e ao PL/pgSQL do PostgreSQL.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            As edições <strong>Developer</strong> e <strong>Express</strong> são gratuitas e suficientes
+            para aprendizado e projetos pequenos — sem nenhuma restrição de funcionalidades na edição Developer.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tsql" class="section-title">T-SQL — Transact-SQL</h2>
+        <p>
+          Assim como o Oracle tem PL/SQL, a Microsoft tem o <strong>T-SQL</strong>  um superconjunto do SQL padrão ANSI
+          com extensões proprietárias para variáveis, controle de fluxo, tratamento de erros e operações de alto desempenho.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">T-SQL</div>
+          <pre class="example"><span class="com">-- TOP ao invés de LIMIT (diferença do padrão ANSI)</span>
+<span class="kw">SELECT</span> TOP <span class="num">5</span> nome, salario
+<span class="kw">FROM</span> funcionarios
+<span class="kw">ORDER</span> <span class="kw">BY</span> salario <span class="kw">DESC</span>;
+
+<span class="com">-- Variáveis T-SQL começam com @</span>
+<span class="kw">DECLARE</span> @Bonus <span class="tp">INT</span>;
+<span class="kw">SET</span> @Bonus = <span class="num">1000</span>;
+
+<span class="kw">UPDATE</span> funcionarios
+<span class="kw">SET</span> salario = salario + @Bonus
+<span class="kw">WHERE</span> ativo = <span class="num">1</span>;
+
+<span class="com">-- CTE com ROW_NUMBER  top 3 por departamento</span>
+<span class="kw">WITH</span> RankedFuncionarios <span class="kw">AS</span> (
+  <span class="kw">SELECT</span> nome, salario, departamento,
+         ROW_NUMBER() <span class="kw">OVER</span> (<span class="kw">PARTITION</span> <span class="kw">BY</span> departamento <span class="kw">ORDER</span> <span class="kw">BY</span> salario <span class="kw">DESC</span>) <span class="kw">AS</span> rn
+  <span class="kw">FROM</span> funcionarios
+)
+<span class="kw">SELECT</span> nome, salario, departamento
+<span class="kw">FROM</span> RankedFuncionarios
+<span class="kw">WHERE</span> rn &lt;= <span class="num">3</span>;
+
+<span class="com">-- MERGE (Upsert)  nativo no T-SQL</span>
+<span class="kw">MERGE</span> <span class="kw">INTO</span> clientes <span class="kw">AS</span> target
+<span class="kw">USING</span> clientes_atualizados <span class="kw">AS</span> source
+  <span class="kw">ON</span> target.id = source.id
+<span class="kw">WHEN</span> MATCHED <span class="kw">THEN</span>
+  <span class="kw">UPDATE</span> <span class="kw">SET</span> target.email = source.email, target.nome = source.nome
+<span class="kw">WHEN</span> <span class="kw">NOT</span> MATCHED <span class="kw">THEN</span>
+  <span class="kw">INSERT</span> (id, nome, email)
+  <span class="kw">VALUES</span> (source.id, source.nome, source.email);</pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Diferenças do padrão SQL:</strong> paginação usa
+            <code class="code-inline">OFFSET n ROWS FETCH NEXT n ROWS ONLY</code> (não <code class="code-inline">LIMIT</code>).
+            Strings usam aspas simples apenas. Data/hora usa <code class="code-inline">GETDATE()</code> em vez de
+            <code class="code-inline">NOW()</code>.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="stored-procedures" class="section-title">Stored Procedures</h2>
+        <p>
+          O T-SQL permite criar rotinas armazenadas diretamente no banco com controle de fluxo completo,
+          tratamento de exceções e transações  compiladas e cacheadas pelo servidor para execuções repetidas eficientes.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">T-SQL</div>
+          <pre class="example"><span class="kw">CREATE</span> OR ALTER <span class="kw">PROCEDURE</span> TransferirSaldo
+    @ContaOrigem  <span class="tp">INT</span>,
+    @ContaDestino <span class="tp">INT</span>,
+    @Valor        <span class="tp">DECIMAL</span>(<span class="num">15</span>,<span class="num">2</span>)
+AS
+<span class="kw">BEGIN</span>
+    <span class="kw">SET</span> NOCOUNT ON;
+    <span class="kw">DECLARE</span> @SaldoOrigem <span class="tp">DECIMAL</span>(<span class="num">15</span>,<span class="num">2</span>);
+
+    BEGIN TRY
+        BEGIN TRANSACTION;
+
+        <span class="kw">SELECT</span> @SaldoOrigem = saldo
+        <span class="kw">FROM</span> contas
+        <span class="kw">WHERE</span> id = @ContaOrigem
+        WITH (UPDLOCK, ROWLOCK);  <span class="com">-- Lock evita race condition</span>
+
+        <span class="kw">IF</span> @SaldoOrigem &lt; @Valor
+            THROW <span class="num">50001</span>, <span class="str">'Saldo insuficiente para transferência.'</span>, <span class="num">1</span>;
+
+        <span class="kw">UPDATE</span> contas <span class="kw">SET</span> saldo = saldo - @Valor <span class="kw">WHERE</span> id = @ContaOrigem;
+        <span class="kw">UPDATE</span> contas <span class="kw">SET</span> saldo = saldo + @Valor <span class="kw">WHERE</span> id = @ContaDestino;
+
+        <span class="kw">INSERT</span> <span class="kw">INTO</span> historico_transacoes (origem, destino, valor, realizado_em)
+        <span class="kw">VALUES</span> (@ContaOrigem, @ContaDestino, @Valor, GETDATE());
+
+        COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+        <span class="kw">IF</span> @@TRANCOUNT > <span class="num">0</span>
+            ROLLBACK TRANSACTION;
+        THROW;  <span class="com">-- Re-lança exceção para o caller</span>
+    END CATCH;
+<span class="kw">END</span>;
+
+<span class="com">-- Executar</span>
+EXEC TransferirSaldo @ContaOrigem = <span class="num">101</span>, @ContaDestino = <span class="num">205</span>, @Valor = <span class="num">350.00</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ferramentas" class="section-title">Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>SSMS — SQL Server Management Studio</h3>
+            <p>A ferramenta visual oficial gratuita, considerada por muitos DBAs a melhor IDE de banco de dados jamais
+            criada. Assistentes visuais, diagramas ER, depuração de stored procedures, plano de execução visual e
+            monitoramento de performance. Disponível apenas no Windows.</p>
+          </div>
+          <div class="card">
+            <h3>Azure Data Studio</h3>
+            <p>A alternativa multiplataforma (Windows, macOS, Linux) baseada no VS Code. Mais leve que o SSMS,
+            com suporte a notebooks SQL, extensões da comunidade e integração nativa com Azure. Preferida para
+            desenvolvimento fora do Windows.</p>
+          </div>
+          <div class="card">
+            <h3>SQL Server Profiler</h3>
+            <p>Ferramenta de rastreamento que captura eventos do servidor em tempo real  queries executadas, logins,
+            erros, deadlocks. Essencial para diagnóstico de problemas de performance em produção.</p>
+          </div>
+          <div class="card">
+            <h3>Database Engine Tuning Advisor</h3>
+            <p>Analisa uma carga de trabalho e sugere automaticamente índices, estatísticas e views indexadas que
+            melhorariam a performance. Gera scripts de implementação prontos para revisão e aplicação.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="edicoes" class="section-title">Edições e Custo</h2>
+        <p>
+          Diferente do MySQL (totalmente gratuito), o SQL Server tem um modelo com diferentes edições para diferentes cenários.
+        </p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Developer</h3>
+            <p class="text-secondary">
+              <strong>Gratuita.</strong> Inclui todos os recursos da versão Enterprise, mas licenciada exclusivamente
+              para desenvolvimento e testes  não pode ser usada em produção. A escolha para desenvolvedores que
+              querem testar recursos avançados sem nenhum custo.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Express</h3>
+            <p class="text-secondary">
+              <strong>Gratuita.</strong> Pode ser usada em produção, mas com limitações: máximo de 10 GB de dados
+              por banco e restrições de CPU/RAM. Ideal para aplicações pequenas, departamentais e protótipos
+              com baixo volume de dados.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Standard</h3>
+            <p class="text-secondary">
+              <strong>Paga.</strong> Sem os limites do Express. Inclui replicação e recursos de nível médio.
+              Para PMEs que precisam de banco estável e performático sem o custo da edição Enterprise.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Enterprise</h3>
+            <p class="text-secondary">
+              <strong>Paga ($$$$).</strong> Sem nenhuma limitação. Inclui Always On Availability Groups,
+              Columnstore Indexes, criptografia avançada, BI integrado e suporte oficial da Microsoft.
+              Para grandes corporações com sistemas críticos de missão.
+            </p>
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Azure SQL Database:</strong> A versão totalmente gerenciada na nuvem da Microsoft elimina a
+            necessidade de instalar e manter servidor. Pagamento por uso, escalabilidade automática e backups incluídos.
+            Muito popular em projetos que já operam no ecossistema Azure.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="linux" class="section-title">SQL Server no Linux e Docker</h2>
+        <p>
+          Desde o SQL Server 2017, a Microsoft portou o banco para Linux e containers Docker  uma mudança histórica
+          que refletiu a nova filosofia open-source adotada sob Satya Nadella.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell / T-SQL</div>
+          <pre class="example"><span class="com"># Rodar SQL Server 2022 em Docker</span>
+docker run -e <span class="str">"ACCEPT_EULA=Y"</span> -e <span class="str">"MSSQL_SA_PASSWORD=SenhaForte!123"</span> \
+  -p 1433:1433 --name sqlserver2022 \
+  -d mcr.microsoft.com/mssql/server:2022-latest
+
+<span class="com"># Conectar com sqlcmd de dentro do container</span>
+docker exec -it sqlserver2022 /opt/mssql-tools18/bin/sqlcmd \
+  -S localhost -U SA -P <span class="str">"SenhaForte!123"</span> -No
+
+<span class="com">-- Verificar versão</span>
+<span class="kw">SELECT</span> @@VERSION;
+GO
+
+<span class="com">-- Criar banco e tabela de teste</span>
+<span class="kw">CREATE</span> DATABASE MeuBanco;
+GO
+USE MeuBanco;
+<span class="kw">CREATE</span> <span class="kw">TABLE</span> teste (id <span class="tp">INT</span>, nome <span class="tp">VARCHAR</span>(<span class="num">50</span>));
+<span class="kw">INSERT</span> <span class="kw">INTO</span> teste <span class="kw">VALUES</span> (<span class="num">1</span>, <span class="str">'Olá SQL Server no Linux!'</span>);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> teste;
+GO</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Segurança:</strong> nunca use senhas hardcoded em produção. Use variáveis de ambiente ou
+            secrets managers (Azure Key Vault, HashiCorp Vault). A conta SA (System Administrator) é o superusuário
+            — desabilite-a em produção e crie contas com os privilégios mínimos necessários.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="avancados" class="section-title">Recursos Avançados</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Always On Availability Groups</h3>
+            <p>Alta disponibilidade empresarial sem shared storage. Um grupo de réplicas sincronizadas que permite
+            failover automático em segundos. Leituras podem ser distribuídas entre réplicas secundárias para
+            escalar horizontalmente.</p>
+          </div>
+          <div class="card">
+            <h3>Columnstore Indexes</h3>
+            <p>Índices orientados a coluna que comprimem dados em até 10 e aceleram queries analíticas (OLAP) em
+            10 a 100. Perfeitos para data warehouses e relatórios sobre grandes volumes históricos sem mover
+            dados para outro sistema.</p>
+          </div>
+          <div class="card">
+            <h3>In-Memory OLTP (Hekaton)</h3>
+            <p>Tabelas e stored procedures compiladas nativamente que residem em memória. Podem atingir 30 mais
+            throughput que tabelas em disco para cargas OLTP de escrita intensiva, como sistemas de pedidos em
+            pico de carga.</p>
+          </div>
+          <div class="card">
+            <h3>Always Encrypted</h3>
+            <p>Criptografia fim-a-fim onde os dados permanecem criptografados mesmo durante o processamento 
+            nem o DBA consegue ver o valor em texto plano. As chaves de criptografia ficam somente no cliente,
+            nunca no servidor.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>SQL Server Documentation</strong>. 2026. Disponível em: <a href="https://learn.microsoft.com/en-us/sql/sql-server/" target="_blank" rel="noopener">learn.microsoft.com/sql-server</a>.</li>
+            <li>DELANEY, Kalen. <strong>Microsoft SQL Server 2019 Internals</strong>. Microsoft Press, 2020.</li>
+            <li>FRITCHEY, Grant. <strong>SQL Server Execution Plans</strong>. 3. ed. Redgate, 2018. Disponível em: <a href="https://www.red-gate.com/library/sql-server-execution-plans" target="_blank" rel="noopener">red-gate.com</a>.</li>
+            <li>KORTH, Henry F.; SILBERSCHATZ, Abraham; SUDARSHAN, S. <strong>Database System Concepts</strong>. 7. ed. New York: McGraw-Hill, 2019.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Explore outros SGBDs do ecossistema relacional e compare os recursos por cenário.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/sgbds/oracle_db.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Oracle Database</a></li>
+          <li><a href="/html/programacao/banco_de_dados/sgbds/postgresql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>PostgreSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/sql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>SQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Ferramentas mudam; o entendimento dos dados persiste."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

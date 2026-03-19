@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do TypeScript: union types, generics, narrowing, classes, interfaces, enums e utility types." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>Fundamentos do TypeScript</h1>
+          <p>Union types, narrowing, generics, classes orientadas a objetos, enums, interfaces e os utility types que cobrem 80% dos casos de uso diario.</p>
+        </div>
+        <p class="intro-highlight">
+          O sistema de tipos estrutural do TypeScript significa que dois tipos sao compativeis se tiverem a mesma forma (shape) — nao precisam herdar do mesmo pai. O narrowing via type guards deixa o compilador rastrear que tipo e possivel em cada ramo do codigo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="union-narrowing">Union Types e Narrowing</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Union, discriminated union e type guards</div>
+          <pre class="example"><span class="com">// Union simples</span>
+<span class="kw">type</span> <span class="tp">Id</span> = <span class="tp">string</span> | <span class="tp">number</span>;
+
+<span class="kw">function</span> <span class="fn">formatarId</span>(id: <span class="tp">Id</span>): <span class="tp">string</span> {
+  <span class="kw">if</span> (<span class="kw">typeof</span> id === <span class="str">"string"</span>) {
+    <span class="kw">return</span> id.<span class="fn">toUpperCase</span>();  <span class="com">// TS sabe: string</span>
+  }
+  <span class="kw">return</span> id.<span class="fn">toFixed</span>(<span class="num">0</span>);        <span class="com">// TS sabe: number</span>
+}
+
+<span class="com">// Discriminated union — padrao mais importante do TS</span>
+<span class="kw">type</span> <span class="tp">Resultado</span>&lt;T&gt; =
+  | { ok: <span class="kw">true</span>;  dado: T      }
+  | { ok: <span class="kw">false</span>; erro: <span class="tp">string</span> };
+
+<span class="kw">function</span> <span class="fn">processar</span>&lt;T&gt;(res: <span class="tp">Resultado</span>&lt;T&gt;): T | <span class="kw">null</span> {
+  <span class="kw">if</span> (res.ok) {
+    <span class="kw">return</span> res.dado;  <span class="com">// TS sabe que res.dado existe aqui</span>
+  }
+  <span class="fn">console</span>.<span class="fn">error</span>(res.erro);
+  <span class="kw">return null</span>;
+}
+
+<span class="com">// Type guard customizado (is)</span>
+<span class="kw">function</span> <span class="fn">ehString</span>(v: <span class="tp">unknown</span>): v <span class="kw">is</span> <span class="tp">string</span> {
+  <span class="kw">return</span> <span class="kw">typeof</span> v === <span class="str">"string"</span>;
+}
+
+<span class="com">// Assertion function (asserts)</span>
+<span class="kw">function</span> <span class="fn">assertNonNull</span>&lt;T&gt;(val: T | <span class="kw">null</span>): <span class="kw">asserts</span> val <span class="kw">is</span> T {
+  <span class="kw">if</span> (val === <span class="kw">null</span>) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">"Valor nulo inesperado"</span>);
+}
+
+<span class="com">// in narrowing — estreitar por propriedade</span>
+<span class="kw">interface</span> <span class="tp">Gato</span>  { tipo: <span class="str">"gato"</span>;  miar(): <span class="tp">void</span> }
+<span class="kw">interface</span> <span class="tp">Cachorro</span> { tipo: <span class="str">"cachorro"</span>; latir(): <span class="tp">void</span> }
+<span class="kw">type</span> <span class="tp">Animal</span> = <span class="tp">Gato</span> | <span class="tp">Cachorro</span>;
+
+<span class="kw">function</span> <span class="fn">fazerSom</span>(a: <span class="tp">Animal</span>) {
+  <span class="kw">switch</span> (a.tipo) {
+    <span class="kw">case</span> <span class="str">"gato"</span>:     a.<span class="fn">miar</span>(); <span class="kw">break</span>;
+    <span class="kw">case</span> <span class="str">"cachorro"</span>: a.<span class="fn">latir</span>(); <span class="kw">break</span>;
+    <span class="kw">default</span>: {
+      <span class="kw">const</span> _esgotado: <span class="tp">never</span> = a; <span class="com">// erro se faltar um case</span>
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generics">Generics</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Generics com constraints, defaults e inferencia</div>
+          <pre class="example"><span class="com">// Funcao generica simples</span>
+<span class="kw">function</span> <span class="fn">primeiro</span>&lt;T&gt;(arr: T[]): T | <span class="kw">undefined</span> {
+  <span class="kw">return</span> arr[<span class="num">0</span>];
+}
+<span class="fn">primeiro</span>([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]);  <span class="com">// T inferido como number</span>
+<span class="fn">primeiro</span>([<span class="str">"a"</span>, <span class="str">"b"</span>]); <span class="com">// T inferido como string</span>
+
+<span class="com">// Constraint: T deve ter length</span>
+<span class="kw">function</span> <span class="fn">maior</span>&lt;T <span class="kw">extends</span> { length: <span class="tp">number</span> }&gt;(a: T, b: T): T {
+  <span class="kw">return</span> a.length >= b.length ? a : b;
+}
+<span class="fn">maior</span>(<span class="str">"hello"</span>, <span class="str">"hi"</span>);       <span class="com">// "hello"</span>
+<span class="fn">maior</span>([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>], [<span class="num">4</span>]);    <span class="com">// [1, 2, 3]</span>
+
+<span class="com">// Interface generica + default</span>
+<span class="kw">interface</span> <span class="tp">Repositorio</span>&lt;T, <span class="tp">ID</span> = <span class="tp">number</span>&gt; {
+  <span class="fn">buscarPorId</span>(id: <span class="tp">ID</span>): <span class="tp">Promise</span>&lt;T | <span class="kw">null</span>&gt;;
+  <span class="fn">listar</span>(): <span class="tp">Promise</span>&lt;T[]&gt;;
+  <span class="fn">salvar</span>(entidade: T): <span class="tp">Promise</span>&lt;T&gt;;
+  <span class="fn">deletar</span>(id: <span class="tp">ID</span>): <span class="tp">Promise</span>&lt;<span class="tp">void</span>&gt;;
+}
+
+<span class="com">// keyof + typeof para tipos derivados</span>
+<span class="kw">const</span> cores = { vermelho: <span class="str">"#f00"</span>, verde: <span class="str">"#0f0"</span>, azul: <span class="str">"#00f"</span> } <span class="kw">as const</span>;
+<span class="kw">type</span> <span class="tp">NomeCor</span> = <span class="kw">keyof typeof</span> cores;   <span class="com">// "vermelho" | "verde" | "azul"</span>
+<span class="kw">type</span> <span class="tp">ValorCor</span> = (<span class="kw">typeof</span> cores)[<span class="tp">NomeCor</span>]; <span class="com">// "#f00" | "#0f0" | "#00f"</span>
+
+<span class="com">// Mapped type</span>
+<span class="kw">type</span> <span class="tp">Opcional</span>&lt;T&gt; = { [K <span class="kw">in keyof</span> T]?: T[K] };         <span class="com">// como Partial&lt;T&gt;</span>
+<span class="kw">type</span> <span class="tp">SoLeitura</span>&lt;T&gt; = { <span class="kw">readonly</span> [K <span class="kw">in keyof</span> T]: T[K] }; <span class="com">// como Readonly&lt;T&gt;</span>
+
+<span class="com">// Conditional type</span>
+<span class="kw">type</span> <span class="tp">Achatar</span>&lt;T&gt; = T <span class="kw">extends</span> <span class="tp">Array</span>&lt;<span class="kw">infer</span> U&gt; ? U : T;
+<span class="kw">type</span> <span class="tp">A</span> = <span class="tp">Achatar</span>&lt;<span class="tp">number</span>[]&gt;;   <span class="com">// number</span>
+<span class="kw">type</span> <span class="tp">B</span> = <span class="tp">Achatar</span>&lt;<span class="tp">string</span>&gt;;     <span class="com">// string</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="classes">Classes e OOP</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Classes com visibilidade, abstract e implements</div>
+          <pre class="example"><span class="kw">abstract class</span> <span class="tp">Forma</span> {
+  <span class="kw">constructor</span>(<span class="kw">protected readonly</span> cor: <span class="tp">string</span>) {}
+
+  <span class="kw">abstract</span> <span class="fn">area</span>(): <span class="tp">number</span>;
+  <span class="kw">abstract</span> <span class="fn">perimetro</span>(): <span class="tp">number</span>;
+
+  <span class="fn">descrever</span>(): <span class="tp">string</span> {
+    <span class="kw">return</span> <span class="str">`${this.cor}: area=${this.area().toFixed(2)}`</span>;
+  }
+}
+
+<span class="kw">class</span> <span class="tp">Circulo</span> <span class="kw">extends</span> <span class="tp">Forma</span> {
+  <span class="kw">constructor</span>(
+    <span class="kw">private readonly</span> raio: <span class="tp">number</span>,
+    cor: <span class="tp">string</span>
+  ) {
+    <span class="kw">super</span>(cor);
+  }
+
+  <span class="kw">override</span> <span class="fn">area</span>(): <span class="tp">number</span>      { <span class="kw">return</span> Math.PI * this.raio ** <span class="num">2</span>; }
+  <span class="kw">override</span> <span class="fn">perimetro</span>(): <span class="tp">number</span> { <span class="kw">return</span> <span class="num">2</span> * Math.PI * this.raio; }
+}
+
+<span class="kw">class</span> <span class="tp">Retangulo</span> <span class="kw">extends</span> <span class="tp">Forma</span> {
+  <span class="kw">constructor</span>(
+    <span class="kw">private</span> largura: <span class="tp">number</span>,
+    <span class="kw">private</span> altura:  <span class="tp">number</span>,
+    cor: <span class="tp">string</span>
+  ) {
+    <span class="kw">super</span>(cor);
+  }
+
+  <span class="kw">override</span> <span class="fn">area</span>(): <span class="tp">number</span>      { <span class="kw">return</span> this.largura * this.altura; }
+  <span class="kw">override</span> <span class="fn">perimetro</span>(): <span class="tp">number</span> { <span class="kw">return</span> <span class="num">2</span> * (this.largura + this.altura); }
+}
+
+<span class="com">// Interface implementada por classe</span>
+<span class="kw">interface</span> <span class="tp">Serializavel</span>&lt;T&gt; {
+  <span class="fn">toJSON</span>():  <span class="tp">string</span>;
+  <span class="kw">static</span> <span class="fn">fromJSON</span>(json: <span class="tp">string</span>): T;
+}
+
+<span class="com">// Uso polimorfismo</span>
+<span class="kw">const</span> formas: <span class="tp">Forma</span>[] = [
+  <span class="kw">new</span> <span class="tp">Circulo</span>(<span class="num">5</span>, <span class="str">"vermelho"</span>),
+  <span class="kw">new</span> <span class="tp">Retangulo</span>(<span class="num">4</span>, <span class="num">6</span>, <span class="str">"azul"</span>),
+];
+formas.<span class="fn">forEach</span>(f => <span class="fn">console</span>.<span class="fn">log</span>(f.<span class="fn">descrever</span>()));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="utility-types">Utility Types Essenciais</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Partial, Required, Pick, Omit, Record, ReturnType</div>
+          <pre class="example"><span class="kw">interface</span> <span class="tp">Usuario</span> {
+  id:    <span class="tp">number</span>;
+  nome:  <span class="tp">string</span>;
+  email: <span class="tp">string</span>;
+  senha: <span class="tp">string</span>;
+  admin: <span class="tp">boolean</span>;
+}
+
+<span class="com">// Partial — todos opcionais (para PATCH)</span>
+<span class="kw">type</span> <span class="tp">AtualizarUsuario</span> = <span class="tp">Partial</span>&lt;<span class="tp">Usuario</span>&gt;;
+
+<span class="com">// Required — todos obrigatorios</span>
+<span class="kw">type</span> <span class="tp">UsuarioCompleto</span> = <span class="tp">Required</span>&lt;<span class="tp">Usuario</span>&gt;;
+
+<span class="com">// Pick — selecionar propriedades</span>
+<span class="kw">type</span> <span class="tp">UsuarioPublico</span> = <span class="tp">Pick</span>&lt;<span class="tp">Usuario</span>, <span class="str">"id"</span> | <span class="str">"nome"</span> | <span class="str">"email"</span>&gt;;
+
+<span class="com">// Omit — remover propriedades</span>
+<span class="kw">type</span> <span class="tp">CriarUsuario</span> = <span class="tp">Omit</span>&lt;<span class="tp">Usuario</span>, <span class="str">"id"</span>&gt;; <span class="com">// sem id (gerado pelo DB)</span>
+
+<span class="com">// Record — dicionario tipado</span>
+<span class="kw">type</span> <span class="tp">Permissoes</span> = <span class="tp">Record</span>&lt;<span class="str">"ler"</span> | <span class="str">"criar"</span> | <span class="str">"deletar"</span>, <span class="tp">boolean</span>&gt;;
+<span class="kw">const</span> adminPerms: <span class="tp">Permissoes</span> = { ler: <span class="kw">true</span>, criar: <span class="kw">true</span>, deletar: <span class="kw">true</span> };
+
+<span class="com">// Readonly — imutavel</span>
+<span class="kw">type</span> <span class="tp">Config</span> = <span class="tp">Readonly</span>&lt;{
+  host: <span class="tp">string</span>;
+  port: <span class="tp">number</span>;
+}>;
+
+<span class="com">// ReturnType — tipo de retorno de funcao</span>
+<span class="kw">function</span> <span class="fn">criarSessao</span>() {
+  <span class="kw">return</span> { token: <span class="str">"abc"</span>, expira: <span class="kw">new</span> <span class="tp">Date</span>() };
+}
+<span class="kw">type</span> <span class="tp">Sessao</span> = <span class="tp">ReturnType</span>&lt;<span class="kw">typeof</span> criarSessao&gt;;
+<span class="com">// { token: string; expira: Date }</span>
+
+<span class="com">// Parameters — tipos dos parametros</span>
+<span class="kw">function</span> <span class="fn">enviarEmail</span>(para: <span class="tp">string</span>, assunto: <span class="tp">string</span>, corpo: <span class="tp">string</span>): <span class="tp">void</span> {}
+<span class="kw">type</span> <span class="tp">ParamsEmail</span> = <span class="tp">Parameters</span>&lt;<span class="kw">typeof</span> enviarEmail&gt;;
+<span class="com">// [para: string, assunto: string, corpo: string]</span>
+
+<span class="com">// Awaited — desembrulhar Promise</span>
+<span class="kw">async function</span> <span class="fn">buscarUsuario</span>(id: <span class="tp">number</span>): <span class="tp">Promise</span>&lt;<span class="tp">Usuario</span>&gt; { <span class="kw">return</span> {} <span class="kw">as</span> <span class="tp">Usuario</span>; }
+<span class="kw">type</span> <span class="tp">UsuarioResp</span> = <span class="tp">Awaited</span>&lt;<span class="tp">ReturnType</span>&lt;<span class="kw">typeof</span> buscarUsuario&gt;&gt;;
+<span class="com">// Usuario (sem Promise)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>TypeScript Handbook: Generics</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/2/generics.html&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript Utility Types</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/utility-types.html&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript: Narrowing</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/2/narrowing.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript Avancado: template literals, decorators, branded types</a></li>
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks TypeScript</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Discriminated unions eliminam a necessidade de type casting explicito — TS estreita automaticamente pelo campo discriminante</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

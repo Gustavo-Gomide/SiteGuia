@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C em sistemas embarcados e IoT: microcontroladores, bare-metal, RTOS, ARM Cortex-M, ESP32, comunicação serial e periféricos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C em Sistemas Embarcados e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Sistemas Embarcados &amp; IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="circuito" aria-hidden="true"></span></div>
+          <h1>C em Sistemas Embarcados e IoT</h1>
+          <p>Microcontroladores, bare-metal, RTOS, ARM Cortex-M, comunicação serial, GPIO, ADC e IoT com ESP32 e STM32.</p>
+        </div>
+        <p class="intro-highlight">
+          C é a língua nativa dos microcontroladores. Com restrições severas de memória (KB de RAM, não GB), sem sistema operacional e com acesso direto ao hardware via registradores, C é essencialmente a única linguagem praticável para programação bare-metal em microcontroladores de 8, 16 e 32 bits.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="por-que-c">Por que C domina o mundo embarcado</h2>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Vantagens de C em embarcados</h3>
+            <ul>
+              <li>Código gerado mínimo — cabe em 16KB de flash</li>
+              <li>Sem garbage collector, sem runtime surpresas de latência</li>
+              <li>Acesso direto a registradores via ponteiros e <code>volatile</code></li>
+              <li>Determinístico: tempo de execução previsível</li>
+              <li>Toolchains maduras para ARM, AVR, RISC-V, MIPS</li>
+              <li>Suporte de HAL (Hardware Abstraction Layer) de fabricantes</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Desafios</h3>
+            <ul>
+              <li>Sem MMU na maioria dos MCUs — overflow de stack mata o sistema</li>
+              <li>Depuração complexa: JTAG/SWD, sem printf fácil</li>
+              <li>Gestão manual de memória ainda mais crítica que em PCs</li>
+              <li>Fabricantes usam C com extensões não-padrão (<code>__attribute__</code>)</li>
+              <li>Portabilidade entre arquiteturas requer cuidado com endianness</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="registradores">Acesso a Registradores de Hardware</h2>
+        <p>Em bare-metal C, periféricos são controlados escrevendo em endereços de memória fixos. Estruturas de bit fields e ponteiros para endereços absolutos são o padrão da indústria.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; GPIO em ARM Cortex-M (STM32 style)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdint.h&gt;</span>
+
+<span class="com">/* Registradores GPIO do STM32F4 (endereços da memória mapeada) */</span>
+<span class="kw">#define</span> RCC_BASE    (<span class="num">0x40023800UL</span>)
+<span class="kw">#define</span> GPIOA_BASE  (<span class="num">0x40020000UL</span>)
+
+<span class="kw">typedef struct</span> {
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> MODER;   <span class="com">/* Mode register */</span>
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> OTYPER;
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> OSPEEDR;
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> PUPDR;
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> IDR;      <span class="com">/* Input data */</span>
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> ODR;      <span class="com">/* Output data */</span>
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> BSRR;     <span class="com">/* Bit set/reset */</span>
+} <span class="tp">GPIO_TypeDef</span>;
+
+<span class="kw">typedef struct</span> {
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> CR[2];
+    <span class="kw">volatile</span> <span class="tp">uint32_t</span> AHB1ENR;  <span class="com">/* Clock enable para GPIO */</span>
+} <span class="tp">RCC_TypeDef</span>;
+
+<span class="kw">#define</span> GPIOA ((<span class="tp">GPIO_TypeDef</span>*) GPIOA_BASE)
+<span class="kw">#define</span> RCC   ((<span class="tp">RCC_TypeDef</span>*)  RCC_BASE)
+
+<span class="com">/* LED no PA5 (Nucleo-64 board) */</span>
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="com">/* Habilitar clock do GPIOA */</span>
+    RCC-&gt;AHB1ENR |= (<span class="num">1U</span> &lt;&lt; <span class="num">0</span>);
+
+    <span class="com">/* PA5 como saída (MODER bits [11:10] = 01) */</span>
+    GPIOA-&gt;MODER &amp;= ~(<span class="num">3U</span> &lt;&lt; (<span class="num">5</span> * <span class="num">2</span>));
+    GPIOA-&gt;MODER |=  (<span class="num">1U</span> &lt;&lt; (<span class="num">5</span> * <span class="num">2</span>));
+
+    <span class="kw">while</span> (<span class="num">1</span>) {
+        <span class="com">/* Setar bit 5 (ligar LED) */</span>
+        GPIOA-&gt;BSRR = (<span class="num">1U</span> &lt;&lt; <span class="num">5</span>);
+
+        <span class="com">/* Delay simples */</span>
+        <span class="kw">for</span> (<span class="kw">volatile</span> <span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">100000</span>; i++);
+
+        <span class="com">/* Resetar bit 5 (apagar LED) */</span>
+        GPIOA-&gt;BSRR = (<span class="num">1U</span> &lt;&lt; (<span class="num">5</span> + <span class="num">16</span>));
+
+        <span class="kw">for</span> (<span class="kw">volatile</span> <span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">100000</span>; i++);
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rtos">RTOS — Real-Time Operating System</h2>
+        <p>Quando um projeto embarcado cresce, um RTOS fornece gerenciamento de tarefas, semáforos, filas de mensagem e timers — tudo com garantias de tempo real determinístico.</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>FreeRTOS</h3>
+            <p>RTOS mais popular do mundo. Suporta 40+ arquiteturas. Código aberto (MIT). Tarefas, semáforos, mutexes, filas e timers. Base do Amazon FreeRTOS (AWS IoT).</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Zephyr RTOS</h3>
+            <p>RTOS moderno da Linux Foundation. Suporte nativo a Bluetooth, Wi-Fi, Thread, Zigbee. Usado no Arduino Pro e em dispositivos médicos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>RT-Thread</h3>
+            <p>RTOS popular na Ásia/China. Componentes opcionais: sistema de arquivos, pilha TCP/IP, shell, GUI. Ativo e bem mantido.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>mbed OS</h3>
+            <p>RTOS da ARM para Cortex-M. Abstrai CMSIS e periféricos. Suporte nativo a TLS (mbed TLS) e protocolos IoT (MQTT, CoAP).</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; FreeRTOS: duas tarefas e uma fila</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">"FreeRTOS.h"</span>
+<span class="kw">#include</span> <span class="str">"task.h"</span>
+<span class="kw">#include</span> <span class="str">"queue.h"</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="kw">static</span> <span class="tp">QueueHandle_t</span> fila;
+
+<span class="tp">void</span> <span class="fn">tarefa_produtor</span>(<span class="tp">void</span> *params) {
+    <span class="tp">int</span> valor = <span class="num">0</span>;
+    <span class="kw">while</span>(<span class="num">1</span>) {
+        <span class="fn">xQueueSend</span>(fila, &amp;valor, portMAX_DELAY);
+        valor++;
+        <span class="fn">vTaskDelay</span>(<span class="fn">pdMS_TO_TICKS</span>(<span class="num">500</span>));  <span class="com">/* 500ms */</span>
+    }
+}
+
+<span class="tp">void</span> <span class="fn">tarefa_consumidor</span>(<span class="tp">void</span> *params) {
+    <span class="tp">int</span> recebido;
+    <span class="kw">while</span>(<span class="num">1</span>) {
+        <span class="kw">if</span> (<span class="fn">xQueueReceive</span>(fila, &amp;recebido, portMAX_DELAY) == pdPASS)
+            <span class="fn">printf</span>(<span class="str">"Consumidor recebeu: %d\n"</span>, recebido);
+    }
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    fila = <span class="fn">xQueueCreate</span>(<span class="num">10</span>, <span class="kw">sizeof</span>(<span class="tp">int</span>));
+
+    <span class="fn">xTaskCreate</span>(tarefa_produtor,  <span class="str">"Prod"</span>, <span class="num">1024</span>, NULL, <span class="num">1</span>, NULL);
+    <span class="fn">xTaskCreate</span>(tarefa_consumidor, <span class="str">"Cons"</span>, <span class="num">1024</span>, NULL, <span class="num">1</span>, NULL);
+
+    <span class="fn">vTaskStartScheduler</span>();  <span class="com">/* nunca retorna */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>WHITE, Elecia. <strong>Making Embedded Systems</strong>. 2. ed. Sebastopol: O'Reilly Media, 2024.</li>
+            <li>MAZIDI, Muhammad Ali; NAIMI, Sarmad. <strong>The STM32 Microcontroller</strong>. MicroDigitalEd, 2020.</li>
+            <li>FreeRTOS.org. <strong>FreeRTOS Documentation</strong>. Disponível em: &lt;https://freertos.org&gt;. Acesso em: 2025.</li>
+            <li>ARM Ltd. <strong>Cortex-M Programming Guide</strong>. ARM DDI 0403, 2021.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="info" aria-hidden="true"></span> Outras aplicações de C:</p>
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C e Bancos de Dados &mdash; SQLite, PostgreSQL, Redis internals</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para CLI &mdash; ferramentas de linha de comando</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C na Web &mdash; nginx, servidores HTTP, CGI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "The Internet runs on C, from the routers to the operating systems to the web servers." &mdash; Unknown</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

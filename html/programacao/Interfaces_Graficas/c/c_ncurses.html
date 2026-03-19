@@ -1,0 +1,245 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="ncurses: biblioteca C para interfaces de usuario em terminal. Windows, paineis, formularios e controle de cursor." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C ncurses | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>C &mdash; ncurses</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">C ncurses</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>ncurses &mdash; A Arte das Interfaces de Terminal</h1>
+          <p>Quando nao ha janelas graficas, ncurses transforma qualquer terminal em uma interface rica.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>ncurses</strong> (new curses) e uma implementacao open-source da biblioteca
+          <em>curses</em> original do BSD, mantida por Thomas Dickey desde 1994. E a biblioteca
+          que sustenta ferramentas cli como htop, vim, mc (Midnight Commander) e muitos
+          instaladores de sistemas operacionais. Trabalha enviando sequencias de escape
+          para o terminal, posicionando o cursor e desenhando areas de texto com cores e
+          atributos &mdash; tudo isso de forma portavel entre centenas de tipos de terminais.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">1. Conceitos Fundamentais</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>WINDOW</h3>
+            <p>
+              Regiao retangular do terminal com seu proprio buffer. A janela especial
+              <code class="code-inline">stdscr</code> representa a tela toda. Crie janelas
+              com <code class="code-inline">newwin(linhas, cols, y, x)</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>refresh() e wrefresh()</h3>
+            <p>
+              ncurses usa duplo buffer: operacoes escrevem no buffer interno.
+              Apenas ao chamar <code class="code-inline">refresh()</code> o terminal fisico
+              e atualizado com o minimo de sequencias de escape necessarias &mdash; evita flicker.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>getch() e Teclas Especiais</h3>
+            <p>
+              <code class="code-inline">getch()</code> le uma tecla. Com
+              <code class="code-inline">keypad(stdscr, TRUE)</code> habilitado, teclas especiais
+              (setas, F1-F12, Home, End) retornam constantes como <code class="code-inline">KEY_UP</code>,
+              <code class="code-inline">KEY_F(1)</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Pares de Cor</h3>
+            <p>
+              Defina pares foreground/background com
+              <code class="code-inline">init_pair(id, cor_texto, cor_fundo)</code>.
+              Aplique com <code class="code-inline">COLOR_PAIR(id)</code> nos atributos.
+              ncurses suporta ate 256 cores em terminais modernos.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="hello-world" class="section-title">2. Estrutura Basica</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; programa ncurses basico com cores</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;ncurses.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>(<span class="kw">void</span>)
+{
+    initscr();              <span class="com">/* inicializa ncurses */</span>
+    cbreak();               <span class="com">/* nao espera Enter para getch() */</span>
+    noecho();               <span class="com">/* nao exibe teclas digitadas */</span>
+    keypad(stdscr, TRUE);   <span class="com">/* habilita teclas especiais */</span>
+    curs_set(<span class="num">0</span>);             <span class="com">/* esconde cursor */</span>
+
+    <span class="kw">if</span> (has_colors()) {
+        start_color();
+        init_pair(<span class="num">1</span>, COLOR_CYAN, COLOR_BLACK);
+        init_pair(<span class="num">2</span>, COLOR_BLACK, COLOR_WHITE);
+    }
+
+    attron(COLOR_PAIR(<span class="num">1</span>) | A_BOLD);
+    mvprintw(<span class="num">5</span>, <span class="num">10</span>, <span class="str">"Ola, ncurses!"</span>);
+    attroff(COLOR_PAIR(<span class="num">1</span>) | A_BOLD);
+
+    attron(COLOR_PAIR(<span class="num">2</span>));
+    mvprintw(<span class="num">7</span>, <span class="num">10</span>, <span class="str">" Pressione qualquer tecla para sair "</span>);
+    attroff(COLOR_PAIR(<span class="num">2</span>));
+
+    refresh();
+    getch();
+    endwin();   <span class="com">/* restaura o terminal ao estado normal */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">shell &mdash; compilar com ncurses</div>
+          <pre class="example">gcc -o programa main.c -lncurses</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="janelas" class="section-title">3. Multiplas Janelas e Boxes</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; criar janela com borda</div>
+          <pre class="example"><span class="com">/* cria janela 10x40 na posicao (3, 5) */</span>
+WINDOW *win = newwin(<span class="num">10</span>, <span class="num">40</span>, <span class="num">3</span>, <span class="num">5</span>);
+
+<span class="com">/* desenha borda padrao com +, -, | */</span>
+box(win, <span class="num">0</span>, <span class="num">0</span>);
+
+<span class="com">/* escreve dentro da janela (relativo a ela) */</span>
+mvwprintw(win, <span class="num">1</span>, <span class="num">2</span>, <span class="str">"Janela auxiliar"</span>);
+mvwprintw(win, <span class="num">3</span>, <span class="num">2</span>, <span class="str">"Linha 2..."</span>);
+
+wrefresh(win);  <span class="com">/* atualiza apenas esta janela */</span>
+
+<span class="com">/* ao final, destrua a janela */</span>
+delwin(win);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="formularios" class="section-title">4. Paineis e Formularios</h2>
+        <p>
+          ncurses inclui extensoes para casos de uso mais ricos:
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>panel.h</h3>
+            <p>
+              Empilhamento de janelas com ocultamento automatico: janelas sobrepoe umas as outras
+              corretamente. Use com <code class="code-inline">-lpanel</code> ao compilar.
+              Operacoes: <code class="code-inline">new_panel()</code>, <code class="code-inline">show_panel()</code>,
+              <code class="code-inline">hide_panel()</code>, <code class="code-inline">update_panels()</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>form.h</h3>
+            <p>
+              Formularios TUI interativos: campos FIELD com validacao, navegacao com Tab/Enter,
+              campos sensiveis a typos como inteiros, alfa, email. Linkado com
+              <code class="code-inline">-lform</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>menu.h</h3>
+            <p>
+              Menus verticais e horizontais navegaveis com teclado. ITEM list, MENU struct e
+              callbacks de selecao. Linkado com <code class="code-inline">-lmenu</code>.
+              A base de muitos CLIs interativos como o instalador do Debian.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">5. Quando Usar ncurses</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Ferramentas CLI interativas: dashboards, monitores, file managers (htop, mc, vim)</li>
+              <li>Ambientes sem display grafico: servidores, containers Docker, SSH</li>
+              <li>Instaladores e configuradores de sistema que rodam antes do ambiente grafico</li>
+              <li>Jogos roguelike e puzzles baseados em ASCII/terminal</li>
+              <li>Ferramentas de desenvolvimento (tmux, cmus, ranger, mutt) em C puro</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>O usuario espera uma interface grafica convencional com mouse</li>
+              <li>Precisa de imagens, graficos ou elementos visuais ricos</li>
+              <li>App sera distribuido para usuarios nao tecnicos</li>
+              <li>Windows: ncurses e POSIX; no Windows use PDCurses ou migrate para outra lib</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>DICKEY, Thomas. <strong>NCURSES &mdash; New Curses</strong>. Disponivel em: <a href="https://invisible-island.net/ncurses/" target="_blank" rel="noopener">invisible-island.net/ncurses</a>. Acesso em: 2026.</li>
+            <li>THE LINUX HOWTO PROJECT. <strong>NCURSES Programming HOWTO</strong>. Disponivel em: <a href="https://tldp.org/HOWTO/NCURSES-Programming-HOWTO/" target="_blank" rel="noopener">tldp.org</a>. Acesso em: 2026.</li>
+            <li>STRANG, John; MUI, Linda; O'REILLY, Tim. <strong>termcap &amp; terminfo</strong>. Sebastopol: O'Reilly, 1991.</li>
+            <li>NCURSES MAN PAGES. <strong>ncurses(3X)</strong>. Disponivel em: <a href="https://man7.org/linux/man-pages/man3/ncurses.3x.html" target="_blank" rel="noopener">man7.org</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/c/c_gtk.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>GTK em C &mdash; interface grafica nativa Linux</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/cpp/cpp_qt.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Qt em C++ &mdash; GUI multiplataforma</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/introducao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Panorama geral de frameworks GUI</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O terminal nunca morreu — ele apenas esperou ncurses para se tornar interessante." &mdash; Unix Philosophy
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

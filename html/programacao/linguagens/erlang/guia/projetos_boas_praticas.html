@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas em Erlang: arquitetura OTP, supervisão, releases, testes, observabilidade e disciplina operacional." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Erlang — Projetos e Boas Práticas</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Projetos e Boas Práticas em Erlang</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Projetos e Boas Práticas</h1>
+          <p>Projetos Erlang duráveis nascem de escolhas arquiteturais simples e repetíveis: processos pequenos, responsabilidades nítidas, supervisão explícita, releases reproduzíveis e instrumentação suficiente para entender o sistema enquanto ele ainda está saudável.</p>
+        </div>
+        <p class="intro-highlight">A grande boa prática de Erlang é aceitar a filosofia da plataforma. Se você tenta transformar a BEAM num runtime orientado a objetos ou num monólito de estado compartilhado, perde quase tudo que torna a linguagem valiosa.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura-otp">Arquitetura orientada a aplicações OTP</h2>
+        <p>Um projeto maduro em Erlang costuma ser dividido em aplicações OTP pequenas, cada uma com propósito claro. Em vez de um diretório central cheio de módulos utilitários, o ideal é pensar em limites operacionais: qual aplicação sobe primeiro, qual pode reiniciar sem corromper o resto e qual estado precisa ser reconstruído.</p>
+        <div class="grid grid--3">
+          <div class="card">
+            <h3>Aplicação</h3>
+            <p>Define ciclo de vida, dependências e processos raiz.</p>
+          </div>
+          <div class="card">
+            <h3>Supervisor</h3>
+            <p>Decide estratégia de restart e isolamento de falhas.</p>
+          </div>
+          <div class="card">
+            <h3>Workers</h3>
+            <p>Executam protocolo, domínio, cache, filas e integração.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="supervisao-estado">Supervisão e modelagem de estado</h2>
+        <p>Em Erlang, o estado pertence ao processo. Isso simplifica concorrência, mas exige disciplina. O processo deve possuir apenas o estado que realmente controla; tudo o que pode ser derivado, recomputado ou recarregado não precisa viver indefinidamente na mailbox ou no heap.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">supervisor e child_spec mínimos</div>
+          <pre class="example">init([]) -&gt;
+    Flags = #{strategy =&gt; one_for_one,
+              intensity =&gt; 5,
+              period =&gt; 10},
+    Children = [
+      #{id =&gt; cache_local,
+        start =&gt; {cache_srv, start_link, []},
+        restart =&gt; permanent,
+        shutdown =&gt; 5000,
+        type =&gt; worker,
+        modules =&gt; [cache_srv]},
+      #{id =&gt; http_listener,
+        start =&gt; {web_listener, start_link, []},
+        restart =&gt; permanent,
+        shutdown =&gt; infinity,
+        type =&gt; worker,
+        modules =&gt; [web_listener]}
+    ],
+    {ok, {Flags, Children}}.</pre>
+        </div>
+        <p>O ponto essencial é semântico: <strong>restart</strong>, <strong>shutdown</strong> e <strong>type</strong> não são burocracia. Eles documentam como o sistema deve se comportar diante de falhas reais.</p>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Um erro comum é esconder demais a estratégia de restart. Se a árvore de supervisão não reflete o domínio, incidentes ficam difíceis de explicar e corrigir.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="releases-configuracao">Releases, configuração e deploy</h2>
+        <p>Projeto sério em Erlang precisa ser distribuível como release, não como uma coleção de comandos de shell. Releases fixam versão de ERTS, consolidam aplicações e tornam o ambiente previsível. Configuração sensível a ambiente deve ficar fora do código-fonte, preferencialmente em runtime.</p>
+        <svg viewBox="0 0 760 170" role="img" aria-label="Fluxo de release Erlang" class="w-full">
+          <rect x="35" y="55" width="130" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="100" y="82" text-anchor="middle">Código OTP</text>
+          <rect x="205" y="55" width="130" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="270" y="82" text-anchor="middle">Rebar3</text>
+          <rect x="375" y="55" width="130" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="440" y="82" text-anchor="middle">Release</text>
+          <rect x="545" y="55" width="160" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="625" y="82" text-anchor="middle">Operação e Upgrade</text>
+          <line x1="165" y1="77" x2="205" y2="77" stroke="currentColor"></line>
+          <line x1="335" y1="77" x2="375" y2="77" stroke="currentColor"></line>
+          <line x1="505" y1="77" x2="545" y2="77" stroke="currentColor"></line>
+          <text x="270" y="128" text-anchor="middle">build reproduzível</text>
+          <text x="625" y="128" text-anchor="middle">deploy sem surpresas</text>
+        </svg>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes-observabilidade">Testes, tracing e operação</h2>
+        <p>EUnit cobre lógica local; Common Test entra quando há múltiplos nós, protocolos ou integração com ambientes externos. Em sistemas distribuídos, teste útil é o que valida recuperação: reconexão, backoff, reprocessamento idempotente e comportamento sob timeout.</p>
+        <p>Na operação, comece com o básico bem feito: Logger estruturado, métricas de fila, contagem de processos, tempo de resposta de handlers, erros por rota e inspeção de mailbox. Ferramentas como <strong>Observer</strong> e <strong>Recon</strong> tornam isso visível sem reinventar um ecossistema inteiro.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boas-praticas-equipe">Boas práticas que escalam em equipe</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Adote</p>
+            <ul>
+              <li>Behaviours como contrato explícito de processo</li>
+              <li>Árvores de supervisão legíveis pelo time inteiro</li>
+              <li>Estados pequenos e serializáveis quando possível</li>
+              <li>Releases versionados e rollback planejado</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Evite</p>
+            <ul>
+              <li>gen_server “faz-tudo” com estado inflado</li>
+              <li>Uso indiscriminado de processos sem protocolo claro</li>
+              <li>Dependências externas para problemas já resolvidos pelo OTP</li>
+              <li>Operação baseada só em logs textuais soltos</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LOGAN, M.; MERRITT, E.; CARLSSON, R. <strong>Erlang and OTP in Action</strong>. Manning, 2010.</li>
+            <li>HEBERT, F. <strong>Adopting Erlang</strong>. 2. ed. Pragmatic Bookshelf, 2019.</li>
+            <li>REBAR3. <strong>Using Releases</strong>. Disponível em: &lt;https://rebar3.org/docs/deployment/releases/&gt;. Acesso em: 2026.</li>
+            <li>ERLANG/OTP. <strong>Common Test User's Guide</strong>. Disponível em: &lt;https://www.erlang.org/doc/apps/common_test/users_guide.html&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Revisar tópicos avançados de Erlang</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e frameworks recomendados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> CLIs e automação com Erlang</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto Erlang sustentável não depende de heroísmo individual. Ele depende de árvores de supervisão compreensíveis, releases previsíveis e processos pequenos o bastante para falhar sem arrastar o resto do sistema.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

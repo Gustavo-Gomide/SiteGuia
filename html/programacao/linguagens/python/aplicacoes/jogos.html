@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Python para jogos: Pygame 2 com sprite groups e física, arcade library, PyOpenGL e conceitos de game loop com delta time." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python — Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Python para Jogos</h1>
+          <p>Pygame 2 com sprite groups, física e sons; arcade library com câmera e tilemap; PyOpenGL para gráficos hardware-accelerated; game loop e delta time.</p>
+        </div>
+        <p class="intro-highlight">
+          Python é amplamente usado para prototipar e criar jogos 2D. Pygame é a biblioteca clássica com mais de 20 anos de uso; arcade é a alternativa moderna com OpenGL nativo e API mais limpa. Para 3D, PyOpenGL expõe a API OpenGL diretamente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pygame">Pygame 2: Game Loop, Sprites e Física</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; Pygame: jogo Pong completo com delta time e colisão</div>
+          <pre class="example"><span class="kw">import</span> pygame
+<span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass, field
+<span class="kw">import</span> sys
+
+pygame.<span class="fn">init</span>()
+
+W, H  = <span class="num">800</span>, <span class="num">600</span>
+FPS   = <span class="num">60</span>
+WHITE = (<span class="num">255</span>, <span class="num">255</span>, <span class="num">255</span>)
+BLACK = (<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>)
+GRAY  = (<span class="num">80</span>, <span class="num">80</span>, <span class="num">80</span>)
+
+screen = pygame.display.<span class="fn">set_mode</span>((W, H))
+pygame.display.<span class="fn">set_caption</span>(<span class="str">"Pong"</span>)
+clock  = pygame.time.<span class="fn">Clock</span>()
+font   = pygame.font.<span class="fn">SysFont</span>(<span class="str">"monospace"</span>, <span class="num">36</span>)
+
+
+<span class="at">@dataclass</span>
+<span class="kw">class</span> <span class="tp">Raquete</span>:
+    x: <span class="tp">float</span>
+    y: <span class="tp">float</span>
+    w: <span class="tp">int</span> = <span class="num">15</span>
+    h: <span class="tp">int</span> = <span class="num">90</span>
+    vel: <span class="tp">float</span> = <span class="num">400.0</span>
+
+    <span class="at">@property</span>
+    <span class="kw">def</span> <span class="fn">rect</span>(self) -&gt; pygame.Rect:
+        <span class="kw">return</span> pygame.<span class="fn">Rect</span>(self.x, self.y, self.w, self.h)
+
+    <span class="kw">def</span> <span class="fn">mover</span>(self, dy: <span class="tp">float</span>, dt: <span class="tp">float</span>) -&gt; <span class="tp">None</span>:
+        self.y += dy * self.vel * dt
+        self.y  = <span class="fn">max</span>(<span class="num">0</span>, <span class="fn">min</span>(H - self.h, self.y))
+
+
+<span class="at">@dataclass</span>
+<span class="kw">class</span> <span class="tp">Bola</span>:
+    x: <span class="tp">float</span> = W / <span class="num">2</span>
+    y: <span class="tp">float</span> = H / <span class="num">2</span>
+    r: <span class="tp">int</span>   = <span class="num">10</span>
+    vx: <span class="tp">float</span> = <span class="num">350.0</span>
+    vy: <span class="tp">float</span> = <span class="num">250.0</span>
+
+    <span class="kw">def</span> <span class="fn">update</span>(self, dt: <span class="tp">float</span>, r1: <span class="tp">Raquete</span>, r2: <span class="tp">Raquete</span>) -&gt; <span class="tp">bool</span>:
+        <span class="com"># bool: True = ponto marcado</span>
+        self.x += self.vx * dt
+        self.y += self.vy * dt
+        <span class="kw">if</span> self.y - self.r &lt; <span class="num">0</span> <span class="kw">or</span> self.y + self.r &gt; H:
+            self.vy = -self.vy
+        <span class="com"># colisão AABB</span>
+        bola_rect = pygame.<span class="fn">Rect</span>(self.x - self.r, self.y - self.r, self.r*<span class="num">2</span>, self.r*<span class="num">2</span>)
+        <span class="kw">if</span> bola_rect.<span class="fn">colliderect</span>(r1.rect) <span class="kw">or</span> bola_rect.<span class="fn">colliderect</span>(r2.rect):
+            self.vx = -self.vx * <span class="num">1.05</span>
+        <span class="kw">if</span> self.x &lt; <span class="num">0</span> <span class="kw">or</span> self.x &gt; W:
+            self.x, self.y = W/<span class="num">2</span>, H/<span class="num">2</span>
+            self.vx, self.vy = <span class="num">350.0</span>, <span class="num">250.0</span>
+            <span class="kw">return</span> <span class="kw">True</span>
+        <span class="kw">return</span> <span class="kw">False</span>
+
+
+r1 = <span class="fn">Raquete</span>(<span class="num">30</span>, H/<span class="num">2</span> - <span class="num">45</span>)
+r2 = <span class="fn">Raquete</span>(W - <span class="num">45</span>, H/<span class="num">2</span> - <span class="num">45</span>)
+bola = <span class="fn">Bola</span>()
+placar = [<span class="num">0</span>, <span class="num">0</span>]
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    dt = clock.<span class="fn">tick</span>(FPS) / <span class="num">1000.0</span>    <span class="com"># delta time em segundos</span>
+    <span class="kw">for</span> ev <span class="kw">in</span> pygame.event.<span class="fn">get</span>():
+        <span class="kw">if</span> ev.type == pygame.QUIT:
+            pygame.<span class="fn">quit</span>(); sys.<span class="fn">exit</span>()
+
+    keys = pygame.key.<span class="fn">get_pressed</span>()
+    r1.<span class="fn">mover</span>(keys[pygame.K_s] - keys[pygame.K_w], dt)
+    r2.<span class="fn">mover</span>(keys[pygame.K_DOWN] - keys[pygame.K_UP], dt)
+
+    <span class="kw">if</span> bola.<span class="fn">update</span>(dt, r1, r2):
+        placar[<span class="num">0</span> <span class="kw">if</span> bola.x &lt; W/<span class="num">2</span> <span class="kw">else</span> <span class="num">1</span>] += <span class="num">1</span>
+
+    screen.<span class="fn">fill</span>(BLACK)
+    pygame.draw.<span class="fn">rect</span>(screen, WHITE, r1.rect)
+    pygame.draw.<span class="fn">rect</span>(screen, WHITE, r2.rect)
+    pygame.draw.<span class="fn">circle</span>(screen, WHITE, (<span class="tp">int</span>(bola.x), <span class="tp">int</span>(bola.y)), bola.r)
+    pygame.draw.<span class="fn">aaline</span>(screen, GRAY, (W//<span class="num">2</span>, <span class="num">0</span>), (W//<span class="num">2</span>, H))
+    txt = font.<span class="fn">render</span>(<span class="str">f"{placar[0]}  {placar[1]}"</span>, <span class="kw">True</span>, WHITE)
+    screen.<span class="fn">blit</span>(txt, (W//<span class="num">2</span> - txt.get_width()//<span class="num">2</span>, <span class="num">10</span>))
+    pygame.display.<span class="fn">flip</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pygame-sprites">Pygame: Sprite Groups e Animação</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; Pygame: Sprite, Group, animação por spritesheet</div>
+          <pre class="example"><span class="kw">import</span> pygame
+
+<span class="kw">class</span> <span class="tp">Personagem</span>(pygame.sprite.Sprite):
+    FRAMES       = <span class="num">4</span>
+    FRAME_WIDTH  = <span class="num">64</span>
+    FRAME_HEIGHT = <span class="num">64</span>
+    FPS_ANIM     = <span class="num">8</span>     <span class="com"># quadros de animação por segundo</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, sheet_path: <span class="tp">str</span>, x: <span class="tp">int</span>, y: <span class="tp">int</span>) -&gt; <span class="tp">None</span>:
+        <span class="fn">super</span>().__init__()
+        sheet = pygame.image.<span class="fn">load</span>(sheet_path).<span class="fn">convert_alpha</span>()
+        self.frames = [
+            sheet.<span class="fn">subsurface</span>(pygame.<span class="fn">Rect</span>(i * self.FRAME_WIDTH, <span class="num">0</span>,
+                                           self.FRAME_WIDTH, self.FRAME_HEIGHT))
+            <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(self.FRAMES)
+        ]
+        self._frame_atual = <span class="num">0</span>
+        self._tempo_anim  = <span class="num">0.0</span>
+        self.image  = self.frames[<span class="num">0</span>]
+        self.rect   = self.image.<span class="fn">get_rect</span>(topleft=(x, y))
+        self.vel_x  = <span class="num">200.0</span>
+
+    <span class="kw">def</span> <span class="fn">update</span>(self, dt: <span class="tp">float</span>) -&gt; <span class="tp">None</span>:
+        <span class="com"># movimento</span>
+        keys = pygame.key.<span class="fn">get_pressed</span>()
+        if keys[pygame.K_RIGHT]: self.rect.x += <span class="tp">int</span>(self.vel_x * dt)
+        if keys[pygame.K_LEFT]:  self.rect.x -= <span class="tp">int</span>(self.vel_x * dt)
+        <span class="com"># animação</span>
+        self._tempo_anim += dt
+        <span class="kw">if</span> self._tempo_anim &gt;= <span class="num">1</span> / self.FPS_ANIM:
+            self._tempo_anim = <span class="num">0</span>
+            self._frame_atual = (self._frame_atual + <span class="num">1</span>) % self.FRAMES
+            self.image = self.frames[self._frame_atual]
+
+<span class="com"># Uso:</span>
+<span class="com"># all_sprites = pygame.sprite.Group()</span>
+<span class="com"># jogador = Personagem("player.png", 100, 300)</span>
+<span class="com"># all_sprites.add(jogador)</span>
+<span class="com"># # no loop: all_sprites.update(dt); all_sprites.draw(screen)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arcade">Arcade: Biblioteca Moderna com OpenGL</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; arcade: Window, PhysicsEnginePlatformer, Tilemap</div>
+          <pre class="example"><span class="kw">import</span> arcade
+
+TILE_SIZE    = <span class="num">64</span>
+SCREEN_W, SCREEN_H = <span class="num">1280</span>, <span class="num">720</span>
+GRAVIDADE    = <span class="num">1500</span>
+VEL_PULO     = <span class="num">700</span>
+VEL_ANDAR    = <span class="num">250</span>
+
+
+<span class="kw">class</span> <span class="tp">JogoPlatform</span>(arcade.Window):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self) -&gt; <span class="tp">None</span>:
+        <span class="fn">super</span>().__init__(SCREEN_W, SCREEN_H, <span class="str">"Platform Demo"</span>)
+        self.jogador : arcade.Sprite                 = <span class="kw">None</span>
+        self.plataformas: arcade.SpriteList           = <span class="kw">None</span>
+        self.fisica: arcade.PhysicsEnginePlatformer  = <span class="kw">None</span>
+        self.camera_jogador: arcade.Camera           = <span class="kw">None</span>
+
+    <span class="kw">def</span> <span class="fn">setup</span>(self) -&gt; <span class="tp">None</span>:
+        self.jogador = arcade.Sprite(<span class="str">":resources:images/animated_characters/female_adventurer/femaleAdventurer_idle.png"</span>)
+        self.jogador.center_x = <span class="num">128</span>
+        self.jogador.center_y = <span class="num">200</span>
+
+        self.plataformas = arcade.<span class="fn">SpriteList</span>(use_spatial_hash=<span class="kw">True</span>)
+        <span class="kw">for</span> x <span class="kw">in</span> <span class="fn">range</span>(<span class="num">0</span>, <span class="num">4096</span>, TILE_SIZE):
+            tile = arcade.<span class="fn">SpriteSolidColor</span>(TILE_SIZE, TILE_SIZE, arcade.color.BROWN)
+            tile.center_x = x + TILE_SIZE // <span class="num">2</span>
+            tile.center_y = TILE_SIZE // <span class="num">2</span>
+            self.plataformas.<span class="fn">append</span>(tile)
+
+        self.fisica = arcade.<span class="fn">PhysicsEnginePlatformer</span>(
+            self.jogador, gravity_constant=GRAVIDADE, walls=self.plataformas
+        )
+        self.camera_jogador = arcade.<span class="fn">Camera</span>(SCREEN_W, SCREEN_H)
+
+    <span class="kw">def</span> <span class="fn">on_draw</span>(self) -&gt; <span class="tp">None</span>:
+        self.<span class="fn">clear</span>()
+        self.camera_jogador.<span class="fn">use</span>()
+        self.plataformas.<span class="fn">draw</span>()
+        self.jogador.<span class="fn">draw</span>()
+
+    <span class="kw">def</span> <span class="fn">on_update</span>(self, dt: <span class="tp">float</span>) -&gt; <span class="tp">None</span>:
+        self.fisica.<span class="fn">update</span>()
+        self.camera_jogador.<span class="fn">move_to</span>(
+            (self.jogador.center_x - SCREEN_W / <span class="num">2</span>, <span class="num">0</span>), speed=<span class="num">0.15</span>
+        )
+
+    <span class="kw">def</span> <span class="fn">on_key_press</span>(self, key, mod) -&gt; <span class="tp">None</span>:
+        <span class="kw">if</span> key == arcade.key.RIGHT: self.jogador.change_x =  VEL_ANDAR
+        <span class="kw">if</span> key == arcade.key.LEFT:  self.jogador.change_x = -VEL_ANDAR
+        <span class="kw">if</span> key == arcade.key.UP <span class="kw">and</span> self.fisica.<span class="fn">can_jump</span>():
+            self.jogador.change_y = VEL_PULO
+
+    <span class="kw">def</span> <span class="fn">on_key_release</span>(self, key, mod) -&gt; <span class="tp">None</span>:
+        <span class="kw">if</span> key <span class="kw">in</span> (arcade.key.RIGHT, arcade.key.LEFT):
+            self.jogador.change_x = <span class="num">0</span>
+
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    jogo = <span class="fn">JogoPlatform</span>()
+    jogo.<span class="fn">setup</span>()
+    arcade.<span class="fn">run</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PYGAME DOCS. <strong>Pygame Documentation</strong>. Disponível em: &lt;https://www.pygame.org/docs/&gt;. Acesso em: 2025.</li>
+            <li>ARCADE DOCS. <strong>Python Arcade Library</strong>. Disponível em: &lt;https://api.arcade.academy/&gt;. Acesso em: 2025.</li>
+            <li>SWEIGART, Al. <strong>Making Games with Python &amp; Pygame</strong>. Inventwithpython.com, 2012. Disponível em: &lt;https://inventwithpython.com/pygame/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para GUI Desktop</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Mobile com Kivy</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> arcade usa Python puro + OpenGL — sem necessidade de SDL nativamente no host</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

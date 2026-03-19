@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Web com F#: Giraffe e Saturn (ASP.NET funcional), Suave, roteamento, middleware, JSON e WebSockets." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Desenvolvimento Web</h1>
+          <p>F# para web combina a solidez do ASP.NET Core com abstrações funcionais de alto nível. Giraffe e Saturn transformam o pipeline do Kestrel em funções compostas; Suave é um servidor HTTP puramente funcional sem dependência do ASP.NET; Fable + Elmish levam F# ao frontend via JavaScript.</p>
+        </div>
+        <p class="intro-highlight">
+          No modelo <strong>Giraffe/Saturn</strong>, uma rota é simplesmente uma função <code>HttpContext -&gt; Task&lt;HttpContext option&gt;</code>. Rotas são compostas com o operador <code>&gt;=&gt;</code> (peixe Kleisli) — cada handler passa o contexto adiante ou curto-circuita retornando <code>None</code>. Todo o roteamento é verificado em tempo de compilação.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="giraffe">Giraffe — ASP.NET Core Funcional</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">API REST com Giraffe — roteamento, JSON, middleware</div>
+          <pre class="example"><span class="com">// dotnet add package Giraffe</span>
+open System
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.Extensions.DependencyInjection
+open Giraffe
+
+<span class="com">// Tipos de domínio</span>
+type Produto = {
+    Id   : int
+    Nome : string
+    Preco: decimal
+}
+
+<span class="com">// Estado simulado</span>
+<span class="kw">let</span> produtos = [
+    { Id = 1; Nome = <span class="str">"Teclado"</span>; Preco = 250m }
+    { Id = 2; Nome = <span class="str">"Mouse"</span>;   Preco = 120m }
+]
+
+<span class="com">// Handlers — HttpHandler = HttpContext -> Task&lt;HttpContext option&gt;</span>
+<span class="kw">let</span> listarProdutos : HttpHandler =
+    fun next ctx ->
+        json produtos next ctx
+
+<span class="kw">let</span> buscarProduto (id: int) : HttpHandler =
+    fun next ctx ->
+        match produtos |> List.tryFind (fun p -> p.Id = id) with
+        | Some p -> json p next ctx
+        | None   -> RequestErrors.notFound (text <span class="str">"Produto não encontrado"</span>) next ctx
+
+<span class="kw">let</span> criarProduto : HttpHandler =
+    fun next ctx ->
+        task {
+            <span class="kw">let</span>! novoProduto = ctx.BindJsonAsync&lt;Produto&gt;()
+            <span class="com">// salvar no banco...</span>
+            return! Successful.created (json novoProduto) next ctx
+        }
+
+<span class="com">// Roteamento com &gt;=&gt; (Kleisli composition)</span>
+<span class="kw">let</span> webApp =
+    choose [
+        GET  >=> route  <span class="str">"/produtos"</span>     >=> listarProdutos
+        GET  >=> routef <span class="str">"/produtos/%i"</span>  buscarProduto
+        POST >=> route  <span class="str">"/produtos"</span>     >=> criarProduto
+        RequestErrors.notFound (text <span class="str">"Rota não encontrada"</span>)
+    ]
+
+<span class="com">// Configuração ASP.NET</span>
+<span class="kw">let</span> configureApp (app: IApplicationBuilder) =
+    app.UseGiraffe(webApp)
+
+<span class="kw">let</span> configureServices (services: IServiceCollection) =
+    services.AddGiraffe() |> ignore
+
+[&lt;EntryPoint&gt;]
+<span class="kw">let</span> main _ =
+    WebHostBuilder()
+        .UseKestrel()
+        .Configure(Action&lt;IApplicationBuilder&gt; configureApp)
+        .ConfigureServices(configureServices)
+        .UseUrls(<span class="str">"http://localhost:5000"</span>)
+        .Build()
+        .Run()
+    0</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="saturn">Saturn — MVC Funcional sobre Giraffe</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Saturn — routers, controllers e pipeline</div>
+          <pre class="example"><span class="com">// dotnet add package Saturn</span>
+open Saturn
+open Giraffe
+
+type Tarefa = { Id: int; Titulo: string; Feita: bool }
+
+<span class="com">// Controller CRUD</span>
+<span class="kw">let</span> tarefaController = controller {
+    index   (fun ctx -> task { return! json [{ Id=1; Titulo="Estudar F#"; Feita=false }] next ctx })
+    show    (fun ctx id -> task {
+        return! json { Id = id; Titulo = "Tarefa " + string id; Feita = false } next ctx
+    })
+    create  (fun ctx -> task {
+        <span class="kw">let</span>! nova = ctx.BindJsonAsync&lt;Tarefa&gt;()
+        return! Successful.created (json nova) next ctx
+    })
+}
+
+<span class="com">// Router com scope</span>
+<span class="kw">let</span> apiRouter = router {
+    forward <span class="str">"/tarefas"</span> tarefaController
+    getf <span class="str">"/ping"</span> (fun _ ctx -> task { return! text <span class="str">"pong"</span> next ctx })
+}
+
+<span class="kw">let</span> appRouter = router {
+    forward <span class="str">"/api"</span> apiRouter
+}
+
+<span class="com">// Application — CORS, JSON, pipelines</span>
+<span class="kw">let</span> app = application {
+    url <span class="str">"http://0.0.0.0:5000"</span>
+    use_router appRouter
+    use_json_serializer (Thoth.Json.Giraffe.ThothSerializer())
+    use_cors <span class="str">"CORS"</span> (fun builder ->
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader() |> ignore)
+    memory_cache
+    use_gzip
+}
+
+run app</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="json-serialization">Serialização JSON com F#</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">System.Text.Json + FSharpLu para DUs e Options</div>
+          <pre class="example">open System.Text.Json
+open System.Text.Json.Serialization
+
+<span class="com">// Configurar conversor F# para System.Text.Json</span>
+<span class="com">// dotnet add package FSharp.SystemTextJson</span>
+open System.Text.Json
+open Helpers = FSharp.SystemTextJson
+
+<span class="kw">let</span> opts = JsonSerializerOptions()
+opts.Converters.Add(JsonFSharpConverter())   <span class="com">// suporta DUs, Options, tuples</span>
+
+type Status = Pendente | EmAndamento | Concluido
+
+type Pedido = {
+    Id     : int
+    Status : Status
+    Tags   : string list
+    Notas  : string option
+}
+
+<span class="kw">let</span> pedido = {
+    Id     = 42
+    Status = EmAndamento
+    Tags   = [<span class="str">"urgente"</span>; <span class="str">"vip"</span>]
+    Notas  = Some <span class="str">"Cliente preferencial"</span>
+}
+
+<span class="kw">let</span> json = JsonSerializer.Serialize(pedido, opts)
+<span class="com">// {"Id":42,"Status":"EmAndamento","Tags":["urgente","vip"],"Notas":"Cliente preferencial"}</span>
+
+<span class="kw">let</span> pedido2 = JsonSerializer.Deserialize&lt;Pedido&gt;(json, opts)
+<span class="com">// DUs e Options corretamente desserializados</span>
+
+<span class="com">// Thoth.Json — codecs manuais mas previsíveis</span>
+<span class="com">// dotnet add package Thoth.Json.Net</span>
+open Thoth.Json.Net
+
+<span class="kw">let</span> encodePedido p =
+    Encode.object [
+        <span class="str">"id"</span>    , Encode.int    p.Id
+        <span class="str">"notas"</span> , Encode.option Encode.string p.Notas
+    ]
+
+<span class="kw">let</span> decodePedido : Decoder&lt;Pedido&gt; =
+    Decode.object (fun get -> {
+        Id     = get.Required.Field <span class="str">"id"</span>    Decode.int
+        Status = Pendente
+        Tags   = []
+        Notas  = get.Optional.Field <span class="str">"notas"</span> Decode.string
+    })</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="suave">Suave — HTTP Puro em F#</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Servidor HTTP sem ASP.NET</div>
+          <pre class="example"><span class="com">// dotnet add package Suave</span>
+open Suave
+open Suave.Filters
+open Suave.Operators
+open Suave.Successful
+
+<span class="com">// WebPart = HttpContext -> Async&lt;HttpContext option&gt;</span>
+<span class="kw">let</span> app =
+    choose [
+        GET >=> choose [
+            path <span class="str">"/hello"</span> >=> OK <span class="str">"Hello, World!"</span>
+            pathScan <span class="str">"/greet/%s"</span> (fun nome -> OK (sprintf <span class="str">"Olá, %s!"</span> nome))
+        ]
+        POST >=> path <span class="str">"/echo"</span> >=>
+            request (fun req ->
+                let corpo = System.Text.Encoding.UTF8.GetString(req.rawForm)
+                OK (sprintf <span class="str">"Você enviou: %s"</span> corpo))
+        RequestErrors.NOT_FOUND <span class="str">"Página não encontrada"</span>
+    ]
+
+startWebServer defaultConfig app</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Giraffe. <strong>Giraffe — A native functional ASP.NET Core web framework for F# developers</strong>. Disponível em: &lt;https://github.com/giraffe-fsharp/Giraffe&gt;. Acesso em: 2026.</li>
+            <li>Saturn. <strong>Saturn — Opinionated, fun to use web framework for F# language</strong>. Disponível em: &lt;https://saturnframework.org&gt;. Acesso em: 2026.</li>
+            <li>Suave. <strong>Suave.IO — A simple, performant web development library for F#</strong>. Disponível em: &lt;https://suave.io&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com F#</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O operador <strong><code>&gt;=&gt;</code></strong> (Kleisli Fish) é o coração do Giraffe e Suave. Em vez de registrar middlewares com efeitos colaterais em uma pipeline imperativa, você compõe <em>funções puras</em> que passam contexto adiante ou aborta: <code>autenticar &gt;=&gt; autorizar &gt;=&gt; handler</code>. Se qualquer etapa retornar <code>None</code>, a composição para — exatamente como <code>Option.bind</code>, mas aplicado a requisições HTTP.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

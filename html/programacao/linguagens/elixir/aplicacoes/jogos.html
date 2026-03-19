@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir para Jogos: servidores de jogo multiplayer com GenServer, gerenciamento de estado de salas, game loops, Scenic para 2D e integração com engines via WebSocket." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Jogos</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir para Jogos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Jogos</h1>
+          <p>Elixir não renderiza jogos diretamente — mas é uma escolha excelente para <strong>game servers multiplayer</strong>: cada sala de jogo é um GenServer, cada jogador é um processo, o estado do jogo é imutável e auditável, e a tolerância a falhas garante que um crash em uma sala não derruba as demais. Usado em jogos como <em>Spellbreak</em> (backend) e similiares.</p>
+        </div>
+        <p class="intro-highlight">
+          O modelo de atores da BEAM é <strong>perfeitamente alinhado</strong> com jogos multiplayer: cada entidade (sala, jogador, NPC) é um processo independente. Comunicação por mensagens elimina race conditions. Supervisores garantem que o servidor de jogo nunca para completamente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="game-server">Servidor de Sala de Jogo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GenServer para estado de partida multiplayer</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">Jogo.Sala</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">GenServer</span>
+
+  <span class="at">@max_jogadores</span> <span class="num">4</span>
+  <span class="at">@tick_ms</span> <span class="num">50</span>  <span class="com"># 20 ticks/segundo</span>
+
+  <span class="kw">defstruct</span> [
+    <span class="at">:id</span>, jogadores: %{}, estado: <span class="at">:aguardando</span>,
+    turno: <span class="num">0</span>, objetos: [], tick_ref: nil
+  ]
+
+  <span class="kw">def</span> <span class="fn">start_link</span>(sala_id) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">start_link</span>(__MODULE__, sala_id,
+      name: {<span class="at">:via</span>, <span class="tp">Registry</span>, {<span class="tp">Jogo.Registry</span>, sala_id}})
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">entrar</span>(sala_id, jogador_id, nick) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">call</span>(via(sala_id), {<span class="at">:entrar</span>, jogador_id, nick})
+  <span class="kw">end</span>
+  <span class="kw">def</span> <span class="fn">acao</span>(sala_id, jogador_id, acao) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">cast</span>(via(sala_id), {<span class="at">:acao</span>, jogador_id, acao})
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">init</span>(sala_id) <span class="kw">do</span>
+    {<span class="at">:ok</span>, %__MODULE__{id: sala_id}}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">handle_call</span>({<span class="at">:entrar</span>, jogador_id, nick}, _from, sala) <span class="kw">do</span>
+    <span class="kw">cond</span> <span class="kw">do</span>
+      map_size(sala.jogadores) >= <span class="at">@max_jogadores</span> ->
+        {<span class="at">:reply</span>, {<span class="at">:error</span>, <span class="at">:sala_cheia</span>}, sala}
+      sala.estado != <span class="at">:aguardando</span> ->
+        {<span class="at">:reply</span>, {<span class="at">:error</span>, <span class="at">:partida_em_andamento</span>}, sala}
+      true ->
+        novo_jogador = %{id: jogador_id, nick: nick, pontos: <span class="num">0</span>, pos: {<span class="num">0</span>, <span class="num">0</span>}}
+        jogadores = Map.<span class="fn">put</span>(sala.jogadores, jogador_id, novo_jogador)
+        nova_sala = %{sala | jogadores: jogadores}
+        nova_sala = <span class="kw">if</span> map_size(jogadores) == <span class="at">@max_jogadores</span>, do: <span class="fn">iniciar_partida</span>(nova_sala), else: nova_sala
+        {<span class="at">:reply</span>, <span class="at">:ok</span>, nova_sala}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">handle_cast</span>({<span class="at">:acao</span>, jogador_id, acao}, sala) <span class="kw">do</span>
+    nova_sala = <span class="fn">processar_acao</span>(sala, jogador_id, acao)
+    <span class="fn">broadcast</span>(sala.id, {<span class="at">:estado_atualizado</span>, nova_sala})
+    {<span class="at">:noreply</span>, nova_sala}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">handle_info</span>(<span class="at">:tick</span>, sala) <span class="kw">do</span>
+    nova_sala = sala |&gt; <span class="fn">atualizar_fisica</span>() |&gt; <span class="fn">verificar_colisoes</span>()
+    <span class="tp">Process</span>.<span class="fn">send_after</span>(self(), <span class="at">:tick</span>, <span class="at">@tick_ms</span>)
+    {<span class="at">:noreply</span>, %{nova_sala | turno: sala.turno + <span class="num">1</span>}}
+  <span class="kw">end</span>
+
+  defp <span class="fn">iniciar_partida</span>(sala) <span class="kw">do</span>
+    <span class="tp">Process</span>.<span class="fn">send_after</span>(self(), <span class="at">:tick</span>, <span class="at">@tick_ms</span>)
+    %{sala | estado: <span class="at">:em_andamento</span>}
+  <span class="kw">end</span>
+
+  defp <span class="fn">via</span>(id), <span class="kw">do</span>: {<span class="at">:via</span>, <span class="tp">Registry</span>, {<span class="tp">Jogo.Registry</span>, id}}
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="lobby">Lobby e DynamicSupervisor para Salas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criar e destruir salas dinamicamente</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">Jogo.Lobby</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">DynamicSupervisor</span>
+
+  <span class="kw">def</span> <span class="fn">start_link</span>(_), <span class="kw">do</span>: <span class="tp">DynamicSupervisor</span>.<span class="fn">start_link</span>(__MODULE__, [], name: __MODULE__)
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">init</span>(_), <span class="kw">do</span>: <span class="tp">DynamicSupervisor</span>.<span class="fn">init</span>(strategy: <span class="at">:one_for_one</span>)
+
+  <span class="kw">def</span> <span class="fn">criar_sala</span>(sala_id) <span class="kw">do</span>
+    <span class="tp">DynamicSupervisor</span>.<span class="fn">start_child</span>(__MODULE__, {<span class="tp">Jogo.Sala</span>, sala_id})
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">listar_salas</span> <span class="kw">do</span>
+    <span class="tp">Registry</span>.<span class="fn">select</span>(<span class="tp">Jogo.Registry</span>, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2"}}]}])
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">fechar_sala</span>(sala_id) <span class="kw">do</span>
+    <span class="kw">case</span> <span class="tp">Registry</span>.<span class="fn">lookup</span>(<span class="tp">Jogo.Registry</span>, sala_id) <span class="kw">do</span>
+      [{pid, _}] -> <span class="tp">DynamicSupervisor</span>.<span class="fn">terminate_child</span>(__MODULE__, pid)
+      [] -> {<span class="at">:error</span>, <span class="at">:sala_nao_encontrada</span>}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># application.ex</span>
+children = [
+  {<span class="tp">Registry</span>, keys: <span class="at">:unique</span>, name: <span class="tp">Jogo.Registry</span>},
+  <span class="tp">Jogo.Lobby</span>,
+  <span class="tp">MeuJogoWeb.Endpoint</span>
+]
+
+<span class="com"># Uso: criar sala e conectar via Phoenix Channel</span>
+{<span class="at">:ok</span>, _} = <span class="tp">Jogo.Lobby</span>.<span class="fn">criar_sala</span>(<span class="str">"sala-001"</span>)
+<span class="tp">Jogo.Sala</span>.<span class="fn">entrar</span>(<span class="str">"sala-001"</span>, <span class="str">"jogador-abc"</span>, <span class="str">"PlayerX"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="broadcast">Broadcast de Estado via PubSub</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Sincronizar estado de jogo em tempo real</div>
+          <pre class="example"><span class="com"># Cada client conecta a um Channel da sala</span>
+<span class="kw">defmodule</span> <span class="tp">MeuJogoWeb.SalaChannel</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuJogoWeb</span>, <span class="at">:channel</span>
+
+  <span class="kw">def</span> <span class="fn">join</span>(<span class="str">"jogo:"</span> &lt;&gt; sala_id, %{<span class="str">"jogador_id"</span> => jid, <span class="str">"nick"</span> => nick}, socket) <span class="kw">do</span>
+    <span class="kw">case</span> <span class="tp">Jogo.Sala</span>.<span class="fn">entrar</span>(sala_id, jid, nick) <span class="kw">do</span>
+      <span class="at">:ok</span> ->
+        socket = assign(socket, sala_id: sala_id, jogador_id: jid)
+        <span class="tp">Phoenix.PubSub</span>.<span class="fn">subscribe</span>(<span class="tp">MeuJogo.PubSub</span>, <span class="str">"sala:#{sala_id}"</span>)
+        {<span class="at">:ok</span>, socket}
+      {<span class="at">:error</span>, motivo} -> {<span class="at">:error</span>, %{reason: motivo}}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">handle_in</span>(<span class="str">"acao"</span>, %{<span class="str">"tipo"</span> => tipo, <span class="str">"dados"</span> => dados}, socket) <span class="kw">do</span>
+    <span class="tp">Jogo.Sala</span>.<span class="fn">acao</span>(socket.assigns.sala_id, socket.assigns.jogador_id, {tipo, dados})
+    {<span class="at">:noreply</span>, socket}
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">handle_info</span>({<span class="at">:estado_atualizado</span>, estado}, socket) <span class="kw">do</span>
+    <span class="fn">push</span>(socket, <span class="str">"estado"</span>, <span class="tp">JogoJSON</span>.<span class="fn">serialize</span>(estado))
+    {<span class="at">:noreply</span>, socket}
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Na Sala.GenServer — ao mudar estado, publica para todos</span>
+defp <span class="fn">broadcast</span>(sala_id, evento) <span class="kw">do</span>
+  <span class="tp">Phoenix.PubSub</span>.<span class="fn">broadcast</span>(<span class="tp">MeuJogo.PubSub</span>, <span class="str">"sala:#{sala_id}"</span>, evento)
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Phoenix Framework. <strong>Channels and PubSub</strong>. Disponível em: &lt;https://hexdocs.pm/phoenix/channels.html&gt;. Acesso em: 2026.</li>
+            <li>Elixir. <strong>GenServer — concurrent state machines</strong>. Disponível em: &lt;https://hexdocs.pm/elixir/GenServer.html&gt;. Acesso em: 2026.</li>
+            <li>Scenic. <strong>Scenic — An Elixir 2D scene graph library</strong>. Disponível em: &lt;https://hexdocs.pm/scenic&gt;. Acesso em: 2026.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/elixir/GenServer.html" target="_blank" rel="noopener">HEXDOCS. GenServer.</a></li>
+            <li><a href="https://hexdocs.pm/elixir/DynamicSupervisor.html" target="_blank" rel="noopener">HEXDOCS. DynamicSupervisor.</a></li>
+            <li><a href="https://hexdocs.pm/phoenix_pubsub/Phoenix.PubSub.html" target="_blank" rel="noopener">HEXDOCS. Phoenix PubSub.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> OTP — GenServer e DynamicSupervisor</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Phoenix Channels</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Com Elixir, você pode escalar de 1 sala para <strong>100.000 salas simultâneas</strong> no mesmo servidor sem alterar uma linha de código — cada sala é um GenServer isolado. O DynamicSupervisor cria e destrói salas sob demanda, com coleta de lixo automática quando a sala encerra.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

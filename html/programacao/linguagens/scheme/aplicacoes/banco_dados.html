@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Aplicacoes de banco de dados com Scheme: modelagem, acesso SQL, transacoes, performance e limites prontos para producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Scheme em Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Scheme em Banco de Dados</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero-bd" class="section-title">Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Lisp e Scheme">
+            <span data-svg="lisp" aria-hidden="true"></span>
+          </div>
+          <h1>Persistencia e transacoes com Scheme</h1>
+          <p>Scheme pode operar com SQL e NoSQL de forma eficiente, especialmente em servicos de dados com regras de negocio densas.</p>
+        </div>
+        <p class="intro-highlight">A chave em banco de dados com Scheme e combinar composicao funcional com disciplina de transacao, evitando efeitos colaterais espalhados.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">Fundamentos de persistencia</h2>
+        <p>Persistencia e a memoria de longo prazo da aplicacao. Em termos praticos, cada escrita precisa manter consistencia, e cada leitura precisa refletir o nivel de isolamento escolhido.</p>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Tema</th><th>Boa pratica</th><th>Risco comum</th></tr></thead>
+            <tbody>
+              <tr><td>Conexao</td><td>Pool e retries controlados</td><td>Abrir conexao por request sem reaproveitamento</td></tr>
+              <tr><td>Query</td><td>Parametros preparados</td><td>SQL montado por concatenacao</td></tr>
+              <tr><td>Transacao</td><td>Escopo curto e objetivo</td><td>Transacao longa com lock excessivo</td></tr>
+              <tr><td>Observabilidade</td><td>Log de latencia por query</td><td>Sem rastreabilidade em gargalos</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="sintaxe-uso" class="section-title">Exemplo com Racket e PostgreSQL</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">repositorio.rkt</div>
+          <pre class="example"><span class="kw">#lang</span> racket
+(<span class="kw">require</span> db)
+
+(<span class="kw">define</span> conn
+  (postgresql-connect #:server <span class="str">"127.0.0.1"</span>
+                      #:database <span class="str">"loja"</span>
+                      #:user <span class="str">"app"</span>
+                      #:password <span class="str">"segredo"</span>))
+
+(<span class="kw">define</span> (<span class="fn">buscar-produto</span> id)
+  (query-row conn
+             <span class="str">"select id, nome, preco from produtos where id = $1"</span>
+             id))
+
+(<span class="kw">define</span> (<span class="fn">atualizar-estoque!</span> id delta)
+  (<span class="fn">call-with-transaction</span>
+   conn
+   (<span class="kw">lambda</span> ()
+     (<span class="com">; atualizacao atomica evita corrida entre requests concorrentes</span>
+     (query-exec conn
+                 <span class="str">"update produtos set estoque = estoque + $1 where id = $2"</span>
+                 delta id))))</pre>
+        </div>
+        <p>No exemplo, consultas parametrizadas reduzem risco de injecao SQL e <code class="code-inline">call-with-transaction</code> garante atomicidade na atualizacao de estoque.</p>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Dialetos e bibliotecas por perfil</h2>
+        <div class="grid-cards">
+          <div class="card"><strong>Racket + db</strong><p>API consistente para SQL, bom para sistemas internos e ensino.</p></div>
+          <div class="card"><strong>Chicken + eggs SQL</strong><p>Boa opcao para binario pequeno e servico enxuto.</p></div>
+          <div class="card"><strong>Guile + DBI/FFI</strong><p>Integracao flexivel, mas demanda mais montagem manual.</p></div>
+          <div class="card"><strong>Gambit + C FFI</strong><p>Caminho robusto para drivers especificos quando necessario.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="casos" class="section-title">Casos de uso e limites reais</h2>
+        <div class="panel">
+          <h3 class="panel-title">Onde Scheme brilha</h3>
+          <ul>
+            <li>Motores de regra de negocio e validacao complexa.</li>
+            <li>Servicos orientados a eventos com pipeline funcional.</li>
+            <li>Ferramentas de ETL com DSL interna.</li>
+          </ul>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> ORMs maduros e suporte de mercado ainda sao menores que em Java, C# ou Python. Em times grandes, isso impacta onboarding e manutencao.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="avancado" class="section-title">Avancado: concorrencia e tuning</h2>
+        <div class="panel">
+          <h3 class="panel-title">Checklist tecnico</h3>
+          <ul>
+            <li>Defina timeout por query e limite de conexoes por servico.</li>
+            <li>Use indice composto conforme padrao de acesso, nao por intuicao.</li>
+            <li>Separe leitura/escrita quando workload for assimetrico.</li>
+            <li>Meça p95/p99 antes de otimizar FFI ou trocar runtime.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">Comparacao: SQL em Scheme vs ecossistemas populares</h2>
+        <table class="table">
+          <thead><tr><th>Criterio</th><th>Scheme</th><th>Java/Spring</th><th>Python/Django</th></tr></thead>
+          <tbody>
+            <tr><td>Produtividade inicial</td><td>Media</td><td>Media</td><td>Alta</td></tr>
+            <tr><td>Controle fino</td><td>Alto</td><td>Alto</td><td>Medio</td></tr>
+            <tr><td>Ecosistema ORM</td><td>Limitado</td><td>Muito maduro</td><td>Muito maduro</td></tr>
+            <tr><td>Metaprogramacao</td><td>Muito forte</td><td>Moderada</td><td>Moderada</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>RACKET TEAM. <strong>Racket DB Library</strong>. Disponivel em: <a href="https://docs.racket-lang.org/db/" target="_blank" rel="noopener">docs.racket-lang.org/db</a>.</li>
+            <li>CHICKEN TEAM. <strong>CHICKEN Eggs and Manual</strong>. Disponivel em: <a href="https://wiki.call-cc.org/" target="_blank" rel="noopener">wiki.call-cc.org</a>.</li>
+            <li>GNU PROJECT. <strong>GNU Guile Reference Manual</strong>. Disponivel em: <a href="https://www.gnu.org/software/guile/manual/" target="_blank" rel="noopener">gnu.org/software/guile/manual</a>.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly, 2017.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Persistencia bem feita e mais sobre consistencia de modelo do que sobre framework da moda.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/linguagens/scheme/aplicacoes/web.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme em Aplicacoes Web</a></li>
+          <li><a href="/html/programacao/linguagens/scheme/aplicacoes/dados_ia.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme em Dados e IA</a></li>
+          <li><a href="/html/programacao/linguagens/scheme/aplicacoes/terminal_cli.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme em Terminal e CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Banco de dados nao perdoa abstração confusa: clareza de transacao e contrato de dados vem primeiro.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

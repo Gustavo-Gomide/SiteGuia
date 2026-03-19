@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e frameworks em Haskell: web APIs, concorrencia, paralelismo, bancos de dados, interfaces e arquitetura de sistemas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Haskell - Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Haskell - Bibliotecas e Frameworks</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone Haskell"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Como escolher bibliotecas e frameworks em Haskell</h1>
+          <p>Haskell oferece um ecossistema maduro para APIs, concorrencia, streaming, bancos de dados, validacao e interfaces. A chave e combinar abstrações fortes com bibliotecas pragmáticas para produzir software seguro e escalavel.</p>
+        </div>
+        <p class="intro-highlight">Nesta pagina, voce vai do mapa mental do ecossistema ate padroes avancados de arquitetura com foco em servidor, paralelismo, composicao de efeitos e manutencao de longo prazo.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">Conceitos e Contexto</h2>
+        <p>Pense nas bibliotecas Haskell como pecas de LEGO com encaixes rigorosos: tipos funcionam como o formato de cada peca. Quando os tipos "encaixam", a chance de erro em runtime cai drasticamente. Essa cultura de tipos fortes influenciou frameworks como <strong>Servant</strong>, <strong>Yesod</strong> e <strong>Persistent</strong>.</p>
+        <p>Historicamente, o ecossistema cresceu com foco academico e depois evoluiu para producao pesada em fintech, observabilidade e sistemas de baixo erro. Por isso, e comum ver documentacao com enfase em propriedades formais, leis de abstrações e comportamento previsivel sob carga.</p>
+        <div class="panel">
+          <h3 class="panel-title">Eixos de escolha</h3>
+          <ul>
+            <li><strong>Produtividade inicial:</strong> Scotty e IHP reduzem tempo de setup.</li>
+            <li><strong>Correcao por tipos:</strong> Servant e Opaleye elevam seguranca em contratos.</li>
+            <li><strong>Performance:</strong> Warp, bytestring, text, stm e async.</li>
+            <li><strong>Escalabilidade de codigo:</strong> ReaderT pattern, mtl/polysemy/effectful.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="como-funciona" class="section-title">Como o Ecossistema se Organiza</h2>
+        <p>Em projetos reais, voce normalmente combina camadas: HTTP server, roteamento, validacao, acesso a dados, observabilidade e execucao concorrente. O fluxo comum e: request HTTP - decodificacao - regra de negocio pura - IO controlado - resposta.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Esqueleto de composicao de camadas</div>
+          <pre class="example"><span class="com">-- Dominio puro (sem IO): regra testavel</span>
+<span class="kw">module</span> <span class="fn">Domain.User</span> <span class="kw">where</span>
+
+<span class="kw">newtype</span> <span class="fn">Email</span> = Email String
+
+<span class="fn">validarEmail</span> :: String -> Either String Email
+<span class="fn">validarEmail</span> raw =
+  <span class="kw">if</span> '@' `elem` raw
+    <span class="kw">then</span> Right (Email raw)
+    <span class="kw">else</span> Left <span class="str">"email invalido"</span>
+
+<span class="com">-- Camada de servidor: converte request/response e chama dominio</span>
+<span class="fn">criarUsuarioHandler</span> :: String -> IO String
+<span class="fn">criarUsuarioHandler</span> raw =
+  <span class="kw">case</span> validarEmail raw <span class="kw">of</span>
+    Left err -> pure (<span class="str">"400: "</span> ++ err)
+    Right _  -> pure <span class="str">"201: usuario criado"</span></pre>
+        </div>
+        <p>Esse modelo separa "o que" (dominio) de "como" (infra), facilitando testes, refatoracao e mudanca de framework sem reescrever regra de negocio.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos-frameworks" class="section-title">Principais Categorias</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Categoria</th><th>Bibliotecas</th><th>Quando usar</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Web/API</td><td>Servant, Scotty, Yesod, IHP</td><td>REST, microservicos, apps server-side</td></tr>
+            <tr><td>Servidor HTTP</td><td>Warp, wai, http-types</td><td>Base de performance para APIs</td></tr>
+            <tr><td>DB/ORM</td><td>Persistent, Esqueleto, Opaleye, beam</td><td>SQL tipado e migracoes</td></tr>
+            <tr><td>Concorrencia</td><td>async, stm, unliftio</td><td>Paralelismo e coordenacao segura</td></tr>
+            <tr><td>Streaming</td><td>conduit, pipes, streaming</td><td>ETL, arquivos grandes, backpressure</td></tr>
+            <tr><td>Interfaces</td><td>gi-gtk, gloss, brick</td><td>GUI desktop, visualizacao e TUI</td></tr>
+          </tbody>
+        </table>
+        <div class="panel">
+          <h3 class="panel-title">Regra pratica</h3>
+          <p>Para APIs modernas: <strong>Servant + Warp + aeson + persistent/esqueleto + async/stm + katip/co-log</strong>. Para prototipagem: <strong>Scotty</strong>. Para fullstack opinionado: <strong>IHP</strong>. Para app muito tipado end-to-end: <strong>Yesod</strong>.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="sintaxe-uso" class="section-title">Uso Pratico em API e Servidor</h2>
+        <p>O exemplo abaixo mostra uma API tipada com Servant, um servidor Warp e um handler simples. O ganho principal e detectar inconsistencias de contrato em compilacao.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Servant + Warp: contrato de API tipado</div>
+          <pre class="example"><span class="kw">{-# LANGUAGE</span> DataKinds, TypeOperators <span class="kw">#-}</span>
+
+<span class="kw">import</span> Network.Wai.Handler.Warp (<span class="fn">run</span>)
+<span class="kw">import</span> Servant
+
+<span class="kw">type</span> <span class="fn">API</span> =
+       <span class="str">"health"</span> :> Get '[JSON] String
+  :&lt;|> <span class="str">"users"</span>  :> Capture <span class="str">"id"</span> Int :> Get '[JSON] String
+
+<span class="fn">server</span> :: Server API
+<span class="fn">server</span> = health :&lt;|> userById
+  <span class="kw">where</span>
+    <span class="fn">health</span> = pure <span class="str">"ok"</span>
+    <span class="fn">userById</span> uid = pure (<span class="str">"usuario #"</span> ++ show uid)
+
+<span class="fn">main</span> :: IO ()
+<span class="fn">main</span> = <span class="kw">do</span>
+  <span class="fn">putStrLn</span> <span class="str">"Servidor em :8080"</span>
+  <span class="fn">run</span> 8080 (serve (Proxy :: Proxy API) server)</pre>
+        </div>
+        <p>Para bancos SQL, combine com Persistent/Esqueleto e mantenha transacoes no limite da camada de infraestrutura. Isso evita espalhar IO pela regra de negocio.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Concorrencia com async + STM</div>
+          <pre class="example"><span class="kw">import</span> Control.Concurrent.Async (<span class="fn">mapConcurrently</span>)
+<span class="kw">import</span> Control.Concurrent.STM
+
+<span class="fn">processarLote</span> :: [Int] -> IO [Int]
+<span class="fn">processarLote</span> xs = <span class="fn">mapConcurrently</span> (
+  x -> pure (x * 2)
+  ) xs
+
+<span class="fn">contadorSeguro</span> :: IO Int
+<span class="fn">contadorSeguro</span> = <span class="kw">do</span>
+  tv <- <span class="fn">newTVarIO</span> 0
+  <span class="fn">atomically</span> $ <span class="kw">do</span>
+    n <- <span class="fn">readTVar</span> tv
+    <span class="fn">writeTVar</span> tv (n + 1)
+  <span class="fn">readTVarIO</span> tv</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando Usar e Quando Evitar</h2>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h3 class="panel-title">Excelente escolha</h3>
+            <ul>
+              <li>APIs criticas com contratos estaveis e validacao forte.</li>
+              <li>Sistemas com alta concorrencia e necessidade de previsibilidade.</li>
+              <li>Backends com longa vida util, foco em manutencao e baixo bug rate.</li>
+              <li>Times que valorizam testes de propriedade e modelagem de dominio.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Nao e ideal em todo cenario</h3>
+            <ul>
+              <li>Equipes sem disponibilidade para curva inicial funcional.</li>
+              <li>Prototipos de curtissimo prazo sem compromisso de manutencao.</li>
+              <li>Ambientes que exigem ecosistema especifico ausente em Haskell.</li>
+              <li>Apps GUI multiplataforma com forte dependencia de widgets nativos.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Nao confunda "tipagem forte" com lentidao no desenvolvimento. Em projetos longos, a economia de retrabalho tende a superar o custo inicial de aprendizagem.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="avancado" class="section-title">Padroes Avancados</h2>
+        <p>Em sistemas maiores, use padroes que isolam efeitos, controlam recursos e facilitam observabilidade: <strong>ReaderT pattern</strong>, <strong>bracket</strong> para lifecycle, <strong>structured logging</strong>, retry com politicas e filas internas com STM.</p>
+        <div class="panel">
+          <h3 class="panel-title">Checklist de producao</h3>
+          <ul>
+            <li>Timeout por operacao remota e cancelamento de async.</li>
+            <li>Pool de conexoes DB (resource-pool) e limites de concorrencia.</li>
+            <li>Metrica por endpoint e tracing distribuido.</li>
+            <li>Circuit breaker para dependencia externa instavel.</li>
+            <li>Testes property-based para invariantes de dominio.</li>
+          </ul>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Gestao de recurso com bracket</div>
+          <pre class="example"><span class="kw">import</span> Control.Exception (<span class="fn">bracket</span>)
+
+<span class="fn">abrir</span> :: IO String
+<span class="fn">abrir</span> = pure <span class="str">"conexao"</span>
+
+<span class="fn">fechar</span> :: String -> IO ()
+<span class="fn">fechar</span> _ = <span class="fn">putStrLn</span> <span class="str">"conexao fechada"</span>
+
+<span class="fn">usar</span> :: String -> IO ()
+<span class="fn">usar</span> c = <span class="fn">putStrLn</span> (<span class="str">"usando "</span> ++ c)
+
+<span class="fn">main</span> :: IO ()
+<span class="fn">main</span> = <span class="fn">bracket</span> abrir fechar usar</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema Recomendado</h2>
+        <div class="grid grid--3">
+          <div class="card"><h3>Web/API</h3><p>servant, wai, warp, aeson, http-client</p></div>
+          <div class="card"><h3>Dados</h3><p>persistent, esqueleto, beam, postgresql-simple</p></div>
+          <div class="card"><h3>Concorrencia</h3><p>async, stm, unliftio, typed-process</p></div>
+          <div class="card"><h3>Qualidade</h3><p>hspec, tasty, QuickCheck, hedgehog</p></div>
+          <div class="card"><h3>Observabilidade</h3><p>katip, co-log, ekg, prometheus-client</p></div>
+          <div class="card"><h3>UI/TUI</h3><p>gi-gtk, gloss, brick, vty</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">Comparacao com Outras Linguagens</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Criterio</th><th>Haskell</th><th>Go</th><th>Rust</th><th>TypeScript/Node</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Modelagem de dominio</td><td>Muito forte por tipos algbricos</td><td>Boa, mais simples</td><td>Muito forte</td><td>Moderada</td></tr>
+            <tr><td>Concorrencia</td><td>STM e async robustos</td><td>Goroutines excelentes</td><td>Alta performance, maior complexidade</td><td>Event loop + workers</td></tr>
+            <tr><td>Curva de aprendizagem</td><td>Alta</td><td>Baixa</td><td>Alta</td><td>Baixa a media</td></tr>
+            <tr><td>Produtividade em APIs criticas</td><td>Alta no medio/longo prazo</td><td>Alta no curto prazo</td><td>Alta com engenharia forte</td><td>Alta para iteracao rapida</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrategia-stack" class="section-title">Estrategia de Stack por Cenario</h2>
+        <p>Em vez de escolher bibliotecas isoladas, defina um stack coerente por objetivo de negocio. Um stack de API transacional prioriza consistencia de contrato e banco; um stack de dados prioriza streaming e throughput; e um stack de CLI/tooling prioriza distribuicao simples e manutenibilidade.</p>
+        <table class="table">
+          <thead><tr><th>Cenario</th><th>Stack base</th><th>Risco principal</th></tr></thead>
+          <tbody>
+            <tr><td>API corporativa</td><td>Servant + Warp + Persistent + stm/async</td><td>Complexidade de aprendizado inicial</td></tr>
+            <tr><td>Dados/IA</td><td>conduit/pipes + cassava + hmatrix</td><td>Integração com ecossistemas externos</td></tr>
+            <tr><td>IoT/Gateway</td><td>Parser tipado + mensageria + retries</td><td>Latencia e confiabilidade de rede</td></tr>
+            <tr><td>CLI interna</td><td>optparse-applicative + text + logging</td><td>Divergencia de padroes entre times</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias</h2>
+        <ul>
+          <li>HASKELL FOUNDATION. <strong>Haskell Language and Ecosystem</strong>. Disponivel em: <a href="https://www.haskell.org/" target="_blank" rel="noopener noreferrer">https://www.haskell.org/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>SERVANT TEAM. <strong>Servant Documentation</strong>. Disponivel em: <a href="https://docs.servant.dev/" target="_blank" rel="noopener noreferrer">https://docs.servant.dev/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>YESOD TEAM. <strong>Yesod Web Framework Book</strong>. Disponivel em: <a href="https://www.yesodweb.com/book" target="_blank" rel="noopener noreferrer">https://www.yesodweb.com/book</a>. Acesso em: 13 mar. 2026.</li>
+          <li>GHC TEAM. <strong>GHC User Guide</strong>. Disponivel em: <a href="https://downloads.haskell.org/ghc/latest/docs/users_guide/" target="_blank" rel="noopener noreferrer">https://downloads.haskell.org/ghc/latest/docs/users_guide/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>HUTTON, Graham. <strong>Programming in Haskell</strong>. 2. ed. Cambridge: Cambridge University Press, 2016.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Haskell, framework bom nao e o que esconde complexidade: e o que torna a complexidade explicita, tipada e testavel.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/guia/ecossistema_tooling.html">Haskell - Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/guia/avancado.html">Haskell - Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/guia/projetos_boas_praticas.html">Haskell - Projetos e Boas Praticas</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

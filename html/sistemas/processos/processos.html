@@ -1,0 +1,184 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Processos em sistemas operacionais: conceito, criação com fork/exec, PCB, estados, comunicação entre processos (pipes, sockets, memória compartilhada) e diferença entre processo e thread." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Processos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Processos</h1>
+            <p class="page-subtitle">O programa em execução — espaço de endereçamento isolado, recursos próprios e ciclo de vida gerenciado pelo kernel.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>processo</strong> é a abstração central de qualquer sistema operacional moderno: trata-se de um programa em execução dotado de espaço de endereçamento privado, conjunto de registradores, descritores de arquivos abertos e credenciais de segurança. Ao contrário de um simples arquivo executável em disco, o processo existe apenas enquanto o kernel mantém sua estrutura de controle — o PCB — e o escalonador lhe concede ciclos de CPU.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CRIAÇÃO ═══════════════════ -->
+      <section id="criacao">
+        <h2>Criação de Processos</h2>
+        <p>No Unix/Linux todo processo nasce de outro processo por meio de <code class="code-inline">fork()</code>, que cria uma cópia quase idêntica do processo pai usando <em>copy-on-write</em> — as páginas de memória são compartilhadas até que um dos dois tente modificá-las. Em seguida, <code class="code-inline">exec*()</code> substitui a imagem do processo pelo novo programa sem criar outro PID.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — fork() + exec() criando processo filho</div>
+          <pre class="code-block">#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/wait.h&gt;
+
+int main(void) {
+    pid_t pid = fork();          /* duplica o processo */
+
+    if (pid &lt; 0) {
+        perror("fork");
+        return 1;
+    }
+
+    if (pid == 0) {
+        /* filho: substitui imagem por /bin/ls */
+        char *args[] = { "ls", "-l", "/tmp", NULL };
+        execvp(args[0], args);
+        perror("execvp");        /* só chega aqui se exec falhar */
+        return 1;
+    }
+
+    /* pai: espera filho terminar */
+    int status;
+    waitpid(pid, &amp;status, 0);
+    printf("filho terminou com status %d\n", WEXITSTATUS(status));
+    return 0;
+}</pre>
+        </div>
+
+        <p>Principais syscalls relacionadas à gestão de processos:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Syscall</th><th>Descrição</th><th>Retorno</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code class="code-inline">fork()</code></td><td>Cria cópia do processo atual (copy-on-write)</td><td>PID do filho ao pai; 0 ao filho</td></tr>
+              <tr><td><code class="code-inline">vfork()</code></td><td>fork sem copiar espaço de endereçamento; filho executa antes do pai</td><td>Mesmo que fork()</td></tr>
+              <tr><td><code class="code-inline">clone()</code></td><td>Cria processo/thread com controle fino de compartilhamento</td><td>PID do novo processo</td></tr>
+              <tr><td><code class="code-inline">execve()</code></td><td>Substitui imagem do processo por novo programa</td><td>Não retorna em caso de sucesso</td></tr>
+              <tr><td><code class="code-inline">execvp()</code></td><td>exec com busca automática no PATH</td><td>Não retorna em caso de sucesso</td></tr>
+              <tr><td><code class="code-inline">wait()</code></td><td>Aguarda qualquer filho terminar</td><td>PID do filho terminado</td></tr>
+              <tr><td><code class="code-inline">waitpid()</code></td><td>Aguarda filho específico</td><td>PID ou -1 em erro</td></tr>
+              <tr><td><code class="code-inline">exit()</code></td><td>Termina o processo com código de saída</td><td>Não retorna</td></tr>
+              <tr><td><code class="code-inline">getpid()</code></td><td>Retorna o PID do processo atual</td><td>PID (sempre positivo)</td></tr>
+              <tr><td><code class="code-inline">getppid()</code></td><td>Retorna o PID do processo pai</td><td>PPID</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — ESTRUTURA ═══════════════════ -->
+      <section id="estrutura">
+        <h2>Estrutura de um Processo na Memória</h2>
+        <p>O espaço de endereçamento virtual de um processo é dividido em segmentos bem definidos, cada um com permissões e finalidades distintas:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Segmento</th><th>Conteúdo</th><th>Crescimento</th><th>Permissões típicas</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Texto (code)</strong></td><td>Instruções do programa compilado</td><td>Fixo</td><td>r-x (somente leitura + execução)</td></tr>
+              <tr><td><strong>Dados inicializados</strong></td><td>Variáveis globais e estáticas com valor inicial</td><td>Fixo</td><td>rw-</td></tr>
+              <tr><td><strong>BSS</strong></td><td>Variáveis globais/estáticas sem valor inicial (zeradas pelo SO)</td><td>Fixo</td><td>rw-</td></tr>
+              <tr><td><strong>Heap</strong></td><td>Memória alocada dinamicamente (malloc/new)</td><td>Cresce para cima (endereços maiores)</td><td>rw-</td></tr>
+              <tr><td><strong>Stack</strong></td><td>Variáveis locais, parâmetros, endereços de retorno</td><td>Cresce para baixo (endereços menores)</td><td>rw-</td></tr>
+              <tr><td><strong>mmap / bibliotecas</strong></td><td>Arquivos mapeados, .so compartilhadas</td><td>Dinâmico</td><td>Variável</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — IPC ═══════════════════ -->
+      <section id="ipc">
+        <h2>Comunicação entre Processos (IPC)</h2>
+        <p>Como processos têm espaços de endereçamento isolados, o kernel oferece mecanismos de IPC para que possam trocar dados e sincronizar-se:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Mecanismo</th><th>Tipo</th><th>Unidirecional?</th><th>Entre máquinas?</th><th>Caso de uso típico</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Pipe anônimo</strong></td><td>Fluxo de bytes</td><td>Sim</td><td>Não</td><td>Shell: <code class="code-inline">ls | grep .c</code></td></tr>
+              <tr><td><strong>Named pipe (FIFO)</strong></td><td>Fluxo de bytes</td><td>Sim</td><td>Não</td><td>Processos sem ancestral comum</td></tr>
+              <tr><td><strong>Message queue</strong></td><td>Mensagens tipadas</td><td>Bidirecional</td><td>Não (POSIX/SysV)</td><td>Envio de tarefas assíncronas</td></tr>
+              <tr><td><strong>Memória compartilhada</strong></td><td>Região mapeada</td><td>Bidirecional</td><td>Não</td><td>Alto desempenho, zero-copy</td></tr>
+              <tr><td><strong>Semáforo</strong></td><td>Contador / sincronização</td><td>N/A</td><td>Não</td><td>Controle de acesso a recurso compartilhado</td></tr>
+              <tr><td><strong>Socket Unix domain</strong></td><td>Fluxo / datagram</td><td>Bidirecional</td><td>Não</td><td>D-Bus, comunicação local de alta velocidade</td></tr>
+              <tr><td><strong>Socket TCP/UDP</strong></td><td>Rede</td><td>Bidirecional</td><td>Sim</td><td>Comunicação entre serviços em rede</td></tr>
+              <tr><td><strong>Signal</strong></td><td>Notificação assíncrona</td><td>Sim</td><td>Não</td><td>SIGTERM, SIGKILL, SIGCHLD</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — PROCESSO VS THREAD ═══════════════════ -->
+      <section id="processo-vs-thread">
+        <h2>Processo vs Thread</h2>
+        <p>Threads são unidades de execução dentro de um processo. Compreender as diferenças é essencial para escolher o modelo correto de concorrência:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Critério</th><th>Processo</th><th>Thread</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Espaço de endereçamento</td><td>Isolado (privado)</td><td>Compartilhado com as demais threads do mesmo processo</td></tr>
+              <tr><td>Troca de contexto</td><td>Pesada — flush de TLB, troca de page table</td><td>Leve — apenas salvar/restaurar registradores + stack pointer</td></tr>
+              <tr><td>Criação</td><td>Lenta (fork copia estruturas do kernel)</td><td>Rápida (pthread_create aloca apenas stack + TCB)</td></tr>
+              <tr><td>Falha isolada</td><td>Sim — crash de um processo não afeta outros</td><td>Não — falha de uma thread pode derrubar todo o processo</td></tr>
+              <tr><td>Comunicação</td><td>Exige IPC explícito (pipe, socket, shm)</td><td>Direta via memória compartilhada (mas requer sincronização)</td></tr>
+              <tr><td>Custo de memória</td><td>Alto (mínimo ~4 MB de espaço virtual)</td><td>Baixo (tipicamente 8 KB–2 MB de stack por thread)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se nos tópicos relacionados:
+          <a href="/html/sistemas/processos/threads.html">Threads</a> e
+          <a href="/html/sistemas/processos/estados_processo.html">Estados de Processo</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Um processo é uma ilusão coletiva mantida pelo kernel: cada programa acredita possuir a máquina inteira."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

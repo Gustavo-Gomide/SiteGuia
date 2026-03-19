@@ -1,0 +1,194 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Tauri Rust: alternativa ao Electron com ~3MB de tamanho, backend Rust e webview nativo do OS." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Rust Tauri | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Rust &mdash; Tauri</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Rust Tauri</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Tauri &mdash; Desktop com Rust + Frontend Web (~3 MB)</h1>
+          <p>O antidoto ao Electron: usa a webview <em>nativa do SO</em> e backend Rust. Apps de 3 MB em vez de 150 MB.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>Tauri</strong> une um frontend em qualquer framework web (React, Vue, Svelte, Solid)
+          com um backend em <strong>Rust</strong> de alta performance. Em vez de empacotar o Chromium
+          inteiro como o Electron, Tauri usa a <strong>webview nativa do SO</strong>: WKWebView no macOS,
+          WebView2 no Windows e WebKitGTK no Linux. O resultado: apps de 3&ndash;10 MB, uso de RAM
+          drasticamente menor e tempo de startup mais rapido. <strong>Tauri v2</strong> (2024)
+          adicionou suporte a mobile (iOS/Android) e redesenhou o sistema de plugins e permissoes.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura" class="section-title">1. Arquitetura e IPC</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">rust &mdash; comando tauri (backend src-tauri/src/lib.rs)</div>
+          <pre class="example"><span class="kw">use</span> tauri::Manager;
+
+<span class="com">// Tauri command: expoe funcao Rust para o frontend JS</span>
+#[tauri::<span class="fn">command</span>]
+<span class="kw">fn</span> <span class="fn">ler_arquivo</span>(caminho: String) -> Result&lt;String, String&gt; {
+    std::fs::<span class="fn">read_to_string</span>(&caminho)
+        .<span class="fn">map_err</span>(|e| e.<span class="fn">to_string</span>())
+}
+
+#[tauri::<span class="fn">command</span>]
+<span class="kw">async fn</span> <span class="fn">buscar_dados</span>(url: String) -> Result&lt;String, String&gt; {
+    <span class="com">// async nativo — nao trava a UI</span>
+    reqwest::<span class="fn">get</span>(&url).<span class="kw">await</span>
+        .<span class="fn">map_err</span>(|e| e.<span class="fn">to_string</span>())?
+        .<span class="fn">text</span>().<span class="kw">await</span>
+        .<span class="fn">map_err</span>(|e| e.<span class="fn">to_string</span>())
+}
+
+<span class="kw">pub fn</span> <span class="fn">run</span>() {
+    tauri::<span class="fn">Builder</span>::<span class="fn">default</span>()
+        .<span class="fn">invoke_handler</span>(tauri::<span class="fn">generate_handler!</span>[ler_arquivo, buscar_dados])
+        .<span class="fn">run</span>(tauri::<span class="fn">generate_context!</span>())
+        .<span class="fn">expect</span>(<span class="str">"Erro ao iniciar app Tauri"</span>);
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">typescript &mdash; invocar comando rust do frontend</div>
+          <pre class="example"><span class="kw">import</span> { invoke } <span class="kw">from</span> <span class="str">'@tauri-apps/api/core'</span>;
+
+<span class="com">// Chama o comando Rust sem escrever IPC manual</span>
+<span class="kw">const</span> conteudo = <span class="kw">await</span> <span class="fn">invoke</span>&lt;string&gt;(<span class="str">'ler_arquivo'</span>, {
+    caminho: <span class="str">'/home/user/notas.txt'</span>
+});
+console.<span class="fn">log</span>(conteudo);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="seguranca" class="section-title">2. Modelo de Seguranca</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">json &mdash; capabilities em tauri.conf.json (Tauri v2)</div>
+          <pre class="example">{
+  <span class="str">"app"</span>: {
+    <span class="str">"security"</span>: {
+      <span class="str">"csp"</span>: <span class="str">"default-src 'self'; script-src 'self'"</span>
+    }
+  },
+  <span class="str">"plugins"</span>: {
+    <span class="str">"fs"</span>: {
+      <span class="com">// Permite acesso apenas ao diretorio de dados do app</span>
+      <span class="str">"scope"</span>: { <span class="str">"allow"</span>: [<span class="str">"$APPDATA/**"</span>] }
+    },
+    <span class="str">"http"</span>: {
+      <span class="com">// Permite requests apenas para dominios autorizados</span>
+      <span class="str">"scope"</span>: { <span class="str">"allow"</span>: [<span class="str">"https://api.minhaapp.com/**"</span>] }
+    }
+  }
+}</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span>
+          <strong>Permissoes granulares:</strong> Tauri v2 exige declarar explicitamente quais permissoes o app tem (filesystem, http, notificacoes, etc). Por padrao tudo e negado — diferente do Electron onde o acesso ao Node.js e optado desativando flags. Isso reduz drasticamente a superficie de ataque.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tauri-vs-electron" class="section-title">3. Tauri vs Electron</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Tamanho</h3>
+            <p>Tauri: ~3&ndash;10 MB. Electron: ~150 MB. A diferenca e o Chromium embutido no Electron vs webview nativa do OS no Tauri.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Uso de RAM</h3>
+            <p>Tauri usa significativamente menos RAM por nao instanciar um processo Chromium separado. Importante para apps de baixo consumo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Consistencia de UI</h3>
+            <p>Electron garante renderizacao identica em todas as plataformas (Chromium fixo). Tauri pode ter pequenas diferencas de CSS/JS entre plataformas por usar webviews diferentes.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Backend</h3>
+            <p>Electron: backend em Node.js. Tauri: backend em Rust (performance, seguranca de memoria, sem GC). Tauri 2 tambem suporta Kotlin/Swift para plugins nativos.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">4. Quando Usar Tauri</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Apps onde tamanho do binario importa (instaladores menores, mais rapido de baixar)</li>
+              <li>Apps com operacoes pesadas no backend onde Rust da vantagem real de performance</li>
+              <li>Equipes que conhecem Rust e web tech e querem evitar Node.js no backend</li>
+              <li>Apps mobile + desktop cross-platform com Tauri v2</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>Time nao sabe Rust e precisa de produtividade maxima &mdash; Electron tem ecossistema maior</li>
+              <li>UI deve ser identica pixel-perfect em todas as plataformas &mdash; webviews divergem</li>
+              <li>Muitos modulos Node.js existentes que ja funcionam em Electron</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>TAURI TEAM. <strong>Tauri Documentation v2</strong>. Disponivel em: <a href="https://v2.tauri.app/start/" target="_blank" rel="noopener">v2.tauri.app/start</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/js/js_electron.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Electron &mdash; alternativa mais estabelecida com Chromium</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/rust/rust_iced.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Iced &mdash; GUI puramente nativa em Rust</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Tauri prova que voce nao precisa empacotar um navegador inteiro para criar um app desktop com web tech." &mdash; Tauri v2 Launch
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

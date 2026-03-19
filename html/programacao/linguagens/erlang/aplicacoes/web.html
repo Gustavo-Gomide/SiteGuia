@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang para web: Cowboy, APIs HTTP, WebSockets, gateways concorrentes e quando a BEAM faz sentido em serviços web." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Erlang — Web</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Erlang para Web</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Web</h1>
+          <p>Erlang não é a escolha mais comum para CRUDs convencionais, mas é extraordinariamente forte em gateways HTTP, APIs com muitas conexões simultâneas, WebSockets, callbacks de telecom e serviços que precisam continuar respondendo mesmo quando partes do sistema falham.</p>
+        </div>
+        <p class="intro-highlight">Na web, Erlang rende melhor quando o problema central não é gerar páginas bonitas, e sim manter milhares ou milhões de conversas concorrentes com latência previsível e recuperação rápida.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="contexto">Onde Erlang se encaixa bem</h2>
+        <p>Imagine um restaurante com um único cozinheiro para tudo: pedidos, entrega, limpeza e caixa. Esse é o backend que concentra demais trabalho numa thread ou num pool pequeno. A BEAM adota o oposto: muitos processos leves, cada um cuidando de uma responsabilidade pequena. Para tráfego web, isso casa especialmente bem com conexões longas e workloads orientados a mensagem.</p>
+        <div class="grid grid--auto">
+          <div class="card">
+            <h3>Excelente</h3>
+            <p>WebSockets, chat, gateways, APIs de evento, callbacks, realtime e proxies.</p>
+          </div>
+          <div class="card">
+            <h3>Viável</h3>
+            <p>REST APIs e backends internos com foco em disponibilidade e isolamento de falhas.</p>
+          </div>
+          <div class="card">
+            <h3>Menos natural</h3>
+            <p>CMS, templating pesado e stacks front-end acopladas ao backend.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Fluxo de uma requisição na BEAM</h2>
+        <svg viewBox="0 0 760 180" role="img" aria-label="Fluxo de requisição web em Erlang" class="w-full">
+          <rect x="30" y="60" width="120" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="90" y="88" text-anchor="middle">Cliente</text>
+          <rect x="190" y="60" width="120" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="250" y="88" text-anchor="middle">Ranch</text>
+          <rect x="350" y="60" width="120" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="410" y="88" text-anchor="middle">Cowboy</text>
+          <rect x="510" y="60" width="120" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="570" y="88" text-anchor="middle">Handler</text>
+          <rect x="650" y="60" width="80" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="690" y="88" text-anchor="middle">OTP</text>
+          <line x1="150" y1="82" x2="190" y2="82" stroke="currentColor"></line>
+          <line x1="310" y1="82" x2="350" y2="82" stroke="currentColor"></line>
+          <line x1="470" y1="82" x2="510" y2="82" stroke="currentColor"></line>
+          <line x1="630" y1="82" x2="650" y2="82" stroke="currentColor"></line>
+          <text x="410" y="135" text-anchor="middle">cada conexão vive em processos leves supervisionáveis</text>
+        </svg>
+        <p>Esse desenho importa porque cada camada pode falhar de forma localizada. Um handler malcomportado não precisa travar o listener inteiro; um pico de conexões afeta filas e schedulers, mas não impõe o mesmo modelo de bloqueio tradicional de servidores thread-per-connection.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="codigo">Exemplo prático com Cowboy</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Handler HTTP com resposta JSON</div>
+          <pre class="example">init(Req0, State) -&gt;
+    Body = jsx:encode(#{status =&gt; ok, linguagem =&gt; erlang}),
+    Req = cowboy_req:reply(
+      200,
+      #{&lt;&lt;"content-type"&gt;&gt; =&gt; &lt;&lt;"application/json"&gt;&gt;},
+      Body,
+      Req0
+    ),
+    {ok, Req, State}.
+
+start_link() -&gt;
+    Dispatch = cowboy_router:compile([
+      {'_', [{&lt;&lt;"/health"&gt;&gt;, health_handler, []}]}
+    ]),
+    cowboy:start_clear(http_listener,
+      [{port, 8080}],
+      #{env =&gt; #{dispatch =&gt; Dispatch}}).</pre>
+        </div>
+        <p>O ponto didático aqui não é a sintaxe do JSON, e sim a separação de papéis: o listener aceita conexão, o router resolve rota, o handler responde, e todo o resto do comportamento de robustez continua sendo responsabilidade da aplicação OTP.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-limites">Quando usar e quando evitar</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Use Erlang para web quando:</p>
+            <ul>
+              <li>o número de conexões simultâneas importa mais que scaffolding rápido</li>
+              <li>o sistema precisa sobreviver a falhas parciais sem downtime amplo</li>
+              <li>WebSocket, fila e eventos são parte central do produto</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Prefira outra stack quando:</p>
+            <ul>
+              <li>o principal valor vem de ecossistema full-stack e produtividade de CRUD</li>
+              <li>o time depende fortemente de ORMs, geração de painel e plugins prontos</li>
+              <li>o backend é simples o bastante para não justificar a curva de BEAM</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Erlang serve muito bem a camada de tráfego e coordenação. Se seu problema principal é rendering de frontend moderno, trate o BEAM como backend especializado, não como solução universal.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>NINE NINES. <strong>Cowboy User Guide</strong>. Disponível em: &lt;https://ninenines.eu/docs/en/cowboy/&gt;. Acesso em: 2026.</li>
+            <li>NINE NINES. <strong>Ranch Guide</strong>. Disponível em: &lt;https://ninenines.eu/docs/en/ranch/&gt;. Acesso em: 2026.</li>
+            <li>ERLANG/OTP. <strong>inets User's Guide</strong>. Disponível em: &lt;https://www.erlang.org/doc/apps/inets/&gt;. Acesso em: 2026.</li>
+            <li>ARMSTRONG, J. <strong>Programming Erlang</strong>. 2. ed. Pragmatic Bookshelf, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Persistência e banco de dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Cowboy, Ranch e ecossistema</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Erlang como backend para mobile</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Na web, Erlang vale menos por “framework bonito” e muito mais pela capacidade de manter conversas concorrentes sob controle. Quando conexão, disponibilidade e isolamento de falhas são o problema real, a BEAM responde com elegância rara.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

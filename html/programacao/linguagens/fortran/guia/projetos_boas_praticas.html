@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fortran Projetos e Boas Práticas: módulos bem estruturados, implicit none, intent, testes unitários com test-drive, profiling e otimização de memória cache." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — Projetos e Boas Práticas</h1>
+          <p>Código Fortran de qualidade usa módulos para encapsulamento, <code>implicit none</code> em todos os escopos, <code>intent</code> em todos os argumentos, tipos derivados para agrupamento de dados relacionados, e testes unitários via test-drive. O profiling com gprof e a análise de cache com Valgrind/perf completam o ciclo de desenvolvimento de alto desempenho.</p>
+        </div>
+        <p class="intro-highlight">
+          A armadilha mais comum em código Fortran é a <strong>ordem de iteração de arrays 2D</strong>: Fortran armazena por coluna (column-major), então iterar <code>do i; do j; A(i,j)</code> salta na memória. A ordem correta é <code>do j; do i; A(i,j)</code> — o loop interno percorre a coluna contiguamente na memória, resultando em 5–10× mais velocidade por localidade de cache.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-projeto">Estrutura de Projeto Fortran Moderno</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Organização por módulos com encapsulamento</div>
+          <pre class="example"><span class="com">! src/constantes.f90 — parâmetros globais em módulo dedicado</span>
+module constantes
+    implicit none
+    private
+    public :: dp, pi, g, c_luz
+
+    integer, parameter :: dp     = selected_real_kind(15, 307)
+    real(dp), parameter :: pi    = 3.14159265358979323846_dp
+    real(dp), parameter :: g     = 9.80665_dp          <span class="com">! m/s² (ISO 80000)</span>
+    real(dp), parameter :: c_luz = 299792458.0_dp       <span class="com">! m/s</span>
+
+end module constantes
+
+<span class="com">! src/vetor3d.f90 — tipo derivado com métodos</span>
+module vetor3d_mod
+    use constantes, only: dp
+    implicit none
+    private
+    public :: Vetor3D, op_norm, op_cross
+
+    type :: Vetor3D
+        real(dp) :: x = 0.0_dp
+        real(dp) :: y = 0.0_dp
+        real(dp) :: z = 0.0_dp
+    contains
+        procedure :: norma
+        procedure :: normalizar
+        generic   :: operator(+)  => somar
+        generic   :: operator(*)  => escalar
+    private
+        procedure :: somar
+        procedure :: escalar
+    end type Vetor3D
+
+contains
+
+    pure real(dp) function norma(self) result(n)
+        class(Vetor3D), intent(in) :: self
+        n = sqrt(self%x**2 + self%y**2 + self%z**2)
+    end function norma
+
+    pure function normalizar(self) result(v)
+        class(Vetor3D), intent(in) :: self
+        type(Vetor3D) :: v
+        real(dp) :: n
+        n = self%norma()
+        if (n > tiny(n)) then
+            v = Vetor3D(self%x/n, self%y/n, self%z/n)
+        else
+            v = Vetor3D(0.0_dp, 0.0_dp, 0.0_dp)
+        end if
+    end function normalizar
+
+    pure function somar(a, b) result(c)
+        class(Vetor3D), intent(in) :: a
+        type(Vetor3D),  intent(in) :: b
+        type(Vetor3D) :: c
+        c = Vetor3D(a%x + b%x, a%y + b%y, a%z + b%z)
+    end function somar
+
+    pure function escalar(v, k) result(c)
+        class(Vetor3D), intent(in) :: v
+        real(dp),       intent(in) :: k
+        type(Vetor3D) :: c
+        c = Vetor3D(v%x * k, v%y * k, v%z * k)
+    end function escalar
+
+    pure function op_cross(a, b) result(c)
+        type(Vetor3D), intent(in) :: a, b
+        type(Vetor3D) :: c
+        c%x = a%y * b%z - a%z * b%y
+        c%y = a%z * b%x - a%x * b%z
+        c%z = a%x * b%y - a%y * b%x
+    end function op_cross
+
+    pure real(dp) function op_norm(a, b) result(d)
+        type(Vetor3D), intent(in) :: a, b
+        type(Vetor3D) :: diff
+        diff = Vetor3D(a%x - b%x, a%y - b%y, a%z - b%z)
+        d = diff%norma()
+    end function op_norm
+
+end module vetor3d_mod</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Testes Unitários com test-drive</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">test-drive framework — testes para vetor3d_mod</div>
+          <pre class="example"><span class="com">! test/test_vetor3d.f90</span>
+module test_vetor3d
+    use testdrive, only: new_unittest, unittest_type, error_type, check
+    use vetor3d_mod
+    use constantes, only: dp
+    implicit none
+    private
+    public :: collect_tests
+
+contains
+
+    subroutine collect_tests(testsuite)
+        type(unittest_type), allocatable, intent(out) :: testsuite(:)
+        testsuite = [                                        &
+            new_unittest("norma_zero",     test_norma_zero), &
+            new_unittest("norma_unitaria", test_norma_unit), &
+            new_unittest("soma_vetores",   test_soma)        &
+        ]
+    end subroutine collect_tests
+
+    subroutine test_norma_zero(error)
+        type(error_type), allocatable, intent(out) :: error
+        type(Vetor3D) :: v
+        v = Vetor3D(0.0_dp, 0.0_dp, 0.0_dp)
+        call check(error, abs(v%norma()) < 1.0e-14_dp, <span class="str">"norma zero falhou"</span>)
+    end subroutine test_norma_zero
+
+    subroutine test_norma_unit(error)
+        type(error_type), allocatable, intent(out) :: error
+        type(Vetor3D) :: v, vn
+        v  = Vetor3D(3.0_dp, 4.0_dp, 0.0_dp)
+        vn = v%normalizar()
+        call check(error, abs(vn%norma() - 1.0_dp) < 1.0e-14_dp, &
+                   <span class="str">"normalização falhou"</span>)
+    end subroutine test_norma_unit
+
+    subroutine test_soma(error)
+        type(error_type), allocatable, intent(out) :: error
+        type(Vetor3D) :: a, b, c
+        a = Vetor3D(1.0_dp, 0.0_dp, 0.0_dp)
+        b = Vetor3D(0.0_dp, 1.0_dp, 0.0_dp)
+        c = a + b
+        call check(error, abs(c%x - 1.0_dp) < 1.0e-14_dp, <span class="str">"soma x falhou"</span>)
+        call check(error, abs(c%y - 1.0_dp) < 1.0e-14_dp, <span class="str">"soma y falhou"</span>)
+    end subroutine test_soma
+
+end module test_vetor3d
+
+<span class="com">! Executar: fpm test</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="otimizacao">Otimização e Profiling</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Column-major, alocação contígua e profiling com gprof</div>
+          <pre class="example"><span class="com">! ERRADO — loop externo percorre linhas (não contíguo em Fortran)</span>
+subroutine loop_ruim(A, N)
+    integer, intent(in) :: N
+    real, intent(inout) :: A(N,N)
+    integer :: i, j
+    do i = 1, N         <span class="com">! i = linha</span>
+        do j = 1, N     <span class="com">! j = coluna — A(i,j), A(i,j+1)... salta N*4 bytes</span>
+            A(i,j) = A(i,j) * 2.0
+        end do
+    end do
+end subroutine loop_ruim
+
+<span class="com">! CORRETO — loop interno percorre coluna (contíguo)</span>
+subroutine loop_certo(A, N)
+    integer, intent(in) :: N
+    real, intent(inout) :: A(N,N)
+    integer :: i, j
+    do j = 1, N         <span class="com">! j = coluna</span>
+        do i = 1, N     <span class="com">! i = linha — A(i,j), A(i+1,j)... sequencial</span>
+            A(i,j) = A(i,j) * 2.0
+        end do
+    end do
+end subroutine loop_certo
+
+<span class="com">! Alocação contígua para arrays de structs — usar arrays de components</span>
+<span class="com">! (AoS vs SoA — Structure of Arrays mais eficiente em Fortran)</span>
+type :: Particula
+    real :: x(10000)   <span class="com">! todas as posições X juntas</span>
+    real :: y(10000)   <span class="com">! todas as posições Y juntas</span>
+    real :: vx(10000)  <span class="com">! velocidades X</span>
+    real :: vy(10000)
+end type Particula
+
+<span class="com">! Profiling com gprof</span>
+<span class="com">! 1. Compilar: gfortran -O2 -pg prog.f90 -o prog</span>
+<span class="com">! 2. Executar: ./prog</span>
+<span class="com">! 3. Analisar: gprof prog gmon.out | head -30</span>
+
+<span class="com">! Profiling com perf (Linux)</span>
+<span class="com">! perf stat ./prog      # contadores de CPU</span>
+<span class="com">! perf record ./prog; perf report  # flamegraph</span>
+
+<span class="com">! timer interno</span>
+integer :: t1, t2, rate
+call system_clock(t1, rate)
+<span class="com">! ... código a medir ...</span>
+call system_clock(t2)
+print *, <span class="str">"Tempo:"</span>, real(t2 - t1) / real(rate), <span class="str">"segundos"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Fortran-lang. <strong>Fortran Best Practices</strong>. Disponível em: &lt;https://fortran-lang.org/learn/best_practices/&gt;. Acesso em: 2026.</li>
+            <li>METCALF, M.; REID, J.; COHEN, M. <strong>Modern Fortran Explained</strong>. 5. ed. Oxford University Press, 2018.</li>
+            <li>Intel. <strong>Intel Fortran Compiler Developer Guide and Reference</strong>. Intel Corporation, 2024.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/computacao_cientifica.html"><span data-svg="seta-direita" aria-hidden="true"></span> Computação Científica</a></li>
+          <li><a href="../aplicacoes/hpc.html"><span data-svg="seta-direita" aria-hidden="true"></span> HPC e Supercomputação</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A regra de ouro do Fortran de alto desempenho: <strong>meça primeiro, otimize depois</strong>. Na maioria dos códigos científicos, 90% do tempo é gasto em 10% do código. Use <code>gprof</code> ou <code>perf</code> para encontrar esses gargalos antes de qualquer otimização manual — e nunca otimize a ordem de loops sem medir o impact real de cache com <code>perf stat --cache-misses</code>.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

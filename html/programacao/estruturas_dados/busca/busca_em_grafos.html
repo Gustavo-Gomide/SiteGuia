@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Busca em Grafos: ciclos, visitados, grafos ponderados e visão geral de BFS, DFS, Dijkstra e A*. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Busca em Grafos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Busca em Grafos</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Busca em Grafos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Grafos: buscando em redes com ciclos e pesos</h1>
+          <p>Árvores são grafos sem ciclos. Grafos têm ciclos  e isso muda tudo no algoritmo de busca.</p>
+        </div>
+        <p class="intro-highlight">
+          Grafos representam redes: cidades interligadas por estradas, páginas web conectadas por hiperlinks, usuários conectados em redes sociais. Ao contrário de árvores ou arrays, grafos podem conter <strong>ciclos</strong> e <strong>múltiplos caminhos</strong> entre o mesmo par de nós. A busca em grafos requer estratégias específicas para evitar loops infinitos e encontrar caminhos ótimos.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O problema central: ciclos</h2>
+        <p>
+          Em uma árvore, cada nó tem exatamente um caminho a partir da raiz  não há risco de visitar o mesmo nó duas vezes. Em grafos, uma aresta pode conectar qualquer par de nós, criando ciclos. Sem controle, uma travessia poderia percorrer o mesmo ciclo para sempre.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Solução universal:</strong> Um conjunto <code class="code-inline">visitados</code>. Antes de processar qualquer nó, verifique se já está no conjunto. Se sim, pule  o caminho já foi explorado por esse lado.
+          </p>
+        </div>
+
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 480 200" role="img" aria-label="Ciclo A-B-C-A: sem visitados entra em loop, com visitados detecta A já visitado e para">
+            <defs>
+              <style>
+                .bg-nd  { fill: var(--card-bg-primary); stroke: var(--border); stroke-width: 1.5; }
+                .bg-vis { fill: rgba(var(--accent-rgb), 0.3); stroke: var(--accent); stroke-width: 2; }
+                .bg-blk { fill: rgba(var(--danger-rgb), 0.1); stroke: var(--danger); stroke-width: 2; }
+                .bg-eg  { stroke: var(--border); stroke-width: 1.5; }
+                .bg-cyc { stroke: var(--danger); stroke-width: 2; stroke-dasharray: 5; }
+                .bg-txt { fill: var(--text-primary); font-size: 13px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+                .bg-lbl { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+              </style>
+              <marker id="bg-arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="var(--border)"/>
+              </marker>
+              <marker id="bg-block" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L8,3 L0,6 Z" fill="var(--danger)"/>
+              </marker>
+            </defs>
+
+            <!-- Left: ciclo sem visitados -->
+            <text x="120" y="16" class="bg-lbl">Sem visitados  loop infinito</text>
+            <line x1="120" y1="50"  x2="60"  y2="120" class="bg-eg" marker-end="url(#bg-arr)"/>
+            <line x1="60"  y1="120" x2="180" y2="120" class="bg-eg" marker-end="url(#bg-arr)"/>
+            <line x1="180" y1="120" x2="120" y2="50"  class="bg-cyc" marker-end="url(#bg-block)"/>
+            <circle cx="120" cy="50"  r="20" class="bg-nd"/>
+            <text x="120" cy="50"  class="bg-txt">A</text>
+            <text x="120" y="50"  class="bg-txt">A</text>
+            <circle cx="60"  cy="120" r="20" class="bg-nd"/>
+            <text x="60"  y="120" class="bg-txt">B</text>
+            <circle cx="180" cy="120" r="20" class="bg-nd"/>
+            <text x="180" y="120" class="bg-txt">C</text>
+            <text x="150" y="65"  class="bg-lbl" style="fill: var(--danger);"> loop!</text>
+            <text x="120" y="160" class="bg-lbl">ABCABC...</text>
+
+            <!-- divider -->
+            <line x1="250" y1="20" x2="250" y2="180" stroke="var(--border)" stroke-width="1" stroke-dasharray="3"/>
+
+            <!-- Right: com visitados -->
+            <text x="370" y="16" class="bg-lbl">Com visitados  detecta e para</text>
+            <line x1="370" y1="50"  x2="310" y2="120" class="bg-eg" marker-end="url(#bg-arr)"/>
+            <line x1="310" y1="120" x2="430" y2="120" class="bg-eg" marker-end="url(#bg-arr)"/>
+            <line x1="430" y1="120" x2="370" y2="50"  class="bg-cyc" marker-end="url(#bg-block)"/>
+            <circle cx="370" cy="50"  r="20" class="bg-vis"/>
+            <text x="370" y="50"  class="bg-txt">A</text>
+            <circle cx="310" cy="120" r="20" class="bg-vis"/>
+            <text x="310" y="120" class="bg-txt">B</text>
+            <circle cx="430" cy="120" r="20" class="bg-vis"/>
+            <text x="430" y="120" class="bg-txt">C</text>
+            <circle cx="370" cy="50"  r="26" class="bg-blk" style="fill:none;"/>
+            <text x="408"  y="65"  class="bg-lbl" style="fill: var(--accent);">já visitado!</text>
+            <text x="370" y="160" class="bg-lbl">ABCA (visitado)  para</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ponderados" class="section-title">Grafos ponderados</h2>
+        <p>
+          Em muitos problemas reais, diferentes caminhos têm custos diferentes: uma estrada pode ter 5 km ou 500 km; uma conexão de rede pode ter latência de 1 ms ou 100 ms. Grafos com <strong>pesos nas arestas</strong> exigem algoritmos que considerem o custo acumulado do caminho, não apenas o número de saltos.
+        </p>
+        <p>
+          BFS e DFS ignoram pesos  eles tratam todos os caminhos como igualmente custosos. Para grafos ponderados, os algoritmos especializados são Dijkstra (sem pesos negativos) e Bellman-Ford (aceita pesos negativos).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="algoritmos" class="section-title">Algoritmos especializados</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3><a href="/html/programacao/estruturas_dados/busca/algoritmos_de_busca_em_grafos/bfs.html">BFS em Grafos</a></h3>
+            <p>Caminho mais curto (menor número de saltos) em grafos não ponderados. Expansão em camadas. Fila FIFO.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/html/programacao/estruturas_dados/busca/algoritmos_de_busca_em_grafos/dfs.html">DFS em Grafos</a></h3>
+            <p>Exploração completa com detecção de ciclos, ordenação topológica e componentes conexos. Pilha LIFO.</p>
+          </div>
+          <div class="card">
+            <h3><a href="/html/programacao/estruturas_dados/busca/algoritmos_de_busca_em_grafos/dijkstra.html">Dijkstra</a></h3>
+            <p>Caminho de menor custo total em grafos ponderados (sem pesos negativos). Fila de prioridade (min-heap).</p>
+          </div>
+          <div class="card">
+            <h3><a href="/html/programacao/estruturas_dados/busca/algoritmos_de_busca_em_grafos/a_estrela.html">A* (A-Star)</a></h3>
+            <p>Dijkstra guiado por heurística  examina primeiro os nós que parecem mais próximos do destino. Ideal para pathfinding em jogos e mapas.</p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Atenção:</strong> A escolha do algoritmo errado pode dar resultados silenciosamente incorretos. BFS em um grafo ponderado pode retornar um "caminho mais curto" com o maior custo total. Sempre identifique se o grafo tem pesos antes de escolher o algoritmo.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Cormen, T. H. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Caps. 20-22 (BFS, DFS, Dijkstra).</li>
+            <li>Sedgewick, R.; Wayne, K. <em>Algorithms</em>, 4ª ed. Addison-Wesley, 2011. Cap. 4.</li>
+            <li>Skiena, S. S. <em>The Algorithm Design Manual</em>, 3ª ed. Springer, 2020. Caps. 7-8.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Em grafos, a busca não é apenas encontrar um valor  é navegar uma rede de relações, respeitar ciclos, e às vezes otimizar o custo do caminho. Cada algoritmo desta seção resolve um aspecto diferente desse problema geral.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Grafos provam que a estrutura dos dados não é apenas sobre o que armazenar  é sobre como as partes se conectam."  fundamentos de teoria dos grafos
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

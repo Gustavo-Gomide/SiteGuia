@@ -1,0 +1,182 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Diagrama de Estados UML: ciclo de vida de entidades, eventos, transições e guardas; exemplo de pedido.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Diagrama de Estados (UML) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Elimine estados impossíveis antes de chegarem ao código.</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Diagrama de Estados</h1>
+          <p class="page-subtitle">Máquinas de estado: ciclo de vida, transições, guardas e ações de entidades do domínio.</p>
+        </div>
+        <p class="intro-highlight">O diagrama de estados é o mais eficiente para modelar entidades com regras de transição — Pedido, Assinatura, Ticket, Tarefa. Ele torna visível o que "entregue sem pago" e outros bugs de estado impossível revelam em produção.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="transicoes" class="section-title">Elementos e transições</h2>
+        <div class="section-divider"></div>
+        <p>Cada transição tem um evento que a dispara, uma guarda opcional e uma ação que executa — esse triplo é o que entra no código.</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Elemento</th>
+                <th>Notação</th>
+                <th>Descrição</th>
+                <th>Exemplo (Pedido)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Estado inicial</td>
+                <td>● (ponto de entrada)</td>
+                <td>Ponto onde o objeto nasce</td>
+                <td>Pedido criado</td>
+              </tr>
+              <tr>
+                <td>Estado</td>
+                <td>[ NomeEstado ]</td>
+                <td>Condição estável do objeto</td>
+                <td>AGUARDANDO_PAGAMENTO</td>
+              </tr>
+              <tr>
+                <td>Transição</td>
+                <td>A ——evento——&gt; B</td>
+                <td>Mudança de estado ao receber evento</td>
+                <td>CRIADO ——confirmar——&gt; AGUARDANDO</td>
+              </tr>
+              <tr>
+                <td>Guarda</td>
+                <td>[condição]</td>
+                <td>Transição só ocorre se condição for verdadeira</td>
+                <td>[pagamento aprovado]</td>
+              </tr>
+              <tr>
+                <td>Ação on entry</td>
+                <td>entry / ação</td>
+                <td>Executa ao entrar no estado</td>
+                <td>entry / enviarEmailConfirmação()</td>
+              </tr>
+              <tr>
+                <td>Estado final</td>
+                <td>⊙ (círculo duplo)</td>
+                <td>Estado terminal — objeto não muda mais</td>
+                <td>ENTREGUE, CANCELADO</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo: máquina de estados de Pedido</h2>
+        <div class="section-divider"></div>
+        <p>Escrever a máquina de estados antes de codificar revela validações, ações assíncronas e transições proibidas.</p>
+        <div class="code-container">
+          <pre class="example">// Entidade: Pedido
+// Estados terminais: ENTREGUE, CANCELADO
+
+● → [CRIADO]
+  entry / reservarEstoque(), notificarVendedor()
+
+[CRIADO] ——confirmar——→ [AGUARDANDO_PAGAMENTO]
+  [sem guarda; sempre possível ao criar]
+
+[AGUARDANDO_PAGAMENTO] ——aprovarPagamento [aprovado]——→ [PAGO]
+  entry / enviarConfirmacaoPagamento()
+
+[AGUARDANDO_PAGAMENTO] ——reprovarPagamento——→ [CANCELADO]
+  entry / liberarEstoque(), notificarFalha()
+
+[AGUARDANDO_PAGAMENTO] ——timeout 30min——→ [CANCELADO]
+  entry / liberarEstoque(), notificarTimeout()
+
+[PAGO] ——postar——→ [ENVIADO]
+  entry / gerarCodigoRastreio(), notificarCliente()
+
+[ENVIADO] ——confirmarEntrega——→ [ENTREGUE] ⊙
+  entry / registrarDataEntrega(), liberarPagamentoVendedor()
+
+[ENVIADO] ——solicitarDevolucao [dentro prazo]——→ [EM_DEVOLUCAO]
+[EM_DEVOLUCAO] ——devolucaoConfirmada——→ [CANCELADO] ⊙
+
+// Transições PROIBIDAS (documentar explicitamente):
+// CANCELADO → ENVIADO  ✗
+// ENTREGUE → qualquer estado  ✗
+// AGUARDANDO → ENTREGUE (pular estados)  ✗</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>Sem máquina de estados, as regras ficam espalhadas em ifs por todo o codebase — e ninguém sabe quais transições são realmente válidas.</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Estados implícitos</h3>
+            <p>Guardar status como boolean (<code>pago: true</code>) esconde a máquina de estados. Use enum explícito desde o início.</p>
+          </div>
+          <div class="card">
+            <h3>Não documentar transições proibidas</h3>
+            <p>Listar só o que é permitido é insuficiente. Explicitar o que é proibido evita "alguém achou que era válido" semanas depois.</p>
+          </div>
+          <div class="card">
+            <h3>Esquecer ações de entry/exit</h3>
+            <p>A transição não muda só o estado — dispara side effects (e-mails, filas, reservas). Modelar isso evita bugs de sincronização.</p>
+          </div>
+          <div class="card">
+            <h3>Guardas vazias</h3>
+            <p>Uma transição sem guarda significa "sempre é possível". Se não é, adicione a guarda — ela vai virar validação no código.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Combine com: <a href="/html/engenharia_software/uml/diagrama_atividades.html">Diagrama de Atividades</a> para fluxos de processo, e <a href="/html/engenharia_software/uml/diagrama_classes.html">Diagrama de Classes</a> para modelar a entidade.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Toda entidade com <em>status</em> no banco é uma máquina de estados esperando para ser documentada."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+

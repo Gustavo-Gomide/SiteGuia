@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang em embedded e IoT: gateways, brokers, edge control, AtomVM e padrões de telemetria resilientes." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Erlang — Embedded e IoT</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Erlang em Embedded e IoT</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Embedded e IoT</h1>
+          <p>Erlang é particularmente forte na camada que conecta o mundo físico ao software distribuído: gateways, brokers, coordenação de dispositivos, ingestão de telemetria e controle de frota. Em microcontroladores muito restritos, o uso direto ainda é nichado, mas projetos como AtomVM mostram que a BEAM também pode descer para o edge em cenários específicos.</p>
+        </div>
+        <p class="intro-highlight">Em IoT, o custo real não está em ler um sensor uma vez. Está em manter milhares de dispositivos intermitentes, com rede ruim e falhas imprevisíveis. Esse tipo de problema combina muito bem com a filosofia de processos isolados do Erlang.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura-iot">Arquitetura típica: dispositivo, gateway e nuvem</h2>
+        <svg viewBox="0 0 760 180" role="img" aria-label="Arquitetura IoT com Erlang" class="w-full">
+          <rect x="40" y="60" width="140" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="110" y="88" text-anchor="middle">Dispositivos</text>
+          <rect x="230" y="60" width="140" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="300" y="88" text-anchor="middle">Gateway</text>
+          <rect x="420" y="60" width="140" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="490" y="88" text-anchor="middle">Broker / OTP</text>
+          <rect x="610" y="60" width="110" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="665" y="88" text-anchor="middle">Serviços</text>
+          <line x1="180" y1="83" x2="230" y2="83" stroke="currentColor"></line>
+          <line x1="370" y1="83" x2="420" y2="83" stroke="currentColor"></line>
+          <line x1="560" y1="83" x2="610" y2="83" stroke="currentColor"></line>
+          <text x="300" y="135" text-anchor="middle">buffer local e reconexão</text>
+          <text x="490" y="135" text-anchor="middle">roteamento, fila e controle</text>
+        </svg>
+        <p>O papel de Erlang costuma aparecer no gateway e no plano de controle. É nessa região que conexões sobem e descem, comandos precisam ser reenviados, mensagens chegam fora de ordem e a saúde da frota precisa ser observável.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="protocolos-praticos">Protocolos e comportamento offline</h2>
+        <p>MQTT, CoAP e TCP customizado são candidatos comuns. O desafio não é só falar o protocolo, mas tratar perda de conectividade, duplicação de evento, clock impreciso e backpressure entre borda e nuvem. Erlang lida bem com isso porque cada conexão pode ter seu próprio processo e sua própria estratégia de recuperação.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Processo simples de ingestão de telemetria</div>
+          <pre class="example">loop(Estado = #{buffer := Buffer}) -&gt;
+    receive
+        {telemetria, DeviceId, Payload} -&gt;
+            Novo = maps:put(DeviceId, Payload, Buffer),
+            encaminhar_async(DeviceId, Payload),
+            loop(Estado#{buffer =&gt; Novo});
+        flush -&gt;
+            reenviar_buffer(Buffer),
+            loop(Estado#{buffer =&gt; #{}})
+    after 5000 -&gt;
+        verificar_conectividade(),
+        loop(Estado)
+    end.</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Em IoT, o maior erro arquitetural é assumir conectividade estável. Se a solução não trata fila local, retry e idempotência, ela ainda não está pronta para campo.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="atomvm-edge">AtomVM e edge computing</h2>
+        <p><strong>AtomVM</strong> leva uma parte da experiência Erlang a microcontroladores e dispositivos modestos. Ele ainda é um nicho comparado a C, Rust ou MicroPython, mas é relevante porque preserva ideias centrais da BEAM em ambientes embarcados: processos leves, passagem de mensagem e isolamento.</p>
+        <p>O cenário mais realista hoje é híbrido: firmware crítico em linguagem de sistema, controle local em runtime leve e coordenação distribuída em Erlang/OTP na borda ou na nuvem.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-uso">Casos de uso recomendados</h2>
+        <ul>
+          <li>gateways industriais e concentradores de telemetria</li>
+          <li>brokers, roteadores de mensagem e controle de frota</li>
+          <li>plataformas de monitoramento com milhares de conexões persistentes</li>
+          <li>sistemas edge que priorizam resiliência e atualização remota</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ATOMVM. <strong>Official Documentation</strong>. Disponível em: &lt;https://www.atomvm.net/&gt;. Acesso em: 2026.</li>
+            <li>EMQX. <strong>MQTT Broker Documentation</strong>. Disponível em: &lt;https://www.emqx.com/en/docs&gt;. Acesso em: 2026.</li>
+            <li>ARMSTRONG, J. <strong>Making Reliable Distributed Systems in the Presence of Software Errors</strong>. KTH, 2003.</li>
+            <li>HEBERT, F. <strong>Adopting Erlang</strong>. 2. ed. Pragmatic Bookshelf, 2019.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Telemetria e análise orientada a eventos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ferramentas CLI para operação de dispositivos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Arquitetura OTP para sistemas de campo</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em IoT, cada falha que você isola num processo hoje pode representar centenas de dispositivos recuperáveis amanhã. É exatamente esse tipo de economia operacional que faz Erlang valer a pena.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

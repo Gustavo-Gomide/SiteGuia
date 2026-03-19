@@ -1,0 +1,220 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sistema de logs no Linux: syslog, rsyslog, journald, /var/log, logrotate, niveis de severidade e analise de logs com grep, awk e GoAccess." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Logs no Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Logs no Linux</h1>
+            <p class="page-subtitle">syslog, rsyslog, journald, logrotate e analise avancada de logs</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Logs sao a memoria do sistema. Sem eles, diagnosticar problemas seria como depurar as cegas — voce saberia que algo deu errado, mas nao quando, por que, ou qual componente falhou. Entender onde os logs sao armazenados, como filtrar mensagens relevantes e como configurar retencao adequada e habilidade critica para qualquer administrador Linux.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — /var/log ═══════════════════ -->
+      <section id="var-log">
+        <h2>Arquivos de Log em /var/log</h2>
+        <p>A maioria dos logs tradicionais reside em <code>/var/log/</code>. O nome exato pode variar entre distribuicoes.</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Arquivo</th>
+                <th>Distros</th>
+                <th>Conteudo</th>
+                <th>Quando usar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>/var/log/syslog</td><td>Debian/Ubuntu</td><td>Logs gerais do sistema e servicos</td><td>Ponto de partida para problemas gerais</td></tr>
+              <tr><td>/var/log/messages</td><td>RHEL/CentOS/Fedora</td><td>Logs gerais (equivalente ao syslog)</td><td>Idem ao syslog em distros Red Hat</td></tr>
+              <tr><td>/var/log/auth.log</td><td>Debian/Ubuntu</td><td>Autenticacao SSH, sudo, PAM, falhas de login</td><td>Investigacao de acessos e ataques de forca bruta</td></tr>
+              <tr><td>/var/log/secure</td><td>RHEL/CentOS</td><td>Equivalente ao auth.log</td><td>Idem em distros Red Hat</td></tr>
+              <tr><td>/var/log/kern.log</td><td>Debian/Ubuntu</td><td>Mensagens do kernel (hardware, drivers, OOM)</td><td>Problemas de hardware, falhas de driver</td></tr>
+              <tr><td>/var/log/dpkg.log</td><td>Debian/Ubuntu</td><td>Historico de instalacoes e remocoes de pacotes</td><td>Rastrear quando um pacote foi instalado</td></tr>
+              <tr><td>/var/log/yum.log</td><td>CentOS 7</td><td>Historico de transacoes YUM</td><td>Auditar instalacoes em sistemas legados</td></tr>
+              <tr><td>/var/log/nginx/</td><td>Todas</td><td>access.log e error.log do Nginx</td><td>Analise de trafego web e erros HTTP</td></tr>
+              <tr><td>/var/log/apache2/</td><td>Debian/Ubuntu</td><td>access.log e error.log do Apache</td><td>Idem para Apache</td></tr>
+              <tr><td>/var/log/mysql/</td><td>Todas</td><td>Erros, queries lentas, binlog</td><td>Diagnostico de performance de banco de dados</td></tr>
+              <tr><td>/var/log/cron</td><td>RHEL/CentOS</td><td>Execucoes de jobs cron</td><td>Verificar se um cron job rodou</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — RSYSLOG ═══════════════════ -->
+      <section id="rsyslog">
+        <h2>rsyslog e Niveis de Severidade</h2>
+        <p>O protocolo syslog define um sistema padronizado de facilities e niveis de severidade. O <code>rsyslog</code> e o daemon moderno que implementa esse protocolo na maioria das distros.</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Nivel</th>
+                <th>Codigo</th>
+                <th>Palavra-chave</th>
+                <th>Uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Emergency</td><td>0</td><td>emerg</td><td>Sistema inutilizavel — pane total</td></tr>
+              <tr><td>Alert</td><td>1</td><td>alert</td><td>Acao imediata necessaria (disco cheio, RAID degradado)</td></tr>
+              <tr><td>Critical</td><td>2</td><td>crit</td><td>Condicoes criticas — falha de hardware ou software essencial</td></tr>
+              <tr><td>Error</td><td>3</td><td>err</td><td>Erros nao fatais que requerem atencao</td></tr>
+              <tr><td>Warning</td><td>4</td><td>warning</td><td>Avisos — algo pode falhar em breve</td></tr>
+              <tr><td>Notice</td><td>5</td><td>notice</td><td>Condicoes normais mas significativas</td></tr>
+              <tr><td>Info</td><td>6</td><td>info</td><td>Mensagens informativas de operacao normal</td></tr>
+              <tr><td>Debug</td><td>7</td><td>debug</td><td>Informacoes detalhadas para depuracao</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>As <strong>facilities</strong> indicam a origem: <code>kern</code> (kernel), <code>user</code> (processos de usuario), <code>mail</code>, <code>daemon</code>, <code>auth</code>, <code>cron</code>, <code>local0</code>–<code>local7</code> (uso personalizado). A regra no <code>/etc/rsyslog.conf</code> define para onde rotear cada combinacao facility.severity:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/rsyslog.conf — exemplos de roteamento</div>
+          <pre class="code-block"># Gravar todos os erros e acima em /var/log/erros.log
+*.err                          /var/log/erros.log
+
+# Logs do kernel vao para kern.log
+kern.*                         /var/log/kern.log
+
+# Auth em arquivo separado
+auth,authpriv.*                /var/log/auth.log
+
+# Nivel info ou acima, exceto mail e auth, vao para syslog
+*.info;mail.none;authpriv.none /var/log/syslog
+
+# Encaminhar para servidor syslog remoto (UDP 514)
+*.err                          @192.168.1.100:514
+
+# Encaminhar com TCP (mais confiavel)
+*.err                          @@192.168.1.100:514</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ANALISE ═══════════════════ -->
+      <section id="analise-logs">
+        <h2>Analise de Logs</h2>
+        <p>A linha de comando Unix oferece um conjunto poderoso de ferramentas para filtrar, agregar e analisar logs sem instalar nada adicional.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tecnicas de analise de logs no terminal</div>
+          <pre class="code-block"># Busca com expressao regular
+grep -E "(ERROR|CRITICAL|WARN)" /var/log/syslog
+
+# Mostrar contexto (3 linhas antes e depois do match)
+grep -A 3 -B 3 "Out of memory" /var/log/kern.log
+
+# Extrair campo especifico com awk (ex: coluna do IP de access.log)
+awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head -20
+
+# Top 10 URLs mais acessadas
+awk '{print $7}' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head -10
+
+# Top 10 codigos de status HTTP
+awk '{print $9}' /var/log/nginx/access.log | sort | uniq -c | sort -rn
+
+# Seguir logs em tempo real
+tail -f /var/log/syslog
+tail -f /var/log/nginx/error.log
+
+# Ler logs comprimidos sem descomprimir
+zcat /var/log/syslog.2.gz | grep "ssh"
+zgrep "Failed password" /var/log/auth.log*
+
+# journalctl com filtros combinados
+journalctl -u nginx --since today -p err
+
+# Contar tentativas de login falhas por IP (auth.log)
+grep "Failed password" /var/log/auth.log \
+  | awk '{print $11}' \
+  | sort | uniq -c | sort -rn | head -10</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — LOGROTATE ═══════════════════ -->
+      <section id="logrotate">
+        <h2>logrotate — Rotacao e Retencao</h2>
+        <p>O <code>logrotate</code> gerencia a rotacao automatica de logs, evitando que arquivos cresçam indefinidamente. E executado diariamente pelo cron ou por um timer systemd.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/logrotate.d/nginx — configuracao tipica</div>
+          <pre class="code-block">/var/log/nginx/*.log {
+    daily                    # rotacionar diariamente
+    rotate 14                # manter 14 arquivos rotacionados
+    compress                 # comprimir com gzip
+    delaycompress            # comprimir somente na proxima rotacao (nao o mais recente)
+    missingok                # nao errro se o arquivo nao existir
+    notifempty               # nao rotacionar se o arquivo estiver vazio
+    create 0640 www-data adm # recriar com permissoes especificas
+    sharedscripts            # executar postrotate uma so vez mesmo com multiplos arquivos
+    postrotate
+        # Avisar nginx para reabrir os arquivos de log
+        [ -f /var/run/nginx.pid ] && kill -USR1 $(cat /var/run/nginx.pid)
+    endscript
+}</pre>
+        </div>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Frequencia de Rotacao</h3>
+            <p>Use <code>daily</code> para logs de alto volume (web, app), <code>weekly</code> para logs de sistema moderados, <code>monthly</code> para logs de baixo volume ou de longa retencao.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Politica de Retencao</h3>
+            <p>Balanceie juridico (alguns setores exigem retencao por anos), espaco em disco, e LGPD (dados pessoais em logs devem ter ciclo de vida definido e podem exigir anonimizacao ou delecao).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Testar Configuracao</h3>
+            <p>Use <code>logrotate -d /etc/logrotate.d/nginx</code> para executar em modo debug (dry-run) sem alterar arquivos, e <code>logrotate -f</code> para forcar rotacao imediata.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se em <a href="/html/sistemas/linux/servicos_systemd.html">Servicos e systemd</a> para entender o journald em detalhe, e em <a href="/html/sistemas/linux/processos_linux.html">Processos no Linux</a> para correlacionar logs com o comportamento dos processos.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Um sistema bem configurado nao esconde seus logs — ele os organiza, rotaciona e torna acessiveis no momento certo."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

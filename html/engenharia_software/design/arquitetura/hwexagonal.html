@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Arquitetura Hexagonal (Ports and Adapters): separar domínio de infraestrutura, portas, adaptadores e exemplos de organização.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Hexagonal (Ports and Adapters) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Domínio isolado por portas e adaptadores</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Arquitetura Hexagonal</h1>
+          <p class="page-subtitle">Ports and Adapters — Alistair Cockburn</p>
+        </div>
+        <p class="intro-highlight">A Arquitetura Hexagonal protege o núcleo (regras e casos de uso) de detalhes externos. O domínio define <em>portas</em> (interfaces) e a infraestrutura fornece <em>adaptadores</em> (implementações concretas). Isso permite testar regras de negócio sem banco, framework ou HTTP.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="portas-adaptadores" class="section-title">Portas e adaptadores</h2>
+        <div class="section-divider"></div>
+        <p>O hexágono divide o sistema em interior (domínio) e exterior (infraestrutura):</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Definição</th>
+                <th>Exemplos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Porta de entrada</strong></td>
+                <td>Interface que o domínio expõe para ser acionado (driven port).</td>
+                <td>CriarPedidoUseCase, AutenticarUsuario</td>
+              </tr>
+              <tr>
+                <td><strong>Porta de saída</strong></td>
+                <td>Interface que o domínio usa para acessar detalhes externos (driving port).</td>
+                <td>PedidoRepositorio, NotificacaoGateway</td>
+              </tr>
+              <tr>
+                <td><strong>Adaptador primário</strong></td>
+                <td>Implementa a comunicação de fora para dentro (ativa o domínio).</td>
+                <td>HTTP Controller, Message Consumer, CLI</td>
+              </tr>
+              <tr>
+                <td><strong>Adaptador secundário</strong></td>
+                <td>Implementa as portas de saída (infra a serviço do domínio).</td>
+                <td>PedidoRepositorioSQL, EmailAdapter, KafkaPublisher</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — porta e adaptador</h2>
+        <div class="section-divider"></div>
+        <p>O domínio define a interface; a infraestrutura implementa sem o domínio saber os detalhes:</p>
+        <div class="code-container">
+          <pre class="code-block">// PORTA DE SAÍDA (definida pelo domínio)
+interface PedidoRepositorio {
+  buscar(id: string): Promise&lt;Pedido&gt;;
+  salvar(pedido: Pedido): Promise&lt;void&gt;;
+  listarPorCliente(clienteId: string): Promise&lt;Pedido[]&gt;;
+}
+
+// ADAPTADOR SECUNDÁRIO (infraestrutura)
+class PedidoRepositorioPostgres implements PedidoRepositorio {
+  async buscar(id: string): Promise&lt;Pedido&gt; {
+    const row = await this.db.query('SELECT * FROM pedidos WHERE id = $1', [id]);
+    return PedidoMapper.fromRow(row);
+  }
+
+  async salvar(pedido: Pedido): Promise&lt;void&gt; {
+    await this.db.query('INSERT INTO pedidos...', [pedido.id, ...]);
+  }
+
+  async listarPorCliente(clienteId: string): Promise&lt;Pedido[]&gt; {
+    const rows = await this.db.query('SELECT * FROM pedidos WHERE cliente_id = $1', [clienteId]);
+    return rows.map(PedidoMapper.fromRow);
+  }
+}
+
+// CASO DE USO (domínio — não sabe que existe Postgres)
+class ConfirmarPedidoUseCase {
+  constructor(private repo: PedidoRepositorio) {}
+
+  async executar(pedidoId: string): Promise&lt;void&gt; {
+    const pedido = await this.repo.buscar(pedidoId);
+    pedido.confirmar();
+    await this.repo.salvar(pedido);
+  }
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Benefícios e armadilhas</h2>
+        <div class="section-divider"></div>
+        <p>A arquitetura hexagonal tem benefícios reais mas requer disciplina para não virar burocracia:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Testabilidade</h3>
+            <p>Testes unitários de casos de uso rodal sem banco, servidor ou rede usando fakes das portas.</p>
+          </div>
+          <div class="card">
+            <h3>Substituição de infraestrutura</h3>
+            <p>Trocar PostgreSQL por MongoDB, REST por Queue — o domínio não precisa mudar.</p>
+          </div>
+          <div class="card">
+            <h3>Armadilha: interfaces para tudo</h3>
+            <p>Criar interface sem necessidade real de substituição é over-engineering (viola YAGNI).</p>
+          </div>
+          <div class="card">
+            <h3>Armadilha: domínio com framework</h3>
+            <p>Annotations de ORM dentro de entidades, imports do Express no caso de uso — viola a fronteira.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Hexagonal é a base prática de <a href="/html/engenharia_software/design/clean_architecture.html">Clean Architecture</a>. Combine com <a href="/html/engenharia_software/design/solid.html#dip-exemplo">DIP</a> para maximizar testabilidade.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O domínio define o que precisa; a infraestrutura entrega como consegue."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+

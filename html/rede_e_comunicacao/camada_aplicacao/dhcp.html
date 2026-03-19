@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="DHCP: processo DORA, opções, DHCP Relay, reservas e segurança (DHCP Snooping, Rogue DHCP)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>DHCP | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">DHCP &mdash; Dynamic Host Configuration Protocol</h1>
+          <p class="page-subtitle">Atribuição automática de IP, máscara, gateway e DNS &mdash; plug &amp; play na rede</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>DHCP</strong> (RFC 2131) elimina a configuração manual de IPs em cada dispositivo. O servidor gerencia um <em>pool</em> de endereços e empresta (lease) endereços para clientes por um tempo determinado. Opera em UDP: cliente na porta 68, servidor na porta 67.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="dora" class="section-title">Processo DORA</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>Troca DORA &mdash; cliente sem IP</span></div>
+          <pre class="code-block">Cliente (sem IP)                       Servidor DHCP
+  |                                        |
+  |-- DHCPDISCOVER (broadcast) ----------&gt; |  src: 0.0.0.0:68  dst: 255.255.255.255:67
+  |   "preciso de um IP!"                  |
+  |&lt;-- DHCPOFFER (broadcast/unicast) ----- |  "ofereço 192.168.1.100 por 24h"
+  |                                        |
+  |-- DHCPREQUEST (broadcast) ----------&gt;  |  "aceito 192.168.1.100 do seu servidor"
+  |   (informa qual oferta aceitou)        |
+  |                                        |
+  |&lt;-- DHCPACK -------------------------   |  "confirmado! 192.168.1.100/24, GW: .1, DNS: .1"
+  |   [cliente configura interface]        |
+  |   [ARP probe opcional antes de usar]   |</pre>
+        </div>
+        <p class="note">O <strong>DHCPREQUEST</strong> é broadcast mesmo após receber a oferta; informa a todos os servidores DHCP qual oferta foi aceita (outros servidores recolhem suas ofertas).</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="opcoes" class="section-title">Opções DHCP Comuns</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Opção</th><th>Código</th><th>Descrição</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Subnet Mask</td><td>1</td><td>Máscara de sub-rede</td></tr>
+              <tr><td>Router</td><td>3</td><td>Gateway padrão</td></tr>
+              <tr><td>DNS Servers</td><td>6</td><td>Servidores DNS</td></tr>
+              <tr><td>Domain Name</td><td>15</td><td>Domínio de pesquisa (ex: corp.local)</td></tr>
+              <tr><td>Broadcast Address</td><td>28</td><td>Endereço de broadcast da rede</td></tr>
+              <tr><td>NTP Servers</td><td>42</td><td>Servidores de tempo</td></tr>
+              <tr><td>Lease Time</td><td>51</td><td>Tempo do lease em segundos</td></tr>
+              <tr><td>DHCP Server ID</td><td>54</td><td>IP do servidor DHCP que fez a oferta</td></tr>
+              <tr><td>TFTP Server</td><td>66</td><td>Servidor de boot PXE/network boot</td></tr>
+              <tr><td>Bootfile Name</td><td>67</td><td>Nome do arquivo de boot PXE</td></tr>
+              <tr><td>Classless Static Routes</td><td>121</td><td>Rotas estáticas para push via DHCP (RFC 3442)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="relay" class="section-title">DHCP Relay e Segurança</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">DHCP Relay Agent</h3>
+            <p>Como o DHCPDISCOVER é broadcast e não atravessa roteadores, usa-se um <strong>DHCP Relay Agent</strong> (RFC 3046) no roteador de borda de cada sub-rede para encaminhar as mensagens DHCP como unicast ao servidor central:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; DHCP Relay</span></div>
+              <pre class="code-block">interface GigabitEthernet0/0
+ ip helper-address 10.0.0.1  ! IP do servidor DHCP</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Rogue DHCP e DHCP Snooping</h3>
+            <ul>
+              <li><strong>Rogue DHCP Server:</strong> dispositivo não autorizado respondendo com IPs falsos; pode causar MITM ao definir um gateway malicioso</li>
+              <li><strong>DHCP Snooping (802.1Q):</strong> recurso de switches que marca portas como <em>trusted</em> (uplink ao servidor DHCP) ou <em>untrusted</em> (clientes). Bloqueia DHCPOFFERs vindos de portas untrusted. Habilita Dynamic ARP Inspection e IP Source Guard</li>
+            </ul>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco &mdash; DHCP Snooping</span></div>
+              <pre class="code-block">ip dhcp snooping
+ip dhcp snooping vlan 10
+
+interface GigabitEthernet0/1   ! uplink ao servidor
+ ip dhcp snooping trust</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="dns.html"><strong>DNS</strong></a>, <a href="../camada_enlace/arp.html"><strong>ARP</strong></a>, <a href="../camada_rede/ip_v6.html"><strong>IPv6 SLAAC</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Em IPv6, o DHCP é opcional: SLAAC + RA é suficiente. Em IPv4, DHCP ainda é indispensável &mdash; proof of concept de que APIs boas sobrevivem décadas."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

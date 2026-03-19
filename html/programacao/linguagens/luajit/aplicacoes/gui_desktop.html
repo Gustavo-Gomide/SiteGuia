@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="LuaJIT para GUI desktop: integracao com toolkits C via FFI, arquitetura MVC e empacotamento." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT para GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>LuaJIT para GUI Desktop</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="luajit-para-gui-desktop">LuaJIT para GUI Desktop</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone LuaJIT"><span data-svg="lua" aria-hidden="true"></span></div>
+          <h1>Interfaces desktop com nucleo leve e rapido</h1>
+          <p>Use LuaJIT para logica de tela e regras de negocio, delegando renderizacao para toolkits nativos.</p>
+        </div>
+        <p class="intro-highlight">A combinacao LuaJIT + toolkit C entrega produtividade de script com desempenho nativo, desde que a fronteira FFI seja bem projetada.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="toolkits" class="section-title">Toolkits e estrategia de integracao</h2>
+        <p>LuaJIT nao traz GUI nativa pronta. O caminho usual e integrar APIs C de bibliotecas como GTK, Qt (via wrappers), SDL ou Dear ImGui por FFI ou binding dedicado.</p>
+        <table class="table">
+          <thead><tr><th>Toolkit</th><th>Perfil</th><th>Observacao</th></tr></thead>
+          <tbody>
+            <tr><td>GTK</td><td>Desktop classico</td><td>Bom para Linux e apps administrativos</td></tr>
+            <tr><td>Qt</td><td>Ecossistema amplo</td><td>Bindings variam em manutencao</td></tr>
+            <tr><td>Dear ImGui</td><td>Ferramentas dev</td><td>Excelente para editor e debug UI</td></tr>
+            <tr><td>SDL + camada UI</td><td>Custom rendering</td><td>Flexivel para apps graficos</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ffi-seguro" class="section-title">FFI conceitual com exemplos seguros</h2>
+        <p>Quando usar FFI em GUI, mantenha contratos pequenos e previsiveis: tipos primitivos, ownership explicito e callbacks simples.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Assinatura C minima e chamada controlada</div>
+          <pre class="example"><span class="kw">local</span> ffi = <span class="fn">require</span>(<span class="str">"ffi"</span>)
+ffi.<span class="fn">cdef</span>([[
+  typedef struct Widget Widget;
+  Widget* ui_create_button(const char* label);
+  void ui_set_visible(Widget* w, int visible);
+]])
+
+<span class="kw">local</span> ui = ffi.<span class="fn">load</span>(<span class="str">"./libui_bridge.so"</span>)
+<span class="kw">local</span> btn = ui.<span class="fn">ui_create_button</span>(<span class="str">"Salvar"</span>)
+ui.<span class="fn">ui_set_visible</span>(btn, <span class="num">1</span>)
+<span class="com">-- Ownership do ponteiro deve ser definido no lado C.</span></pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite callback complexo de longa duracao vindo do C para Lua em thread nao controlada. Isso costuma gerar bugs dificeis de reproduzir.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="mvc" class="section-title">Arquitetura MVC para manter o projeto escalavel</h2>
+        <p>Mesmo em apps pequenos, separar modelo, visao e controlador reduz acoplamento e facilita testes de regra de negocio sem abrir janelas reais.</p>
+        <svg viewBox="0 0 760 150" role="img" aria-label="Arquitetura MVC" focusable="false">
+          <rect x="40" y="45" width="180" height="60" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="130" y="80" text-anchor="middle">Model</text>
+          <rect x="290" y="45" width="180" height="60" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="380" y="80" text-anchor="middle">Controller</text>
+          <rect x="540" y="45" width="180" height="60" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="630" y="80" text-anchor="middle">View</text>
+          <path d="M220 75 L290 75" stroke="currentColor"></path>
+          <path d="M470 75 L540 75" stroke="currentColor"></path>
+        </svg>
+        <div class="grid-cards">
+          <div class="card"><strong>Model</strong><p>Estado da aplicacao, validacoes e persistencia.</p></div>
+          <div class="card"><strong>View</strong><p>Renderizacao e eventos de interface.</p></div>
+          <div class="card"><strong>Controller</strong><p>Orquestra fluxo e regras de interacao.</p></div>
+          <div class="card"><strong>Service layer</strong><p>Integra API local, arquivos e banco.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="empacotamento" class="section-title">Empacotamento e distribuicao</h2>
+        <p>Distribuir GUI desktop exige empacotar binarios nativos e runtime. Planeje instaladores por plataforma e verificacao de dependencias em startup.</p>
+        <div class="panel">
+          <h3 class="panel-title">Checklist de release</h3>
+          <ul>
+            <li>Versionar binario de bridge C e scripts LuaJIT juntos.</li>
+            <li>Assinar artefatos quando aplicavel.</li>
+            <li>Mapear logs de crash com simbolos de debug.</li>
+            <li>Ter fallback para config corrompida no boot.</li>
+          </ul>
+        </div>
+        <table class="table">
+          <thead><tr><th>Plataforma</th><th>Formato comum</th><th>Ponto de atencao</th></tr></thead>
+          <tbody>
+            <tr><td>Windows</td><td>MSI/EXE</td><td>Permissoes e antivirus corporativo</td></tr>
+            <tr><td>Linux</td><td>AppImage/DEB/RPM</td><td>Variacao de distro e libc</td></tr>
+            <tr><td>macOS</td><td>.app/.dmg</td><td>Notarizacao e assinatura</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>PALL, M. <a href="https://luajit.org/ext_ffi.html" target="_blank" rel="noopener">LuaJIT FFI Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>GTK PROJECT. <a href="https://docs.gtk.org/" target="_blank" rel="noopener">GTK Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>DEAR IMGUI CONTRIBUTORS. <a href="https://github.com/ocornut/imgui" target="_blank" rel="noopener">Dear ImGui</a>. Acesso em: 12 mar. 2026.</li>
+          <li>FOWLER, M. <a href="https://martinfowler.com/eaaCatalog/modelViewController.html" target="_blank" rel="noopener">Model View Controller</a>. Acesso em: 12 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Interfaces boas nao nascem do acaso: elas surgem quando arquitetura clara encontra feedback real de usuario.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/mobile.html">LuaJIT para Mobile</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/jogos.html">LuaJIT para Jogos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/ffi.html">LuaJIT FFI</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

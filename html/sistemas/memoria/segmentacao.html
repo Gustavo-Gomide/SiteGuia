@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Segmentação de memória: segmentos lógicos (código, dados, pilha), tabela de descritores, segmentação vs paginação e segmentação+paginação no x86." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Segmentação | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Segmentação</h1>
+            <p class="page-subtitle">Divisão lógica do espaço de endereçamento em regiões com significado semântico</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Segmentação divide o espaço de endereçamento em regiões lógicas com semântica distinta — código separado de dados, pilha isolada do heap. Precede historicamente a paginação e ainda é visível nas entranhas do x86, embora a arquitetura x86-64 moderna a tenha essencialmente abandonado em favor do modelo <em>flat</em> com paginação pura.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="segmentos-descritores">
+        <h2>Segmentos e Descritores</h2>
+        <p>Em arquiteturas com segmentação, cada segmento é descrito por uma entrada na <strong>GDT (Global Descriptor Table)</strong> ou <strong>LDT (Local Descriptor Table)</strong>. O processador x86 em modo protegido lê esses descritores para validar cada acesso à memória.</p>
+        <p>Os registradores de segmento do x86 (<code>CS</code>, <code>DS</code>, <code>SS</code>, <code>ES</code>, <code>FS</code>, <code>GS</code>) não armazenam endereços diretamente — eles carregam <strong>seletores</strong>, que são índices na GDT/LDT mais bits de privilégio.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Campo do Descritor</th>
+                <th>Tamanho</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Base</td>
+                <td>32 bits</td>
+                <td>Endereço linear inicial do segmento. Em x86-64, ignorado (sempre 0 exceto FS/GS)</td>
+              </tr>
+              <tr>
+                <td>Limit</td>
+                <td>20 bits</td>
+                <td>Tamanho do segmento menos 1. Se bit G=1, granularidade de 4 KB (limite máx ~4 GB)</td>
+              </tr>
+              <tr>
+                <td>Type</td>
+                <td>4 bits</td>
+                <td>Código/dados, leitura/escrita, expand-down, acesso</td>
+              </tr>
+              <tr>
+                <td>DPL (Descriptor Privilege Level)</td>
+                <td>2 bits</td>
+                <td>Nível de privilégio: 0 = kernel, 3 = usuário. Acesso negado se CPL &gt; DPL</td>
+              </tr>
+              <tr>
+                <td>G (Granularidade)</td>
+                <td>1 bit</td>
+                <td>0 = limite em bytes; 1 = limite em páginas de 4 KB</td>
+              </tr>
+              <tr>
+                <td>P (Present)</td>
+                <td>1 bit</td>
+                <td>1 = segmento válido na memória, 0 = segment not present fault</td>
+              </tr>
+              <tr>
+                <td>L (Long Mode)</td>
+                <td>1 bit</td>
+                <td>1 = segmento de código 64-bit (x86-64)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="real-vs-protected">
+        <h2>Segmentação no x86: Real Mode vs Protected Mode</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Real Mode (8086)</h3>
+            <p>Endereço físico = segmento × 16 + offset. Nenhuma proteção — qualquer programa pode acessar qualquer endereço. Limite de 1 MB de memória endereçável. Ainda usado no boot do PC antes do kernel assumir.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Protected Mode (80286+)</h3>
+            <p>Registradores de segmento carregam seletores na GDT. CPU verifica DPL em cada acesso — processo em anel 3 não pode acessar segmentos de anel 0. Proteção real entre processos e kernel.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Long Mode (x86-64)</h3>
+            <p>Segmentação essencialmente desabilitada: base=0, limit=máximo para CS, DS, SS, ES. Apenas <code>FS</code> e <code>GS</code> mantêm base configurável — usados para <strong>TLS (Thread Local Storage)</strong> e acesso a estruturas PCB no kernel.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">FS/GS como TLS</h3>
+            <p>Em Linux x86-64, <code>FS</code> aponta para o bloco TLS da thread atual. <code>GS</code> aponta para o <code>per-CPU data</code> do kernel. Valores configurados via syscalls <code>arch_prctl(ARCH_SET_FS)</code> e <code>wrmsrl(MSR_GS_BASE)</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="seg-vs-pag">
+        <h2>Segmentação vs Paginação</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Critério</th>
+                <th>Segmentação</th>
+                <th>Paginação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Unidade de alocação</td>
+                <td>Variável (tamanho do segmento)</td>
+                <td>Fixa (tipicamente 4 KB)</td>
+              </tr>
+              <tr>
+                <td>Fragmentação</td>
+                <td>Externa (buracos entre segmentos)</td>
+                <td>Interna (sobra dentro da última página)</td>
+              </tr>
+              <tr>
+                <td>Proteção lógica</td>
+                <td>Por região semântica (código, dados)</td>
+                <td>Por página individual (R/W/X)</td>
+              </tr>
+              <tr>
+                <td>Visibilidade para o programador</td>
+                <td>Explícita (segmento:offset)</td>
+                <td>Transparente (endereço linear)</td>
+              </tr>
+              <tr>
+                <td>Suporte a disco (swap)</td>
+                <td>Difícil — segmentos de tamanho variável</td>
+                <td>Natural — páginas de tamanho fixo</td>
+              </tr>
+              <tr>
+                <td>Uso atual</td>
+                <td>Quase abandonado (exceto FS/GS para TLS)</td>
+                <td>Universal em SOs modernos</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="seg-mais-pag">
+        <h2>Segmentação + Paginação</h2>
+        <p>O Intel x86 original (80386) combinava segmentação e paginação em um modelo de dois estágios. O endereçamento seguia esta pipeline:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pipeline de Tradução de Endereços no x86 com Segmentação + Paginação</div>
+          <pre class="code-block">
+Estágio 1 — Segmentação:
+  Endereço Lógico (seletor:offset)
+    → CPU lê descritor da GDT usando seletor
+    → Verifica privilégio (DPL vs CPL)
+    → Verifica limite (offset ≤ limit)
+    → Endereço Linear = base + offset
+
+Estágio 2 — Paginação:
+  Endereço Linear (32 bits)
+    → PD[bits 31:22] → Page Directory Entry
+    → PT[bits 21:12] → Page Table Entry
+    → Verifica bits P, R/W, U/S
+    → Endereço Físico = frame_base + bits[11:0]
+
+No Linux (flat model):
+  base = 0, limit = 0xFFFFFFFF para todos os segmentos
+  → Estágio 1 é no-op: endereço lógico = endereço linear
+  → Apenas paginação faz trabalho real</pre>
+        </div>
+        <p>O Linux adotou o <strong>modelo flat</strong> — todos os segmentos com base 0 e limite máximo — tornando a segmentação transparente. Isso garante portabilidade para arquiteturas (ARM, RISC-V) que não possuem segmentação.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Compare com a abordagem de blocos fixos em <a href="/html/sistemas/memoria/paginacao.html">Paginação</a> e entenda como fragmentação afeta ambas as técnicas em <a href="/html/sistemas/memoria/fragmentacao.html">Fragmentação de Memória</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Segmentação foi a primeira tentativa de dar semântica à memória — paginação foi a tentativa de torná-la eficiente. O x86-64 sepultou o conflito escolhendo a eficiência."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

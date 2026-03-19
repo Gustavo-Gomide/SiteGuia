@@ -1,0 +1,206 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Cron e crontab no Linux: sintaxe, campos de tempo, exemplos práticos, cron.d, anacron e comparação com systemd timers." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Cron — Agendamento de Tarefas | Linux | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRODUÇÃO ═══════════════════ -->
+      <h2 id="introducao" class="section-title">Cron — Agendamento de Tarefas</h2>
+      <div class="section-divider"></div>
+      <p>
+        <strong>cron</strong> é o daemon Unix/Linux responsável por executar comandos em horários programados.
+        Lê os arquivos <em>crontab</em> e dispara cada tarefa no momento exato definido, independentemente de
+        qualquer interação humana. É indispensável para backups automáticos, rotação de logs, sincronização
+        de dados e qualquer tarefa recorrente.
+      </p>
+      <p>
+        O serviço é gerenciado como <code class="code-inline">cron</code> ou <code class="code-inline">crond</code>
+        dependendo da distribuição. Os arquivos de crontab de usuários ficam em
+        <code class="code-inline">/var/spool/cron/crontabs/</code> e os do sistema em
+        <code class="code-inline">/etc/crontab</code> e <code class="code-inline">/etc/cron.d/</code>.
+      </p>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SINTAXE DO CRONTAB ═══════════════════ -->
+      <h2 id="sintaxe" class="section-title">Sintaxe do Crontab</h2>
+      <div class="section-divider"></div>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">Formato e caracteres especiais</div>
+        <pre class="code-block"># Formato de cada linha:
+# MIN  HORA  DIA-DO-MÊS  MÊS  DIA-DA-SEMANA  COMANDO
+#  │    │        │         │         │
+#  │    │        │         │         └── 0-7 (0 e 7 = domingo; 1=seg...6=sab)
+#  │    │        │         └──────────── 1-12 (ou jan,feb,...,dec)
+#  │    │        └────────────────────── 1-31
+#  │    └─────────────────────────────── 0-23
+#  └──────────────────────────────────── 0-59
+
+# Caracteres especiais:
+#   *    → qualquer valor
+#   ,    → lista: 1,3,5
+#   -    → intervalo: 1-5
+#   /    → passo: */5 (a cada 5)
+#   @reboot  → uma vez ao iniciar
+#   @daily   → equivale a 0 0 * * *
+#   @weekly  → equivale a 0 0 * * 0
+#   @monthly → equivale a 0 0 1 * *
+#   @hourly  → equivale a 0 * * * *</pre>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 3 — EXEMPLOS PRÁTICOS ═══════════════════ -->
+      <h2 id="exemplos" class="section-title">Exemplos Práticos</h2>
+      <div class="section-divider"></div>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">Entradas comuns no crontab</div>
+        <pre class="code-block"># Editar crontab do usuário atual
+crontab -e
+
+# Listar crontab do usuário atual
+crontab -l
+
+# ------- Exemplos de entradas no crontab -------
+
+# Backup do banco de dados a cada dia às 2h30
+30 2 * * * /usr/local/bin/backup-db.sh >> /var/log/backup.log 2>&amp;1
+
+# Limpar arquivos temporários todo domingo às 4h
+0 4 * * 0 find /tmp -mtime +7 -delete
+
+# Reiniciar serviço nginx a cada hora
+0 * * * * systemctl restart nginx
+
+# Executar a cada 5 minutos
+*/5 * * * * /usr/bin/python3 /home/user/monitor.py
+
+# Backup incremental de segunda a sexta às 23h
+0 23 * * 1-5 rsync -avz /dados/ /backup/
+
+# Executar ao reiniciar (após boot)
+@reboot /home/user/start-services.sh
+
+# Rodar em múltiplos horários: 6h e 18h
+0 6,18 * * * /opt/scripts/sync.sh
+
+# Variáveis de ambiente no crontab
+MAILTO="admin@empresa.com"
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin</pre>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 4 — TIPOS E LOCALIZAÇÕES ═══════════════════ -->
+      <h2 id="tipos-localizacoes" class="section-title">Tipos e Localizações</h2>
+      <div class="section-divider"></div>
+      <div class="scroll-x">
+        <table class="tabela-gigante">
+          <thead>
+            <tr>
+              <th>Local</th>
+              <th>Quem usa</th>
+              <th>Descrição</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code class="code-inline">crontab -e</code> (usuário)</td>
+              <td>Usuário corrente</td>
+              <td>Tarefas pessoais; arquivo em <code class="code-inline">/var/spool/cron/crontabs/USER</code></td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/crontab</code></td>
+              <td>root</td>
+              <td>Crontab do sistema; tem campo extra para o usuário de execução</td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/cron.d/</code></td>
+              <td>Pacotes do sistema</td>
+              <td>Cada pacote instala seu próprio arquivo; mesmo formato de <code class="code-inline">/etc/crontab</code></td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/cron.daily/</code></td>
+              <td>root</td>
+              <td>Scripts executados diariamente pelo run-parts</td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/cron.hourly/</code></td>
+              <td>root</td>
+              <td>Scripts executados a cada hora</td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/cron.weekly/</code></td>
+              <td>root</td>
+              <td>Scripts executados semanalmente</td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">/etc/cron.monthly/</code></td>
+              <td>root</td>
+              <td>Scripts executados mensalmente</td>
+            </tr>
+            <tr>
+              <td><code class="code-inline">anacron</code></td>
+              <td>root</td>
+              <td>Executa tarefas que foram perdidas (máquina desligada); não precisa de horário fixo</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 5 — CRON vs SYSTEMD TIMERS ═══════════════════ -->
+      <h2 id="cron-vs-systemd" class="section-title">cron vs systemd timers</h2>
+      <div class="section-divider"></div>
+      <div class="grid-cards">
+        <div class="card" data-reveal="slide-up">
+          <h3 class="panel-title">cron</h3>
+          <p>
+            Familiar, simples e amplamente suportado em qualquer distribuição Linux. Não captura saída
+            automaticamente (necessário redirecionar para arquivo ou usar MAILTO). Não ativa máquinas desligadas
+            e não possui dependências entre tarefas.
+          </p>
+        </div>
+        <div class="card" data-reveal="slide-up">
+          <h3 class="panel-title">systemd timers</h3>
+          <p>
+            Integração com journald (logs automáticos via <code class="code-inline">journalctl</code>), suporte a
+            dependências entre units, calendários flexíveis com <code class="code-inline">OnCalendar=</code>,
+            ativação na inicialização e inspeção com
+            <code class="code-inline">systemctl status TIMER</code>.
+          </p>
+        </div>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 6 — CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja mais em <a href="/html/sistemas/linux/servicos_systemd.html">Serviços e systemd</a> e <a href="/html/sistemas/linux/processos_linux.html">Processos Linux</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Sem cron, administração de sistemas seria uma série interminável de lembretes no calendário."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Embedded e IoT: libgpiod para GPIO, POSIX serial (termios), I2C e SPI via ioctl, MQTT com Paho C++, RTOS FreeRTOS e memory-mapped I/O." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Embedded e IoT</h1>
+          <p>Programacao de sistemas embarcados e dispositivos IoT em C++: controle de GPIO com libgpiod, comunicacao serial POSIX (termios), protocolos I&sup2;C e SPI via ioctl, mensageria IoT com MQTT Paho C++, memory-mapped I/O e introducao ao FreeRTOS em ARM Cortex-M.</p>
+        </div>
+        <p class="intro-highlight">
+          C++ e amplamente usado em sistemas embarcados por seu controle preciso de memoria, custo zero de abstracoes (zero-cost abstractions) e suporte a placas como Raspberry Pi, STM32 e ESP32. Templates e constexpr permitem configuracao em compile-time sem overhead de runtime.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gpio">GPIO com libgpiod</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + libgpiod &mdash; RAII wrapper, leitura de pino e polling de eventos</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;gpiod.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;chrono&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">using namespace</span> std::chrono_literals;
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Abrir chip GPIO (Raspberry Pi 4: gpiochip0)</span>
+  gpiod::<span class="tp">chip</span> chip(<span class="str">"gpiochip0"</span>);
+
+  <span class="com">// Configurar pino 17 como saida (LED)</span>
+  gpiod::<span class="tp">line</span> led = chip.<span class="fn">get_line</span>(<span class="num">17</span>);
+  led.<span class="fn">request</span>({
+    .consumer = <span class="str">"blink"</span>,
+    .request_type = gpiod::line_request::<span class="tp">DIRECTION_OUTPUT</span>,
+    .flags = <span class="num">0</span>
+  }, <span class="num">0</span>);  <span class="com">// valor inicial = 0 (desligado)</span>
+
+  <span class="com">// Configurar pino 18 como entrada com pull-up (botao)</span>
+  gpiod::<span class="tp">line</span> btn = chip.<span class="fn">get_line</span>(<span class="num">18</span>);
+  btn.<span class="fn">request</span>({
+    .consumer = <span class="str">"button"</span>,
+    .request_type = gpiod::line_request::<span class="tp">DIRECTION_INPUT</span>,
+    .flags = gpiod::line_request::<span class="tp">FLAG_BIAS_PULL_UP</span>
+  });
+
+  <span class="com">// Piscar LED 5 vezes, 500ms on/off</span>
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">5</span>; ++i) {
+    led.<span class="fn">set_value</span>(<span class="num">1</span>);
+    std::this_thread::<span class="fn">sleep_for</span>(<span class="num">500</span>ms);
+    led.<span class="fn">set_value</span>(<span class="num">0</span>);
+    std::this_thread::<span class="fn">sleep_for</span>(<span class="num">500</span>ms);
+  }
+
+  <span class="com">// Ler estado do botao</span>
+  <span class="kw">int</span> estado = btn.<span class="fn">get_value</span>();
+  std::<span class="fn">println</span>(<span class="str">"Botao: {}"</span>, estado == <span class="num">0</span> ? <span class="str">"PRESSIONADO"</span> : <span class="str">"SOLTO"</span>);
+
+  <span class="com">// Configurar interrupcao de borda (rising + falling)</span>
+  btn.<span class="fn">release</span>();
+  btn.<span class="fn">request</span>({
+    .consumer = <span class="str">"button_irq"</span>,
+    .request_type = gpiod::line_request::<span class="tp">EVENT_BOTH_EDGES</span>,
+    .flags = gpiod::line_request::<span class="tp">FLAG_BIAS_PULL_UP</span>
+  });
+
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">if</span> (btn.<span class="fn">event_wait</span>(<span class="num">1</span>s)) {
+      <span class="kw">auto</span> event = btn.<span class="fn">event_read</span>();
+      std::<span class="fn">println</span>(<span class="str">"Evento: {} @ {} ns"</span>,
+        event.type == gpiod::line_event::<span class="tp">RISING_EDGE</span> ? <span class="str">"RISING"</span> : <span class="str">"FALLING"</span>,
+        event.timestamp.<span class="fn">count</span>());
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="serial">Comunicacao Serial (POSIX termios)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + termios &mdash; UART raw mode, baud rate, leitura nao-bloqueante</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;termios.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;fcntl.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sys/select.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdexcept&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;span&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">class</span> <span class="tp">SerialPort</span> {
+  <span class="kw">int</span> fd_{ -<span class="num">1</span> };
+
+<span class="kw">public</span>:
+  <span class="tp">SerialPort</span>(<span class="kw">const</span> <span class="kw">char</span>* device, <span class="kw">int</span> baud) {
+    fd_ = <span class="fn">open</span>(device, <span class="tp">O_RDWR</span> | <span class="tp">O_NOCTTY</span> | <span class="tp">O_NONBLOCK</span>);
+    <span class="kw">if</span> (fd_ &lt; <span class="num">0</span>) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"Nao foi possivel abrir porta serial"</span>);
+
+    <span class="tp">termios</span> tty{};
+    <span class="fn">tcgetattr</span>(fd_, &amp;tty);
+
+    <span class="com">// Baud rate</span>
+    <span class="tp">speed_t</span> speed = (baud == <span class="num">115200</span>) ? <span class="tp">B115200</span>
+                  : (baud == <span class="num">9600</span>)   ? <span class="tp">B9600</span>
+                  : <span class="kw">throw</span> std::<span class="tp">invalid_argument</span>(<span class="str">"baud nao suportado"</span>);
+    <span class="fn">cfsetispeed</span>(&amp;tty, speed);
+    <span class="fn">cfsetospeed</span>(&amp;tty, speed);
+
+    <span class="com">// Raw mode: sem echo, sem sinais, 8N1</span>
+    <span class="fn">cfmakeraw</span>(&amp;tty);
+    tty.c_cflag |= (<span class="tp">CLOCAL</span> | <span class="tp">CREAD</span>);
+    tty.c_cflag &amp;= ~<span class="tp">CSIZE</span>;
+    tty.c_cflag |= <span class="tp">CS8</span>;     <span class="com">// 8 bits</span>
+    tty.c_cflag &amp;= ~<span class="tp">PARENB</span>; <span class="com">// sem paridade</span>
+    tty.c_cflag &amp;= ~<span class="tp">CSTOPB</span>; <span class="com">// 1 stop bit</span>
+
+    <span class="com">// VMIN=0, VTIME=1 — leitura retorna em 100ms mesmo sem dados</span>
+    tty.c_cc[<span class="tp">VMIN</span>]  = <span class="num">0</span>;
+    tty.c_cc[<span class="tp">VTIME</span>] = <span class="num">1</span>;
+
+    <span class="kw">if</span> (<span class="fn">tcsetattr</span>(fd_, <span class="tp">TCSANOW</span>, &amp;tty) != <span class="num">0</span>)
+      <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"tcsetattr falhou"</span>);
+  }
+
+  ~<span class="tp">SerialPort</span>() { <span class="kw">if</span> (fd_ &gt;= <span class="num">0</span>) <span class="fn">close</span>(fd_); }
+
+  <span class="at">[[nodiscard]]</span> <span class="kw">int</span> <span class="fn">ler</span>(std::<span class="tp">span</span>&lt;<span class="kw">uint8_t</span>&gt; buf) {
+    <span class="kw">return</span> <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(<span class="fn">read</span>(fd_, buf.<span class="fn">data</span>(), buf.<span class="fn">size</span>()));
+  }
+  <span class="kw">void</span> <span class="fn">escrever</span>(std::<span class="tp">span</span>&lt;<span class="kw">const uint8_t</span>&gt; data) {
+    <span class="fn">write</span>(fd_, data.<span class="fn">data</span>(), data.<span class="fn">size</span>());
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="tp">SerialPort</span> porta(<span class="str">"/dev/ttyAMA0"</span>, <span class="num">115200</span>);
+
+  <span class="com">// Enviar comando AT para modulo GPS</span>
+  <span class="kw">const uint8_t</span> cmd[] = { <span class="str">'A'</span>, <span class="str">'T'</span>, <span class="str">'\r'</span>, <span class="str">'\n'</span> };
+  porta.<span class="fn">escrever</span>(cmd);
+
+  std::<span class="tp">array</span>&lt;<span class="kw">uint8_t</span>, <span class="num">256</span>&gt; buf{};
+  <span class="kw">int</span> n = porta.<span class="fn">ler</span>(buf);
+  <span class="kw">if</span> (n &gt; <span class="num">0</span>)
+    std::<span class="fn">println</span>(<span class="str">"Resposta ({} bytes): {:s}"</span>, n,
+      std::<span class="tp">string_view</span>(<span class="kw">reinterpret_cast</span>&lt;<span class="kw">char</span>*&gt;(buf.<span class="fn">data</span>()), n));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="i2c-spi">I&sup2;C e SPI via ioctl</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Linux ioctl &mdash; I2C e SPI em Raspberry Pi</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;linux/i2c-dev.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;linux/spi/spidev.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;fcntl.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sys/ioctl.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// ===================== I2C =====================</span>
+<span class="kw">class</span> <span class="tp">I2CDevice</span> {
+  <span class="kw">int</span> fd_;
+<span class="kw">public</span>:
+  <span class="tp">I2CDevice</span>(<span class="kw">const</span> <span class="kw">char</span>* bus, <span class="kw">uint8_t</span> addr) {
+    fd_ = <span class="fn">open</span>(bus, <span class="tp">O_RDWR</span>);
+    <span class="kw">if</span> (fd_ &lt; <span class="num">0</span>) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"I2C: falha ao abrir"</span>);
+    <span class="kw">if</span> (<span class="fn">ioctl</span>(fd_, <span class="tp">I2C_SLAVE</span>, addr) &lt; <span class="num">0</span>)
+      <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"I2C: falha ao setar slave"</span>);
+  }
+  ~<span class="tp">I2CDevice</span>() { <span class="fn">close</span>(fd_); }
+
+  <span class="kw">void</span> <span class="fn">escreverReg</span>(<span class="kw">uint8_t</span> reg, <span class="kw">uint8_t</span> val) {
+    <span class="kw">uint8_t</span> buf[<span class="num">2</span>] = { reg, val };
+    <span class="fn">write</span>(fd_, buf, <span class="kw">sizeof</span>(buf));
+  }
+  <span class="kw">uint8_t</span> <span class="fn">lerReg</span>(<span class="kw">uint8_t</span> reg) {
+    <span class="fn">write</span>(fd_, &amp;reg, <span class="num">1</span>);
+    <span class="kw">uint8_t</span> val{};
+    <span class="fn">read</span>(fd_, &amp;val, <span class="num">1</span>);
+    <span class="kw">return</span> val;
+  }
+};
+
+<span class="com">// ===================== SPI =====================</span>
+<span class="kw">class</span> <span class="tp">SPIDevice</span> {
+  <span class="kw">int</span>      fd_;
+  <span class="kw">uint32_t</span> speed_;
+<span class="kw">public</span>:
+  <span class="tp">SPIDevice</span>(<span class="kw">const</span> <span class="kw">char</span>* dev, <span class="kw">uint32_t</span> hz)
+    : fd_(<span class="fn">open</span>(dev, <span class="tp">O_RDWR</span>)), speed_(hz) {
+    <span class="kw">if</span> (fd_ &lt; <span class="num">0</span>) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"SPI: falha ao abrir"</span>);
+    <span class="kw">uint8_t</span> mode  = <span class="tp">SPI_MODE_0</span>;
+    <span class="kw">uint8_t</span> bits  = <span class="num">8</span>;
+    <span class="fn">ioctl</span>(fd_, <span class="tp">SPI_IOC_WR_MODE</span>,           &amp;mode);
+    <span class="fn">ioctl</span>(fd_, <span class="tp">SPI_IOC_WR_BITS_PER_WORD</span>, &amp;bits);
+    <span class="fn">ioctl</span>(fd_, <span class="tp">SPI_IOC_WR_MAX_SPEED_HZ</span>,  &amp;hz);
+  }
+  ~<span class="tp">SPIDevice</span>() { <span class="fn">close</span>(fd_); }
+
+  <span class="kw">void</span> <span class="fn">transferir</span>(std::<span class="tp">span</span>&lt;<span class="kw">const uint8_t</span>&gt; tx, <span class="tp">std::span</span>&lt;<span class="kw">uint8_t</span>&gt; rx) {
+    <span class="tp">spi_ioc_transfer</span> tr{
+      .tx_buf = <span class="kw">reinterpret_cast</span>&lt;<span class="kw">uint64_t</span>&gt;(tx.<span class="fn">data</span>()),
+      .rx_buf = <span class="kw">reinterpret_cast</span>&lt;<span class="kw">uint64_t</span>&gt;(rx.<span class="fn">data</span>()),
+      .len    = <span class="kw">static_cast</span>&lt;<span class="kw">uint32_t</span>&gt;(tx.<span class="fn">size</span>()),
+      .speed_hz = speed_,
+      .bits_per_word = <span class="num">8</span>
+    };
+    <span class="fn">ioctl</span>(fd_, <span class="tp">SPI_IOC_MESSAGE</span>(<span class="num">1</span>), &amp;tr);
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// BME280: sensore I2C de temperatura/umidade/pressao</span>
+  <span class="tp">I2CDevice</span> bme(<span class="str">"/dev/i2c-1"</span>, <span class="num">0x76</span>);
+  <span class="kw">uint8_t</span> chip_id = bme.<span class="fn">lerReg</span>(<span class="num">0xD0</span>);  <span class="com">// reg ID do BME280 = 0x60</span>
+  std::<span class="fn">println</span>(<span class="str">"BME280 chip_id = {:#x}"</span>, chip_id);
+
+  <span class="com">// MCP3204: ADC SPI de 4 canais</span>
+  <span class="tp">SPIDevice</span> adc(<span class="str">"/dev/spidev0.0"</span>, <span class="num">1'000'000</span>);
+  std::<span class="tp">array</span>&lt;<span class="kw">uint8_t</span>, <span class="num">3</span>&gt; tx{ <span class="num">0x06</span>, <span class="num">0x00</span>, <span class="num">0x00</span> }; <span class="com">// canal 0 single-ended</span>
+  std::<span class="tp">array</span>&lt;<span class="kw">uint8_t</span>, <span class="num">3</span>&gt; rx{};
+  adc.<span class="fn">transferir</span>(tx, rx);
+  <span class="kw">int</span> valor = ((rx[<span class="num">1</span>] &amp; <span class="num">0x0F</span>) &lt;&lt; <span class="num">8</span>) | rx[<span class="num">2</span>];
+  std::<span class="fn">println</span>(<span class="str">"ADC CH0 = {} ({:.2f}V)"</span>, valor, valor * <span class="num">3.3</span> / <span class="num">4095.0</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT com Eclipse Paho C++</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Paho MQTT &mdash; publisher TLS, subscriber assíncrono e reconnect</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;mqtt/async_client.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;thread&gt;</span>
+
+<span class="kw">class</span> <span class="tp">Callback</span> : <span class="kw">public</span> mqtt::<span class="tp">callback</span>,
+                   <span class="kw">public</span> mqtt::<span class="tp">iaction_listener</span> {
+  mqtt::<span class="tp">async_client</span>&amp; client_;
+  mqtt::<span class="tp">connect_options</span> opts_;
+
+  <span class="kw">void</span> <span class="fn">connection_lost</span>(<span class="kw">const</span> std::<span class="tp">string</span>&amp; cause) <span class="kw">override</span> {
+    std::<span class="fn">println</span>(<span class="str">"Conexao perdida: {}. Reconectando..."</span>, cause);
+    client_.<span class="fn">reconnect</span>();
+  }
+  <span class="kw">void</span> <span class="fn">message_arrived</span>(mqtt::<span class="tp">const_message_ptr</span> msg) <span class="kw">override</span> {
+    std::<span class="fn">println</span>(<span class="str">"[{}] {}"</span>, msg-&gt;<span class="fn">get_topic</span>(), msg-&gt;<span class="fn">get_payload_str</span>());
+  }
+  <span class="kw">void</span> <span class="fn">on_failure</span>(<span class="kw">const</span> mqtt::<span class="tp">token</span>&amp; tok) <span class="kw">override</span> {
+    std::<span class="fn">println</span>(<span class="str">"Acao falhou, code={}"</span>, tok.<span class="fn">get_return_code</span>());
+  }
+  <span class="kw">void</span> <span class="fn">on_success</span>(<span class="kw">const</span> mqtt::<span class="tp">token</span>&amp;) <span class="kw">override</span> {}
+
+<span class="kw">public</span>:
+  <span class="tp">Callback</span>(mqtt::<span class="tp">async_client</span>&amp; c, mqtt::<span class="tp">connect_options</span> o)
+    : client_(c), opts_(o) {}
+  <span class="kw">void</span> <span class="fn">connected</span>(<span class="kw">const</span> std::<span class="tp">string</span>&amp;) <span class="kw">override</span> {
+    std::<span class="fn">println</span>(<span class="str">"Conectado ao broker"</span>);
+    client_.<span class="fn">subscribe</span>(<span class="str">"sensores/#"</span>, <span class="num">1</span>);
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="kw">const</span> std::<span class="tp">string</span> BROKER = <span class="str">"ssl://mqtt.exemplo.com:8883"</span>;
+  <span class="kw">const</span> std::<span class="tp">string</span> ID     = <span class="str">"sensor-quarto-01"</span>;
+
+  mqtt::<span class="tp">async_client</span> client(BROKER, ID);
+
+  <span class="com">// Conexao com TLS</span>
+  mqtt::<span class="tp">ssl_options</span> ssl;
+  ssl.<span class="fn">set_trust_store</span>(<span class="str">"/etc/ssl/certs/ca-certificates.crt"</span>);
+  ssl.<span class="fn">set_verify</span>(<span class="kw">true</span>);
+
+  mqtt::<span class="tp">connect_options</span> opts;
+  opts.<span class="fn">set_ssl</span>(ssl);
+  opts.<span class="fn">set_user_name</span>(<span class="str">"usuario"</span>);
+  opts.<span class="fn">set_password</span>(<span class="str">"senha_secreta"</span>);
+  opts.<span class="fn">set_keep_alive_interval</span>(<span class="num">30</span>);
+  opts.<span class="fn">set_automatic_reconnect</span>(<span class="num">2</span>, <span class="num">30</span>);  <span class="com">// min 2s, max 30s</span>
+
+  <span class="com">// LWT — Last Will Testament: broker publica se dispositivo desconectar abruptamente</span>
+  opts.<span class="fn">set_will_message</span>(mqtt::<span class="fn">make_message</span>(
+    <span class="str">"sensores/quarto/status"</span>, <span class="str">"OFFLINE"</span>, <span class="num">1</span>, <span class="kw">true</span>));
+
+  <span class="tp">Callback</span> cb{ client, opts };
+  client.<span class="fn">set_callback</span>(cb);
+  client.<span class="fn">connect</span>(opts, <span class="kw">nullptr</span>, cb);
+
+  std::this_thread::<span class="fn">sleep_for</span>(std::chrono::<span class="fn">seconds</span>(<span class="num">1</span>));
+
+  <span class="com">// Publicar dado de sensor</span>
+  <span class="kw">auto</span> msg = mqtt::<span class="fn">make_message</span>(
+    <span class="str">"sensores/quarto/temperatura"</span>, <span class="str">"{\"temp\": 23.5, \"umid\": 60}"</span>, <span class="num">1</span>, <span class="kw">false</span>);
+  client.<span class="fn">publish</span>(msg)-&gt;<span class="fn">wait_for</span>(std::chrono::<span class="fn">seconds</span>(<span class="num">5</span>));
+
+  std::this_thread::<span class="fn">sleep_for</span>(std::chrono::<span class="fn">seconds</span>(<span class="num">10</span>));
+  client.<span class="fn">disconnect</span>()-&gt;<span class="fn">wait</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mmio">Memory-Mapped I/O e Bare-Metal</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + mmap &mdash; acesso direto a registradores de hardware</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;cstdint&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;fcntl.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sys/mman.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+
+<span class="com">// Registrador GPIO do Raspberry Pi 4 (BCM2711, base 0xFE200000)</span>
+<span class="kw">static constexpr</span> <span class="kw">uint32_t</span> <span class="tp">GPIO_BASE</span>    = <span class="num">0xFE200000</span>;
+<span class="kw">static constexpr</span> <span class="kw">uint32_t</span> <span class="tp">BLOCK_SIZE</span>  = <span class="num">0x1000</span>;
+<span class="kw">static constexpr</span> <span class="kw">uint32_t</span> <span class="tp">GPFSEL1</span>     = <span class="num">0x04</span>;  <span class="com">// funcao pinos 10-19</span>
+<span class="kw">static constexpr</span> <span class="kw">uint32_t</span> <span class="tp">GPSET0</span>      = <span class="num">0x1C</span>;  <span class="com">// set output high</span>
+<span class="kw">static constexpr</span> <span class="kw">uint32_t</span> <span class="tp">GPCLR0</span>      = <span class="num">0x28</span>;  <span class="com">// set output low</span>
+
+<span class="kw">class</span> <span class="tp">DirectGPIO</span> {
+  <span class="kw">volatile uint32_t</span>* gpio_ = <span class="kw">nullptr</span>;
+  <span class="kw">int</span> mem_fd_{ -<span class="num">1</span> };
+  <span class="kw">void</span>* map_{ <span class="tp">MAP_FAILED</span> };
+
+<span class="kw">public</span>:
+  <span class="tp">DirectGPIO</span>() {
+    mem_fd_ = <span class="fn">open</span>(<span class="str">"/dev/gpiomem"</span>, <span class="tp">O_RDWR</span> | <span class="tp">O_SYNC</span>);
+    <span class="kw">if</span> (mem_fd_ &lt; <span class="num">0</span>) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"gpiomem nao disponivel"</span>);
+    map_ = <span class="fn">mmap</span>(<span class="kw">nullptr</span>, <span class="tp">BLOCK_SIZE</span>,
+                 <span class="tp">PROT_READ</span> | <span class="tp">PROT_WRITE</span>, <span class="tp">MAP_SHARED</span>,
+                 mem_fd_, <span class="tp">GPIO_BASE</span>);
+    <span class="kw">if</span> (map_ == <span class="tp">MAP_FAILED</span>) <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="str">"mmap falhou"</span>);
+    gpio_ = <span class="kw">static_cast</span>&lt;<span class="kw">volatile uint32_t</span>*&gt;(map_);
+  }
+  ~<span class="tp">DirectGPIO</span>() {
+    <span class="kw">if</span> (map_ != <span class="tp">MAP_FAILED</span>) <span class="fn">munmap</span>(map_, <span class="tp">BLOCK_SIZE</span>);
+    <span class="kw">if</span> (mem_fd_ &gt;= <span class="num">0</span>)   <span class="fn">close</span>(mem_fd_);
+  }
+
+  <span class="kw">void</span> <span class="fn">setOutput</span>(<span class="kw">int</span> pin) {
+    <span class="kw">int</span> reg    = pin / <span class="num">10</span>;         <span class="com">// GPFSEL0..5</span>
+    <span class="kw">int</span> offset = (pin % <span class="num">10</span>) * <span class="num">3</span>;  <span class="com">// 3 bits por pino</span>
+    gpio_[reg] &amp;= ~(<span class="num">7</span> &lt;&lt; offset);
+    gpio_[reg] |=  (<span class="num">1</span> &lt;&lt; offset); <span class="com">// 001 = output</span>
+  }
+
+  <span class="kw">void</span> <span class="fn">high</span>(<span class="kw">int</span> pin) { gpio_[<span class="tp">GPSET0</span> / <span class="num">4</span>] = (<span class="num">1u</span> &lt;&lt; pin); }
+  <span class="kw">void</span> <span class="fn">low</span>(<span class="kw">int</span> pin)  { gpio_[<span class="tp">GPCLR0</span> / <span class="num">4</span>] = (<span class="num">1u</span> &lt;&lt; pin); }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="tp">DirectGPIO</span> gpio;
+  gpio.<span class="fn">setOutput</span>(<span class="num">17</span>);    <span class="com">// PIN 17 como saida</span>
+  gpio.<span class="fn">high</span>(<span class="num">17</span>);          <span class="com">// LED aceso</span>
+  <span class="fn">usleep</span>(<span class="num">500'000</span>);
+  gpio.<span class="fn">low</span>(<span class="num">17</span>);           <span class="com">// LED apagado</span>
+}</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <strong>Atencao:</strong> Acesso direto via <code>/dev/mem</code> ao endereco fisico exige privilegio root e pode travar o sistema. Prefira <code>/dev/gpiomem</code> (seguro, sem root) ou use libgpiod sempre que possivel.
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LIBGPIOD. <strong>C++ bindings for libgpiod</strong>. Disponível em: &lt;https://libgpiod.readthedocs.io&gt;. Acesso em: 2025.</li>
+            <li>ECLIPSE FOUNDATION. <strong>Eclipse Paho MQTT C++ Client Library</strong>. Disponível em: &lt;https://github.com/eclipse/paho.mqtt.cpp&gt;. Acesso em: 2025.</li>
+            <li>RASPBERRY PI. <strong>BCM2711 ARM Peripherals Manual</strong>. Disponível em: &lt;https://datasheets.raspberrypi.com&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Dados e IA</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em C++ embarcado, prefira libgpiod e termios em Raspberry Pi/Linux, e HAL do fabricante (STM32 HAL, ESP-IDF) em microcontroladores. Evite acesso direto a registradores em producao; use drivers do sistema operacional para portabilidade e seguranca.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

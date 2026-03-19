@@ -1,0 +1,186 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SIEM — Security Information and Event Management: como funciona, regras de correlação, casos de uso, Splunk, Elastic e Microsoft Sentinel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SIEM — Security Information and Event Management | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>SIEM — Security Information and Event Management</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é SIEM?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>SIEM — Security Information and Event Management</h1>
+          <p>Plataforma central que coleta logs, correlaciona eventos e gera alertas de segurança.</p>
+        </div>
+
+        <p class="intro-highlight">SIEM é a plataforma central de monitoramento de segurança. Coleta logs de dezenas ou centenas de fontes, normaliza os dados, aplica regras de correlação e gera alertas quando padrões suspeitos são detectados.</p>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> SIM vs SEM</h3>
+            <p><strong>SIM (Security Information Management)</strong> = armazenar e analisar logs históricos, conformidade, relatórios.</p>
+            <p><strong>SEM (Security Event Management)</strong> = monitoramento em tempo real, correlação de eventos, alertas imediatos.</p>
+            <p><strong>SIEM</strong> = os dois juntos — o que a maioria das plataformas modernas faz.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Por que centralizar logs</h3>
+            <p>Um atacante que comprometeu 10 sistemas gera eventos em 10 lugares diferentes. Sem SIEM, cada sistema é analisado isoladamente. Com SIEM, os eventos são correlacionados — e o padrão de ataque fica visível.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura" class="section-title">Arquitetura e Fluxo</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>1. Coleta</h3>
+            <p>Agents instalados nos hosts (Sysmon, Winlogbeat, Filebeat) ou coleta agentless via Syslog, API, CEF/LEEF. Fontes: servidores, firewalls, AD, proxies, cloud, aplicações.</p>
+          </div>
+          <div class="card">
+            <h3>2. Normalização</h3>
+            <p>Logs chegam em formatos diferentes (Windows Event Log, JSON, syslog, CEF). O SIEM parseia e normaliza tudo para um modelo comum — campos como <span class="code-inline">src_ip</span>, <span class="code-inline">user</span>, <span class="code-inline">action</span>.</p>
+          </div>
+          <div class="card">
+            <h3>3. Enriquecimento</h3>
+            <p>Adicionar contexto aos eventos: geolocalização de IPs, reputação (VirusTotal, AbuseIPDB), identidade do usuário (Active Directory), criticidade do ativo.</p>
+          </div>
+          <div class="card">
+            <h3>4. Correlação</h3>
+            <p>Regras detectam padrões multi-evento: "5 falhas de login seguidas de sucesso" = brute force well-executed. Regras podem ter condições temporais, contagens e join de eventos de fontes diferentes.</p>
+          </div>
+          <div class="card">
+            <h3>5. Alerta</h3>
+            <p>Quando uma regra dispara, cria um alerta (ou "finding"). Associado a uma severidade, MITRE tactic e assignado para análise. SOAR pode tomar ação automática antes mesmo do humano ver.</p>
+          </div>
+          <div class="card">
+            <h3>6. Retenção</h3>
+            <p>Logs armazenados por período definido (conformidade: LGPD, PCI-DSS exigem mínimos). Dados quentes (recentes, busca rápida) vs. frios (arquivo barato em S3/BLOB para retenção longa).</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="regras" class="section-title">Regras de Detecção — Exemplos</h2>
+        <div class="section-divider"></div>
+
+        <p>Regras detectam comportamento anômalo correlacionando eventos. Exemplos de regras comuns:</p>
+
+        <pre class="code-block">
+# Splunk SPL — Brute Force de login no Windows:
+index=wineventlog EventCode=4625
+| stats count by src_ip, user
+| where count > 5
+| eval alert="Possível Brute Force"
+
+# KQL (Microsoft Sentinel) — PowerShell codificado (T1059.001):
+SecurityEvent
+| where EventID == 4688
+| where CommandLine has_cs "-EncodedCommand" or CommandLine has_cs "-enc"
+| project TimeGenerated, Computer, Account, CommandLine
+
+# Elastic EQL — Mimikatz via process creation:
+process where process.name : "mimikatz.exe"
+  or (process.name : "powershell.exe" and
+      process.args : "*sekurlsa*")</pre>
+
+        <div class="message-block">
+          <p><strong>Sigma Rules:</strong> formato aberto de regras de detecção que podem ser convertidas para qualquer SIEM (Splunk, Elastic, Sentinel, QRadar). Biblioteca de +2000 regras no repositório SigmaHQ. Use como ponto de partida para seu SIEM em vez de escrever do zero.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="plataformas" class="section-title">Principais Plataformas SIEM</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>SIEM</th>
+                <th>Modelo</th>
+                <th>Linguagem de consulta</th>
+                <th>Melhor para</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Splunk</td><td>On-prem / Cloud</td><td>SPL (Splunk Processing Language)</td><td>Grandes empresas, máxima flexibilidade</td></tr>
+              <tr><td>Microsoft Sentinel</td><td>Cloud (Azure)</td><td>KQL (Kusto Query Language)</td><td>Ambientes Microsoft/Azure</td></tr>
+              <tr><td>Elastic SIEM</td><td>On-prem / Cloud</td><td>KQL / Lucene / EQL</td><td>Open source, flexível, custo menor</td></tr>
+              <tr><td>IBM QRadar</td><td>On-prem / Cloud</td><td>AQL</td><td>Ambientes corporativos, integração MSSP</td></tr>
+              <tr><td>Wazuh</td><td>Open source</td><td>JSON + Kibana</td><td>PMEs, labos, SIEM com XDR gratuito</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="desafios" class="section-title">Desafios Comuns</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Volume de alertas</h3>
+            <p>SIEM mal configurado gera centenas de alertas por dia, a maioria falso positivo. Analistas entram em "alert fatigue" e começam a ignorar alertas. Resultado: incidente real passa despercebido.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Custo de ingestão</h3>
+            <p>Splunk e Sentinel cobram por volume ingerido (GB/dia). Organizações grandes pagam dezenas de milhares de dólares/mês. Otimizar fontes de log é essencial — não tudo precisa estar no SIEM quente.</p>
+          </div>
+          <div class="card card--success">
+            <h3>Tuning contínuo</h3>
+            <p>Reduzir falsos positivos adicionando exceções para comportamentos legítimos. Cada alerta falso analisado = oportunidade de melhorar a regra. Meta: 90%+ de alertas sendo verdadeiros positivos.</p>
+          </div>
+          <div class="card card--success">
+            <h3>UEBA — Análise comportamental</h3>
+            <p>User and Entity Behavior Analytics: ML que aprende o comportamento normal de usuários e hosts. Detecta anomalias sem regras fixas — ex: usuário que nunca acessou servidor financeiro de repente acessa às 3h.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>SIEM é um investimento de longo prazo — o valor não está na instalação, mas no tuning contínuo, nas regras bem ajustadas e nos analistas que sabem o que estão vendo. Aprenda <a href="/html/seguranca/defensive/logs_auditoria.html">Logs e Auditoria</a> para entender o que coletar e como.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um SIEM com 10.000 alertas por dia e nenhum processo de triagem é pior que nenhum SIEM — porque cria uma falsa sensação de segurança."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

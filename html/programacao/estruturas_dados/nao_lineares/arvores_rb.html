@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Árvores Rubro-Negras: BST auto-balanceada com coloração de nós, propriedades e comparação com AVL  Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Árvores Rubro-Negras | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon"></span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon"></span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Árvores Rubro-Negras</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Árvores Rubro-Negras</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Rubro-Negras: balanceamento por cor</h1>
+          <p>A BST auto-balanceada que usa regras de coloração para garantir O(log n) com menos rotações que a AVL.</p>
+        </div>
+        <p class="intro-highlight">
+          Usada no kernel Linux, no Java <code class="code-inline">TreeMap</code> e no C++ <code class="code-inline">std::map</code>, a árvore rubro-negra é a estrutura de busca balanceada mais difundida na prática. Seu segredo: codificar o balanceamento em dois bits de cor por nó em vez de calcular alturas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é uma Árvore Rubro-Negra?</h2>
+        <p>
+          Uma <strong>árvore rubro-negra</strong> é uma BST onde cada nó é pintado de <strong>vermelho</strong> ou <strong>preto</strong>. As cinco propriedades abaixo, mantidas invariantemente, garantem que a árvore permaneça aproximadamente balanceada:
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">As 5 Propriedades</h3>
+          <ol>
+            <li>Todo nó é vermelho ou preto.</li>
+            <li>A raiz é preta.</li>
+            <li>Toda folha (NIL) é preta.</li>
+            <li>Se um nó é vermelho, ambos os seus filhos são pretos.</li>
+            <li>Para cada nó, todos os caminhos simples daquele nó até as folhas descendentes contêm o mesmo número de nós pretos (<strong>altura-negra</strong>).</li>
+          </ol>
+        </div>
+        <p>
+          Segundo <strong>Cormen et al. (2022)</strong>, uma árvore rubro-negra com n nós internos tem altura no máximo 2log(n+1).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="como-funciona" class="section-title">Estrutura Visual</h2>
+
+        <div class="svg-flow-wrapper">
+          <!--
+            viewBox 500 × 295
+            Nível 0 (raiz): 13 → cx=250, cy=35,  r=28
+            Nível 1: 8 → cx=150, cy=108, r=25   17 → cx=350, cy=108, r=25
+            Nível 2: 1→cx=70  11→cx=220  15→cx=290  25→cx=430  (r=22 cada)
+              11↔15: distância=70, gap=70-44=26px ✓
+            Nível 3: 6→cx=70, cy=268, r=20 (filho esquerdo de 1)
+            Linhas calculadas até a borda dos círculos para não ficarem dentro dos nós:
+              13→8:  (227,52) → (170,93)
+              13→17: (273,52) → (330,93)
+              8→1:   (132,126)→ (86,172)
+              8→11:  (167,127)→ (206,172)
+              17→15: (335,128)→ (303,170)
+              17→25: (368,126)→ (414,172)
+              1→6:   (70,210) → (70,248)
+          -->
+          <svg viewBox="0 0 500 295" role="img" aria-label="Árvore rubro-negra: raiz 13 preta, filhos 8 vermelho e 17 vermelho, netos 1 preto, 11 preto, 15 preto, 25 preto, bisneto 6 vermelho." class="flow-svg--lg">
+            <defs>
+              <style>
+                .rb-preto { fill: #2a2a2a; stroke: #888888; stroke-width: 2; }
+                .rb-verm  { fill: #c0392b; stroke: #e74c3c; stroke-width: 2; }
+                .rb-txt   { fill: #ffffff; font-size: 14px; font-weight: bold;
+                            text-anchor: middle; dominant-baseline: central;
+                            font-family: inherit; }
+                .rb-line  { stroke: var(--text-primary, #ccc); stroke-width: 1.5; }
+              </style>
+            </defs>
+
+            <!-- Conexões (abaixo dos nós) -->
+            <line x1="227" y1="52"  x2="170" y2="93"  class="rb-line" />
+            <line x1="273" y1="52"  x2="330" y2="93"  class="rb-line" />
+            <line x1="132" y1="126" x2="86"  y2="172" class="rb-line" />
+            <line x1="167" y1="127" x2="206" y2="172" class="rb-line" />
+            <line x1="335" y1="128" x2="303" y2="170" class="rb-line" />
+            <line x1="368" y1="126" x2="414" y2="172" class="rb-line" />
+            <line x1="70"  y1="210" x2="70"  y2="248" class="rb-line" />
+
+            <!-- Nível 0 — raiz 13 (preta) -->
+            <circle cx="250" cy="35"  r="28" class="rb-preto" />
+            <text   x="250" y="35"         class="rb-txt">13</text>
+
+            <!-- Nível 1 — 8 e 17 (vermelhos) -->
+            <circle cx="150" cy="108" r="25" class="rb-verm"  />
+            <text   x="150" y="108"        class="rb-txt">8</text>
+            <circle cx="350" cy="108" r="25" class="rb-verm"  />
+            <text   x="350" y="108"        class="rb-txt">17</text>
+
+            <!-- Nível 2 — 1, 11, 15, 25 (pretos) -->
+            <circle cx="70"  cy="188" r="22" class="rb-preto" />
+            <text   x="70"  y="188"        class="rb-txt">1</text>
+            <circle cx="220" cy="188" r="22" class="rb-preto" />
+            <text   x="220" y="188"        class="rb-txt">11</text>
+            <circle cx="290" cy="188" r="22" class="rb-preto" />
+            <text   x="290" y="188"        class="rb-txt">15</text>
+            <circle cx="430" cy="188" r="22" class="rb-preto" />
+            <text   x="430" y="188"        class="rb-txt">25</text>
+
+            <!-- Nível 3 — 6 vermelho (filho esquerdo de 1) -->
+            <circle cx="70"  cy="268" r="20" class="rb-verm"  />
+            <text   x="70"  y="268"        class="rb-txt" font-size="13">6</text>
+
+            <!-- Legenda -->
+            <circle cx="22" cy="22" r="10" class="rb-preto" />
+            <text x="38" y="22" class="flow-text" font-size="11" dominant-baseline="central">Preto</text>
+            <circle cx="22" cy="48" r="10" class="rb-verm" />
+            <text x="38" y="48" class="flow-text" font-size="11" dominant-baseline="central">Vermelho</text>
+          </svg>
+        </div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Inserção</h3>
+            <p>Novo nó sempre entra como vermelho. Se viola regra 4 (pai vermelho), corrige com recoloração e/ou rotação. No máximo 2 rotações por inserção.</p>
+          </div>
+          <div class="card">
+            <h3>Remoção</h3>
+            <p>A remoção é o caso mais complexo. Se o nó removido for preto, a altura-negra é violada e requer rebalanceamento. No máximo 3 rotações por remoção.</p>
+          </div>
+          <div class="card">
+            <h3>Recoloração</h3>
+            <p>Antes de recorrer a rotações, verifica-se se pintar o tio de preto e o avô de vermelho resolve o desequilíbrio. É a operação mais barata.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao-avl" class="section-title">Rubro-Negra vs AVL</h2>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Critério</th>
+                <th>Árvore AVL</th>
+                <th>Rubro-Negra</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Balanceamento</td>
+                <td>Mais rígido (FB  1)</td>
+                <td>Menos rígido (altura  2log n)</td>
+              </tr>
+              <tr>
+                <td>Velocidade de busca</td>
+                <td><strong>Levemente mais rápida</strong></td>
+                <td>Ligeiramente mais lenta</td>
+              </tr>
+              <tr>
+                <td>Inserção/Remoção</td>
+                <td>Mais rotações</td>
+                <td><strong>Menos rotações (máx. 3)</strong></td>
+              </tr>
+              <tr>
+                <td>Uso prático</td>
+                <td>Consultas intensas</td>
+                <td><strong>Uso geral (stdlib)</strong></td>
+              </tr>
+              <tr>
+                <td>Overhead por nó</td>
+                <td>Campo altura (int)</td>
+                <td>1 bit de cor</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Operação</th>
+                <th>Tempo</th>
+                <th>Rotações máximas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Busca</td>
+                <td><strong>O(log n)</strong></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td>Inserção</td>
+                <td><strong>O(log n)</strong></td>
+                <td>2</td>
+              </tr>
+              <tr>
+                <td>Remoção</td>
+                <td><strong>O(log n)</strong></td>
+                <td>3</td>
+              </tr>
+              <tr>
+                <td>Espaço</td>
+                <td><strong>O(n)</strong></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CORMEN, Thomas H. et al. <strong>Introdução a Algoritmos</strong>. 4. ed. MIT Press, 2022.</li>
+            <li>BAYER, Rudolf. <strong>Symmetric binary B-trees: Data structure and maintenance algorithms</strong>. Acta Informatica, 1972.</li>
+            <li>SEDGEWICK, Robert; WAYNE, Kevin. <strong>Algorithms</strong>. 4. ed. Addison-Wesley, 2011.</li>
+            <li>GOODRICH, Michael T.; TAMASSIA, Roberto. <strong>Estruturas de Dados e Algoritmos em Java</strong>. 5. ed. Bookman, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Rubro-Negras são a base de praticamente toda coleção ordenada em linguagens modernas de propósito geral.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Árvores rubro-negras são uma das estruturas de dados mais utilizadas e estudadas. Elas constituem a base do conjunto e mapa em Java, e de estruturas similares em C++, Python e outras linguagens."  Sedgewick e Wayne, Algorithms
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e frameworks TypeScript: Zod, tRPC, Hono, Prisma e React com tipagem avancada." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>Bibliotecas e Frameworks TypeScript</h1>
+          <p>Zod para validacao runtime com inferencia de tipos, tRPC para APIs type-safe end-to-end, Hono como framework ultra-rapido e React com tipagem avancada.</p>
+        </div>
+        <p class="intro-highlight">
+          O diferencial do ecossistema TypeScript sao bibliotecas que expoe APIs totalmente tipadas. tRPC elimina a necessidade de OpenAPI/GraphQL ao compartilhar o tipo do router entre cliente e servidor. Zod infere o tipo TS automaticamente do schema de validacao.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="zod">Zod: Validacao e Inferencia</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Zod &mdash; Schema, inferencia, refinements e transform</div>
+          <pre class="example"><span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="com">// Definir schema e inferir tipo automaticamente</span>
+<span class="kw">const</span> <span class="tp">UsuarioSchema</span> = z.<span class="fn">object</span>({
+  id:       z.<span class="fn">string</span>().<span class="fn">uuid</span>(),
+  nome:     z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">2</span>).<span class="fn">max</span>(<span class="num">80</span>),
+  email:    z.<span class="fn">string</span>().<span class="fn">email</span>(),
+  idade:    z.<span class="fn">number</span>().<span class="fn">int</span>().<span class="fn">min</span>(<span class="num">0</span>).<span class="fn">max</span>(<span class="num">120</span>),
+  papel:    z.<span class="fn">enum</span>([<span class="str">"admin"</span>, <span class="str">"editor"</span>, <span class="str">"leitor"</span>]).<span class="fn">default</span>(<span class="str">"leitor"</span>),
+  criadoEm: z.<span class="fn">coerce</span>.<span class="fn">date</span>(), <span class="com">// converte string para Date</span>
+});
+
+<span class="com">// Inferir tipo sem duplicar</span>
+<span class="kw">type</span> <span class="tp">Usuario</span> = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">UsuarioSchema</span>&gt;;
+
+<span class="com">// Para criar: omitir id (gerado pelo servidor)</span>
+<span class="kw">const</span> <span class="tp">CriarUsuarioSchema</span> = <span class="tp">UsuarioSchema</span>.<span class="fn">omit</span>({ id: <span class="kw">true</span>, criadoEm: <span class="kw">true</span> });
+<span class="kw">type</span> <span class="tp">CriarUsuario</span> = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">CriarUsuarioSchema</span>&gt;;
+
+<span class="com">// Refinement customizado (logica de negocio)</span>
+<span class="kw">const</span> <span class="tp">SenhaSchema</span> = z.<span class="fn">string</span>()
+  .<span class="fn">min</span>(<span class="num">8</span>, <span class="str">"Minimo 8 caracteres"</span>)
+  .<span class="fn">refine</span>(v => <span class="str">/[A-Z]/</span>.<span class="fn">test</span>(v), <span class="str">"Precisa de maiuscula"</span>)
+  .<span class="fn">refine</span>(v => <span class="str">/[0-9]/</span>.<span class="fn">test</span>(v), <span class="str">"Precisa de numero"</span>)
+  .<span class="fn">refine</span>(v => <span class="str">/[!@#$%]/</span>.<span class="fn">test</span>(v), <span class="str">"Precisa de simbolo"</span>);
+
+<span class="com">// Transform: validar e transformar em uma etapa</span>
+<span class="kw">const</span> <span class="tp">SlugSchema</span> = z.<span class="fn">string</span>()
+  .<span class="fn">transform</span>(s => s.<span class="fn">toLowerCase</span>().<span class="fn">replace</span>(<span class="str">/\s+/g</span>, <span class="str">"-"</span>).<span class="fn">replace</span>(<span class="str">/[^a-z0-9-]/g</span>, <span class="str">""</span>))
+  .<span class="fn">pipe</span>(z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">1</span>));
+
+<span class="com">// safeParse retorna { success, data } ou { success, error }</span>
+<span class="kw">const</span> resultado = <span class="tp">UsuarioSchema</span>.<span class="fn">safeParse</span>({
+  id: <span class="str">"123e4567-e89b-12d3-a456-426614174000"</span>,
+  nome: <span class="str">"Alice"</span>, email: <span class="str">"alice@exemplo.com"</span>,
+  idade: <span class="num">30</span>, criadoEm: <span class="str">"2024-01-15"</span>,
+});
+<span class="kw">if</span> (resultado.success) {
+  <span class="kw">const</span> usuario: <span class="tp">Usuario</span> = resultado.data; <span class="com">// totalmente tipado</span>
+} <span class="kw">else</span> {
+  <span class="fn">console</span>.<span class="fn">error</span>(resultado.error.<span class="fn">flatten</span>());
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="trpc">tRPC: API Type-Safe End-to-End</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + tRPC &mdash; Router tipado com Zod e cliente React Query</div>
+          <pre class="example"><span class="com">// server/router.ts — router do servidor</span>
+<span class="kw">import</span> { initTRPC } <span class="kw">from</span> <span class="str">"@trpc/server"</span>;
+<span class="kw">import</span> { z }       <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> t = <span class="fn">initTRPC</span>.<span class="tp">context</span>&lt;{ userId?: <span class="tp">string</span> }&gt;().<span class="fn">create</span>();
+
+<span class="kw">const</span> middleware = t.middleware(<span class="kw">async</span> ({ ctx, next }) => {
+  <span class="kw">if</span> (!ctx.userId) <span class="kw">throw new</span> t.<span class="tp">TRPCError</span>({ code: <span class="str">"UNAUTHORIZED"</span> });
+  <span class="kw">return</span> <span class="fn">next</span>({ ctx: { ...ctx, userId: ctx.userId } });
+});
+
+<span class="kw">const</span> procedurePublica    = t.procedure;
+<span class="kw">const</span> procedureProtegida  = t.procedure.<span class="fn">use</span>(middleware);
+
+<span class="kw">export const</span> appRouter = t.router({
+  usuarios: t.router({
+    listar: procedurePublica.<span class="fn">query</span>(<span class="kw">async</span> () => {
+      <span class="kw">return</span> [{ id: <span class="str">"1"</span>, nome: <span class="str">"Alice"</span>, email: <span class="str">"alice@ex.com"</span> }];
+    }),
+    porId: procedurePublica
+      .<span class="fn">input</span>(z.<span class="fn">object</span>({ id: z.<span class="fn">string</span>().<span class="fn">uuid</span>() }))
+      .<span class="fn">query</span>(<span class="kw">async</span> ({ input }) => {
+        <span class="kw">return</span> { id: input.id, nome: <span class="str">"Alice"</span> };
+      }),
+    criar: procedureProtegida
+      .<span class="fn">input</span>(z.<span class="fn">object</span>({
+        nome:  z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">2</span>),
+        email: z.<span class="fn">string</span>().<span class="fn">email</span>(),
+      }))
+      .<span class="fn">mutation</span>(<span class="kw">async</span> ({ input, ctx }) => {
+        <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`Criado por ${ctx.userId}`</span>);
+        <span class="kw">return</span> { id: crypto.<span class="fn">randomUUID</span>(), ...input };
+      }),
+  }),
+});
+
+<span class="kw">export type</span> <span class="tp">AppRouter</span> = <span class="kw">typeof</span> appRouter;
+
+<span class="com">// client/trpc.ts — cliente com tipo do servidor</span>
+<span class="com">// import { createTRPCReact } from "@trpc/react-query";</span>
+<span class="com">// import type { AppRouter } from "../server/router";</span>
+<span class="com">// export const trpc = createTRPCReact&lt;AppRouter&gt;();</span>
+<span class="com">//</span>
+<span class="com">// Uso em componente React (totalmente tipado, autocompletar completo):</span>
+<span class="com">// const { data, isLoading } = trpc.usuarios.listar.useQuery();</span>
+<span class="com">// const criar = trpc.usuarios.criar.useMutation();</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hono">Hono: Framework Web Ultra Rapido</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Hono &mdash; API tipada com validators e middleware</div>
+          <pre class="example"><span class="kw">import</span> { <span class="tp">Hono</span> }                <span class="kw">from</span> <span class="str">"hono"</span>;
+<span class="kw">import</span> { zValidator }         <span class="kw">from</span> <span class="str">"@hono/zod-validator"</span>;
+<span class="kw">import</span> { jwt, sign, verify } <span class="kw">from</span> <span class="str">"hono/jwt"</span>;
+<span class="kw">import</span> { z }                  <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">type</span> <span class="tp">Variaveis</span> = { userId: <span class="tp">string</span> };
+<span class="kw">const</span> app = <span class="kw">new</span> <span class="tp">Hono</span>&lt;{ Variables: <span class="tp">Variaveis</span> }&gt;();
+
+<span class="kw">const</span> <span class="tp">CriarPostSchema</span> = z.<span class="fn">object</span>({
+  titulo:  z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">3</span>),
+  conteudo: z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">10</span>),
+});
+
+<span class="com">// Middleware JWT</span>
+app.<span class="fn">use</span>(<span class="str">"/api/*"</span>, <span class="fn">jwt</span>({ secret: <span class="str">"meu-segredo"</span> }));
+
+<span class="com">// Rota publica</span>
+app.<span class="fn">get</span>(<span class="str">"/"</span>, (c) => c.<span class="fn">json</span>({ ok: <span class="kw">true</span> }));
+
+<span class="com">// Criar post com validacao Zod automatica</span>
+app.<span class="fn">post</span>(<span class="str">"/api/posts"</span>,
+  <span class="fn">zValidator</span>(<span class="str">"json"</span>, <span class="tp">CriarPostSchema</span>),
+  (c) => {
+    <span class="kw">const</span> body = c.<span class="fn">req</span>.<span class="fn">valid</span>(<span class="str">"json"</span>); <span class="com">// totalmente tipado</span>
+    <span class="kw">return</span> c.<span class="fn">json</span>({ id: crypto.<span class="fn">randomUUID</span>(), ...body }, <span class="num">201</span>);
+  }
+);
+
+<span class="com">// Funciona no Node.js, Bun, Deno, Cloudflare Workers, AWS Lambda</span>
+<span class="kw">export default</span> app;
+
+<span class="com">// Node.js: serve(app, { port: 3000 })</span>
+<span class="com">// Bun:     export default app</span>
+<span class="com">// Cloudflare Workers: export default app</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ZOD. COLINHACKS. <strong>Zod: TypeScript-first schema validation</strong>. Disponível em: &lt;https://zod.dev/&gt;. Acesso em: 2025.</li>
+            <li>TRPC. <strong>tRPC — End-to-end type safety</strong>. Disponível em: &lt;https://trpc.io/&gt;. Acesso em: 2025.</li>
+            <li>HONO. <strong>Hono — Ultrafast web framework</strong>. Disponível em: &lt;https://hono.dev/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling TypeScript</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas Praticas em Projetos TypeScript</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> tRPC elimina a necessidade de clientes HTTP gerados — o tipo do router e o contrato entre cliente e servidor</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

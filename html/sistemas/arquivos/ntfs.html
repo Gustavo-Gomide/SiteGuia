@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="NTFS: arquitetura, MFT (Master File Table), journaling, permissões, compressão, criptografia EFS, sparse files e operações no Linux com ntfs-3g." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>NTFS | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">NTFS</h1>
+            <p class="page-subtitle">New Technology File System: MFT, journaling, ACLs, compressão e recursos avançados</p>
+          </div>
+        </div>
+        <p class="intro-highlight">NTFS (New Technology File System) é o sistema de arquivos padrão do Windows desde o Windows NT 3.1. Projetado como substituto robusto do FAT, ele oferece journaling via <code>$LogFile</code>, permissões ACL por arquivo, compressão transparente, criptografia EFS e suporte a volumes de vários terabytes. É significativamente mais complexo que o FAT, mas muito mais confiável e seguro.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — ARQUITETURA ═══════════════════ -->
+      <section id="arquitetura">
+        <h2>Arquitetura NTFS — MFT</h2>
+        <p>Todo o volume NTFS é dividido em clusters. O coração do NTFS é a <strong>MFT (Master File Table)</strong> — uma tabela que contém ao menos uma entry (record) para cada arquivo e diretório do volume, incluindo os próprios metaarquivos do sistema.</p>
+        <p>Cada MFT record (1 KB por padrão) é uma coleção de atributos:</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">$STANDARD_INFORMATION</h3>
+            <p>Timestamps (criação, modificação, acesso, alteração MFT), flags (read-only, hidden, system), contador de hard links.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">$FILE_NAME</h3>
+            <p>Nome do arquivo em Unicode, tamanho alocado, referência para o diretório pai. Um arquivo pode ter múltiplos atributos $FILE_NAME (para nome longo e nome 8.3 legado).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">$DATA</h3>
+            <p>Conteúdo do arquivo. Se o arquivo for pequeno (menos de ~900 bytes), os dados ficam inline na própria MFT record (resident). Arquivos maiores usam runs (extent lists) apontando para clusters no disco.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">$SECURITY_DESCRIPTOR</h3>
+            <p>ACL do arquivo: lista de ACEs (Access Control Entries) com permissões por usuário/grupo. Centralizado em $Secure para deduplicação de descritores idênticos.</p>
+          </div>
+        </div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Metaarquivo NTFS</th><th>Função</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>$MFT</td><td>A própria Master File Table (MFT record 0)</td></tr>
+              <tr><td>$MFTMirr</td><td>Backup das primeiras 4 records da MFT (redundância)</td></tr>
+              <tr><td>$LogFile</td><td>Journal de transações para recuperação em caso de falha</td></tr>
+              <tr><td>$Volume</td><td>Nome do volume, versão NTFS, flags (dirty bit)</td></tr>
+              <tr><td>$AttrDef</td><td>Tabela de definições de tipos de atributos</td></tr>
+              <tr><td>$Bitmap</td><td>Mapa de bits indicando clusters livres e ocupados</td></tr>
+              <tr><td>$Boot</td><td>Setor de boot do volume (BPB, bootstrap code)</td></tr>
+              <tr><td>$Secure</td><td>Banco de dados de security descriptors (ACLs)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — JOURNALING ═══════════════════ -->
+      <section id="journaling">
+        <h2>Journaling e Recuperação</h2>
+        <p>O <code>$LogFile</code> é um journal circular que registra transações de metadados (alocação de clusters, atualização da MFT, atualização de diretorios). Antes de qualquer alteração estrutural, o kernel NTFS escreve a intenção no <code>$LogFile</code>. Após um crash, o <code>chkdsk</code> replaya ou desfaz transações incompletas em segundos — sem precisar varrer todo o volume.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">O que o journaling protege</h3>
+            <p>Falhas de metadados: MFT corrompida, diretório orphan, cluster bitmap inconsistente. Após um replay bem-sucedido, a estrutura do volume está garantidamente consistente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">O que o journaling nao protege</h3>
+            <p>Os dados brutos do arquivo. Se uma escrita de dados foi interrompida no meio, o arquivo pode estar com conteúdo parcial — mas a estrutura do FS estará correta. Para garantia de dados, é necessário <code>FlushFileBuffers()</code> ou abertura com FILE_FLAG_WRITE_THROUGH.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — PERMISSÕES ═══════════════════ -->
+      <section id="permissoes">
+        <h2>Permissões NTFS e Herança</h2>
+        <p>Permissões NTFS são definidas por ACEs (Access Control Entries) em uma ACL (Access Control List). Cada ACE especifica um SID (usuário ou grupo), um conjunto de direitos de acesso e se é Allow ou Deny.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Permissão</th>
+                <th>Arquivos</th>
+                <th>Diretórios</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Full Control</td><td>Ler, escrever, executar, alterar permissoes, deletar</td><td>Todos os acima + apagar subpastas e arquivos</td></tr>
+              <tr><td>Modify</td><td>Ler, escrever, executar, deletar</td><td>Ler, criar, deletar arquivos e subpastas</td></tr>
+              <tr><td>Read &amp; Execute</td><td>Ler e executar</td><td>Listar conteudo e acessar subpastas</td></tr>
+              <tr><td>Read</td><td>Ler conteudo e atributos</td><td>Listar conteudo</td></tr>
+              <tr><td>Write</td><td>Criar/sobrescrever, alterar atributos</td><td>Criar arquivos e subpastas</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Por padrão, permissões são <strong>herdadas</strong> do diretório pai. Uma ACE pode ser configurada como "não herdar" para quebrar a herança. Permissões SMB de compartilhamento de rede são avaliadas <em>em conjunto</em> com as permissões NTFS — o resultado é o mais restritivo dos dois.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — RECURSOS AVANÇADOS ═══════════════════ -->
+      <section id="recursos">
+        <h2>Recursos Avançados do NTFS</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Recurso</th>
+                <th>Descrição</th>
+                <th>Observações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Compressão NTFS</td><td>Compressao transparente baseada em LZ por arquivo/diretorio</td><td>Nao recomendado em SSDs; aumenta fragmentacao; CPU overhead</td></tr>
+              <tr><td>EFS (Encrypting File System)</td><td>Criptografia por arquivo vinculada ao certificado do usuario</td><td>Chave perdida = dados irrecuperaveis; nao substitui BitLocker para disco todo</td></tr>
+              <tr><td>Sparse Files</td><td>Arquivos com "buracos" (regioes de zeros nao alocadas fisicamente)</td><td>Usado por VMs (VHDX), clientes torrent, bancos de dados</td></tr>
+              <tr><td>Alternate Data Streams (ADS)</td><td>Atributos $DATA adicionais alem do conteudo principal (ex: arquivo.txt:oculto)</td><td>Usado pelo Windows para Zone.Identifier; abusado por malware para esconder dados</td></tr>
+              <tr><td>Hard Links</td><td>Multiplos nomes no mesmo volume para o mesmo MFT record</td><td>Exigem mesmo volume; contador de links na MFT record</td></tr>
+              <tr><td>Junctions</td><td>Redirecionamento de diretorio para outro caminho (mesmo volume)</td><td>Predecessor das symlinks; transparente para aplicacoes legadas</td></tr>
+              <tr><td>Symbolic Links</td><td>Links simbolicos para arquivo ou diretorio (qualquer caminho)</td><td>Requerem privilegio SeCreateSymbolicLinkPrivilege (ou modo Developer)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/fat.html">FAT — File Allocation Table</a> e <a href="/html/sistemas/arquivos/ext4.html">ext4</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"A MFT é o coração do NTFS — protegê-la é a razão pela qual o $LogFile existe."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

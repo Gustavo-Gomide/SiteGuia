@@ -1,0 +1,178 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description"
+    content="Diagrama de Componentes UML: como modelar módulos, interfaces e dependências; exemplo de arquitetura em camadas.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Diagrama de Componentes (UML) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Torne o acoplamento visível antes de controlá-lo.</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Diagrama de Componentes</h1>
+          <p class="page-subtitle">Módulos, interfaces e dependências — a arquitetura de alto nível que guia limites de
+            responsabilidade.</p>
+        </div>
+        <p class="intro-highlight">O diagrama de componentes revela quem depende de quem. Se ninguém vê as dependências,
+          ninguém as controla — e o acoplamento cresce silencioso até travar a manutenção.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="dependencias" class="section-title">Componentes e suas relações</h2>
+        <div class="section-divider"></div>
+        <p>Cada componente expõe interfaces e consome outras — a direção das dependências é a decisão arquitetural
+          central.</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Expõe (interface)</th>
+                <th>Consome</th>
+                <th>Restrição arquitetural</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Web/API</td>
+                <td>Endpoints HTTP</td>
+                <td>Casos de Uso (Aplicação)</td>
+                <td>Só conhece DTOs e Use Cases</td>
+              </tr>
+              <tr>
+                <td>Aplicação</td>
+                <td>IUseCaseX, IUseCaseY</td>
+                <td>Interfaces do Domínio</td>
+                <td>Orquestra sem regra de negócio própria</td>
+              </tr>
+              <tr>
+                <td>Domínio</td>
+                <td>IRepositório, IServiço</td>
+                <td>Nada externo</td>
+                <td>Zero dependências de infra ou framework</td>
+              </tr>
+              <tr>
+                <td>Infra/Persistência</td>
+                <td>Implementa IRepositório</td>
+                <td>ORM, banco, storage</td>
+                <td>Aponta para dentro (inversão de dependência)</td>
+              </tr>
+              <tr>
+                <td>Infra/Mensageria</td>
+                <td>Implementa IEventBus</td>
+                <td>Broker (Kafka, RabbitMQ)</td>
+                <td>Desacoplado do Domínio via interface</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo: arquitetura hexagonal</h2>
+        <div class="section-divider"></div>
+        <p>A inversão de dependência é o princípio fundamental — toda seta aponta para dentro, em direção ao domínio.
+        </p>
+        <div class="code-container">
+          <pre class="example">// Arquitetura Hexagonal / Clean Architecture
+// Regra: dependências apontam para o centro
+
+[Web/API] ──depende──→ [Aplicação]
+[CLI / Workers] ──depende──→ [Aplicação]
+[Aplicação] ──depende──→ [Domínio]  ← núcleo puro
+[Infra/DB] ──implementa──→ [IOrderRepo]   (porta do Domínio)
+[Infra/Email] ──implementa──→ [INotifier]  (porta do Domínio)
+[Infra/Pagto] ──implementa──→ [IPaymentGateway]
+
+// Interfaces (portas) definidas NO Domínio:
+interface IOrderRepo {
+  save(order: Order): void
+  findById(id: OrderId): Order | null
+}
+interface INotifier {
+  sendConfirmation(order: Order): void
+}
+
+// Resultado:
+// - Domínio testável sem banco, sem HTTP, sem broker
+// - Trocar PostgreSQL por DynamoDB → só mudar Infra/DB
+// - Adicionar CLI → só criar novo adaptador de entrada</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>A maioria dos sistemas começa limpo e vai acumulando dependências erradas silenciosamente até o diagrama não
+          refletir mais a realidade.</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Componentes genéricos</h3>
+            <p>"Utils", "Common", "Shared" viram lixões. Se um módulo não tem nome preciso, é porque ainda não tem uma
+              responsabilidade clara.</p>
+          </div>
+          <div class="card">
+            <h3>Domínio dependendo de Infra</h3>
+            <p>Importar ORM, HTTP client ou banco diretamente no domínio destrói a testabilidade e engessa a
+              arquitetura.</p>
+          </div>
+          <div class="card">
+            <h3>Diagrama ≠ código</h3>
+            <p>Modelar dependências desejadas em vez das reais cria falsa segurança. Gere o diagrama do código — não
+              escreva à mão.</p>
+          </div>
+          <div class="card">
+            <h3>Interfaces sem contrato</h3>
+            <p>Interface vazia ou com método genérico não define nada. Um bom contrato tem nome de intenção:
+              <code>IOrderRepository</code>, não <code>IRepo</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Explore também: <a href="/html/engenharia_software/uml/diagrama_implantacao.html">Diagrama de Implantação</a>
+          para onde os componentes rodam, e <a href="/html/engenharia_software/uml/diagrama_classes.html">Diagrama de
+            Classes</a> para detalhar o domínio.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A arquitetura que ninguém vê é a que ninguém controla."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

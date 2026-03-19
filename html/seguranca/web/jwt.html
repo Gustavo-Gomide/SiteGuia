@@ -1,0 +1,189 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JWT — JSON Web Token: estrutura, algoritmos, vulnerabilidades (alg:none, confusion attack, claim manipulation) e uso seguro." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JWT — JSON Web Token | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>JWT — JSON Web Token</strong></p>
+      </div>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura do JWT</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>JWT — JSON Web Token</h1>
+          <p>Token compacto em Base64URL para autenticação em APIs REST e OAuth 2.0.</p>
+        </div>
+
+        <p class="intro-highlight">Um JWT é uma string compacta em Base64URL com três partes separadas por ponto: <strong>Header.Payload.Signature</strong>. É amplamente usado como token de acesso em APIs REST e OAuth 2.0 / OpenID Connect.</p>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# JWT completo (exemplo):
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+# Decodificado:
+
+# Header (Base64URL decoded):
+{ "alg": "HS256", "typ": "JWT" }
+
+# Payload (Base64URL decoded):
+{
+  "sub": "1234567890",       # subject — ID do usuário
+  "name": "John Doe",        # claim customizada
+  "iat": 1516239022,         # issued at
+  "exp": 1516242622,         # expiration
+  "role": "user"             # claim de autorização
+}
+
+# Signature (HMAC-SHA256):
+HMACSHA256(
+  base64url(header) + "." + base64url(payload),
+  secret_key
+)</pre>
+
+        <div class="message-block">
+          <p>O payload de um JWT não é criptografado por padrão — é apenas codificado em Base64URL. <strong>Não armazene dados sensíveis no payload</strong> sem usar JWE (JSON Web Encryption). Qualquer um que interceptar o token pode ler o conteúdo.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="algoritmos" class="section-title">Algoritmos de Assinatura</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Algoritmo</th><th>Tipo</th><th>Chave</th><th>Uso Recomendado</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="code-inline">HS256/384/512</span></td><td>HMAC simétrico</td><td>Mesma chave para assinar e verificar</td><td>Microsserviços internos sob controle total</td></tr>
+              <tr><td><span class="code-inline">RS256/384/512</span></td><td>RSA assimétrico</td><td>Privada assina; pública verifica</td><td>APIs públicas, federated identity</td></tr>
+              <tr><td><span class="code-inline">ES256/384/512</span></td><td>ECDSA assimétrico</td><td>Privada assina; pública verifica</td><td>Maior eficiência que RSA; recomendado para novos sistemas</td></tr>
+              <tr><td><span class="code-inline">PS256/384/512</span></td><td>RSA-PSS</td><td>Privada assina; pública verifica</td><td>FIPS compliance</td></tr>
+              <tr><td><span class="code-inline">none</span></td><td>Sem assinatura</td><td>N/A</td><td><strong>Nunca usar em produção</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="vulnerabilidades" class="section-title">Vulnerabilidades e Ataques</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Ataque alg:none</h3>
+            <p>O atacante modifica o header para <span class="code-inline">"alg": "none"</span> e remove a assinatura. Bibliotecas vulneráveis aceitam o token sem verificação.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Header modificado:
+{ "alg": "none", "typ": "JWT" }
+# Payload com role escalado:
+{ "sub": "123", "role": "admin" }
+# Token: eyJ... . eyJ... .   ← assinatura vazia</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Algorithm Confusion (RS256→HS256)</h3>
+            <p>O servidor usa RS256 (chave pública/privada). O atacante muda o header para HS256 e assina o token com a <strong>chave pública</strong> do servidor (que é pública). Bibliotecas vulneráveis verificam o HMAC com a chave pública — aceita o token forjado.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Weak Secret (Brute Force)</h3>
+            <p>Se o segredo HMAC for fraco, pode ser quebrado offline com hashcat:</p>
+            <pre class="code-block" style="font-size:0.8rem">
+hashcat -a 0 -m 16500 token.jwt /wordlists/rockyou.txt</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">JWT sem exp / sem validação</h3>
+            <p>Token sem <span class="code-inline">exp</span> nunca expira. Se o servidor não valida expiração, tokens comprometidos são válidos para sempre.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="boas-praticas" class="section-title">Boas Práticas</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Python — verificação segura de JWT (PyJWT):
+import jwt
+
+try:
+    payload = jwt.decode(
+        token,
+        public_key,          # chave pública RSA / segredo HMAC
+        algorithms=["RS256"], # FIXE o algoritmo — não use alg do header
+        options={
+            "require": ["exp", "iat", "sub"],  # claims obrigatórias
+            "verify_exp": True,
+        },
+        leeway=10,           # tolerância de 10s para clock skew
+    )
+except jwt.ExpiredSignatureError:
+    # Token expirado — rejeitar
+except jwt.InvalidAlgorithmError:
+    # Algoritmo não permitido — rejeitar
+except jwt.InvalidTokenError:
+    # Qualquer outro erro — rejeitar</pre>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Nunca confie no alg do token</p>
+            <p>Sempre especifique explicitamente os algoritmos aceitos na verificação. A decisão de qual algoritmo usar é do servidor, não do cliente.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Expiração curta + refresh token</p>
+            <p>Access tokens com exp curto (15min–1h). Refresh tokens com revogação server-side. Permite invalidar acesso sem blacklist de access tokens.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Segredo HMAC forte</p>
+            <p>Mínimo 256 bits de entropia gerados com CSPRNG. Nunca use strings legíveis como segredo. Rotacione regularmente.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Armazenamento no cliente</p>
+            <p>Prefira <span class="code-inline">HttpOnly cookie</span> a <span class="code-inline">localStorage</span> para tokens de acesso. localStorage é acessível por XSS.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>JWT é poderoso mas frequentemente mal implementado. O formato stateless (sem consulta ao banco) tem custo: revogação é difícil. Para cenários onde revogação imediata é crítica (logout, troca de senha), considere tokens opacos com validação server-side, ou mantenha uma blacklist de JTI (JWT ID) revogados.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um JWT mal implementado troca a proteção de sessão por uma vulnerabilidade estática que pode ser explorada offline."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

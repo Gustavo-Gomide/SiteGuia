@@ -1,0 +1,427 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Apache CouchDB: banco NoSQL de documentos JSON com API HTTP nativa, replicação Master-Master e sincronizacao offline." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Apache CouchDB | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Apache CouchDB</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Apache CouchDB</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Apache CouchDB</h1>
+          <p>O banco da Web Sincronizada — JSON, HTTP nativo e replicação offline-first</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Apache CouchDB</strong> é um banco de dados NoSQL de documentos JSON pioneiro,
+          lançado em 2005. Diferente do MongoDB, foi construído do zero para o mundo da
+          <strong>conectividade intermitente</strong>: sincronizar dados entre sede e filiais
+          com internet instável, ou rodar completamente offline no celular e sincronizar quando
+          a rede voltar. Sua arquitetura MVCC (Multi-Version Concurrency Control) garante que
+          duas escritas simultâneas nunca corrompam o banco.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é o CouchDB?</h2>
+        <p>
+          O CouchDB é um banco de documentos JSON com três características que o tornam único:
+          <strong>API HTTP nativa</strong> (você usa <code class="code-inline">curl</code> para tudo),
+          <strong>MVCC sem locks</strong> (leituras nunca bloqueiam escritas) e
+          <strong>replicação Master-Master</strong> entre qualquer número de instâncias.
+        </p>
+        <p>
+          Pense no CouchDB como um banco de dados com a filosofia da Web: tudo é um recurso
+          com uma URL, tudo é acessado com HTTP CRUD (GET/PUT/POST/DELETE), e o banco pode
+          ser acessado diretamente pelo navegador sem intermediário. Não existe protocolo
+          proprietário, não existe driver obrigatório — se você conhece HTTP, você já sabe
+          como falar com o CouchDB.
+        </p>
+        <p>
+          Segundo <strong>Anderson, Lenhardt e Slater (CouchDB: The Definitive Guide, 2010)</strong>,
+          <em>"CouchDB is built for the web. It stores your data as JSON documents, which can be
+          queried and indexed using JavaScript. It replicates without central coordination
+          — just peer to peer."</em>
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Para iniciantes:</strong> a grande ideia do CouchDB é que o banco não tem
+            um "master" obrigatório. Duas pessoas podem editar o mesmo documento offline em
+            dispositivos diferentes, e o CouchDB resolve o conflito automaticamente ao
+            sincronizar — guardando as duas versões e permitindo resolução manual. É
+            exatamente como o Git resolve conflitos de merge.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">Como Funciona: MVCC e Revision Tree</h2>
+        <p>
+          O mecanismo central do CouchDB é o <strong>MVCC (Multi-Version Concurrency Control)</strong>.
+          Cada vez que um documento é modificado, o CouchDB não sobrescreve — ele cria uma nova
+          revisão, identificada pelo campo <code class="code-inline">_rev</code>.
+          Cada documento tem uma <em>árvore de revisões</em> que o CouchDB mantém internamente.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">mvcc-arvore.txt</div>
+          <pre class="example"><span class="com">── Árbol de revisões de um documento ─────────────────────────</span>
+
+<span class="tp">_rev: "1-abc"</span>  ← versão original
+       │
+       ├── <span class="tp">"2-xyz"</span>  ← edição normal (atualização sequencial)
+       │         │
+       │         └── <span class="tp">"3-def"</span>  ← versão atual ✓ (Winner)
+       │
+       └── <span class="tp">"2-qrs"</span>  ← edição feita offline em outro nó
+                         <span class="com">↑ CONFLITO detectado após replicação</span>
+                         <span class="com">↑ CouchDB guarda as duas, app resolve</span>
+
+<span class="com">── Resolução: app escolhe o winner, guarda no _rev atual ─────</span>
+<span class="com">── Revisões antigas são compactadas periodicamente ───────────</span></pre>
+        </div>
+        <p style="margin-top: var(--space-md)">
+          Para atualizar um documento, você <strong>deve</strong> passar o <code class="code-inline">_rev</code>
+          atual. Se outra escrita aconteceu antes, o CouchDB retorna <code class="code-inline">409 Conflict</code>
+          — o banco nunca perde dados silenciosamente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- API HTTP -->
+      <section>
+        <h2 id="api-http" class="section-title">A API HTTP — O Banco é RESTful</h2>
+        <p>
+          Toda comunicação com o CouchDB é via HTTP puro. O painel web
+          <strong>Fauxton</strong> (<code class="code-inline">/_utils</code>) permite gerenciar
+          tudo visualmente. Não existe driver obrigatório — qualquer linguagem que faça HTTP
+          funciona.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">couchdb-api.http</div>
+          <pre class="example"><span class="com">// ─── Criar banco ───────────────────────────────────────────</span>
+<span class="kw">PUT</span>  <span class="tp">http://localhost:5984/filmes</span>
+<span class="com">// → {"ok": true}</span>
+
+<span class="com">// ─── Criar documento com ID explícito ─────────────────────</span>
+<span class="kw">PUT</span>  <span class="tp">http://localhost:5984/filmes/matrix</span>
+{ <span class="str">"titulo"</span>: <span class="str">"Matrix"</span>, <span class="str">"ano"</span>: <span class="num">1999</span>, <span class="str">"genero"</span>: <span class="str">"Sci-Fi"</span> }
+<span class="com">// → {"ok": true, "id": "matrix", "rev": "1-a2b3c4d5..."}</span>
+
+<span class="com">// ─── Ler documento ─────────────────────────────────────────</span>
+<span class="kw">GET</span>  <span class="tp">http://localhost:5984/filmes/matrix</span>
+<span class="com">// → {"_id": "matrix", "_rev": "1-a2b3c4d5...", "titulo": "Matrix", ...}</span>
+
+<span class="com">// ─── Atualizar (OBRIGATÓRIO passar _rev atual) ─────────────</span>
+<span class="kw">PUT</span>  <span class="tp">http://localhost:5984/filmes/matrix</span>
+{ <span class="str">"_rev"</span>: <span class="str">"1-a2b3c4d5..."</span>, <span class="str">"titulo"</span>: <span class="str">"Matrix"</span>, <span class="str">"nota"</span>: <span class="num">9.5</span> }
+<span class="com">// → {"rev": "2-b3c4d5e6..."}</span>
+<span class="com">// Sem _rev → 409 Conflict (proteção contra perda de dados)</span>
+
+<span class="com">// ─── Deletar (soft delete com _deleted: true) ──────────────</span>
+<span class="kw">DELETE</span> <span class="tp">http://localhost:5984/filmes/matrix?rev=2-b3c4d5e6...</span>
+
+<span class="com">// ─── Bulk update (múltiplos docs em 1 request) ─────────────</span>
+<span class="kw">POST</span> <span class="tp">http://localhost:5984/filmes/_bulk_docs</span>
+{ <span class="str">"docs"</span>: [
+    { <span class="str">"titulo"</span>: <span class="str">"Inception"</span>, <span class="str">"ano"</span>: <span class="num">2010</span> },
+    { <span class="str">"titulo"</span>: <span class="str">"Interstellar"</span>, <span class="str">"ano"</span>: <span class="num">2014</span> }
+]}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REPLICAÇÃO -->
+      <section>
+        <h2 id="replicacao" class="section-title">Replicação Master-Master e PouchDB</h2>
+        <p>
+          A killer feature do CouchDB é o <strong>Protocolo de Replicação CouchDB</strong>:
+          qualquer nó CouchDB pode sincronizar com qualquer outro nó, em qualquer direção,
+          sem coordenação central. O protocolo é determinístico — replay múltiplas vezes
+          sem duplicatas.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>PouchDB no Cliente</h3>
+            <p>
+              Implementação JavaScript do protocolo CouchDB que roda no
+              navegador (IndexedDB) ou Node.js/React Native. O app
+              salva localmente primeiro, sincroniza depois. Funciona
+              100% offline — usuário nem percebe a desconexão.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>CouchDB no Servidor</h3>
+            <p>
+              Recebe as sincronizações de todos os clientes PouchDB,
+              resolve conflitos e distribui de volta. Pode replicar
+              para outros servidores CouchDB em outras regiões —
+              formando um cluster multi-master global.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Resolução de Conflitos</h3>
+            <p>
+              CouchDB detecta automaticamente conflitos após replicação
+              e elege um "winner" deterministicamente (por _rev hash).
+              A outra versão fica acessível para resolução manual pela
+              aplicação — sem perda de dados.
+            </p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pouchdb-sync.js</div>
+          <pre class="example"><span class="kw">import</span> <span class="tp">PouchDB</span> <span class="kw">from</span> <span class="str">'pouchdb'</span>;
+
+<span class="kw">const</span> local  = <span class="kw">new</span> <span class="tp">PouchDB</span>(<span class="str">'pedidos_local'</span>);
+<span class="kw">const</span> remote = <span class="kw">new</span> <span class="tp">PouchDB</span>(<span class="str">'https://couch.empresa.com/pedidos'</span>);
+
+<span class="com">// ─── Sincronização bidirecional contínua ─────────────────────</span>
+<span class="kw">const</span> sync = local.sync(remote, {
+  live:  <span class="kw">true</span>,  <span class="com">// mantém conexão sempre ativa</span>
+  retry: <span class="kw">true</span>   <span class="com">// tenta reconectar automaticamente se cair</span>
+})
+.on(<span class="str">'change'</span>,   info => console.log(<span class="str">'Sync:'</span>, info.change.docs.length, <span class="str">'docs'</span>))
+.on(<span class="str">'paused'</span>,   ()   => console.log(<span class="str">'Sem conexão — modo offline'</span>))
+.on(<span class="str">'active'</span>,   ()   => console.log(<span class="str">'Reconectado — sincronizando...'</span>))
+.on(<span class="str">'conflict'</span>, err  => <span class="tp">resolverConflito</span>(err))
+.on(<span class="str">'error'</span>,    err  => console.error(err));
+
+<span class="com">// ─── Escrita local (funciona offline) ────────────────────────</span>
+<span class="kw">await</span> local.put({
+  _id: <span class="str">`pedido_${Date.now()}`</span>,
+  produto: <span class="str">"Botas Trail"</span>,
+  qtd: <span class="num">2</span>,
+  status: <span class="str">"pendente"</span>
+});
+<span class="com">// Se offline: salvo localmente. Ao reconectar: sincroniza automaticamente.</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- MAPREDUCE E MANGO -->
+      <section>
+        <h2 id="consultas" class="section-title">Consultas: Views MapReduce e Mango</h2>
+        <p>
+          O CouchDB tem dois sistemas de consulta. O original, <strong>Views MapReduce</strong>,
+          usa JavaScript para definir índices permanentes. O moderno, <strong>Mango Query</strong>
+          (inspirado no MongoDB), permite queries declarativas em JSON.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">couchdb-consultas.json</div>
+          <pre class="example"><span class="com">// ─── MapReduce View (Design Document) ─────────────────────</span>
+{
+  <span class="str">"_id"</span>: <span class="str">"_design/filmes"</span>,
+  <span class="str">"views"</span>: {
+    <span class="str">"por_genero"</span>: {
+      <span class="str">"map"</span>: <span class="str">"function(doc) {
+        if (doc.genero &amp;&amp; doc.titulo) {
+          emit(doc.genero, { titulo: doc.titulo, ano: doc.ano });
+        }
+      }"</span>,
+      <span class="str">"reduce"</span>: <span class="str">"_count"</span>  <span class="com">// conta filmes por gênero</span>
+    }
+  }
+}
+
+<span class="com">// Consultar: GET /filmes/_design/filmes/_view/por_genero?key="Sci-Fi"</span>
+
+<span class="com">// ─── Mango Query (mais simples, similar ao MongoDB) ────────</span>
+<span class="kw">POST</span> <span class="tp">/filmes/_find</span>
+{
+  <span class="str">"selector"</span>: {
+    <span class="str">"genero"</span>: <span class="str">"Sci-Fi"</span>,
+    <span class="str">"ano"</span>:    { <span class="str">"$gte"</span>: <span class="num">1990</span> }
+  },
+  <span class="str">"fields"</span>:  [<span class="str">"titulo"</span>, <span class="str">"ano"</span>],
+  <span class="str">"sort"</span>:    [{ <span class="str">"ano"</span>: <span class="str">"desc"</span> }],
+  <span class="str">"limit"</span>:   <span class="num">20</span>
+}</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Full document scan:</strong> queries Mango sem índice (<code class="code-inline">_index</code>)
+            fazem scan em todos os documentos — inaceitável em produção com volume alto.
+            Sempre crie um índice Mango antes de executar uma query:
+            <code class="code-inline">POST /_index {"index": {"fields": ["genero", "ano"]}}</code>
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Casos de Uso</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+              Use CouchDB quando...
+            </h3>
+            <ul>
+              <li>App mobile/desktop que precisa funcionar offline</li>
+              <li>Sincronização de dados entre unidades geográficas com internet instável</li>
+              <li>Sistemas onde qualquer nó deve receber escritas (sem líder único)</li>
+              <li>Formulários de campo preenchidos offline (inspeções, survey, coleta)</li>
+              <li>Banco de documentos simples acessado via HTTP sem driver</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+              Evite CouchDB quando...
+            </h3>
+            <ul>
+              <li>Queries ad-hoc complexas e frequentes (use MongoDB)</li>
+              <li>Transações ACID entre múltiplos documentos</li>
+              <li>Escala horizontal massiva com alto write throughput (use Cassandra)</li>
+              <li>Ecossistema cloud centralizado já na AWS/GCP (use DynamoDB/Firestore)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANÇADO -->
+      <section>
+        <h2 id="avancado" class="section-title">Avançado: Clustering com CouchDB 3.x</h2>
+        <p>
+          O CouchDB 3.x introduziu o modo cluster nativo (antes era pelo Cloudant/BigCouch).
+          No modo cluster, os dados são distribuídos usando um anel de shards consistente —
+          similar ao Cassandra — com replicação configurável.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">setup-cluster.http</div>
+          <pre class="example"><span class="com">// ─── Criar banco com sharding e replicação explícitos ─────</span>
+<span class="kw">PUT</span> <span class="tp">/pedidos?q=8&amp;n=3</span>
+<span class="com">//   q=8 → 8 shards (partições) distribuídos pelo cluster</span>
+<span class="com">//   n=3 → cada shard tem 3 réplicas em nós diferentes</span>
+
+<span class="com">// ─── Monitorar status do cluster ──────────────────────────</span>
+<span class="kw">GET</span> <span class="tp">/_cluster_setup</span>
+<span class="kw">GET</span> <span class="tp">/_membership</span>     <span class="com">// lista todos os nós do cluster</span>
+<span class="kw">GET</span> <span class="tp">/_scheduler/jobs</span>  <span class="com">// jobs de replicação em andamento</span>
+
+<span class="com">// ─── Iniciar replicação contínua entre dois servidores ────</span>
+<span class="kw">POST</span> <span class="tp">/_replicator</span>
+{
+  <span class="str">"source"</span>:     <span class="str">"http://couch1.empresa.com/pedidos"</span>,
+  <span class="str">"target"</span>:     <span class="str">"http://couch2.empresa.com/pedidos"</span>,
+  <span class="str">"continuous"</span>: <span class="kw">true</span>,
+  <span class="str">"create_target"</span>: <span class="kw">true</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema CouchDB</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>PouchDB</h3>
+            <p>
+              Implementação JavaScript do CouchDB para browser e Node.js.
+              Usa IndexedDB ou LevelDB como storage local. Sincroniza com
+              qualquer servidor compatível com o protocolo CouchDB.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Fauxton (UI)</h3>
+            <p>
+              Interface web administrativa em <code class="code-inline">/_utils</code>.
+              Permite criar bancos, visualizar documentos, criar views, gerenciar
+              usuários, replicações e monitorar o cluster — sem linha de comando.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>IBM Cloudant</h3>
+            <p>
+              Serviço gerenciado baseado em CouchDB pela IBM Cloud. Oferece
+              escalabilidade automática, geo-replication multi-região e
+              plano free. API 100% compatível com CouchDB.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>nano (Driver Node.js)</h3>
+            <p>
+              Biblioteca Node.js oficial para CouchDB. API assíncrona com
+              Promises. Simples porque mapeia diretamente os endpoints HTTP
+              — sem abstração mágica nem ORM.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>APACHE SOFTWARE FOUNDATION. <strong>Apache CouchDB Documentation</strong>. Disponível em: <a href="https://docs.couchdb.org/" target="_blank" rel="noopener">docs.couchdb.org</a>. Acesso em: 2026.</li>
+            <li>ANDERSON, J. Chris; LENHARDT, Jan; SLATER, Noah. <strong>CouchDB: The Definitive Guide</strong>. O'Reilly Media, 2010.</li>
+            <li>POUCHDB. <strong>PouchDB Documentation</strong>. Disponível em: <a href="https://pouchdb.com/guides/" target="_blank" rel="noopener">pouchdb.com/guides</a>. Acesso em: 2026.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled</strong>. Addison-Wesley, 2012.</li>
+            <li>IBM. <strong>IBM Cloudant Documentation</strong>. Disponível em: <a href="https://cloud.ibm.com/docs/Cloudant" target="_blank" rel="noopener">cloud.ibm.com/docs/Cloudant</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>Offline-first não é uma funcionalidade — é uma arquitetura. O CouchDB a tornou possível em 2005.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/firebase.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Firebase — BaaS Realtime</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/ravendb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>RavenDB — ACID NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Offline-first não é uma funcionalidade — é uma arquitetura. O CouchDB a tornou possível." — J. Chris Anderson
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

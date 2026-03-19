@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="PHP para Embedded e IoT: PHP-CLI em Raspberry Pi, GPIO, automação, gateway MQTT e limitações — Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>PHP — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>PHP — Embedded e IoT</strong></p></div>
+
+      <!-- HERO -->
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="php" aria-hidden="true"></span></div>
+          <h1>PHP para Embedded e IoT</h1>
+          <p>PHP-CLI em Raspberry Pi, GPIO seguro, automação de hardware e gateway MQTT+HTTP</p>
+        </div>
+        <p class="intro-highlight">
+          PHP não foi projetado para sistemas embarcados — mas pode rodar em dispositivos Linux como Raspberry Pi via PHP-CLI, controlando hardware, executando agendamentos e servindo como gateway HTTP/MQTT. Compreender onde PHP é viável (e onde não é) evita erros de arquitetura.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- LIMITAÇÕES -->
+      <section>
+        <h2 class="section-title" id="limitacoes">Limitações Fundamentais do PHP em IoT</h2>
+
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> PHP não possui acesso nativo a registros de hardware, não é tempo-real, não compila para microcontroladores (Arduino, ESP32) e tem overhead de memória e inicialização inadequado para sistemas com &lt; 512 MB de RAM.</p>
+        </div>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Tarefa IoT</th>
+                <th>PHP</th>
+                <th>Alternativa Ideal</th>
+                <th>Observação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Firmware de microcontrolador</td>
+                <td class="tag tag--error">Impossível</td>
+                <td>C, C++, MicroPython</td>
+                <td>PHP não compila para bare metal</td>
+              </tr>
+              <tr>
+                <td>Controle GPIO no Raspberry Pi</td>
+                <td class="tag tag--warning">Possível via exec</td>
+                <td>Python (RPi.GPIO)</td>
+                <td>Latência ~10–100 ms</td>
+              </tr>
+              <tr>
+                <td>Servidor HTTP para dispositivos IoT</td>
+                <td class="tag tag--success">Adequado</td>
+                <td>Node.js, Go</td>
+                <td>PHP-FPM + Nginx funciona bem</td>
+              </tr>
+              <tr>
+                <td>Gateway MQTT → HTTP → banco</td>
+                <td class="tag tag--success">Adequado</td>
+                <td>Node.js</td>
+                <td>Usando Mosquitto + PHP scripts</td>
+              </tr>
+              <tr>
+                <td>Dashboard de monitoramento</td>
+                <td class="tag tag--success">Adequado</td>
+                <td>Laravel, Livewire</td>
+                <td>Excelente para dashboards web</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- RASPBERRY PI -->
+      <section>
+        <h2 class="section-title" id="raspberry-pi">PHP-CLI no Raspberry Pi</h2>
+        <p>
+          Qualquer Raspberry Pi rodando Raspberry Pi OS (Debian-based) pode executar PHP CLI. É uma boa escolha para scripts de coleta de dados, automações agendadas via cron e backends web leves.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — instalar PHP no Raspberry Pi OS</div>
+          <pre class="example"><span class="com"># Raspberry Pi OS (Bookworm)</span>
+sudo apt update && sudo apt install -y php-cli php-mbstring php-json
+
+<span class="com"># Verificar</span>
+php --version
+php -r <span class="str">"echo PHP_INT_SIZE === 8 ? 'ARM64 OK' : 'ARM32';"</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — ler sensor DHT22 via Python bridging</div>
+          <pre class="example"><span class="kw">function</span> <span class="fn">lerSensorDHT22</span>(<span class="kw">int</span> <span class="tp">$pino</span>): <span class="kw">array</span>
+{
+    <span class="com">// Python lida com GPIO; PHP processa o resultado — sem injeção de shell</span>
+    <span class="tp">$proc</span> = <span class="fn">proc_open</span>(
+        [<span class="str">'python3'</span>, <span class="str">'/opt/sensors/dht22_read.py'</span>, (<span class="kw">string</span>)<span class="tp">$pino</span>],
+        [<span class="num">1</span> => [<span class="str">'pipe'</span>, <span class="str">'w'</span>], <span class="num">2</span> => [<span class="str">'pipe'</span>, <span class="str">'w'</span>]],
+        <span class="tp">$pipes</span>
+    );
+    <span class="tp">$saida</span> = <span class="fn">stream_get_contents</span>(<span class="tp">$pipes</span>[<span class="num">1</span>]);
+    <span class="fn">fclose</span>(<span class="tp">$pipes</span>[<span class="num">1</span>]); <span class="fn">fclose</span>(<span class="tp">$pipes</span>[<span class="num">2</span>]);
+    <span class="fn">proc_close</span>(<span class="tp">$proc</span>);
+
+    <span class="tp">$dados</span> = <span class="fn">json_decode</span>(<span class="tp">$saida</span>, <span class="kw">true</span>);
+    <span class="kw">if</span> (!<span class="fn">isset</span>(<span class="tp">$dados</span>[<span class="str">'temperatura'</span>], <span class="tp">$dados</span>[<span class="str">'umidade'</span>])) {
+        <span class="kw">throw new</span> <span class="tp">RuntimeException</span>(<span class="str">'Leitura do sensor falhou'</span>);
+    }
+    <span class="kw">return</span> <span class="tp">$dados</span>;
+}
+
+<span class="tp">$leitura</span> = <span class="fn">lerSensorDHT22</span>(<span class="num">4</span>); <span class="com">// GPIO pino 4</span>
+<span class="fn">printf</span>(<span class="str">"Temp: %.1f°C  Umidade: %.1f%%\n"</span>, <span class="tp">$leitura</span>[<span class="str">'temperatura'</span>], <span class="tp">$leitura</span>[<span class="str">'umidade'</span>]);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- GATEWAY MQTT -->
+      <section>
+        <h2 class="section-title" id="gateway-mqtt">PHP como Gateway MQTT + HTTP</h2>
+        <p>
+          Uma arquitetura comum em IoT é: sensores publicam mensagens no broker MQTT (Mosquitto), e um serviço PHP consome essas mensagens, persiste no banco e expõe via API REST para dashboards e aplicativos.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — instalar phpMQTT</div>
+          <pre class="example">composer require bluerhinos/phpmqtt</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — script MQTT subscriber (daemon CLI)</div>
+          <pre class="example"><span class="kw">require</span> <span class="str">'vendor/autoload.php'</span>;
+
+<span class="tp">$mqtt</span> = <span class="kw">new</span> <span class="tp">Bluerhinos\phpMQTT</span>(<span class="str">'localhost'</span>, <span class="num">1883</span>, <span class="str">'php-gateway-'</span> . <span class="fn">uniqid</span>());
+
+<span class="kw">if</span> (!<span class="tp">$mqtt</span>-><span class="fn">connect</span>()) <span class="fn">exit</span>(<span class="num">1</span>);
+
+<span class="tp">$topicos</span> = [
+    <span class="str">'sensores/+/temperatura'</span> => [<span class="str">'qos'</span> => <span class="num">1</span>, <span class="str">'function'</span> => <span class="kw">function</span>(<span class="tp">$topic</span>, <span class="tp">$msg</span>) {
+        <span class="tp">$partes</span> = <span class="fn">explode</span>(<span class="str">'/'</span>, <span class="tp">$topic</span>);
+        <span class="tp">$sensor</span> = <span class="tp">$partes</span>[<span class="num">1</span>];
+        <span class="tp">$dados</span>  = <span class="fn">json_decode</span>(<span class="tp">$msg</span>, <span class="kw">true</span>);
+
+        <span class="com">// persistir no banco de dados</span>
+        <span class="fn">persistirLeitura</span>(<span class="tp">$sensor</span>, <span class="tp">$dados</span>[<span class="str">'valor'</span>], <span class="str">'temperatura'</span>);
+        <span class="fn">printf</span>(<span class="str">"[%s] Sensor %s: %.1f°C\n"</span>, <span class="fn">date</span>(<span class="str">'H:i:s'</span>), <span class="tp">$sensor</span>, <span class="tp">$dados</span>[<span class="str">'valor'</span>]);
+    }],
+];
+
+<span class="tp">$mqtt</span>-><span class="fn">subscribe</span>(<span class="tp">$topicos</span>, <span class="num">0</span>);
+
+<span class="com">// Loop de leitura contínua</span>
+<span class="kw">while</span> (<span class="tp">$mqtt</span>-><span class="fn">proc</span>()) {
+    <span class="fn">usleep</span>(<span class="num">100000</span>); <span class="com">// 100ms</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CRON -->
+      <section>
+        <h2 class="section-title" id="cron">Automação com Cron Jobs</h2>
+        <p>
+          PHP-CLI é adequado para tarefas agendadas em Raspberry Pi — coleta de dados de sensores, relatórios, alertas por email ou Telegram.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — crontab para script PHP</div>
+          <pre class="example"><span class="com"># Coletar temperatura a cada 5 minutos</span>
+*/5 * * * * /usr/bin/php /opt/iot/coletar_temperatura.php >> /var/log/iot/temperatura.log 2>&1
+
+<span class="com"># Relatório diário às 08h</span>
+0 8 * * * /usr/bin/php /opt/iot/relatorio_diario.php</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PHP DOCUMENTATION GROUP. <strong>PHP on the command line</strong>. PHP Group, 2024. Disponível em: <a href="https://www.php.net/manual/en/features.commandline.php" target="_blank" rel="noopener">php.net/features.commandline</a></li>
+            <li>HACKS, Nicholas. <strong>phpMQTT</strong>. GitHub, 2024. Disponível em: <a href="https://github.com/bluerhinos/phpMQTT" target="_blank" rel="noopener">github.com/bluerhinos/phpMQTT</a></li>
+            <li>OESIS, Edrean. <strong>MQTT Protocol Specification v5.0</strong>. OASIS, 2019. Disponível em: <a href="https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html" target="_blank" rel="noopener">docs.oasis-open.org</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP no Terminal e CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP para Desenvolvimento Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Use the right tool for the job. PHP excels as a web gateway for IoT data — not as embedded firmware. That's not a limitation; it's clarity of purpose."</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

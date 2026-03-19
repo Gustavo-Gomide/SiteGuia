@@ -1,0 +1,111 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="FTP: modo ativo e passivo, canais de controle e dados, FTPS, SFTP e alternativas modernas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>FTP | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">FTP &mdash; File Transfer Protocol</h1>
+          <p class="page-subtitle">Transferência de arquivos via dois canais TCP: controle (21) e dados (20 ou efemero)</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>FTP</strong> (RFC 959) usa <em>dois canais TCP separados</em>: um para <strong>controle</strong> (comandos/respostas) e outro para <strong>dados</strong> (transferência de arquivos). Em texto plano por padrão &mdash; usuário/senha transitável em claro. Para produção, usar <strong>FTPS</strong> (FTP + TLS) ou <strong>SFTP</strong> (SSH File Transfer Protocol).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="modos" class="section-title">Modo Ativo vs Passivo</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Modo Ativo (PORT)</h3>
+            <p>O <em>cliente</em> abre uma porta alta e diz ao servidor qual é (<code class="code-inline">PORT</code> command). O servidor conecta <em>de volta</em> do porto 20 para a porta informada pelo cliente. <strong>Problema</strong>: firewalls e NAT bloqueiam conexões <em>iniciadas</em> pelo servidor para o cliente &mdash; modo ativo raramente funciona atrás de NAT.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Modo Ativo</span></div>
+              <pre class="code-block">Cliente:21 &rarr; Servidor:21  (controle / CLIENT &rarr; SERVER)
+Servidor:20 &rarr; Cliente:PORT  (dados / SERVER &rarr; CLIENT)
+                              ^ Problema: NAT bloqueia esta direção</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Modo Passivo (PASV)</h3>
+            <p>O <em>servidor</em> abre uma porta alta e informa ao cliente (<code class="code-inline">PASV</code> command). O <em>cliente</em> conecta para essa porta. <strong>Funciona atrás de NAT</strong> pois o cliente sempre inicia. Modo padrão em clientes modernos.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Modo Passivo</span></div>
+              <pre class="code-block">Cliente:21 &rarr; Servidor:21  (controle / CLIENT &rarr; SERVER)
+Cliente:NNNN &rarr; Servidor:PASV  (dados / CLIENT &rarr; SERVER)
+                              ^ OK: NAT permite saída do cliente</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="seguranca" class="section-title">FTPS vs SFTP</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">FTPS (FTP Secure)</h3>
+            <p>FTP com TLS adicionado. Duas variantes:</p>
+            <ul>
+              <li><strong>Explícito (FTPES):</strong> coneta na porta 21 e upgrade com <code class="code-inline">AUTH TLS</code>; caí para FTP sem criptografia se não suportado</li>
+              <li><strong>Implícito (FTPS):</strong> porta 990; TLS imediato; considera-se o padrão mais seguro</li>
+              <li>Mantém a arquitetura de dois canais &mdash; ainda problemático com firewalls stateful</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">SFTP (via SSH)</h3>
+            <p>Não é FTP + SSH &mdash; é um protocolo independente (SSH File Transfer Protocol) que roda sobre SSH (porta 22). Um único canal TCP criptografado. Não tem os problemas de dois canais/firewall do FTP. É o protocolo recomendado para transferência segura de arquivos hoje.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Uso básico SFTP</span></div>
+              <pre class="code-block"># Conectar
+sftp user@remote.server
+
+# Baixar arquivo
+get /remote/path/file.txt
+
+# Enviar arquivo
+put localfile.txt /remote/path/
+
+# Sincronizar diretório (via scp)
+rsync -avz -e ssh localdir/ user@server:/remote/</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="ssh.html"><strong>SSH</strong></a>, <a href="https.html"><strong>TLS</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "FTP nunca deveria ter parado no tempo. SFTP via SSH resolve todos os problemas de segurança e firewall. Não use FTP simples em 2024."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

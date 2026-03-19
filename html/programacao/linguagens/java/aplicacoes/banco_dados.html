@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java com bancos de dados: Spring Data JPA, Hibernate, JPQL, Criteria API, @Transactional, Flyway e otimizacoes de performance." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java e Bancos de Dados</h1>
+          <p>Spring Data JPA com Hibernate, mapeamento de entidades e relacionamentos, JPQL/Criteria API, controle transacional, migracao com Flyway e otimizacoes para evitar o problema N+1.</p>
+        </div>
+        <p class="intro-highlight">
+          Hibernate e o JPA provider padrao do Spring Boot. Ele traduz as entidades Java em tabelas SQL, mas exige atencao ao plano de execucao das queries e as estrategias de fetch para nao gerar dezenas de queries implicitas por requisicao.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="entidades">Entidades e Relacionamentos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + JPA &mdash; @Entity com @OneToMany, @ManyToOne e @ManyToMany</div>
+          <pre class="example"><span class="at">@Entity</span>
+<span class="at">@Table</span>(name = <span class="str">"pedidos"</span>)
+<span class="kw">public class</span> <span class="tp">Pedido</span> {
+
+  <span class="at">@Id</span>
+  <span class="at">@GeneratedValue</span>(strategy = <span class="tp">GenerationType</span>.<span class="tp">UUID</span>)
+  <span class="kw">private</span> <span class="tp">UUID</span> id;
+
+  <span class="at">@Column</span>(nullable = <span class="kw">false</span>)
+  <span class="kw">private</span> <span class="tp">LocalDateTime</span> criadoEm = <span class="tp">LocalDateTime</span>.<span class="fn">now</span>();
+
+  <span class="at">@Enumerated</span>(<span class="tp">EnumType</span>.<span class="tp">STRING</span>)
+  <span class="at">@Column</span>(nullable = <span class="kw">false</span>, length = <span class="num">20</span>)
+  <span class="kw">private</span> <span class="tp">StatusPedido</span> status = <span class="tp">StatusPedido</span>.<span class="tp">AGUARDANDO</span>;
+
+  <span class="com">// Lado "muitos" — FK cliente_id na tabela pedidos</span>
+  <span class="at">@ManyToOne</span>(fetch = <span class="tp">FetchType</span>.<span class="tp">LAZY</span>, optional = <span class="kw">false</span>)
+  <span class="at">@JoinColumn</span>(name = <span class="str">"cliente_id"</span>)
+  <span class="kw">private</span> <span class="tp">Cliente</span> cliente;
+
+  <span class="com">// Lado "um" — colecao mapeada pela entidade filha</span>
+  <span class="at">@OneToMany</span>(mappedBy = <span class="str">"pedido"</span>, cascade = <span class="tp">CascadeType</span>.<span class="tp">ALL</span>,
+             orphanRemoval = <span class="kw">true</span>, fetch = <span class="tp">FetchType</span>.<span class="tp">LAZY</span>)
+  <span class="kw">private</span> <span class="tp">List</span>&lt;<span class="tp">ItemPedido</span>&gt; itens = <span class="kw">new</span> <span class="tp">ArrayList</span>&lt;&gt;();
+
+  <span class="com">// Metodo auxiliar para manter consistencia bidirecional</span>
+  <span class="kw">public void</span> <span class="fn">adicionarItem</span>(<span class="tp">ItemPedido</span> item) {
+    item.<span class="fn">setPedido</span>(<span class="kw">this</span>);
+    itens.<span class="fn">add</span>(item);
+  }
+}
+
+<span class="at">@Entity</span>
+<span class="at">@Table</span>(name = <span class="str">"itens_pedido"</span>)
+<span class="kw">public class</span> <span class="tp">ItemPedido</span> {
+
+  <span class="at">@EmbeddedId</span>
+  <span class="kw">private</span> <span class="tp">ItemPedidoId</span> id;   <span class="com">// chave composta</span>
+
+  <span class="at">@ManyToOne</span>(fetch = <span class="tp">FetchType</span>.<span class="tp">LAZY</span>)
+  <span class="at">@MapsId</span>(<span class="str">"pedidoId"</span>)
+  <span class="kw">private</span> <span class="tp">Pedido</span> pedido;
+
+  <span class="at">@ManyToOne</span>(fetch = <span class="tp">FetchType</span>.<span class="tp">LAZY</span>)
+  <span class="at">@MapsId</span>(<span class="str">"produtoId"</span>)
+  <span class="kw">private</span> <span class="tp">Produto</span> produto;
+
+  <span class="at">@Column</span>(nullable = <span class="kw">false</span>)
+  <span class="kw">private int</span> quantidade;
+
+  <span class="at">@Column</span>(nullable = <span class="kw">false</span>, precision = <span class="num">10</span>, scale = <span class="num">2</span>)
+  <span class="kw">private</span> <span class="tp">BigDecimal</span> precoUnitario;
+}
+
+<span class="at">@Embeddable</span>
+<span class="kw">public record</span> <span class="tp">ItemPedidoId</span>(<span class="tp">UUID</span> pedidoId, <span class="tp">UUID</span> produtoId) <span class="kw">implements</span> <span class="tp">Serializable</span> {}
+
+<span class="com">// ManyToMany: produto &lt;-&gt; categoria (tabela associativa)</span>
+<span class="at">@ManyToMany</span>(cascade = { <span class="tp">CascadeType</span>.<span class="tp">PERSIST</span>, <span class="tp">CascadeType</span>.<span class="tp">MERGE</span> })
+<span class="at">@JoinTable</span>(
+  name = <span class="str">"produto_categoria"</span>,
+  joinColumns        = @<span class="at">JoinColumn</span>(name = <span class="str">"produto_id"</span>),
+  inverseJoinColumns = @<span class="at">JoinColumn</span>(name = <span class="str">"categoria_id"</span>)
+)
+<span class="kw">private</span> <span class="tp">Set</span>&lt;<span class="tp">Categoria</span>&gt; categorias = <span class="kw">new</span> <span class="tp">HashSet</span>&lt;&gt;();</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <p><strong>Nunca use FetchType.EAGER em colecoes.</strong> Torna imprevisivel o numero de queries geradas e e o principal causador do problema N+1. Use <code>FetchType.LAZY</code> e carregue joinando explicitamente com <code>@EntityGraph</code> ou JPQL <code>JOIN FETCH</code> somente quando necessario.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="repositories">Repositories e Queries</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Spring Data JPA &mdash; Repository com JPQL, @EntityGraph e projecoes</div>
+          <pre class="example"><span class="kw">public interface</span> <span class="tp">PedidoRepository</span> <span class="kw">extends</span> <span class="tp">JpaRepository</span>&lt;<span class="tp">Pedido</span>, <span class="tp">UUID</span>&gt;,
+    <span class="tp">JpaSpecificationExecutor</span>&lt;<span class="tp">Pedido</span>&gt; {
+
+  <span class="com">// Derivado do nome — Spring gera a query automaticamente</span>
+  <span class="tp">List</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">findByClienteIdAndStatus</span>(<span class="tp">UUID</span> clienteId, <span class="tp">StatusPedido</span> status);
+
+  <span class="com">// JPQL parametrizado — sem risco de SQL injection</span>
+  @<span class="at">Query</span>(<span class="str">"SELECT p FROM Pedido p JOIN FETCH p.itens i JOIN FETCH i.produto "</span>
+       + <span class="str">"WHERE p.id = :id"</span>)
+  <span class="tp">Optional</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">buscarComItens</span>(<span class="at">@Param</span>(<span class="str">"id"</span>) <span class="tp">UUID</span> id);
+
+  <span class="com">// EntityGraph — evita N+1 sem alterar a entidade</span>
+  @<span class="at">EntityGraph</span>(attributePaths = { <span class="str">"itens"</span>, <span class="str">"itens.produto"</span>, <span class="str">"cliente"</span> })
+  <span class="tp">Optional</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">findWithGraphById</span>(<span class="tp">UUID</span> id);
+
+  <span class="com">// Projecao — carrega apenas os campos necessarios</span>
+  <span class="tp">List</span>&lt;<span class="tp">PedidoResumo</span>&gt; <span class="fn">findByClienteId</span>(<span class="tp">UUID</span> clienteId);
+
+  <span class="com">// Count / existencia</span>
+  <span class="kw">boolean</span> <span class="fn">existsByClienteIdAndStatus</span>(<span class="tp">UUID</span> clienteId, <span class="tp">StatusPedido</span> status);
+
+  <span class="com">// Bulk update com @Modifying — contorna o cache de 1o nivel</span>
+  @<span class="at">Modifying</span>
+  @<span class="at">Query</span>(<span class="str">"UPDATE Pedido p SET p.status = :novo WHERE p.status = :antigo"</span>)
+  <span class="kw">int</span> <span class="fn">atualizarStatusEmLote</span>(<span class="at">@Param</span>(<span class="str">"antigo"</span>) <span class="tp">StatusPedido</span> antigo,
+                             <span class="at">@Param</span>(<span class="str">"novo"</span>)   <span class="tp">StatusPedido</span> novo);
+
+  <span class="com">// Paginacao nativa — conta total numa query separada</span>
+  @<span class="at">Query</span>(value = <span class="str">"SELECT p FROM Pedido p JOIN FETCH p.cliente WHERE p.status &lt;&gt; 'CANCELADO'"</span>,
+         countQuery = <span class="str">"SELECT COUNT(p) FROM Pedido p WHERE p.status &lt;&gt; 'CANCELADO'"</span>)
+  <span class="tp">Page</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">listarAtivos</span>(<span class="tp">Pageable</span> pageable);
+}
+
+<span class="com">// Projecao como interface — Spring Data cria o proxy automaticamente</span>
+<span class="kw">public interface</span> <span class="tp">PedidoResumo</span> {
+  <span class="tp">UUID</span>           <span class="fn">getId</span>();
+  <span class="tp">LocalDateTime</span>  <span class="fn">getCriadoEm</span>();
+  <span class="tp">StatusPedido</span>   <span class="fn">getStatus</span>();
+  <span class="tp">NomeCliente</span>    <span class="fn">getCliente</span>();   <span class="com">// nested projection</span>
+
+  <span class="kw">interface</span> <span class="tp">NomeCliente</span> { <span class="tp">String</span> <span class="fn">getNome</span>(); }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transacoes">Controle Transacional</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Spring &mdash; @Transactional com propagacao e isolamento</div>
+          <pre class="example"><span class="at">@Service</span>
+<span class="kw">public class</span> <span class="tp">PedidoService</span> {
+
+  <span class="com">// readOnly=true — Hibernate nao executa flush, conexao liberada antes</span>
+  @<span class="at">Transactional</span>(readOnly = <span class="kw">true</span>)
+  <span class="kw">public</span> <span class="tp">Page</span>&lt;<span class="tp">PedidoResumo</span>&gt; <span class="fn">listar</span>(<span class="tp">Pageable</span> pageable) {
+    <span class="kw">return</span> repo.<span class="fn">findAll</span>(pageable).<span class="fn">map</span>(assembler::<span class="fn">toResumo</span>);
+  }
+
+  <span class="com">// Propagation.REQUIRED (padrao): reutiliza transacao externa, se houver</span>
+  @<span class="at">Transactional</span>
+  <span class="kw">public</span> <span class="tp">Pedido</span> <span class="fn">criar</span>(<span class="tp">CriarPedidoRequest</span> req) {
+    <span class="kw">var</span> cliente = clienteRepo.<span class="fn">getReferenceById</span>(req.clienteId());
+    <span class="kw">var</span> pedido  = <span class="kw">new</span> <span class="tp">Pedido</span>(cliente);
+    req.itens().<span class="fn">forEach</span>(i -&gt; {
+      <span class="kw">var</span> produto = produtoRepo.<span class="fn">getReferenceById</span>(i.produtoId());
+      pedido.<span class="fn">adicionarItem</span>(<span class="kw">new</span> <span class="tp">ItemPedido</span>(produto, i.quantidade()));
+    });
+    <span class="kw">return</span> repo.<span class="fn">save</span>(pedido);
+  }
+
+  <span class="com">// REQUIRES_NEW — suspende transacao externa e inicia outra independente</span>
+  <span class="com">// util para log de auditoria que deve persistir mesmo se a tx principal falhar</span>
+  @<span class="at">Transactional</span>(propagation = <span class="tp">Propagation</span>.<span class="tp">REQUIRES_NEW</span>)
+  <span class="kw">public void</span> <span class="fn">registrarAuditoria</span>(<span class="tp">String</span> evento) {
+    auditoriaRepo.<span class="fn">save</span>(<span class="kw">new</span> <span class="tp">Auditoria</span>(evento));
+  }
+
+  <span class="com">// rollbackFor — Spring so faz rollback automatico em RuntimeException</span>
+  <span class="com">// Para exceptions checadas, e necessario declarar</span>
+  @<span class="at">Transactional</span>(rollbackFor = <span class="tp">IOException</span>.<span class="kw">class</span>)
+  <span class="kw">public void</span> <span class="fn">importarCSV</span>(<span class="tp">InputStream</span> csv) <span class="kw">throws</span> <span class="tp">IOException</span> { ... }
+}
+
+<span class="com">/* Niveis de isolamento:
+  READ_UNCOMMITTED — le dados nao commitados (dirty read)
+  READ_COMMITTED   — le apenas dados commitados (padrao Postgres)
+  REPEATABLE_READ  — mesma leitura retorna mesmos dados (Postgres usa por padrao para serializable)
+  SERIALIZABLE     — maximo isolamento, menor concorrencia
+*/</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="flyway">Migracao com Flyway</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">SQL + Flyway &mdash; Versionamento de schema com migrations sequenciais</div>
+          <pre class="example"><span class="com">-- Localizado em: src/main/resources/db/migration/V1__create_clientes.sql</span>
+<span class="kw">CREATE TABLE</span> clientes (
+  id         <span class="tp">UUID</span>         <span class="kw">PRIMARY KEY DEFAULT</span> <span class="fn">gen_random_uuid</span>(),
+  nome       <span class="tp">VARCHAR</span>(<span class="num">200</span>) <span class="kw">NOT NULL</span>,
+  email      <span class="tp">VARCHAR</span>(<span class="num">320</span>) <span class="kw">NOT NULL UNIQUE</span>,
+  criado_em  <span class="tp">TIMESTAMPTZ</span>  <span class="kw">NOT NULL DEFAULT</span> <span class="fn">now</span>()
+);
+
+<span class="com">-- V2__create_produtos.sql</span>
+<span class="kw">CREATE TABLE</span> produtos (
+  id       <span class="tp">UUID</span>           <span class="kw">PRIMARY KEY DEFAULT</span> <span class="fn">gen_random_uuid</span>(),
+  nome     <span class="tp">VARCHAR</span>(<span class="num">300</span>)  <span class="kw">NOT NULL</span>,
+  preco    <span class="tp">NUMERIC</span>(<span class="num">10</span>,<span class="num">2</span>) <span class="kw">NOT NULL</span>,
+  estoque  <span class="tp">INT</span>           <span class="kw">NOT NULL DEFAULT</span> <span class="num">0</span>
+);
+
+<span class="com">-- V3__create_pedidos.sql</span>
+<span class="kw">CREATE TABLE</span> pedidos (
+  id          <span class="tp">UUID</span>        <span class="kw">PRIMARY KEY DEFAULT</span> <span class="fn">gen_random_uuid</span>(),
+  cliente_id  <span class="tp">UUID</span>        <span class="kw">NOT NULL REFERENCES</span> clientes(id),
+  status      <span class="tp">VARCHAR</span>(<span class="num">20</span>) <span class="kw">NOT NULL DEFAULT</span> <span class="str">'AGUARDANDO'</span>,
+  criado_em   <span class="tp">TIMESTAMPTZ</span> <span class="kw">NOT NULL DEFAULT</span> <span class="fn">now</span>()
+);
+<span class="kw">CREATE INDEX ON</span> pedidos(cliente_id);
+<span class="kw">CREATE INDEX ON</span> pedidos(status);
+
+<span class="com">-- application.properties</span>
+<span class="com">spring.flyway.locations=classpath:db/migration</span>
+<span class="com">spring.flyway.baseline-on-migrate=false</span>
+<span class="com">spring.jpa.hibernate.ddl-auto=validate   # Hibernate valida contra o schema do Flyway</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="n1">Problema N+1 e Cache L2</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Hibernate &mdash; Diagnostico e resolucao do N+1</div>
+          <pre class="example"><span class="com">// application.properties — habilitar log de queries (APENAS dev)</span>
+<span class="com">spring.jpa.show-sql=true</span>
+<span class="com">spring.jpa.properties.hibernate.format_sql=true</span>
+<span class="com">logging.level.org.hibernate.SQL=DEBUG</span>
+<span class="com">logging.level.org.hibernate.orm.jdbc.bind=TRACE</span>
+
+<span class="com">// Exemplo de N+1: ao listar pedidos, Hibernate emite 1 query para a lista</span>
+<span class="com">// e mais 1 query POR pedido para carregar o cliente (FetchType.LAZY)</span>
+<span class="com">// Total: 101 queries para uma lista de 100 pedidos</span>
+
+<span class="com">// SOLUCAO 1: JOIN FETCH na query</span>
+@<span class="at">Query</span>(<span class="str">"SELECT p FROM Pedido p JOIN FETCH p.cliente"</span>)
+<span class="tp">List</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">findAllComCliente</span>();
+
+<span class="com">// SOLUCAO 2: @BatchSize — Hibernate agrupa sub-queries em lotes</span>
+@<span class="at">BatchSize</span>(size = <span class="num">30</span>)
+@<span class="at">OneToMany</span>(mappedBy = <span class="str">"pedido"</span>, fetch = <span class="tp">FetchType</span>.<span class="tp">LAZY</span>)
+<span class="kw">private</span> <span class="tp">List</span>&lt;<span class="tp">ItemPedido</span>&gt; itens;
+
+<span class="com">// SOLUCAO 3: cache de segundo nivel (Hibernate L2 + Caffeine)</span>
+<span class="com">// pom.xml:
+// &lt;dependency&gt;
+//   &lt;groupId&gt;com.github.ben-manes.caffeine&lt;/groupId&gt;
+//   &lt;artifactId&gt;caffeine&lt;/artifactId&gt;
+// &lt;/dependency&gt;</span>
+
+<span class="at">@Entity</span>
+@<span class="at">Cache</span>(usage = <span class="tp">CacheConcurrencyStrategy</span>.<span class="tp">READ_WRITE</span>)   <span class="com">// entidade mutavel</span>
+<span class="kw">public class</span> <span class="tp">Categoria</span> {
+  <span class="at">@Id</span> <span class="at">@GeneratedValue</span>(strategy = <span class="tp">GenerationType</span>.<span class="tp">UUID</span>)
+  <span class="kw">private</span> <span class="tp">UUID</span> id;
+  <span class="kw">private</span> <span class="tp">String</span> nome;
+}
+
+<span class="com">// application.properties — L2 com Caffeine</span>
+<span class="com">spring.jpa.properties.hibernate.cache.use_second_level_cache=true</span>
+<span class="com">spring.jpa.properties.hibernate.cache.region.factory_class=org.hibernate.cache.jcache.JCacheRegionFactory</span>
+<span class="com">spring.jpa.properties.javax.cache.provider=com.github.benmanes.caffeine.jcache.spi.CaffeineCachingProvider</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="criteria-api">Specification API (Criteria Dinamica)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Spring Data JPA &mdash; Filtros dinamicos com Specification</div>
+          <pre class="example"><span class="kw">public class</span> <span class="tp">PedidoSpecs</span> {
+
+  <span class="kw">private</span> <span class="tp">PedidoSpecs</span>() {}
+
+  <span class="kw">public static</span> <span class="tp">Specification</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">comStatus</span>(<span class="tp">StatusPedido</span> status) {
+    <span class="kw">return</span> (root, query, cb) -&gt;
+      status == <span class="kw">null</span> ? cb.<span class="fn">conjunction</span>() : cb.<span class="fn">equal</span>(root.<span class="fn">get</span>(<span class="str">"status"</span>), status);
+  }
+
+  <span class="kw">public static</span> <span class="tp">Specification</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">doCliente</span>(<span class="tp">UUID</span> clienteId) {
+    <span class="kw">return</span> (root, query, cb) -&gt;
+      clienteId == <span class="kw">null</span> ? cb.<span class="fn">conjunction</span>()
+        : cb.<span class="fn">equal</span>(root.<span class="fn">get</span>(<span class="str">"cliente"</span>).<span class="fn">get</span>(<span class="str">"id"</span>), clienteId);
+  }
+
+  <span class="kw">public static</span> <span class="tp">Specification</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">criadoDepoisDe</span>(<span class="tp">LocalDateTime</span> data) {
+    <span class="kw">return</span> (root, query, cb) -&gt;
+      data == <span class="kw">null</span> ? cb.<span class="fn">conjunction</span>()
+        : cb.<span class="fn">greaterThanOrEqualTo</span>(root.<span class="fn">get</span>(<span class="str">"criadoEm"</span>), data);
+  }
+}
+
+<span class="com">// Uso no servico — combina specs dinamicamente</span>
+<span class="kw">public</span> <span class="tp">Page</span>&lt;<span class="tp">Pedido</span>&gt; <span class="fn">filtrar</span>(<span class="tp">FiltrosPedido</span> filtros, <span class="tp">Pageable</span> pageable) {
+  <span class="kw">var</span> spec = <span class="tp">Specification</span>.<span class="fn">where</span>(<span class="tp">PedidoSpecs</span>.<span class="fn">comStatus</span>(filtros.status()))
+    .<span class="fn">and</span>(<span class="tp">PedidoSpecs</span>.<span class="fn">doCliente</span>(filtros.clienteId()))
+    .<span class="fn">and</span>(<span class="tp">PedidoSpecs</span>.<span class="fn">criadoDepoisDe</span>(filtros.desde()));
+  <span class="kw">return</span> repo.<span class="fn">findAll</span>(spec, pageable);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BAUER, Christian; KING, Gavin; GREGORY, Gary. <strong>Java Persistence with Hibernate</strong>. 2. ed. Manning, 2015.</li>
+            <li>SPRING. <strong>Spring Data JPA Reference Documentation</strong>. Disponível em: &lt;https://docs.spring.io/spring-data/jpa/docs/current/reference/html/&gt;. Acesso em: 2025.</li>
+            <li>FLYWAY. <strong>Flyway Documentation</strong>. Disponível em: &lt;https://documentation.red-gate.com/flyway&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java com Dados e IA</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Use <code>spring.jpa.hibernate.ddl-auto=validate</code> em producao — o Flyway cuida do schema e o Hibernate apenas confirma que a entidade bate com a tabela existente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

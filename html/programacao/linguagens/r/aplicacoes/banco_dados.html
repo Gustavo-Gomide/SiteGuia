@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R com banco de dados: DBI, RPostgres, RSQLite, dbplyr, pool, mongolite, sparklyr e ETL para grandes tabelas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Banco de Dados</h1>
+          <p>DBI como interface unificada, dbplyr para SQL gerado automaticamente, pool para connection pooling, e conectores para PostgreSQL, MongoDB, Redis e Apache Spark.</p>
+        </div>
+        <p class="intro-highlight">
+          R tem uma das arquiteturas mais elegantes para acesso a bancos de dados: a camada <strong>DBI</strong> abstrai completamente o driver específico, enquanto o <strong>dbplyr</strong> permite escrever manipulações de dados em dplyr e traduzir automaticamente para SQL otimizado — sem escrever SQL manualmente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dbi">DBI — Interface Unificada</h2>
+        <p>
+          O pacote <strong>DBI</strong> define uma interface padrão para conexão com bancos de dados relacionais em R. Qualquer driver (RPostgres, RSQLite, RMySQL, odbc) implementa a mesma API, tornando o código portável entre backends.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dbi-basico.R — conexão, query e fechamento</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"DBI"</span>)
+
+<span class="com"># ---- SQLite (banco local, sem servidor) ----</span>
+<span class="fn">library</span>(<span class="str">"RSQLite"</span>)
+con_sqlite &lt;- <span class="fn">dbConnect</span>(<span class="fn">SQLite</span>(), dbname = <span class="str">"meu_banco.db"</span>)
+
+<span class="com"># ---- PostgreSQL ----</span>
+<span class="fn">library</span>(<span class="str">"RPostgres"</span>)
+con_pg &lt;- <span class="fn">dbConnect</span>(
+  <span class="fn">Postgres</span>(),
+  host     = <span class="fn">Sys.getenv</span>(<span class="str">"PG_HOST"</span>),
+  dbname   = <span class="fn">Sys.getenv</span>(<span class="str">"PG_DB"</span>),
+  user     = <span class="fn">Sys.getenv</span>(<span class="str">"PG_USER"</span>),
+  password = <span class="fn">Sys.getenv</span>(<span class="str">"PG_PASS"</span>),
+  port     = <span class="num">5432L</span>
+)
+
+<span class="com"># ---- Operações DBI padronizadas ----</span>
+<span class="fn">dbListTables</span>(con_pg)                          <span class="com"># listar tabelas</span>
+<span class="fn">dbExistsTable</span>(con_pg, <span class="str">"vendas"</span>)               <span class="com"># verificar existência</span>
+
+<span class="com"># Query segura com parâmetros (previne SQL injection)</span>
+resultado &lt;- <span class="fn">dbGetQuery</span>(con_pg,
+  <span class="str">"SELECT * FROM vendas WHERE regiao = $1 AND data &gt;= $2"</span>,
+  params = <span class="fn">list</span>(<span class="str">"Sul"</span>, <span class="str">"2024-01-01"</span>)
+)
+
+<span class="com"># Escrita de tabela</span>
+<span class="fn">dbWriteTable</span>(con_pg, <span class="str">"resultado_analise"</span>, df_resultado, overwrite = <span class="kw">TRUE</span>)
+
+<span class="com"># Transação explícita</span>
+<span class="fn">dbWithTransaction</span>(con_pg, {
+  <span class="fn">dbExecute</span>(con_pg, <span class="str">"UPDATE clientes SET ativo = FALSE WHERE ultimo_acesso &lt; $1"</span>,
+            params = <span class="fn">list</span>(<span class="fn">Sys.Date</span>() - <span class="num">365</span>))
+})
+
+<span class="com"># Fechar conexão — SEMPRE ao final</span>
+<span class="fn">dbDisconnect</span>(con_pg)</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Nunca interpole variáveis diretamente na string SQL.</strong> Use sempre parâmetros <code class="code-inline">params = list(...)</code> no <code class="code-inline">dbGetQuery()</code>. Interpolação com <code class="code-inline">paste()</code> é vulnerável a SQL injection, mesmo em análises internas.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dbplyr">dbplyr — dplyr sobre Banco de Dados</h2>
+        <p>
+          <strong>dbplyr</strong> permite usar a sintaxe familiar do dplyr em tabelas de banco de dados. As operações são <em>preguiçosas</em> — acumulam-se sem executar — e são traduzidas para SQL apenas quando você solicita os dados com <code>collect()</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dbplyr-workflow.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"dplyr"</span>)
+<span class="fn">library</span>(<span class="str">"dbplyr"</span>)
+<span class="fn">library</span>(<span class="str">"DBI"</span>)
+
+<span class="com"># Referência lazy para tabela no banco</span>
+vendas_db &lt;- <span class="fn">tbl</span>(con_pg, <span class="str">"vendas"</span>)
+clientes_db &lt;- <span class="fn">tbl</span>(con_pg, <span class="str">"clientes"</span>)
+
+<span class="com"># Pipeline dplyr — NÃO executa ainda</span>
+query &lt;- vendas_db |&gt;
+  <span class="fn">filter</span>(data &gt;= <span class="fn">as.Date</span>(<span class="str">"2024-01-01"</span>)) |&gt;
+  <span class="fn">inner_join</span>(clientes_db, by = <span class="str">"cliente_id"</span>) |&gt;
+  <span class="fn">group_by</span>(regiao, mes = <span class="fn">month</span>(data)) |&gt;
+  <span class="fn">summarise</span>(total = <span class="fn">sum</span>(valor, na.rm = <span class="kw">TRUE</span>), .groups = <span class="str">"drop"</span>) |&gt;
+  <span class="fn">arrange</span>(<span class="fn">desc</span>(total))
+
+<span class="com"># Ver SQL gerado (sem executar)</span>
+<span class="fn">show_query</span>(query)
+<span class="com"># &lt;SQL&gt;</span>
+<span class="com"># SELECT regiao, EXTRACT(MONTH FROM data) AS mes, SUM(valor) AS total</span>
+<span class="com"># FROM vendas</span>
+<span class="com"># INNER JOIN clientes ON vendas.cliente_id = clientes.cliente_id</span>
+<span class="com"># WHERE data &gt;= '2024-01-01'</span>
+<span class="com"># GROUP BY regiao, mes</span>
+<span class="com"># ORDER BY total DESC</span>
+
+<span class="com"># Executar e trazer para R</span>
+resultado &lt;- <span class="fn">collect</span>(query)   <span class="com"># tibble em memória</span>
+
+<span class="com"># Escrever resultado de volta ao banco</span>
+<span class="fn">copy_to</span>(con_pg, resultado, <span class="str">"vendas_mensais"</span>, overwrite = <span class="kw">TRUE</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pool">pool — Connection Pooling</h2>
+        <p>
+          Em aplicações Shiny ou APIs Plumber que servem múltiplos usuários simultâneos, abrir e fechar conexões por request é ineficiente. O pacote <strong>pool</strong> mantém um pool de conexões persistentes e as empresta sob demanda.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pool-shiny.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"pool"</span>)
+<span class="fn">library</span>(<span class="str">"RPostgres"</span>)
+
+<span class="com"># Criado uma vez na inicialização do app</span>
+pool &lt;- <span class="fn">dbPool</span>(
+  drv       = <span class="fn">Postgres</span>(),
+  host      = <span class="fn">Sys.getenv</span>(<span class="str">"PG_HOST"</span>),
+  dbname    = <span class="fn">Sys.getenv</span>(<span class="str">"PG_DB"</span>),
+  user      = <span class="fn">Sys.getenv</span>(<span class="str">"PG_USER"</span>),
+  password  = <span class="fn">Sys.getenv</span>(<span class="str">"PG_PASS"</span>),
+  minSize   = <span class="num">2</span>,   <span class="com"># conexões mantidas abertas</span>
+  maxSize   = <span class="num">10</span>   <span class="com"># máximo de conexões simultâneas</span>
+)
+
+<span class="com"># onStop — fechar o pool quando o app encerrar</span>
+<span class="fn">onStop</span>(<span class="kw">function</span>() <span class="fn">poolClose</span>(pool))
+
+<span class="com"># Usar o pool como se fosse uma conexão DBI normal</span>
+dados &lt;- <span class="fn">dbGetQuery</span>(pool, <span class="str">"SELECT * FROM vendas LIMIT 100"</span>)
+
+<span class="com"># dbplyr com pool</span>
+<span class="fn">tbl</span>(pool, <span class="str">"vendas"</span>) |&gt;
+  <span class="fn">filter</span>(valor &gt; <span class="num">1000</span>) |&gt;
+  <span class="fn">collect</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nosql">NoSQL: MongoDB e Redis</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nosql.R — mongolite e redux</div>
+          <pre class="example"><span class="com"># mongolite — driver MongoDB para R</span>
+<span class="fn">library</span>(<span class="str">"mongolite"</span>)
+col &lt;- <span class="fn">mongo</span>(collection = <span class="str">"usuarios"</span>, db = <span class="str">"minha_base"</span>,
+             url = <span class="fn">Sys.getenv</span>(<span class="str">"MONGO_URI"</span>))
+
+<span class="com"># Inserir documentos</span>
+col$<span class="fn">insert</span>(<span class="fn">data.frame</span>(nome = <span class="str">"Ana"</span>, nota = <span class="num">9.2</span>))
+
+<span class="com"># Query com filtro MongoDB</span>
+resultado &lt;- col$<span class="fn">find</span>(<span class="str">'{"nota": {"$gt": 8}}'</span>)
+<span class="com"># data.frame com documentos onde nota &gt; 8</span>
+
+<span class="com"># Agregação</span>
+col$<span class="fn">aggregate</span>(<span class="str">'[
+  {"$group": {"_id": "$regiao", "media": {"$avg": "$nota"}}},
+  {"$sort": {"media": -1}}
+]'</span>)
+
+<span class="com"># Update</span>
+col$<span class="fn">update</span>(<span class="str">'{"nome": "Ana"}'</span>, <span class="str">'{"$set": {"ativo": true}}'</span>)
+
+<span class="com"># redis com redux</span>
+<span class="fn">library</span>(<span class="str">"redux"</span>)
+r &lt;- <span class="fn">hiredis</span>(host = <span class="str">"localhost"</span>, port = <span class="num">6379L</span>)
+r$<span class="fn">SET</span>(<span class="str">"chave"</span>, <span class="str">"valor"</span>)
+r$<span class="fn">GET</span>(<span class="str">"chave"</span>)      <span class="com"># "valor"</span>
+r$<span class="fn">EXPIRE</span>(<span class="str">"chave"</span>, <span class="num">3600L</span>)   <span class="com"># TTL de 1 hora</span>
+<span class="com"># Cache de resultados pesados:</span>
+chave_cache &lt;- <span class="fn">digest</span>::<span class="fn">digest</span>(params)
+<span class="kw">if</span> (<span class="fn">is.null</span>(r$<span class="fn">GET</span>(chave_cache))) {
+  resultado &lt;- calcular_pesado(params)
+  r$<span class="fn">SET</span>(chave_cache, <span class="fn">serialize</span>(resultado, <span class="kw">NULL</span>))
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sparklyr">sparklyr — Apache Spark via R</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">sparklyr.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"sparklyr"</span>)
+<span class="fn">library</span>(<span class="str">"dplyr"</span>)
+
+<span class="com"># Instalar Spark local (para desenvolvimento)</span>
+<span class="fn">spark_install</span>(version = <span class="str">"3.5"</span>)
+
+<span class="com"># Conectar ao Spark</span>
+sc &lt;- <span class="fn">spark_connect</span>(master = <span class="str">"local"</span>)   <span class="com"># ou "yarn", "mesos", URL do cluster</span>
+
+<span class="com"># Copiar dados R para Spark</span>
+vendas_spark &lt;- <span class="fn">copy_to</span>(sc, vendas_df, <span class="str">"vendas"</span>, overwrite = <span class="kw">TRUE</span>)
+
+<span class="com"># Usar dplyr — traduzido para Spark SQL</span>
+resultado &lt;- vendas_spark |&gt;
+  <span class="fn">filter</span>(valor &gt; <span class="num">1000</span>) |&gt;
+  <span class="fn">group_by</span>(regiao) |&gt;
+  <span class="fn">summarise</span>(total = <span class="fn">sum</span>(valor)) |&gt;
+  <span class="fn">collect</span>()   <span class="com"># traz resultado para R</span>
+
+<span class="com"># Ler Parquet do HDFS/S3</span>
+df_hdfs &lt;- <span class="fn">spark_read_parquet</span>(sc, <span class="str">"vendas_parquet"</span>,
+                               path = <span class="str">"s3://meu-bucket/vendas/"</span>)
+
+<span class="com"># ML com sparklyr (ml_*)</span>
+modelo &lt;- <span class="fn">ml_random_forest</span>(vendas_spark, mpg ~ ., type = <span class="str">"regression"</span>)
+
+<span class="fn">spark_disconnect</span>(sc)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>WICKHAM, Hadley et al. <strong>DBI: R Database Interface</strong>. R Consortium, 2024. Disponível em: <a href="https://dbi.r-dbi.org/" target="_blank" rel="noopener">dbi.r-dbi.org</a></li>
+          <li>WICKHAM, Hadley; RUIZ, Edgar. <strong>dbplyr: A 'dplyr' Back End for Databases</strong>. Posit Software, 2024. Disponível em: <a href="https://dbplyr.tidyverse.org/" target="_blank" rel="noopener">dbplyr.tidyverse.org</a></li>
+          <li>CHENG, Joe; WICKHAM, Hadley. <strong>pool: Object Pooling</strong>. R package, 2024. Disponível em: <a href="https://rstudio.github.io/pool/" target="_blank" rel="noopener">rstudio.github.io/pool</a></li>
+          <li>LURASCHI, Javier et al. <strong>sparklyr: R Interface to Apache Spark</strong>. Posit Software, 2024. Disponível em: <a href="https://spark.rstudio.com/" target="_blank" rel="noopener">spark.rstudio.com</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "dbplyr lets you write code once and run it on any database. The best SQL is the SQL you don't have to write." — Hadley Wickham</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

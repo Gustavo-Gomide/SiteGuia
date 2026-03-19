@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript para IoT: Johnny-Five com Arduino, MQTT.js, Node-RED e Espruino em microcontroladores." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript para Embedded e IoT</h1>
+          <p>Johnny-Five para Arduino via Firmata, MQTT.js para mensageria pub/sub, Node-RED para fluxos visuais e Espruino para JS direto em microcontroladores.</p>
+        </div>
+        <p class="intro-highlight">
+          JavaScript nao roda diretamente no bare-metal como C, mas a ponte Firmata permite controlar pinos de Arduino via Node.js serial. Espruino e uma excecao: um runtime JS escrito em C que cabe em microcontroladores e roda JS nativamente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="johnny-five">Johnny-Five: Arduino com Node.js</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + Johnny-Five &mdash; LED, Sensor e Servo</div>
+          <pre class="example"><span class="com">// Instalar: npm i johnny-five</span>
+<span class="com">// Arduino precisa ter Firmata carregado (arquivo > exemplos > StandardFirmata)</span>
+<span class="kw">import</span> { <span class="tp">Board</span>, <span class="tp">Led</span>, <span class="tp">Button</span>, <span class="tp">Sensor</span>, <span class="tp">Servo</span>, <span class="tp">Thermometer</span> } <span class="kw">from</span> <span class="str">"johnny-five"</span>;
+
+<span class="kw">const</span> board = <span class="kw">new</span> <span class="tp">Board</span>({ port: <span class="str">"/dev/ttyUSB0"</span> }); <span class="com">// ou "COM3" no Windows</span>
+
+board.<span class="fn">on</span>(<span class="str">"ready"</span>, () => {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"Board pronta!"</span>);
+
+  <span class="com">// LED no pino 13</span>
+  <span class="kw">const</span> led = <span class="kw">new</span> <span class="tp">Led</span>(<span class="num">13</span>);
+  led.<span class="fn">blink</span>(<span class="num">500</span>); <span class="com">// 500ms on/off</span>
+
+  <span class="com">// Botao no pino 7 com pull-up interno</span>
+  <span class="kw">const</span> botao = <span class="kw">new</span> <span class="tp">Button</span>({ pin: <span class="num">7</span>, isPullup: <span class="kw">true</span> });
+  botao.<span class="fn">on</span>(<span class="str">"press"</span>,   () => led.<span class="fn">on</span>());
+  botao.<span class="fn">on</span>(<span class="str">"release"</span>, () => led.<span class="fn">off</span>());
+
+  <span class="com">// Sensor analogico (potenciometro no A0)</span>
+  <span class="kw">const</span> pot = <span class="kw">new</span> <span class="tp">Sensor</span>({ pin: <span class="str">"A0"</span>, freq: <span class="num">250</span> });
+  pot.<span class="fn">on</span>(<span class="str">"change"</span>, <span class="kw">function</span>() {
+    <span class="kw">const</span> pct = Math.<span class="fn">round</span>(<span class="kw">this</span>.scaleTo(<span class="num">0</span>, <span class="num">100</span>));
+    <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`Potenciometro: ${pct}%`</span>);
+  });
+
+  <span class="com">// Servo no pino 9</span>
+  <span class="kw">const</span> servo = <span class="kw">new</span> <span class="tp">Servo</span>({ pin: <span class="num">9</span>, startAt: <span class="num">90</span> });
+  <span class="kw">let</span> angulo = <span class="num">0</span>;
+  <span class="fn">setInterval</span>(() => {
+    angulo = angulo === <span class="num">0</span> ? <span class="num">180</span> : <span class="num">0</span>;
+    servo.<span class="fn">to</span>(angulo);
+  }, <span class="num">2000</span>);
+
+  <span class="com">// Termometro LM35 no A1</span>
+  <span class="kw">const</span> termo = <span class="kw">new</span> <span class="tp">Thermometer</span>({
+    controller: <span class="str">"LM35"</span>, pin: <span class="str">"A1"</span>, freq: <span class="num">1000</span>,
+  });
+  termo.<span class="fn">on</span>(<span class="str">"change"</span>, <span class="kw">function</span>() {
+    <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`Temperatura: ${this.celsius.toFixed(1)} C`</span>);
+  });
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT.js: Mensageria IoT</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + MQTT.js &mdash; Publisher e Subscriber com TLS</div>
+          <pre class="example"><span class="kw">import</span> mqtt <span class="kw">from</span> <span class="str">"mqtt"</span>;
+<span class="kw">import</span> { readFileSync } <span class="kw">from</span> <span class="str">"node:fs"</span>;
+
+<span class="com">// Publisher: sensor publicando telemetria</span>
+<span class="kw">const</span> publisher = mqtt.<span class="fn">connect</span>(<span class="str">"mqtts://broker.example.com:8883"</span>, {
+  clientId:  <span class="str">`sensor-${crypto.randomUUID()}`</span>,
+  username:  process.env.MQTT_USER,
+  password:  process.env.MQTT_PASS,
+  ca:        [<span class="fn">readFileSync</span>(<span class="str">"ca.crt"</span>)],
+  rejectUnauthorized: <span class="kw">true</span>,
+  clean:     <span class="kw">true</span>,
+  keepalive: <span class="num">60</span>,
+  reconnectPeriod: <span class="num">5000</span>,
+  will: {
+    topic:   <span class="str">"sensores/sala/status"</span>,
+    payload: <span class="str">"offline"</span>,
+    qos:     <span class="num">1</span>,
+    retain:  <span class="kw">true</span>,
+  },
+});
+
+publisher.<span class="fn">on</span>(<span class="str">"connect"</span>, () => {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">"Conectado ao broker MQTT"</span>);
+  publisher.<span class="fn">publish</span>(<span class="str">"sensores/sala/status"</span>, <span class="str">"online"</span>, { retain: <span class="kw">true</span> });
+
+  <span class="fn">setInterval</span>(() => {
+    <span class="kw">const</span> payload = <span class="tp">JSON</span>.<span class="fn">stringify</span>({
+      temperatura: (<span class="num">20</span> + <span class="tp">Math</span>.<span class="fn">random</span>() * <span class="num">10</span>).<span class="fn">toFixed</span>(<span class="num">1</span>),
+      umidade:     (<span class="num">40</span> + <span class="tp">Math</span>.<span class="fn">random</span>() * <span class="num">30</span>).<span class="fn">toFixed</span>(<span class="num">1</span>),
+      ts:          <span class="kw">new</span> <span class="tp">Date</span>().<span class="fn">toISOString</span>(),
+    });
+    publisher.<span class="fn">publish</span>(<span class="str">"sensores/sala/telemetria"</span>, payload, { qos: <span class="num">1</span> });
+  }, <span class="num">5000</span>);
+});
+
+publisher.<span class="fn">on</span>(<span class="str">"error"</span>, (err) => <span class="fn">console</span>.<span class="fn">error</span>(<span class="str">"Erro MQTT:"</span>, err));
+
+<span class="com">// Subscriber: dashboard consumindo telemetria</span>
+<span class="kw">const</span> sub = mqtt.<span class="fn">connect</span>(<span class="str">"mqtts://broker.example.com:8883"</span>, {
+  clientId: <span class="str">`dashboard-${crypto.randomUUID()}`</span>,
+  ca: [<span class="fn">readFileSync</span>(<span class="str">"ca.crt"</span>)],
+});
+
+sub.<span class="fn">on</span>(<span class="str">"connect"</span>, () => {
+  <span class="com">// Subscrever multiplos topicos com wildcard</span>
+  sub.<span class="fn">subscribe</span>([<span class="str">"sensores/+/telemetria"</span>, <span class="str">"sensores/+/status"</span>], { qos: <span class="num">1</span> });
+});
+
+sub.<span class="fn">on</span>(<span class="str">"message"</span>, (topic, payload) => {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`[${topic}]`</span>, payload.<span class="fn">toString</span>());
+});
+
+<span class="com">// Desconectar graciosamente</span>
+process.<span class="fn">once</span>(<span class="str">"SIGINT"</span>, () => {
+  sub.<span class="fn">end</span>();
+  publisher.<span class="fn">end</span>();
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nodered">Node-RED: Fluxos Visuais</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; Node-RED: node personalizado + function node</div>
+          <pre class="example"><span class="com">// Instalar e iniciar: npm i -g node-red &amp;&amp; node-red</span>
+<span class="com">// Dashboard: http://localhost:1880</span>
+
+<span class="com">// Criar um node personalizado: my-sensor/my-sensor.js</span>
+module.exports = <span class="kw">function</span>(RED) {
+  <span class="kw">function</span> <span class="tp">MySensorNode</span>(config) {
+    RED.nodes.<span class="fn">createNode</span>(<span class="kw">this</span>, config);
+    <span class="kw">const</span> node    = <span class="kw">this</span>;
+    <span class="kw">const</span> intervalo = config.intervalo || <span class="num">5000</span>;
+
+    <span class="kw">const</span> timer = <span class="fn">setInterval</span>(() => {
+      <span class="kw">const</span> leitura = (<span class="num">20</span> + <span class="tp">Math</span>.<span class="fn">random</span>() * <span class="num">10</span>).<span class="fn">toFixed</span>(<span class="num">2</span>);
+      node.<span class="fn">send</span>({
+        topic:   <span class="str">"temperatura"</span>,
+        payload: <span class="tp">Number</span>(leitura),
+      });
+    }, intervalo);
+
+    node.<span class="fn">on</span>(<span class="str">"close"</span>, () => <span class="fn">clearInterval</span>(timer));
+  }
+
+  RED.nodes.<span class="fn">registerType</span>(<span class="str">"my-sensor"</span>, <span class="tp">MySensorNode</span>);
+};
+
+<span class="com">// Exemplo de Function Node usado no editor (JS puro):</span>
+<span class="com">// Processa leitura de temperatura e adiciona alerta</span>
+<span class="com">// const temp = msg.payload;</span>
+<span class="com">// if (temp &gt; 30) {</span>
+<span class="com">//   node.warn("Temperatura alta: " + temp);</span>
+<span class="com">//   msg.alerta = true;</span>
+<span class="com">// }</span>
+<span class="com">// msg.payload = { temperatura: temp, ts: new Date().toISOString() };</span>
+<span class="com">// return msg;</span>
+
+<span class="com">// Exportar fluxo como JSON via Ctrl+E no editor</span>
+<span class="com">// Importar em outro servidor ou backup: Ctrl+I</span>
+<span class="com">// Subflows permitem reutilizar logica como componentes visuais</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>JOHNNY-FIVE. <strong>Johnny-Five — The JavaScript Robotics &amp; IoT Platform</strong>. Disponível em: &lt;https://johnny-five.io/&gt;. Acesso em: 2025.</li>
+            <li>MQTT.JS. <strong>MQTT.js — MQTT client for Node.js and the browser</strong>. Disponível em: &lt;https://github.com/mqttjs/MQTT.js&gt;. Acesso em: 2025.</li>
+            <li>NODE-RED. <strong>Node-RED — Low-code programming for event-driven applications</strong>. Disponível em: &lt;https://nodered.org/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para Mobile com React Native e Expo</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Espruino roda JS diretamente em chips STM32 e nRF52 sem SO — ideal para prototipagem rapida de firmware</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

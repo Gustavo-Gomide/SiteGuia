@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="LuaJIT — FFI: cdef, load, structs, arrays, bibliotecas C e callbacks C para Lua." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>LuaJIT — FFI | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>LuaJIT — FFI</strong></p></div>
+
+			<section>
+				<h2 id="hero" class="section-title">LuaJIT — FFI</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="LuaJIT">
+						<span data-svg="lua" aria-hidden="true"></span>
+					</div>
+					<h1>FFI (Foreign Function Interface)</h1>
+					<p>Com FFI, LuaJIT conversa diretamente com bibliotecas C, reduzindo overhead de bindings tradicionais.</p>
+				</div>
+				<p class="intro-highlight">FFI e um dos recursos mais poderosos de LuaJIT para integrar performance nativa sem sair da linguagem.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="ffi-basico" class="section-title">FFI basico</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">LuaJIT — require ffi, cdef, load e chamada C</div>
+					<pre class="example">local ffi = require(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+	int printf(const char *fmt, ...);
+	double sqrt(double x);
+]]
+
+local C = ffi.C
+C.printf(<span class="str">"Ola %s!\n"</span>, <span class="str">"FFI"</span>)
+print(C.sqrt(144.0))</pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">LuaJIT — carregando biblioteca dinamica</div>
+					<pre class="example">local ffi = require(<span class="str">"ffi"</span>)
+ffi.cdef[[
+	int sqlite3_libversion_number(void);
+]]
+
+local sqlite = ffi.load(<span class="str">"sqlite3"</span>)
+print(sqlite.sqlite3_libversion_number())</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="structs-arrays" class="section-title">Structs e arrays C</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">LuaJIT — structs, arrays numericos e VLA</div>
+					<pre class="example">local ffi = require(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+	typedef struct { int x; int y; } point_t;
+]]
+
+local p = ffi.new(<span class="str">"point_t"</span>, { x = 10, y = 20 })
+print(p.x, p.y)
+
+local arr = ffi.new(<span class="str">"double[5]"</span>, {1,2,3,4,5})
+print(arr[0], arr[4])
+
+local n = 1024
+local vla = ffi.new(<span class="str">"uint8_t[?]"</span>, n) <span class="com">-- VLA</span>
+for i = 0, n - 1 do vla[i] = i % 256 end</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="bibliotecas-c" class="section-title">Integrar bibliotecas C</h2>
+				<p>Em Linux/macOS geralmente carregamos <code>.so</code>/<code>.dylib</code>; no Windows, <code>.dll</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">LuaJIT + OpenSSL (exemplo de hashing simplificado)</div>
+					<pre class="example">local ffi = require(<span class="str">"ffi"</span>)
+ffi.cdef[[
+	unsigned char *SHA256(const unsigned char *d, size_t n, unsigned char *md);
+]]
+local ssl = ffi.load(<span class="str">"crypto"</span>)
+local out = ffi.new(<span class="str">"unsigned char[32]"</span>)
+local msg = <span class="str">"site-guia"</span>
+ssl.SHA256(msg, #msg, out)
+print(<span class="str">"SHA256 calculado"</span>)</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="callbacks" class="section-title">Callbacks C para Lua</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">LuaJIT — ffi.cast em callback_t</div>
+					<pre class="example">local ffi = require(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+	typedef int (*callback_t)(int);
+]]
+
+local cb = ffi.cast(<span class="str">"callback_t"</span>, function(x)
+	return x * 2
+end)
+
+print(cb(21))
+
+<span class="com">-- cuidado: mantenha referencia viva para evitar GC do callback</span>
+_G.keep_callback = cb</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Se o callback for coletado pelo GC enquanto C ainda o usa, pode ocorrer crash.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<div class="panel">
+					<ul>
+						<li>PALL, M. <strong>LuaJIT FFI Semantics</strong>. Disponivel em: &lt;https://luajit.org/ext_ffi.html&gt;. Acesso em: 12 mar. 2026.</li>
+						<li>KERRISK, M. <strong>The Linux Programming Interface</strong>. No Starch Press, 2010.</li>
+						<li>SQLITE. <strong>C Interface Documentation</strong>. Disponivel em: &lt;https://sqlite.org/c3ref/intro.html&gt;. Acesso em: 12 mar. 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> FFI aproxima LuaJIT de C sem abrir mao da produtividade de scripting.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/performance.html">LuaJIT — Performance e JIT</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/compatibilidade.html">LuaJIT — Compatibilidade e Limitacoes</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

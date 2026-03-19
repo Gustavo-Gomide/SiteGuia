@@ -1,0 +1,139 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="ICMP: tipos e códigos, ping, traceroute, PMTUD, rate limiting e ICMPv6." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>ICMP | Camada de Rede | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Rede</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">ICMP &mdash; Internet Control Message Protocol</h1>
+          <p class="page-subtitle">O mensageiro do IP: relata erros de entrega e viabiliza diagnósticos (ping e traceroute)</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>ICMP</strong> (RFC 792 para IPv4; RFC 4443 para ICMPv6) é encapsulado diretamente no IP (Protocol = 1). Não garante entrega de pacotes &mdash; seu papel é <em>reportar erros</em> e fornecer funções de diagnóstico. Firewalls frequentemente bloqueiam ICMP; isso pode quebrar PMTUD e dificultar o troubleshooting.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos e Códigos ICMP (IPv4)</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Type</th><th>Code</th><th>Mensagem</th><th>Uso</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>0</td><td>Echo Reply</td><td>Resposta ao ping</td></tr>
+              <tr><td>3</td><td>0</td><td>Destination Unreachable &mdash; Net Unreachable</td><td>Rede de destino não alcançável</td></tr>
+              <tr><td>3</td><td>1</td><td>Destination Unreachable &mdash; Host Unreachable</td><td>Host de destino não alcançável</td></tr>
+              <tr><td>3</td><td>3</td><td>Port Unreachable</td><td>Porta UDP de destino fechada (gerado pelo host destino)</td></tr>
+              <tr><td>3</td><td>4</td><td>Fragmentation Needed &amp; DF Set</td><td>Necessário fragmentar mas DF=1; usado por PMTUD</td></tr>
+              <tr><td>5</td><td>0/1</td><td>Redirect</td><td>Roteador informa melhor gateway para o host</td></tr>
+              <tr><td>8</td><td>0</td><td>Echo Request</td><td>Ping de origem</td></tr>
+              <tr><td>11</td><td>0</td><td>Time Exceeded &mdash; TTL Expired in Transit</td><td>TTL zerou no roteador; usado pelo traceroute</td></tr>
+              <tr><td>11</td><td>1</td><td>Time Exceeded &mdash; Fragment Reassembly Time Exceeded</td><td>Remontagem de fragmentos expirou no destino</td></tr>
+              <tr><td>12</td><td>0</td><td>Parameter Problem</td><td>Problema no cabeçalho IP</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ferramentas" class="section-title">Ping e Traceroute</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Ping</h3>
+            <p>Envia <strong>ICMP Echo Request (Type 8)</strong> e espera <strong>Echo Reply (Type 0)</strong>. Mede RTT (round-trip time) e perda de pacotes.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Exemplos de ping</span></div>
+              <pre class="code-block"># Linux &mdash; 5 pings com tamanho de 1400 bytes
+ping -c 5 -s 1400 8.8.8.8
+
+# Windows
+ping -n 5 -l 1400 8.8.8.8
+
+# Cisco IOS &mdash; extended ping
+ping 8.8.8.8 size 1400 repeat 5 df-bit</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Traceroute</h3>
+            <p>Descobre o caminho até o destino incrementando o TTL: TTL=1 descobre hop 1; TTL=2 descobre hop 2; etc. Cada hop responde com <strong>ICMP Time Exceeded (Type 11)</strong>.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Traceroute Linux (UDP) vs Windows (ICMP)</span></div>
+              <pre class="code-block"># Linux: usa UDP por padrão (portas altas > 33434)
+traceroute 8.8.8.8
+
+# Linux com ICMP (como Windows)
+traceroute -I 8.8.8.8
+
+# Windows usa ICMP Echo Request
+tracert 8.8.8.8
+
+# Cisco IOS usa UDP por padrão
+traceroute 8.8.8.8</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="icmpv6" class="section-title">ICMPv6 e NDP</h2>
+        <p>O <strong>ICMPv6</strong> (RFC 4443) é muito mais rico que o ICMP do IPv4 e incorpora funções que eram feitas por ARP e IGMP no IPv4:</p>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Tipos ICMPv6 importantes</h3>
+            <ul>
+              <li><strong>Type 1 &mdash; Destination Unreachable</strong></li>
+              <li><strong>Type 2 &mdash; Packet Too Big</strong> (equivalente ao ICMP Type 3 Code 4 do IPv4; usado por PMTUD)</li>
+              <li><strong>Type 3 &mdash; Time Exceeded</strong> (traceroute IPv6)</li>
+              <li><strong>Type 128/129 &mdash; Echo Request/Reply</strong> (ping IPv6)</li>
+              <li><strong>Type 133 &mdash; Router Solicitation (RS):</strong> host descobre roteadores ao iniciar</li>
+              <li><strong>Type 134 &mdash; Router Advertisement (RA):</strong> roteador anuncia prefixo + gateway; habilita SLAAC</li>
+              <li><strong>Type 135 &mdash; Neighbor Solicitation (NS):</strong> substitui ARP Request</li>
+              <li><strong>Type 136 &mdash; Neighbor Advertisement (NA):</strong> substitui ARP Reply</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">PMTUD e ICMP Blocking</h3>
+            <p><strong>PMTUD</strong> depende do roteamento correto dos ICMP Type 3 Code 4 (IPv4) / Type 2 (IPv6). Se firewalls bloquearem esses ICMPs, o cliente nunca reduz o MSS e conexões TCP grandes ficam travadas (&ldquo;black hole&rdquo;). Solucionar: <code class="code-inline">ip tcp adjust-mss 1452</code> nos roteadores de borda ou liberar ICMP Unreachable no firewall.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="ip_v4.html"><strong>Cabeçalho IPv4</strong></a>, <a href="roteamento.html"><strong>Roteamento</strong></a>, <a href="ip_v6.html"><strong>IPv6</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Bloqueie ICMP e você 'aumenta a segurança' ao custo de quebrar PMTUD e dificultar todo o troubleshooting. O tradeoff raramente vale."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

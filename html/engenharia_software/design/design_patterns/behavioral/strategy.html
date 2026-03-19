@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Strategy: padrão comportamental que define algoritmos intercambiáveis, permitindo trocar comportamento sem if/else." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Strategy | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Algoritmos intercambiáveis encapsulados em classes</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Strategy</h1>
+          <p class="page-subtitle">Comportamental — GoF — um dos mais usados na prática</p>
+        </div>
+        <p class="intro-highlight">Strategy define uma família de algoritmos, encapsula cada um e os torna intercambiáveis. O cliente escolhe (ou injeta) a estratégia; o contexto a executa sem saber os detalhes. Elimina <code>if/else</code> de variação e aplica diretamente o OCP (aberto para extensão, fechado para modificação).</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">Antes e depois</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Sem Strategy</th>
+                <th>Com Strategy</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>if (tipo === 'vip') ... else if (tipo === 'bulk') ...</code></td>
+                <td>Cada tipo é uma classe que implementa <code>DescontoStrategy</code></td>
+              </tr>
+              <tr>
+                <td>Adicionar novo tipo = mexer na função existente</td>
+                <td>Adicionar novo tipo = nova classe isolada</td>
+              </tr>
+              <tr>
+                <td>Difícil de testar cada variação isoladamente</td>
+                <td>Cada estratégia testada em unit test separado</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — estratégias de desconto</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface DescontoStrategy {
+  calcular(valorBruto: number): number;
+}
+
+class DescontoVip implements DescontoStrategy {
+  calcular(valor: number) { return valor * 0.2; }
+}
+
+class DescontoBulk implements DescontoStrategy {
+  constructor(private quantidade: number) {}
+  calcular(valor: number) {
+    return this.quantidade >= 10 ? valor * 0.15 : valor * 0.05;
+  }
+}
+
+class SemDesconto implements DescontoStrategy {
+  calcular() { return 0; }
+}
+
+// Contexto usa a estratégia injetada
+class Pedido {
+  constructor(
+    private items: { preco: number }[],
+    private desconto: DescontoStrategy
+  ) {}
+
+  calcularTotal(): number {
+    const bruto = this.items.reduce((s, i) => s + i.preco, 0);
+    return bruto - this.desconto.calcular(bruto);
+  }
+}
+
+// Uso — troca de estratégia sem alterar Pedido
+const pedido1 = new Pedido(items, new DescontoVip());
+const pedido2 = new Pedido(items, new DescontoBulk(15));
+const pedido3 = new Pedido(items, new SemDesconto());</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Há variação real de algoritmo (cálculo, ordenação, validação, pagamento). As variantes são intercambiáveis na mesma interface.</p>
+          </div>
+          <div class="card">
+            <h3>Testabilidade</h3>
+            <p>Cada estratégia é uma classe isolada e testavel. O Contexto também é testável com qualquer fake strategy.</p>
+          </div>
+          <div class="card">
+            <h3>vs Template Method</h3>
+            <p>Strategy usa composição (injeta objeto). Template Method usa herança (sobrescreve métodos). Prefira Strategy.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Apenas uma implementação existe. Uma função de alta ordem (<code>sort((a,b) => a-b)</code>) já resolve sem criar interface.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Strategy é o padrão comportamental mais usado. Combine com <a href="/html/engenharia_software/design/solid.html">SOLID</a> (OCP + DIP) para maximizar extensibilidade.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Strategy transforma variação de algoritmo em ponto de extensão explícito — sem if/else, sem modificação."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

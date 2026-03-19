@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Dados e IA com Julia: CSV, DataFrames, MLJ, Flux, GPU e pipelines científicos." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Julia — Dados e IA | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Dados e IA</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+					<h1>Julia — Dados e Inteligência Artificial</h1>
+					<p>Julia foi criada com computação numérica em mente. Por isso, o ecossistema de dados e IA é uma continuação natural da linguagem: ingestão tabular com <code>CSV.jl</code>, transformação com <code>DataFrames.jl</code>, modelagem com <code>MLJ.jl</code> e deep learning com <code>Flux.jl</code>.</p>
+				</div>
+				<p class="intro-highlight">
+					O grande ganho de Julia em dados e IA é a unificação: leitura, limpeza, estatística, treinamento, profiling e deploy podem viver no mesmo código, com o mesmo sistema de tipos e com desempenho suficiente para eliminar boa parte da reescrita em linguagens de baixo nível.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="etl">ETL com CSV.jl e DataFrames.jl</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Leitura, limpeza e agregação tabular</div>
+					<pre class="example">using CSV
+using DataFrames
+using Statistics
+
+df = CSV.read("vendas.csv", DataFrame)
+
+<span class="com"># Visão inicial</span>
+first(df, 5)
+describe(df)
+
+<span class="com"># Limpeza</span>
+dropmissing!(df)
+rename!(df, :valor_total =&gt; :valor)
+transform!(df, :valor =&gt; ByRow(x -&gt; round(x, digits = 2)) =&gt; :valor)
+
+<span class="com"># Filtragem e seleção</span>
+df_validos = subset(df, :valor =&gt; ByRow(&gt;(0)), :categoria =&gt; ByRow(!ismissing))
+df_reduzido = select(df_validos, :data, :categoria, :valor)
+
+<span class="com"># Agrupamento</span>
+resumo = combine(groupby(df_reduzido, :categoria),
+		:valor =&gt; mean =&gt; :media,
+		:valor =&gt; std =&gt; :desvio,
+		:valor =&gt; sum =&gt; :total,
+		nrow =&gt; :quantidade)
+
+CSV.write("resumo.csv", resumo)
+
+<span class="com"># CSV.File também permite streaming/iteração sem DataFrame imediato.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="estatistica-mlj">Estatística e Machine Learning com MLJ</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Pipeline supervisionado com split, machine e métricas</div>
+					<pre class="example">using MLJ
+using DataFrames
+using Statistics
+
+iris = DataFrame(load_iris())
+y, X = unpack(iris, ==(:target), rng = 123)
+
+train, test = partition(eachindex(y), 0.7, shuffle = true, rng = 42)
+
+Tree = @load DecisionTreeClassifier pkg = DecisionTree verbosity = 0
+modelo = Tree(max_depth = 4)
+
+mach = machine(modelo, X, y)
+fit!(mach, rows = train)
+
+pred = predict_mode(mach, rows = test)
+acc = accuracy(pred, y[test])
+println("Acurácia = $(round(acc, digits = 4))")
+
+<span class="com"># Tuning automático</span>
+ranges = [range(modelo, :max_depth, lower = 2, upper = 8)]
+tm = TunedModel(
+		model = modelo,
+		tuning = Grid(resolution = 7),
+		resampling = CV(nfolds = 5),
+		range = ranges,
+		measure = accuracy,
+)
+
+tuned = machine(tm, X, y)
+fit!(tuned)
+
+<span class="com"># MLJ oferece interface única para muitos algoritmos.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="flux">Deep Learning com Flux.jl</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Rede neural simples e treinamento por gradiente</div>
+					<pre class="example">using Flux
+using Statistics
+
+modelo = Chain(
+		Dense(10 =&gt; 32, relu),
+		Dense(32 =&gt; 16, relu),
+		Dense(16 =&gt; 1)
+)
+
+x = rand(Float32, 10, 256)
+y = rand(Float32, 1, 256)
+
+loss(m, x, y) = Flux.mse(m(x), y)
+opt = Flux.setup(Adam(0.001), modelo)
+
+for epoca in 1:50
+		grads = Flux.gradient(modelo) do m
+				loss(m, x, y)
+		end
+		Flux.update!(opt, modelo, grads[1])
+
+		if epoca % 10 == 0
+				println("época $epoca - loss = $(loss(modelo, x, y))")
+		end
+end
+
+<span class="com"># Flux expõe a lógica do treinamento com pouca mágica.</span>
+<span class="com"># Isso facilita entender tensores, gradientes e atualização de pesos.</span></pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">GPU com CUDA.jl</div>
+					<pre class="example">using CUDA
+using Flux
+
+CUDA.functional() || error("GPU CUDA não disponível")
+
+modelo_gpu = Chain(
+		Dense(784 =&gt; 128, relu),
+		Dense(128 =&gt; 10)
+) |> gpu
+
+x_gpu = CUDA.rand(Float32, 784, 512)
+y_gpu = CUDA.rand(Float32, 10, 512)
+
+loss_gpu(m, x, y) = Flux.mse(m(x), y)
+opt_gpu = Flux.setup(Adam(), modelo_gpu)
+
+grads = Flux.gradient(modelo_gpu) do m
+		loss_gpu(m, x_gpu, y_gpu)
+end
+
+Flux.update!(opt_gpu, modelo_gpu, grads[1])
+
+<span class="com"># Em muitos casos basta mover arrays/modelo para gpu.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="analise-deploy">Visualização, Profiling e Deploy Científico</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Makie, benchmark e serialização</div>
+					<pre class="example">using CairoMakie
+using BenchmarkTools
+using BSON
+
+xs = 1:100
+ys = cumsum(randn(100))
+
+fig = Figure()
+ax = Axis(fig[1, 1], title = "Série temporal")
+lines!(ax, xs, ys)
+save("serie.png", fig)
+
+@benchmark sum($ys)
+
+<span class="com"># Salvar pesos ou artefatos de modelo</span>
+BSON.@save "modelo.bson" modelo
+BSON.@load "modelo.bson" modelo
+
+<span class="com"># Também é comum expor o modelo via HTTP.jl ou Oxygen.jl</span>
+<span class="com"># para inferência em produção.</span></pre>
+				</div>
+				<div class="logic-grid">
+					<div class="panel panel--positive">
+						<p class="panel-title">Cenários em que Julia se destaca</p>
+						<ul>
+							<li>Modelagem científica e física computacional</li>
+							<li>Pipelines numéricos pesados com pouca tolerância a overhead</li>
+							<li>Otimização matemática integrada com ML</li>
+							<li>Pesquisa onde protótipo e produção precisam convergir</li>
+						</ul>
+					</div>
+					<div class="panel panel--negative">
+						<p class="panel-title">Trade-offs reais</p>
+						<ul>
+							<li>Ecossistema menor que Python em quantidade de pacotes</li>
+							<li>Warm-up JIT pode afetar a primeira execução</li>
+							<li>Algumas integrações empresariais são menos maduras</li>
+						</ul>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>DATAFRAMES.JL. <strong>Manual</strong>. Disponível em: &lt;https://dataframes.juliadata.org/stable/&gt;. Acesso em: 2026.</li>
+						<li>MLJ.JL. <strong>Machine Learning in Julia</strong>. Disponível em: &lt;https://alan-turing-institute.github.io/MLJ.jl/&gt;. Acesso em: 2026.</li>
+						<li>FLUX.JL. <strong>The Julia Machine Learning Library</strong>. Disponível em: &lt;https://fluxml.ai/&gt;. Acesso em: 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Julia</a></li>
+					<li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Julia</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O diferencial estratégico de Julia em IA não é apenas treinar redes neurais. É permitir que o mesmo ambiente execute <strong>pré-processamento, álgebra linear, otimização, simulação, inferência e serving</strong> sem transformar o projeto em uma colcha de retalhos entre linguagens.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

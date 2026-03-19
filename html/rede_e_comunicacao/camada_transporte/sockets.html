@@ -1,0 +1,156 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sockets: API Berkeley, ciclo de vida TCP/UDP, exemplos em Python e diagnóstico com netstat/ss." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Sockets | Camada de Transporte | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Transporte</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Sockets</h1>
+          <p class="page-subtitle">A interface entre aplicação e rede &mdash; a API que toda comunicação em rede usa</p>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>socket</strong> é um endpoint de comunicação identificado pela 5-tupla: {protocolo, IP-local, porta-local, IP-remoto, porta-remota}. A <strong>API Berkeley Sockets</strong> (BSD 4.2, 1983) é a interface padrão em praticamente todos os SOs e linguagens de programação para comunicação em rede.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ciclo" class="section-title">Ciclo de Vida do Socket</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Servidor TCP</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Python &mdash; Servidor TCP</span></div>
+              <pre class="code-block">import socket
+
+# 1. Criar socket (AF_INET=IPv4, SOCK_STREAM=TCP)
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# 2. Reutilizar porta após restart
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+# 3. Vincular à interface e porta
+server.bind(('0.0.0.0', 8080))
+
+# 4. Escutar conexões (backlog = fila)
+server.listen(5)
+print('Aguardando conexões...')
+
+# 5. Aceitar conexão (bloqueia até chegar)
+conn, addr = server.accept()
+print(f'Conectado de {addr}')
+
+# 6. Ler e responder
+data = conn.recv(1024)       # buffer de 1024 bytes
+conn.send(b'HTTP/1.1 200 OK\r\n\r\nHello!')
+
+# 7. Fechar
+conn.close()
+server.close()</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Cliente TCP</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Python &mdash; Cliente TCP</span></div>
+              <pre class="code-block">import socket
+
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+# connect() = 3-way handshake TCP
+client.connect(('example.com', 80))
+
+client.send(b'GET / HTTP/1.1\r\nHost: example.com\r\n\r\n')
+
+response = client.recv(4096)
+print(response.decode())
+
+client.close()</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">UDP Socket</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Python &mdash; UDP (connectionless)</span></div>
+              <pre class="code-block"># Servidor UDP
+udp_server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_server.bind(('0.0.0.0', 5005))
+data, addr = udp_server.recvfrom(1024)
+udp_server.sendto(b'OK', addr)
+
+# Cliente UDP
+udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_client.sendto(b'Ping', ('127.0.0.1', 5005))
+resp, _ = udp_client.recvfrom(1024)</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">IPv6 Socket</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Python &mdash; IPv6</span></div>
+              <pre class="code-block"># Usar AF_INET6 para IPv6
+server6 = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+server6.bind(('::', 8080, 0, 0))  # (host, port, flowinfo, scopeid)
+server6.listen(5)</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="diagnostico" class="section-title">Diagnóstico: netstat e ss</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>Comandos úteis</span></div>
+          <pre class="code-block"># Listar todos os sockets TCP abertos (Linux)
+ss -tnp
+# -t = TCP, -n = números, -p = processo
+
+# Ver LISTEN e ESTABLISHED
+ss -tnp state established
+ss -tnp state listening
+
+# Windows
+netstat -ano | findstr :443
+# -a = todos, -n = números, -o = PID
+
+# Ver TIME_WAIT (após encerramento TCP)
+ss -tan | grep TIME-WAIT | wc -l</pre>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="tcp.html"><strong>TCP</strong></a>, <a href="udp.html"><strong>UDP</strong></a>, <a href="portas.html"><strong>Portas</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Toda comunicação em rede, da mais simples à mais sofisticada, passa por um socket. É a única janela entre o código e a rede."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

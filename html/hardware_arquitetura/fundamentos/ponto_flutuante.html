@@ -1,0 +1,150 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ponto flutuante IEEE 754: representação de números reais, precisão simples e dupla, NaN, infinito e erros de arredondamento." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Ponto Flutuante IEEE 754 | Fundamentos | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="math"></span>
+          <div>
+            <h1 class="page-title">Ponto Flutuante — IEEE 754</h1>
+            <p class="page-subtitle">Como computadores representam números reais, precisão, NaN e armadilhas clássicas</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Números reais são infinitos; bits são finitos. O padrão IEEE 754 define como aproximar
+          números reais em 32 ou 64 bits de forma padronizada. Entender ponto flutuante é
+          essencial para evitar bugs sutis em comparações, cálculos financeiros e cientifícos.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — FORMATO ═══════════════════ -->
+      <section id="formato">
+        <h2 id="formato" class="section-title">Formato IEEE 754</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Tipo</th><th>Bits</th><th>Sinal</th><th>Expoente</th><th>Mant</u00edssa</th><th>Precisão decimal</th><th>Faixa</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>float (single)</td><td>32</td><td>1</td><td>8</td><td>23</td><td>~7 dígitos</td><td>±1.2×10⁻³⁸ a ±3.4×10³⁸</td></tr>
+              <tr><td>double</td><td>64</td><td>1</td><td>11</td><td>52</td><td>~15–16 dígitos</td><td>±5.0×10⁻³²⁴ a ±1.8×10³⁰⁸</td></tr>
+              <tr><td>long double (x86)</td><td>80</td><td>1</td><td>15</td><td>64</td><td>~18–19 dígitos</td><td>Extensão x87, em desuso</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de um float32</div>
+          <pre class="code-block"># float32 = (-1)^sinal × 1.mantíssa × 2^(expoente-127)
+
+Bit 31: sinal     (0 = positivo, 1 = negativo)
+Bits 30–23: expoente (8 bits, bias de 127)
+Bits 22–0:  mantíssa  (23 bits, bit implícito "1." no início)
+
+# Exemplo: 0.15625 como float32
+0.15625 = 0.00101₂ = 1.01 × 2^⁻³
+sinal=0, exp=-3+127=124=01111100, mant=01000000000000000000000
+→ 0 01111100 01000000000000000000000</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — VALORES ESPECIAIS ═══════════════════ -->
+      <section id="especiais">
+        <h2 id="especiais" class="section-title">Valores Especiais</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Valor</th><th>Expoente (bits)</th><th>Mantíssa</th><th>Quando ocorre</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Zero	(+0, −0)</td><td>00000000</td><td>0</td><td>Resultado de underflow ou literal 0.0</td></tr>
+              <tr><td>Subnormal</td><td>00000000</td><td>&gt; 0</td><td>Números muito próximos de zero (bit implícito = 0)</td></tr>
+              <tr><td>+∞ / −∞</td><td>11111111</td><td>0</td><td>Divisão por zero (1.0/0.0), overflow</td></tr>
+              <tr><td>NaN (Not a Number)</td><td>11111111</td><td>&gt; 0</td><td>Operação indefinida: 0/0, sqrt(−1), Inf−Inf</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ARMADILHAS ═══════════════════ -->
+      <section id="armadilhas">
+        <h2 id="armadilhas" class="section-title">Armadilhas Comuns</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python — erros clássicos de ponto flutuante</div>
+          <pre class="code-block"># 0.1 não tem representação exata em binário
+0.1 + 0.2 == 0.3   # False!
+print(0.1 + 0.2)   # 0.30000000000000004
+
+# Nunca compare floats com ==
+import math
+math.isclose(0.1 + 0.2, 0.3)      # True
+abs(a - b) &lt; 1e-9                  # tolerancia manual
+
+# NaN não é igual nem a si mesmo
+import math
+x = float('nan')
+x == x        # False
+math.isnan(x) # True
+
+# Infinito
+float('inf') &gt; 1e308   # True
+float('inf') + 1       # inf
+
+# Cancelamento catastrófico: perda de dígitos significativos
+a = 1.000000001
+b = 1.000000000
+a - b   # ~1e-9, pode ter erro relativo alto
+
+# Para dinheiro: nunca use float! Use decimal
+from decimal import Decimal
+Decimal('0.1') + Decimal('0.2') == Decimal('0.3')  # True</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja como dados são representados em geral em
+          <a href="/html/hardware_arquitetura/fundamentos/representacao_dados.html">Representação de Dados</a> e os fundamentos em
+          <a href="/html/hardware_arquitetura/fundamentos/binario.html">Binário</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"0.1 + 0.2 ≠ 0.3: bem-vindo ao ponto flutuante."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

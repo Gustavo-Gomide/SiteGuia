@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ordenação topológica em DAGs: algoritmo de Kahn (grau de entrada) e DFS. Python. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Ordenação Topológica | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Ordenação Topológica</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Ordenação Topológica</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Ordenação Topológica: a ordem das dependências</h1>
+          <p>Dado um DAG, encontrar uma ordem linear dos vértices que respeite todas as dependências  a espinha dorsal de pipelines, sistemas de build e makefiles.</p>
+        </div>
+        <p class="intro-highlight">
+          A ordenação topológica de um <strong>DAG (Directed Acyclic Graph)</strong> é uma sequência de vértices onde, para toda aresta (u  v), u aparece antes de v. É a formalização de "faça X antes de Y". Só existe em grafos <em>sem ciclos</em>  a presença de um ciclo significa que as dependências são circulares e nenhuma ordem é válida.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">Exemplo: compilação com dependências</h2>
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 480 160" role="img" aria-label="DAG com 5 módulos A,B,C,D,E mostrando ordem topológica">
+            <defs>
+              <style>
+                .tp-circ { fill: rgba(var(--accent-rgb),0.2); stroke: var(--accent); stroke-width: 1.5; }
+                .tp-arr  { stroke: var(--border); stroke-width: 1.5; marker-end: url(#tp-arrow); }
+                .tp-txt  { fill: var(--text-primary); font-size: 12px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+                .tp-ord  { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+              </style>
+              <marker id="tp-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="var(--border)"/>
+              </marker>
+            </defs>
+            <!-- A→C: from right edge of A(80,65) to left edge of C(200,55) -->
+            <line x1="98"  y1="63"  x2="182" y2="57"  class="tp-arr"/>
+            <!-- A→D: from right edge of A(80,65) to left edge of D(200,108) -->
+            <line x1="98"  y1="68"  x2="182" y2="105" class="tp-arr"/>
+            <!-- B→D: from right edge of B(80,115) to left edge of D(200,108) -->
+            <line x1="98"  y1="113" x2="182" y2="110" class="tp-arr"/>
+            <!-- C→E: from right edge of C(200,55) to left edge of E(400,82) -->
+            <line x1="218" y1="58"  x2="382" y2="79"  class="tp-arr"/>
+            <!-- D→E: from right edge of D(200,108) to left edge of E(400,82) -->
+            <line x1="218" y1="105" x2="382" y2="85"  class="tp-arr"/>
+            <circle cx="80"  cy="65"  r="18" class="tp-circ"/><text x="80"  y="65"  class="tp-txt">A</text>
+            <circle cx="80"  cy="115" r="18" class="tp-circ"/><text x="80"  y="115" class="tp-txt">B</text>
+            <circle cx="200" cy="55"  r="18" class="tp-circ"/><text x="200" y="55"  class="tp-txt">C</text>
+            <circle cx="200" cy="108" r="18" class="tp-circ"/><text x="200" y="108" class="tp-txt">D</text>
+            <circle cx="400" cy="82"  r="18" class="tp-circ"/><text x="400" y="82"  class="tp-txt">E</text>
+            <text x="80"  y="148" class="tp-ord">nível 0</text>
+            <text x="200" y="148" class="tp-ord">nível 1</text>
+            <text x="400" y="112" class="tp-ord">nível 2</text>
+          </svg>
+        </div>
+        <p>Uma ordenação topológica válida: <strong>A, B, C, D, E</strong> (ou A, B, D, C, E  múltiplas ordens podem ser válidas).</p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            Toda ordenação topológica válida começa pelos vértices sem predecessores (grau de entrada 0) e termina nos vértices sem sucessores. O algoritmo de Kahn processa exatamente nessa ordem.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação: Algoritmo de Kahn</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">toposort_kahn.py</div>
+          <pre class="example"><span class="kw">from</span> collections <span class="kw">import</span> deque, defaultdict
+
+<span class="kw">def</span> <span class="tp">topo_kahn</span>(grafo, vertices):
+    <span class="str">"""Kahn's algorithm  O(V+E). Detecta ciclos se resultado incompleto."""</span>
+    grau_entrada = defaultdict(<span class="kw">lambda</span>: <span class="num">0</span>, {v: <span class="num">0</span> <span class="kw">for</span> v <span class="kw">in</span> vertices})
+    <span class="kw">for</span> u <span class="kw">in</span> grafo:
+        <span class="kw">for</span> v <span class="kw">in</span> grafo[u]:
+            grau_entrada[v] += <span class="num">1</span>
+
+    fila = deque(v <span class="kw">for</span> v <span class="kw">in</span> vertices <span class="kw">if</span> grau_entrada[v] == <span class="num">0</span>)
+    ordem = []
+
+    <span class="kw">while</span> fila:
+        u = fila.popleft()
+        ordem.append(u)
+        <span class="kw">for</span> v <span class="kw">in</span> grafo.get(u, []):
+            grau_entrada[v] -= <span class="num">1</span>
+            <span class="kw">if</span> grau_entrada[v] == <span class="num">0</span>:
+                fila.append(v)
+
+    <span class="kw">if</span> <span class="tp">len</span>(ordem) != <span class="tp">len</span>(vertices):
+        <span class="kw">raise</span> <span class="tp">ValueError</span>(<span class="str">"Grafo tem ciclo  ordenação topológica impossível"</span>)
+    <span class="kw">return</span> ordem
+
+<span class="com"># Exemplo</span>
+g = {<span class="str">'A'</span>:[<span class="str">'C'</span>,<span class="str">'D'</span>], <span class="str">'B'</span>:[<span class="str">'D'</span>], <span class="str">'C'</span>:[<span class="str">'E'</span>], <span class="str">'D'</span>:[<span class="str">'E'</span>], <span class="str">'E'</span>:[]}
+<span class="tp">print</span>(topo_kahn(g, [<span class="str">'A'</span>,<span class="str">'B'</span>,<span class="str">'C'</span>,<span class="str">'D'</span>,<span class="str">'E'</span>]))
+<span class="com"># ['A', 'B', 'C', 'D', 'E']</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table class="trace-table">
+            <thead><tr><th>Algoritmo</th><th>Tempo</th><th>Espaço</th><th>Detecta ciclo</th></tr></thead>
+            <tbody>
+              <tr><td>Kahn (BFS)</td><td>O(V + E)</td><td>O(V)</td><td>Sim  output incompleto</td></tr>
+              <tr><td>DFS pós-ordem</td><td>O(V + E)</td><td>O(V)</td><td>Sim  back edge</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Aplicações</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Sistemas de build</h3><p>make, cmake e Gradle calculam a ordem de compilação via ordenação topológica das dependências de módulos.</p></div>
+          <div class="card"><h3>Gerenciadores de pacotes</h3><p>npm, pip e apt determinam a ordem de instalação de pacotes com dependências via toposort.</p></div>
+          <div class="card"><h3>Escalonamento de tarefas</h3><p>Pipelines de CI/CD e workflows de ETL precisam garantir que tarefas predecessoras terminem antes das sucessoras.</p></div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Atenção:</strong> Ordenação topológica <em>exige</em> um DAG  grafo direcionado acíclico. Se o grafo tiver ciclos (dependência circular), não existe solução. Detectar e reportar esse ciclo ao usuário é tão importante quanto o algoritmo em si.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Cormen, T. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Seção 20.4.</li>
+            <li>Kahn, A. B. "Topological sorting of large networks." <em>Communications of the ACM</em>, 5(11), 1962.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>A ordenação topológica transforma relações de dependência em uma sequência executável  é a operação que permite que sistemas complexos se auto-organizem.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um DAG é um mapa de obrigações; a ordenação topológica é o plano de ação."  fundamentos de algoritmos em grafos
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

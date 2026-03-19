@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pascal — Aplicações de Terminal e CLI: executáveis standalone com fpc, ParamCount/ParamStr, leitura de INI com TIniFile, escrita de logs, interação com sistema via fpSystem e ExecuteProcess." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Pascal — Aplicações CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Pascal &mdash; Aplicações CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="pascal" aria-hidden="true"></span></div>
+          <h1>Pascal — Aplicações CLI</h1>
+          <p>Construa ferramentas de linha de comando robustas com Free Pascal: parsing de argumentos, leitura de configuração INI, logs em arquivo e execução de processos externos.</p>
+        </div>
+        <p class="intro-highlight">
+          Pascal compila para executáveis nativos pequenos e rápidos — sem runtime externo, sem JVM, sem interpretador. Uma ferramenta CLI em Pascal pode ser distribuída como um único arquivo binário que roda em qualquer máquina com o mesmo SO e arquitetura.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="argumentos">Argumentos da Linha de Comando</h2>
+        <div class="panel">
+          <p><code>ParamCount</code> retorna o número de argumentos passados. <code>ParamStr(0)</code> é o nome do executável. <code>ParamStr(n)</code> retorna o n-ésimo argumento (iniciando em 1).</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">args.pas — Parsing básico de argumentos</div>
+          <pre class="example"><span class="kw">program</span> FerramentaCLI;
+
+<span class="kw">uses</span> SysUtils;
+
+<span class="kw">procedure</span> <span class="fn">ExibirAjuda</span>;
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(<span class="str">'Uso: ferramenta [opções] arquivo'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">''</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'Opções:'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'  -h, --help      Esta ajuda'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'  -v, --verbose   Modo verboso'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'  -o SAIDA        Arquivo de saída'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'  --versao        Exibe versão'</span>);
+  <span class="fn">Halt</span>(<span class="num">0</span>);   <span class="com">{ termina o processo com código 0 }</span>
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  i          : <span class="tp">Integer</span>;
+  verbose    : <span class="tp">Boolean</span> = <span class="kw">False</span>;
+  arquivoIn  : <span class="tp">String</span> = <span class="str">''</span>;
+  arquivoOut : <span class="tp">String</span> = <span class="str">'saida.txt'</span>;
+  arg        : <span class="tp">String</span>;
+
+<span class="kw">begin</span>
+  <span class="com">{ Sem argumentos: exibe ajuda }</span>
+  <span class="kw">if</span> <span class="fn">ParamCount</span> = <span class="num">0</span> <span class="kw">then</span>
+    <span class="fn">ExibirAjuda</span>;
+
+  <span class="com">{ Iterar sobre todos os argumentos }</span>
+  i := <span class="num">1</span>;
+  <span class="kw">while</span> i <= <span class="fn">ParamCount</span> <span class="kw">do</span>
+  <span class="kw">begin</span>
+    arg := <span class="fn">ParamStr</span>(i);
+
+    <span class="kw">if</span> (arg = <span class="str">'-h'</span>) <span class="kw">or</span> (arg = <span class="str">'--help'</span>) <span class="kw">then</span>
+      <span class="fn">ExibirAjuda</span>
+
+    <span class="kw">else if</span> (arg = <span class="str">'-v'</span>) <span class="kw">or</span> (arg = <span class="str">'--verbose'</span>) <span class="kw">then</span>
+      verbose := <span class="kw">True</span>
+
+    <span class="kw">else if</span> arg = <span class="str">'--versao'</span> <span class="kw">then</span>
+    <span class="kw">begin</span>
+      <span class="fn">WriteLn</span>(<span class="str">'ferramenta v1.0.0'</span>);
+      <span class="fn">Halt</span>(<span class="num">0</span>);
+    <span class="kw">end</span>
+
+    <span class="kw">else if</span> (arg = <span class="str">'-o'</span>) <span class="kw">and</span> (i < <span class="fn">ParamCount</span>) <span class="kw">then</span>
+    <span class="kw">begin</span>
+      <span class="fn">Inc</span>(i);
+      arquivoOut := <span class="fn">ParamStr</span>(i);   <span class="com">{ argumento seguinte é o valor }</span>
+    <span class="kw">end</span>
+
+    <span class="kw">else if</span> arg[<span class="num">1</span>] <> <span class="str">'-'</span> <span class="kw">then</span>
+      arquivoIn := arg   <span class="com">{ parâmetro posicional }</span>
+
+    <span class="kw">else</span>
+    <span class="kw">begin</span>
+      <span class="fn">WriteLn</span>(<span class="tp">StdErr</span>, <span class="str">'Erro: opção desconhecida: '</span>, arg);
+      <span class="fn">Halt</span>(<span class="num">1</span>);   <span class="com">{ código de erro 1 = argumento inválido }</span>
+    <span class="kw">end</span>;
+
+    <span class="fn">Inc</span>(i);
+  <span class="kw">end</span>;
+
+  <span class="kw">if</span> arquivoIn = <span class="str">''</span> <span class="kw">then</span>
+  <span class="kw">begin</span>
+    <span class="fn">WriteLn</span>(<span class="tp">StdErr</span>, <span class="str">'Erro: arquivo de entrada não especificado'</span>);
+    <span class="fn">Halt</span>(<span class="num">1</span>);
+  <span class="kw">end</span>;
+
+  <span class="kw">if</span> verbose <span class="kw">then</span>
+    <span class="fn">WriteLn</span>(<span class="str">'Modo verboso ativo'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'Entrada: '</span>, arquivoIn);
+  <span class="fn">WriteLn</span>(<span class="str">'Saída:   '</span>, arquivoOut);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="inifile">Arquivos de Configuração INI</h2>
+        <div class="panel">
+          <p>A classe <code>TIniFile</code> da unit <code>IniFiles</code> lê e escreve arquivos no formato INI. É a forma mais simples de persistir configuração em Pascal sem dependências externas.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">config.ini — Arquivo de configuração de exemplo</div>
+          <pre class="example"><span class="com">[Geral]</span>
+versao=1.0
+idioma=pt-BR
+debug=false
+
+<span class="com">[Banco]</span>
+host=localhost
+porta=5432
+banco=mydb
+usuario=admin
+
+<span class="com">[Logs]</span>
+nivel=INFO
+arquivo=app.log
+tamanho_max=10</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">configuracao.pas — TIniFile: leitura e escrita</div>
+          <pre class="example"><span class="kw">unit</span> Configuracao;
+
+<span class="com">{$mode objfpc}{$H+}</span>
+
+<span class="kw">interface</span>
+
+<span class="kw">uses</span>
+  SysUtils, IniFiles;
+
+<span class="kw">type</span>
+  <span class="tp">TConfigBanco</span> = <span class="kw">record</span>
+    Host    : <span class="tp">String</span>;
+    Porta   : <span class="tp">Integer</span>;
+    Banco   : <span class="tp">String</span>;
+    Usuario : <span class="tp">String</span>;
+  <span class="kw">end</span>;
+
+  <span class="tp">TConfig</span> = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FIni    : <span class="tp">TIniFile</span>;
+    FCaminho: <span class="tp">String</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const caminho: <span class="tp">String</span>);
+    <span class="kw">destructor</span>  <span class="fn">Destroy</span>; <span class="kw">override</span>;
+
+    <span class="kw">function</span>  <span class="fn">LerString</span>(const secao, chave, padrao: <span class="tp">String</span>): <span class="tp">String</span>;
+    <span class="kw">function</span>  <span class="fn">LerInt</span>(const secao, chave: <span class="tp">String</span>; padrao: <span class="tp">Integer</span>): <span class="tp">Integer</span>;
+    <span class="kw">function</span>  <span class="fn">LerBool</span>(const secao, chave: <span class="tp">String</span>; padrao: <span class="tp">Boolean</span>): <span class="tp">Boolean</span>;
+    <span class="kw">procedure</span> <span class="fn">GravarString</span>(const secao, chave, valor: <span class="tp">String</span>);
+    <span class="kw">procedure</span> <span class="fn">GravarInt</span>(const secao, chave: <span class="tp">String</span>; valor: <span class="tp">Integer</span>);
+    <span class="kw">function</span>  <span class="fn">LerConfigBanco</span>: <span class="tp">TConfigBanco</span>;
+    <span class="kw">procedure</span> <span class="fn">Salvar</span>;
+  <span class="kw">end</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">constructor</span> <span class="tp">TConfig</span>.<span class="fn">Create</span>(const caminho: <span class="tp">String</span>);
+<span class="kw">begin</span>
+  FCaminho := caminho;
+  FIni := <span class="tp">TIniFile</span>.<span class="fn">Create</span>(caminho);
+<span class="kw">end</span>;
+
+<span class="kw">destructor</span> <span class="tp">TConfig</span>.<span class="fn">Destroy</span>;
+<span class="kw">begin</span>
+  FIni.<span class="fn">Free</span>;
+  <span class="kw">inherited</span>;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TConfig</span>.<span class="fn">LerString</span>(const secao, chave, padrao: <span class="tp">String</span>): <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := FIni.<span class="fn">ReadString</span>(secao, chave, padrao);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TConfig</span>.<span class="fn">LerInt</span>(const secao, chave: <span class="tp">String</span>; padrao: <span class="tp">Integer</span>): <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  Result := FIni.<span class="fn">ReadInteger</span>(secao, chave, padrao);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TConfig</span>.<span class="fn">LerBool</span>(const secao, chave: <span class="tp">String</span>; padrao: <span class="tp">Boolean</span>): <span class="tp">Boolean</span>;
+<span class="kw">begin</span>
+  Result := FIni.<span class="fn">ReadBool</span>(secao, chave, padrao);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TConfig</span>.<span class="fn">GravarString</span>(const secao, chave, valor: <span class="tp">String</span>);
+<span class="kw">begin</span>
+  FIni.<span class="fn">WriteString</span>(secao, chave, valor);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TConfig</span>.<span class="fn">GravarInt</span>(const secao, chave: <span class="tp">String</span>; valor: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  FIni.<span class="fn">WriteInteger</span>(secao, chave, valor);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TConfig</span>.<span class="fn">LerConfigBanco</span>: <span class="tp">TConfigBanco</span>;
+<span class="kw">const</span>
+  S = <span class="str">'Banco'</span>;
+<span class="kw">begin</span>
+  Result.Host    := FIni.<span class="fn">ReadString</span>(S, <span class="str">'host'</span>,    <span class="str">'localhost'</span>);
+  Result.Porta   := FIni.<span class="fn">ReadInteger</span>(S, <span class="str">'porta'</span>,   <span class="num">5432</span>);
+  Result.Banco   := FIni.<span class="fn">ReadString</span>(S, <span class="str">'banco'</span>,   <span class="str">'mydb'</span>);
+  Result.Usuario := FIni.<span class="fn">ReadString</span>(S, <span class="str">'usuario'</span>, <span class="str">'postgres'</span>);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TConfig</span>.<span class="fn">Salvar</span>;
+<span class="kw">begin</span>
+  FIni.<span class="fn">UpdateFile</span>;   <span class="com">{ força escrita para disco }</span>
+<span class="kw">end</span>;
+
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="logging">Sistema de Logs em Arquivo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">logger.pas — Logger thread-safe com rotação de arquivo</div>
+          <pre class="example"><span class="kw">unit</span> Logger;
+
+<span class="com">{$mode objfpc}{$H+}</span>
+
+<span class="kw">interface</span>
+
+<span class="kw">uses</span>
+  SysUtils, Classes, SyncObjs;
+
+<span class="kw">type</span>
+  <span class="tp">TNivelLog</span> = (nlDEBUG, nlINFO, nlWARN, nlERROR, nlFATAL);
+
+  <span class="tp">TLogger</span> = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FArquivo       : <span class="tp">TextFile</span>;
+    FNivelMinimo   : <span class="tp">TNivelLog</span>;
+    FCritical      : <span class="tp">TCriticalSection</span>;   <span class="com">{ thread-safe }</span>
+    FTamanhoMaxKB  : <span class="tp">Int64</span>;
+    FCaminho       : <span class="tp">String</span>;
+    FAberto        : <span class="tp">Boolean</span>;
+    <span class="kw">procedure</span> <span class="fn">RotacionarSeNecessario</span>;
+    <span class="kw">function</span>  <span class="fn">NivelParaStr</span>(nivel: <span class="tp">TNivelLog</span>): <span class="tp">String</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const caminho: <span class="tp">String</span>;
+                         nivel: <span class="tp">TNivelLog</span> = nlINFO;
+                         tamanhoMaxKB: <span class="tp">Int64</span> = <span class="num">10240</span>);
+    <span class="kw">destructor</span>  <span class="fn">Destroy</span>; <span class="kw">override</span>;
+    <span class="kw">procedure</span> <span class="fn">Log</span>(nivel: <span class="tp">TNivelLog</span>; const msg: <span class="tp">String</span>);
+    <span class="kw">procedure</span> <span class="fn">Debug</span>(const msg: <span class="tp">String</span>);
+    <span class="kw">procedure</span> <span class="fn">Info</span>(const msg: <span class="tp">String</span>);
+    <span class="kw">procedure</span> <span class="fn">Warn</span>(const msg: <span class="tp">String</span>);
+    <span class="kw">procedure</span> <span class="fn">Error</span>(const msg: <span class="tp">String</span>);
+  <span class="kw">end</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">function</span> <span class="tp">TLogger</span>.<span class="fn">NivelParaStr</span>(nivel: <span class="tp">TNivelLog</span>): <span class="tp">String</span>;
+<span class="kw">const</span>
+  Nomes: <span class="kw">array</span>[<span class="tp">TNivelLog</span>] <span class="kw">of</span> <span class="tp">String</span> =
+    (<span class="str">'DEBUG'</span>, <span class="str">'INFO '</span>, <span class="str">'WARN '</span>, <span class="str">'ERROR'</span>, <span class="str">'FATAL'</span>);
+<span class="kw">begin</span>
+  Result := Nomes[nivel];
+<span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TLogger</span>.<span class="fn">Create</span>(const caminho: <span class="tp">String</span>; nivel: <span class="tp">TNivelLog</span>; tamanhoMaxKB: <span class="tp">Int64</span>);
+<span class="kw">begin</span>
+  FCaminho      := caminho;
+  FNivelMinimo  := nivel;
+  FTamanhoMaxKB := tamanhoMaxKB;
+  FCritical     := <span class="tp">TCriticalSection</span>.<span class="fn">Create</span>;
+  <span class="fn">AssignFile</span>(FArquivo, caminho);
+  <span class="kw">if</span> <span class="fn">FileExists</span>(caminho) <span class="kw">then</span>
+    <span class="fn">Append</span>(FArquivo)
+  <span class="kw">else</span>
+    <span class="fn">Rewrite</span>(FArquivo);
+  FAberto := <span class="kw">True</span>;
+<span class="kw">end</span>;
+
+<span class="kw">destructor</span> <span class="tp">TLogger</span>.<span class="fn">Destroy</span>;
+<span class="kw">begin</span>
+  <span class="kw">if</span> FAberto <span class="kw">then</span>
+    <span class="fn">CloseFile</span>(FArquivo);
+  FCritical.<span class="fn">Free</span>;
+  <span class="kw">inherited</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">RotacionarSeNecessario</span>;
+<span class="kw">var</span>
+  backup: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  <span class="kw">if</span> <span class="fn">FileSize</span>(FArquivo) > FTamanhoMaxKB * <span class="num">1024</span> <span class="kw">then</span>
+  <span class="kw">begin</span>
+    <span class="fn">CloseFile</span>(FArquivo);
+    backup := <span class="fn">ChangeFileExt</span>(FCaminho, <span class="str">'.bak'</span>);
+    <span class="kw">if</span> <span class="fn">FileExists</span>(backup) <span class="kw">then</span>
+      <span class="fn">DeleteFile</span>(backup);
+    <span class="fn">RenameFile</span>(FCaminho, backup);
+    <span class="fn">AssignFile</span>(FArquivo, FCaminho);
+    <span class="fn">Rewrite</span>(FArquivo);
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">Log</span>(nivel: <span class="tp">TNivelLog</span>; const msg: <span class="tp">String</span>);
+<span class="kw">var</span>
+  linha: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  <span class="kw">if</span> nivel < FNivelMinimo <span class="kw">then</span> Exit;
+
+  linha := <span class="fn">Format</span>(<span class="str">'%s [%s] %s'</span>,
+    [<span class="fn">FormatDateTime</span>(<span class="str">'yyyy-mm-dd hh:nn:ss.zzz'</span>, <span class="fn">Now</span>),
+     <span class="fn">NivelParaStr</span>(nivel),
+     msg]);
+
+  FCritical.<span class="fn">Acquire</span>;
+  <span class="kw">try</span>
+    <span class="fn">RotacionarSeNecessario</span>;
+    <span class="fn">WriteLn</span>(FArquivo, linha);
+    <span class="fn">Flush</span>(FArquivo);   <span class="com">{ força escrita imediata — essencial para logs }</span>
+  <span class="kw">finally</span>
+    FCritical.<span class="fn">Release</span>;
+  <span class="kw">end</span>;
+
+  <span class="com">{ Erros também vão para stderr }</span>
+  <span class="kw">if</span> nivel >= nlERROR <span class="kw">then</span>
+    <span class="fn">WriteLn</span>(<span class="tp">StdErr</span>, linha);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">Debug</span>(const msg: <span class="tp">String</span>); <span class="kw">begin</span> <span class="fn">Log</span>(nlDEBUG, msg); <span class="kw">end</span>;
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">Info</span>(const msg: <span class="tp">String</span>);  <span class="kw">begin</span> <span class="fn">Log</span>(nlINFO,  msg); <span class="kw">end</span>;
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">Warn</span>(const msg: <span class="tp">String</span>);  <span class="kw">begin</span> <span class="fn">Log</span>(nlWARN,  msg); <span class="kw">end</span>;
+<span class="kw">procedure</span> <span class="tp">TLogger</span>.<span class="fn">Error</span>(const msg: <span class="tp">String</span>); <span class="kw">begin</span> <span class="fn">Log</span>(nlERROR, msg); <span class="kw">end</span>;
+
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processos-externos">Execução de Processos Externos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">processos.pas — fpSystem, Process e captura de saída</div>
+          <pre class="example"><span class="kw">program</span> Processos;
+
+<span class="kw">uses</span>
+  SysUtils,
+  <span class="tp">Process</span>;     <span class="com">{ unit de subprocess do FPC }</span>
+
+<span class="com">{ ── Método 1: SysUtils.ExecuteProcess — simples, sem captura de saída ─── }</span>
+<span class="kw">procedure</span> <span class="fn">ExemplosSimples</span>;
+<span class="kw">var</span>
+  codigo: <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  <span class="com">{ Executa e retorna código de saída }</span>
+  codigo := <span class="fn">ExecuteProcess</span>(<span class="str">'ls'</span>, <span class="str">'-la /tmp'</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'Código de saída: '</span>, codigo);
+
+  <span class="com">{ Equivalente ao system() do C }</span>
+  <span class="fn">fpSystem</span>(<span class="str">'echo "Olá do subprocesso"'</span>);
+<span class="kw">end</span>;
+
+<span class="com">{ ── Método 2: TProcess — controle total ─────────────────────────────── }</span>
+<span class="kw">function</span> <span class="fn">CapturarSaida</span>(const comando: <span class="tp">String</span>; args: <span class="kw">array of</span> <span class="tp">String</span>): <span class="tp">String</span>;
+<span class="kw">var</span>
+  proc    : <span class="tp">TProcess</span>;
+  lista   : <span class="tp">TStringList</span>;
+  i       : <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  proc := <span class="tp">TProcess</span>.<span class="fn">Create</span>(<span class="kw">nil</span>);
+  lista := <span class="tp">TStringList</span>.<span class="fn">Create</span>;
+  <span class="kw">try</span>
+    proc.Executable := comando;
+    <span class="kw">for</span> i := <span class="num">0</span> <span class="kw">to</span> <span class="fn">High</span>(args) <span class="kw">do</span>
+      proc.Parameters.<span class="fn">Add</span>(args[i]);
+
+    proc.Options := [poWaitOnExit, poUsePipes];
+    proc.<span class="fn">Execute</span>;
+
+    lista.<span class="fn">LoadFromStream</span>(proc.Output);
+    Result := lista.Text;
+  <span class="kw">finally</span>
+    lista.<span class="fn">Free</span>;
+    proc.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="com">{ ── Método 3: subprocess assíncrono com leitura em tempo real ────────── }</span>
+<span class="kw">procedure</span> <span class="fn">ExecutarComProgress</span>(const cmd: <span class="tp">String</span>; params: <span class="kw">array of</span> <span class="tp">String</span>);
+<span class="kw">var</span>
+  proc   : <span class="tp">TProcess</span>;
+  buffer : <span class="kw">array</span>[<span class="num">0</span>..<span class="num">4095</span>] <span class="kw">of</span> <span class="tp">Byte</span>;
+  lidos  : <span class="tp">Integer</span>;
+  i      : <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  proc := <span class="tp">TProcess</span>.<span class="fn">Create</span>(<span class="kw">nil</span>);
+  <span class="kw">try</span>
+    proc.Executable := cmd;
+    <span class="kw">for</span> i := <span class="num">0</span> <span class="kw">to</span> <span class="fn">High</span>(params) <span class="kw">do</span>
+      proc.Parameters.<span class="fn">Add</span>(params[i]);
+
+    proc.Options := [poUsePipes];   <span class="com">{ sem poWaitOnExit = assíncrono }</span>
+    proc.<span class="fn">Execute</span>;
+
+    <span class="com">{ Ler enquanto o processo roda }</span>
+    <span class="kw">while</span> proc.Running <span class="kw">do</span>
+    <span class="kw">begin</span>
+      lidos := proc.Output.<span class="fn">Read</span>(buffer, <span class="fn">SizeOf</span>(buffer));
+      <span class="kw">if</span> lidos > <span class="num">0</span> <span class="kw">then</span>
+        <span class="fn">Write</span>(<span class="fn">Copy</span>(<span class="fn">PChar</span>(@buffer), <span class="num">1</span>, lidos));
+    <span class="kw">end</span>;
+
+    <span class="com">{ Drenar buffer restante }</span>
+    <span class="kw">repeat</span>
+      lidos := proc.Output.<span class="fn">Read</span>(buffer, <span class="fn">SizeOf</span>(buffer));
+      <span class="kw">if</span> lidos > <span class="num">0</span> <span class="kw">then</span>
+        <span class="fn">Write</span>(<span class="fn">Copy</span>(<span class="fn">PChar</span>(@buffer), <span class="num">1</span>, lidos));
+    <span class="kw">until</span> lidos = <span class="num">0</span>;
+
+    <span class="fn">WriteLn</span>(<span class="str">'Código de saída: '</span>, proc.ExitCode);
+  <span class="kw">finally</span>
+    proc.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  saida: <span class="tp">String</span>;
+
+<span class="kw">begin</span>
+  <span class="fn">ExemplosSimples</span>;
+
+  saida := <span class="fn">CapturarSaida</span>(<span class="str">'uname'</span>, [<span class="str">'-a'</span>]);
+  <span class="fn">WriteLn</span>(<span class="str">'Sistema: '</span>, <span class="fn">Trim</span>(saida));
+
+  <span class="fn">WriteLn</span>(<span class="str">'--- Listagem ---'</span>);
+  <span class="fn">ExecutarComProgress</span>(<span class="str">'ls'</span>, [<span class="str">'-la'</span>, <span class="str">'/tmp'</span>]);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="projeto-completo">Projeto Completo: Ferramenta de Backup</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">backup.pas — Ferramenta CLI de backup com config INI e log</div>
+          <pre class="example"><span class="kw">program</span> BackupTool;
+
+<span class="com">{$mode objfpc}{$H+}</span>
+
+<span class="kw">uses</span>
+  SysUtils, IniFiles, Classes, Process;
+
+<span class="kw">type</span>
+  <span class="tp">TBackupConfig</span> = <span class="kw">record</span>
+    Origem  : <span class="tp">String</span>;
+    Destino : <span class="tp">String</span>;
+    Compactar : <span class="tp">Boolean</span>;
+    LogArquivo : <span class="tp">String</span>;
+  <span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="fn">CarregarConfig</span>(const iniPath: <span class="tp">String</span>): <span class="tp">TBackupConfig</span>;
+<span class="kw">var</span>
+  ini: <span class="tp">TIniFile</span>;
+<span class="kw">begin</span>
+  ini := <span class="tp">TIniFile</span>.<span class="fn">Create</span>(iniPath);
+  <span class="kw">try</span>
+    Result.Origem     := ini.<span class="fn">ReadString</span>(<span class="str">'Backup'</span>, <span class="str">'origem'</span>,    <span class="str">'/dados'</span>);
+    Result.Destino    := ini.<span class="fn">ReadString</span>(<span class="str">'Backup'</span>, <span class="str">'destino'</span>,   <span class="str">'/backup'</span>);
+    Result.Compactar  := ini.<span class="fn">ReadBool</span>(<span class="str">'Backup'</span>,   <span class="str">'compactar'</span>, <span class="kw">True</span>);
+    Result.LogArquivo := ini.<span class="fn">ReadString</span>(<span class="str">'Log'</span>, <span class="str">'arquivo'</span>, <span class="str">'backup.log'</span>);
+  <span class="kw">finally</span>
+    ini.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">EscreverLog</span>(const logPath, msg: <span class="tp">String</span>);
+<span class="kw">var</span>
+  f: <span class="tp">TextFile</span>;
+<span class="kw">begin</span>
+  <span class="fn">AssignFile</span>(f, logPath);
+  <span class="kw">if</span> <span class="fn">FileExists</span>(logPath) <span class="kw">then</span>
+    <span class="fn">Append</span>(f)
+  <span class="kw">else</span>
+    <span class="fn">Rewrite</span>(f);
+  <span class="kw">try</span>
+    <span class="fn">WriteLn</span>(f, <span class="fn">FormatDateTime</span>(<span class="str">'yyyy-mm-dd hh:nn:ss'</span>, <span class="fn">Now</span>) + <span class="str">' '</span> + msg);
+    <span class="fn">Flush</span>(f);
+  <span class="kw">finally</span>
+    <span class="fn">CloseFile</span>(f);
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="fn">ExecutarComando</span>(const cmd: <span class="tp">String</span>; args: <span class="kw">array of</span> <span class="tp">String</span>): <span class="tp">Integer</span>;
+<span class="kw">var</span>
+  p: <span class="tp">TProcess</span>;
+  i: <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  p := <span class="tp">TProcess</span>.<span class="fn">Create</span>(<span class="kw">nil</span>);
+  <span class="kw">try</span>
+    p.Executable := cmd;
+    <span class="kw">for</span> i := <span class="num">0</span> <span class="kw">to</span> <span class="fn">High</span>(args) <span class="kw">do</span>
+      p.Parameters.<span class="fn">Add</span>(args[i]);
+    p.Options := [poWaitOnExit];
+    p.<span class="fn">Execute</span>;
+    Result := p.ExitCode;
+  <span class="kw">finally</span>
+    p.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  cfg     : <span class="tp">TBackupConfig</span>;
+  destino : <span class="tp">String</span>;
+  codigo  : <span class="tp">Integer</span>;
+
+<span class="kw">begin</span>
+  <span class="kw">if</span> <span class="fn">ParamCount</span> < <span class="num">1</span> <span class="kw">then</span>
+  <span class="kw">begin</span>
+    <span class="fn">WriteLn</span>(<span class="str">'Uso: backup config.ini'</span>);
+    <span class="fn">Halt</span>(<span class="num">1</span>);
+  <span class="kw">end</span>;
+
+  <span class="kw">if</span> <span class="kw">not</span> <span class="fn">FileExists</span>(<span class="fn">ParamStr</span>(<span class="num">1</span>)) <span class="kw">then</span>
+  <span class="kw">begin</span>
+    <span class="fn">WriteLn</span>(<span class="tp">StdErr</span>, <span class="str">'Arquivo de configuração não encontrado: '</span>, <span class="fn">ParamStr</span>(<span class="num">1</span>));
+    <span class="fn">Halt</span>(<span class="num">2</span>);
+  <span class="kw">end</span>;
+
+  cfg := <span class="fn">CarregarConfig</span>(<span class="fn">ParamStr</span>(<span class="num">1</span>));
+  <span class="fn">EscreverLog</span>(cfg.LogArquivo, <span class="str">'Iniciando backup de '</span> + cfg.Origem);
+
+  destino := <span class="fn">IncludeTrailingPathDelimiter</span>(cfg.Destino) +
+             <span class="fn">FormatDateTime</span>(<span class="str">'yyyymmdd_hhnnss'</span>, <span class="fn">Now</span>);
+
+  <span class="kw">if</span> cfg.Compactar <span class="kw">then</span>
+  <span class="kw">begin</span>
+    destino := destino + <span class="str">'.tar.gz'</span>;
+    codigo := <span class="fn">ExecutarComando</span>(<span class="str">'tar'</span>, [<span class="str">'-czf'</span>, destino, cfg.Origem]);
+  <span class="kw">end</span>
+  <span class="kw">else</span>
+  <span class="kw">begin</span>
+    <span class="fn">ForceDirectories</span>(destino);
+    codigo := <span class="fn">ExecutarComando</span>(<span class="str">'cp'</span>, [<span class="str">'-r'</span>, cfg.Origem, destino]);
+  <span class="kw">end</span>;
+
+  <span class="kw">if</span> codigo = <span class="num">0</span> <span class="kw">then</span>
+  <span class="kw">begin</span>
+    <span class="fn">EscreverLog</span>(cfg.LogArquivo, <span class="str">'Backup concluído: '</span> + destino);
+    <span class="fn">WriteLn</span>(<span class="str">'OK: '</span>, destino);
+  <span class="kw">end</span>
+  <span class="kw">else</span>
+  <span class="kw">begin</span>
+    <span class="fn">EscreverLog</span>(cfg.LogArquivo, <span class="str">'ERRO: código '</span> + <span class="fn">IntToStr</span>(codigo));
+    <span class="fn">WriteLn</span>(<span class="tp">StdErr</span>, <span class="str">'Falha! Código: '</span>, codigo);
+    <span class="fn">Halt</span>(<span class="num">3</span>);
+  <span class="kw">end</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Compilar e usar a ferramenta</div>
+          <pre class="example"><span class="com"># Compilar com otimização</span>
+fpc -O2 -FEbin backup.pas
+
+<span class="com"># Configuração de exemplo: config.ini</span>
+cat > config.ini &lt;&lt;EOF
+[Backup]
+origem=/home/user/documentos
+destino=/backup
+compactar=true
+
+[Log]
+arquivo=backup.log
+EOF
+
+<span class="com"># Executar</span>
+./backup config.ini
+
+<span class="com"># Saída esperada:</span>
+<span class="com"># OK: /backup/20240115_143022.tar.gz</span>
+
+<span class="com"># Ver log</span>
+cat backup.log
+<span class="com"># 2024-01-15 14:30:21 Iniciando backup de /home/user/documentos</span>
+<span class="com"># 2024-01-15 14:30:22 Backup concluído: /backup/20240115_143022.tar.gz</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FREE PASCAL TEAM. <strong>IniFiles Unit Documentation</strong>. 2024. Disponível em: <a href="https://www.freepascal.org/docs-html/fcl/inifiles/index.html" target="_blank" rel="noopener">https://www.freepascal.org/docs-html/fcl/inifiles/index.html</a></li>
+            <li>FREE PASCAL TEAM. <strong>TProcess — Running External Programs</strong>. Lazarus Wiki, 2024. Disponível em: <a href="https://wiki.lazarus.freepascal.org/Running_External_Programs" target="_blank" rel="noopener">https://wiki.lazarus.freepascal.org/Running_External_Programs</a></li>
+            <li>FREE PASCAL TEAM. <strong>SysUtils Reference</strong>. 2024. Disponível em: <a href="https://www.freepascal.org/docs-html/rtl/sysutils/index.html" target="_blank" rel="noopener">https://www.freepascal.org/docs-html/rtl/sysutils/index.html</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/guia/fundamentos.html">Pascal — Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/guia/ecossistema_tooling.html">Pascal — Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/gui_desktop.html">Pascal — GUI Desktop com Lazarus</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Um binário Pascal compilado para uma plataforma não precisa de runtime instalado — é o oposto do Java e do Python. Para ferramentas CLI distribuídas internamente, isso é uma vantagem enorme.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

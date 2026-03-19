@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang Sistemas Distribuídos: net_kernel, node cookies, RPC, global registry, distributed ETS, partition handling e clustering de nós BEAM." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Sistemas Distribuídos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Sistemas Distribuídos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Sistemas Distribuídos</h1>
+          <p>Erlang foi projetado para ser distribuído desde a versão 1: enviar uma mensagem para um PID remoto tem a mesma sintaxe que enviar localmente — <code>Pid ! Mensagem</code>. O net_kernel gerencia conexões entre nós, o cookie autentica nós, e o epmd (Erlang Port Mapper Daemon) resolve endereços. Formar um cluster de nós BEAM é trivialmente fácil.</p>
+        </div>
+        <p class="intro-highlight">
+          O modelo de distribuição Erlang é <strong>share-nothing</strong> por rede: nós se comunicam exclusivamente por troca de mensagens. Isso significa que uma falha de rede isola o nó mas não corrompe estado. O desafio real é lidar com <strong>partições de rede</strong> (netsplit) — quando dois nós perdem contato mas continuam rodando independentemente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="clustering">Clustering de Nós Erlang</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Conectar nós e enviar mensagens remotas</div>
+          <pre class="example"><span class="com">%% Iniciar nós com nome e cookie</span>
+<span class="com">%% Terminal 1:</span>
+<span class="com">%%   erl -name no1@192.168.1.10 -setcookie servidor_secreto</span>
+<span class="com">%% Terminal 2:</span>
+<span class="com">%%   erl -name no2@192.168.1.11 -setcookie servidor_secreto</span>
+
+<span class="com">%% Conectar nós</span>
+net_adm:ping('no2@192.168.1.11').  <span class="com">% pong = ok, pang = falhou</span>
+
+<span class="com">%% Listar nós conectados</span>
+nodes().              <span class="com">% ['no2@192.168.1.11']</span>
+nodes(connected).     <span class="com">% visible nodes</span>
+nodes(hidden).        <span class="com">% nós ocultos (sem participar do sistema global)</span>
+
+<span class="com">%% Monitorar nós</span>
+net_kernel:monitor_nodes(true).
+receive
+    {nodeup,   No} -&gt; io:format(<span class="str">"Nó conectado: ~p~n"</span>,    [No]);
+    {nodedown, No} -&gt; io:format(<span class="str">"Nó desconectou: ~p~n"</span>, [No])
+end.
+
+<span class="com">%% Enviar mensagem para processo em outro nó</span>
+<span class="com">%% (via PID remoto)</span>
+{servidor, 'no2@192.168.1.11'} ! {self(), ping}.
+
+<span class="com">%% (via PID obtido de registro global — ver seção global)</span>
+Pid = global:whereis_name(servidor_global).
+Pid ! {self(), ola}.
+
+<span class="com">%% spawn em outro nó</span>
+NoPid = spawn('no2@192.168.1.11', fun() -&gt;
+    io:format(<span class="str">"Rodando em ~p~n"</span>, [node()])
+end).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rpc">RPC — Remote Procedure Call</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">rpc:call, cast, multicall e pmap</div>
+          <pre class="example"><span class="com">%% rpc:call — síncrono, bloqueia até resultado</span>
+Resultado = rpc:call('no2@192.168.1.11', string, to_upper, [<span class="str">"hello"</span>]).
+<span class="com">%% Resultado = "HELLO" ou {badrpc, Motivo}</span>
+
+<span class="com">%% Sempre verificar badrpc</span>
+case rpc:call(No, M, F, A) of
+    {badrpc, nodedown} -&gt; {error, no_down};
+    {badrpc, timeout}  -&gt; {error, timeout};
+    {badrpc, Outro}    -&gt; {error, Outro};
+    Resp               -&gt; {ok, Resp}
+end.
+
+<span class="com">%% rpc:call com timeout</span>
+rpc:call('no2@192.168.1.11', modulo, funcao, [Args], 5000).
+
+<span class="com">%% rpc:cast — assíncrono, fire and forget</span>
+rpc:cast('no2@192.168.1.11', io, format, [<span class="str">"executando em no2~n"</span>]).
+
+<span class="com">%% rpc:multicall — chamar mesmo RPC em múltiplos nós</span>
+Nos = ['no1@h1', 'no2@h2', 'no3@h3'],
+{Resultados, Falhos} = rpc:multicall(Nos, erlang, node, []).
+<span class="com">%% Resultados = [no1@h1, no2@h2, no3@h3]</span>
+<span class="com">%% Falhos = [] (nós que não responderam)</span>
+
+<span class="com">%% rpc:pmap — parallel map em nós</span>
+Nos2 = nodes(),
+Resultados2 = rpc:pmap({modulo, funcao}, [arg_extra], Nos2).
+
+<span class="com">%% Async call — não bloqueia</span>
+Key = rpc:async_call('no2@192.168.1.11', modulo, funcao, [args]).
+Resp = rpc:yield(Key).           <span class="com">% bloqueia até resultado chegar</span>
+Resp2 = rpc:nb_yield(Key, 2000). <span class="com">% non-blocking yield com timeout</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="global">Registro Global de Processos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">global e pg — coordenação de processos no cluster</div>
+          <pre class="example"><span class="com">%% global:register_name — nome único em todo o cluster</span>
+<span class="com">%% Só um processo pode ter o nome — resolve conflitos com Resolver/2</span>
+global:register_name(servidor_primario, self()).
+global:whereis_name(servidor_primario).   <span class="com">% PID ou undefined</span>
+global:unregister_name(servidor_primario).
+
+<span class="com">%% Enviar mensagem via global</span>
+global:send(servidor_primario, {self(), ping}).
+
+<span class="com">%% gen_server com registro global — start_link</span>
+gen_server:start_link({global, servidor_primario}, ?MODULE, [], []).
+<span class="com">%% chamadas</span>
+gen_server:call({global, servidor_primario}, Pedido).
+gen_server:cast({global, servidor_primario}, Notificacao).
+
+<span class="com">%% pg — Process Groups (OTP 24+, substitui pg2)</span>
+<span class="com">%% Grupos distribuídos de processos — pub/sub no cluster</span>
+pg:start_link().
+pg:join(grupo_processadores, self()).
+pg:get_members(grupo_processadores).  <span class="com">% [Pid1, Pid2, ...] de todos os nós</span>
+pg:get_local_members(grupo_processadores).  <span class="com">% só nó local</span>
+pg:leave(grupo_processadores, self()).
+
+<span class="com">%% Broadcast para todos do grupo</span>
+broadcast(Grupo, Mensagem) -&gt;
+    Pids = pg:get_members(Grupo),
+    lists:foreach(fun(Pid) -&gt; Pid ! Mensagem end, Pids).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="distributed-ets-mnesia">ETS Distribuído e Mnesia em Cluster</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Replicar dados entre nós com Mnesia</div>
+          <pre class="example"><span class="com">%% ETS não é distribuído nativamente — dono é um único nó</span>
+<span class="com">%% Para cache distribuído, use um gen_server com ETS por nó</span>
+<span class="com">%% + pg para broadcast de invalidações</span>
+
+invalidar_cache(Chave) -&gt;
+    ets:delete(cache_local, Chave),
+    broadcast(grupo_cache, {invalidar, Chave}).
+
+<span class="com">%% Mnesia distribuído — réplica em múltiplos nós</span>
+<span class="com">%% Passo 1: criar schema em todos os nós do cluster</span>
+todos_os_nos() -&gt; [node() | nodes()].
+
+inicializar_mnesia() -&gt;
+    Nos = todos_os_nos(),
+    mnesia:create_schema(Nos),
+    mnesia:start(),
+    mnesia:create_table(sessao, [
+        {attributes, record_info(fields, sessao)},
+        {ram_copies, Nos}     <span class="com">% réplica em RAM em todos os nós</span>
+    ]),
+    mnesia:create_table(pedido, [
+        {attributes, record_info(fields, pedido)},
+        {disc_copies, Nos}    <span class="com">% réplica em disco em todos os nós</span>
+    ]).
+
+<span class="com">%% Mnesia replica automaticamente escritas para todos os nós com cópia</span>
+<span class="com">%% Leituras são locais (fast) — sem round trip</span>
+
+<span class="com">%% Aguardar Mnesia sincronizar após reconexão</span>
+mnesia:wait_for_tables([sessao, pedido], 30000).
+
+<span class="com">%% Checar nós com cópia</span>
+mnesia:table_info(sessao, all_nodes).    <span class="com">% todos os nós com cópia</span>
+mnesia:table_info(sessao, active_replicas). <span class="com">% nós ativos agora</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="netsplit">Partições de Rede e Estratégias de Resolução</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Detectar e tratar netsplit</div>
+          <pre class="example"><span class="com">%% Monitorar desconexões de nós</span>
+net_kernel:monitor_nodes(true).
+
+handle_info({nodedown, No}, Estado) -&gt;
+    ?LOG_WARNING(#{evento =&gt; nodedown, no =&gt; No}),
+    <span class="com">%% escalar para nó secundário se No era o primário</span>
+    case maps:get(primario, Estado) of
+        No -&gt;
+            Novo = eleger_novo_primario(maps:get(nos, Estado), No),
+            ?LOG_INFO(#{evento =&gt; novo_primario, no =&gt; Novo}),
+            {noreply, Estado#{primario =&gt; Novo}};
+        _ -&gt;
+            {noreply, maps:update_with(nos, fun(Ns) -&gt; lists:delete(No, Ns) end, Estado)}
+    end;
+
+handle_info({nodeup, No}, Estado) -&gt;
+    ?LOG_INFO(#{evento =&gt; nodeup, no =&gt; No}),
+    <span class="com">%% reconciliar estado — depende da lógica da aplicação</span>
+    rpc:cast(No, meu_modulo, sincronizar_estado, [self()]),
+    NovoNos = [No | maps:get(nos, Estado)],
+    {noreply, Estado#{nos =&gt; NovoNos}}.
+
+<span class="com">%% Estratégias para netsplit:</span>
+<span class="com">%% 1. Ignore (ok para dados temporários/cache)</span>
+<span class="com">%% 2. Last-write-wins com timestamp (risco de perda de dados)</span>
+<span class="com">%% 3. CRDTs (Conflict-free Replicated Data Types)</span>
+<span class="com">%% 4. Leader election — só o líder aceita escritas (Raft/Paxos-like)</span>
+<span class="com">%% 5. Quorum — maioria dos nós deve confirmar escrita</span>
+
+<span class="com">%% Bibliotecas que ajudam:</span>
+<span class="com">%% ra     — implementação Raft para Erlang (RabbitMQ usa)</span>
+<span class="com">%% lasp   — CRDTs distribuídos</span>
+<span class="com">%% partisan — alternativa ao net_kernel para clusters grandes</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ARMSTRONG, J. <strong>Programming Erlang</strong>. Cap. 15 — Distributed Programming. Pragmatic Bookshelf, 2013.</li>
+            <li>Erlang/OTP. <strong>net_kernel — Erlang networking kernel</strong>. Disponível em: &lt;https://www.erlang.org/doc/man/net_kernel.html&gt;. Acesso em: 2026.</li>
+            <li>HEBERT, F. <strong>Learn You Some Erlang — Distributed OTP</strong>. No Starch Press, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="alta_disponibilidade.html"><span data-svg="seta-direita" aria-hidden="true"></span> Alta Disponibilidade com OTP</a></li>
+          <li><a href="../guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A distribuição em Erlang é <strong>transparente na sintaxe</strong> mas não na semântica: enviar uma mensagem local é confiável; enviar para um nó remoto pode falhar silenciosamente se o nó cair antes de processar. O modelo correto é <strong>monitorar os processos remotos</strong> (<code>erlang:monitor</code>) e tratar o DOWN como parte normal do fluxo — não como exceção.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

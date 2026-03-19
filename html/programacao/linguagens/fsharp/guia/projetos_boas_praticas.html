@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas praticas em F#: arquitetura, testes, observabilidade, CI/CD e manutencao de sistemas funcionais no .NET." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# - Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# - Projetos e Boas Praticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone F#"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>Projetos F# Sustentaveis em Producao</h1>
+          <p>F# escala muito bem quando o projeto trata dominio como primeira classe, define fronteiras claras e automatiza qualidade desde o primeiro commit.</p>
+        </div>
+        <p class="intro-highlight">A melhor pratica mais importante em F# e esta: <strong>modele estados validos no tipo</strong>. Isso reduz ramificacoes defensivas e converte erro de negocio em erro de compilacao.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-projeto">Estrutura de Solucao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura recomendada para solucoes F#</div>
+          <pre class="example">/src
+  /MeuProduto.Domain        <span class="com">// tipos, regras, funcoes puras</span>
+  /MeuProduto.Application   <span class="com">// casos de uso, orquestracao</span>
+  /MeuProduto.Infrastructure<span class="com">// banco, HTTP, fila, IO</span>
+  /MeuProduto.Api           <span class="com">// web host (Giraffe/Saturn)</span>
+/tests
+  /MeuProduto.Domain.Tests
+  /MeuProduto.Integration.Tests
+/build
+  build.fsx                 <span class="com">// FAKE</span></pre>
+        </div>
+        <p>Separar responsabilidades permite testar o nucleo de negocio sem subir banco, fila ou servidor HTTP.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="modelagem-dominio">Modelagem de Dominio com Tipos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Evitar estados invalidos com DU e records</div>
+          <pre class="example">type Email = private Email of string
+
+type PedidoStatus =
+    | Criado
+    | Pago of dataPagamento: System.DateTime
+    | Cancelado of motivo: string
+
+type Pedido = {
+    Id: System.Guid
+    ClienteEmail: Email
+    Status: PedidoStatus
+}
+
+<span class="kw">let</span> cancelar motivo pedido =
+    match pedido.Status with
+    | Pago _ -&gt; Error <span class="str">"pedido pago nao pode ser cancelado"</span>
+    | Cancelado _ -&gt; Error <span class="str">"pedido ja cancelado"</span>
+    | Criado -&gt; Ok { pedido with Status = Cancelado motivo }</pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="aviso" aria-hidden="true"></span> Evite usar string solta para representar estados de dominio. Prefira tipos explicitos para impedir combinacoes invalidas.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Teste de Unidade e de Propriedade</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">FsCheck para validar invariantes</div>
+          <pre class="example">open FsCheck
+
+<span class="kw">let</span> somaEhComutativa (a: int) (b: int) =
+    (a + b) = (b + a)
+
+Check.QuickThrowOnFailure somaEhComutativa</pre>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Estrategia recomendada</p>
+          <ul>
+            <li>Unitarios no dominio (rapidos, sem I/O).</li>
+            <li>Integracao para adaptadores externos (banco, APIs, filas).</li>
+            <li>Contratos para endpoints publicos (OpenAPI e versionamento).</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="observabilidade">Logs, Metricas e Tracing</h2>
+        <p>Projetos maduros em F# usam a pilha padrao do .NET para observabilidade: OpenTelemetry, Serilog e exporters para Prometheus/Grafana ou Azure Monitor.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Log estruturado com contexto de dominio</div>
+          <pre class="example">logger.LogInformation(
+    <span class="str">"Pedido {PedidoId} mudou para status {Status}"</span>,
+    pedido.Id,
+    pedido.Status
+)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ci-cd">CI/CD e Automacao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pipeline de build com FAKE (conceitual)</div>
+          <pre class="example">Target.create <span class="str">"Restore"</span> (fun _ -&gt; DotNet.restore id <span class="str">"MinhaSolucao.sln"</span>)
+Target.create <span class="str">"Build"</span>   (fun _ -&gt; DotNet.build id <span class="str">"MinhaSolucao.sln"</span>)
+Target.create <span class="str">"Test"</span>    (fun _ -&gt; DotNet.test id <span class="str">"MinhaSolucao.sln"</span>)
+
+open Fake.Core.TargetOperators
+<span class="str">"Restore"</span> ==&gt; <span class="str">"Build"</span> ==&gt; <span class="str">"Test"</span>
+Target.runOrDefault <span class="str">"Test"</span></pre>
+        </div>
+        <p>O beneficio de scriptar em F# e compartilhar tipos, utilitarios e convencoes entre automacao e produto.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="armadilhas">Armadilhas Comuns</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Mutabilidade sem criterio</h3><p>Usar <code>mutable</code> em excesso reduz previsibilidade e dificulta paralelizacao.</p></div>
+          <div class="card"><h3>Excecoes como fluxo</h3><p>Para falhas esperadas, prefira <code>Result</code> e compose com <code>bind</code>.</p></div>
+          <div class="card"><h3>Acoplamento ao framework</h3><p>Nao coloque regras de negocio dentro do handler HTTP. Mantenha o dominio independente.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>WLASCHIN, S. <strong>Domain Modeling Made Functional</strong>. Pragmatic Bookshelf, 2018.</li>
+            <li>Microsoft. <strong>.NET Application Architecture Guides</strong>. Disponivel em: &lt;https://learn.microsoft.com/dotnet/architecture/&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>FAKE. <strong>FAKE Documentation</strong>. Disponivel em: &lt;https://fake.build/&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>FsCheck. <strong>FsCheck Documentation</strong>. Disponivel em: &lt;https://fscheck.github.io/FsCheck/&gt;. Acesso em: 13 mar. 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Revisar F# Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Persistencia com Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto F# de longo prazo nao depende de truque de linguagem: depende de <strong>tipos corretos, fronteiras claras e automacao disciplinada</strong>.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

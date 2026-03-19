@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas praticas em Clojure: organizacao por dominio, REPL-driven development, testes, observabilidade, configuracao, performance e operacao em producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Clojure: Projetos e Boas Praticas</strong></p>
+      </div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure">
+            <span data-svg="clojure" aria-hidden="true"></span>
+          </div>
+          <h1>Engenharia de software Clojure em producao</h1>
+          <p>Boas praticas em Clojure nao sao um checklist estetico. Elas reduzem risco operacional, aumentam previsibilidade e facilitam evolucao de dominio.</p>
+        </div>
+        <p class="intro-highlight">Projetos Clojure de alta qualidade mantem um nucleo funcional puro, isolam side effects em adaptadores e usam REPL para encurtar o ciclo de feedback tecnico.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Fundamentos de projeto</h2>
+        <p>Imagine um laboratorio: equipamentos de medicao ficam em bancadas separadas do experimento principal. Em software, isso significa separar regras de negocio de HTTP, banco, fila e cache. O experimento (dominio) deve ser reproduzivel sem a infraestrutura.</p>
+        <div class="panel">
+          <h3 class="panel-title">Principios que escalam</h3>
+          <ul>
+            <li>Dados simples em fronteiras: map, vector, keyword, sem objetos opacos.</li>
+            <li>Funcoes puras no dominio e efeitos nas bordas.</li>
+            <li>Contratos explicitos com spec ou malli.</li>
+            <li>Configuracao externa e 12-factor para deploy.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de diretorios recomendada</h2>
+        <pre class="example"><code>src/
+  app/
+    core.clj
+    config.clj
+    system.clj
+    domain/
+      pedidos.clj
+      faturamento.clj
+    adapters/
+      http.clj
+      db.clj
+      queue.clj
+      observability.clj
+resources/
+  logback.xml
+  config.edn
+test/
+  app/
+    domain/
+    adapters/
+    integration/
+build.clj
+deps.edn</code></pre>
+        <p>Essa distribuicao orientada a dominio evita pacotes por "tipo tecnico" (service/repository/controller) que tendem a espalhar regras de negocio por toda a base.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fluxo-dev">REPL-driven development na pratica</h2>
+        <pre class="example"><code><span class="kw">(ns</span> dev
+  <span class="tp">(:require</span>
+    [integrant.core <span class="str">:as</span> ig]
+    [clojure.tools.namespace.repl <span class="str">:refer</span> [refresh]]
+    [app.config <span class="str">:as</span> config]))
+
+(<span class="kw">def</span> system (atom nil))
+
+(<span class="kw">defn</span> start []
+  (<span class="kw">let</span> [cfg (config/load-config)]
+    (reset! system (ig/init cfg))))
+
+(<span class="kw">defn</span> stop []
+  (<span class="kw">when</span> @system
+    (ig/halt! @system)
+    (reset! system nil)))
+
+(<span class="kw">defn</span> reset-system []
+  (stop)
+  (refresh <span class="str">:after</span> 'dev/start))</code></pre>
+        <p>Com esse fluxo, voce atualiza namespaces e reinicia apenas o necessario, preservando ritmo de iteracao sem reiniciar todo o processo JVM a cada mudanca.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Estrategia de testes</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Teste de dominio</h3>
+            <p>Rapido, puro e deterministico. Sem DB ou rede. Cobertura de regras e edge cases.</p>
+          </div>
+          <div class="card">
+            <h3>Teste de contrato HTTP</h3>
+            <p>Valida esquema de request/response, serializacao e codigos de erro.</p>
+          </div>
+          <div class="card">
+            <h3>Teste de integracao</h3>
+            <p>Executa contra infraestrutura real ou emulada para verificar wiring do sistema.</p>
+          </div>
+          <div class="card">
+            <h3>Teste de carga</h3>
+            <p>Mede latencia, throughput e pressao de memoria para detectar gargalos antes da producao.</p>
+          </div>
+        </div>
+        <pre class="example"><code>(<span class="kw">deftest</span> calcula-total-com-desconto
+  (<span class="kw">let</span> [pedido {:itens [{:preco <span class="num">100</span> :qtd <span class="num">2</span>}]
+                :cupom {:tipo :percentual :valor <span class="num">10</span>}}]
+    (is (= <span class="num">180</span> (domain/total pedido)))))</code></pre>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="operacao">Boas praticas operacionais</h2>
+        <ul>
+          <li>Logs estruturados com identificador de correlacao por request.</li>
+          <li>Metricas de negocio e de infraestrutura separadas.</li>
+          <li>Timeout, retry com backoff e circuit breaker em integracoes externas.</li>
+          <li>Fail fast no boot quando configuracao obrigatoria estiver ausente.</li>
+          <li>Shutdown gracioso: interromper intake, drenar filas e finalizar recursos.</li>
+        </ul>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Nao trate JVM como caixa preta: acompanhe GC, alocacao e pausas. Muitos "bugs de Clojure" em producao sao, na verdade, problemas de sizing de heap e perfil de objeto.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Otimizacoes avancadas</h2>
+        <div class="panel">
+          <h3 class="panel-title">Reducao de alocacao em pipelines</h3>
+          <pre class="example"><code>(<span class="kw">def</span> xf
+  (comp
+    (filter :ativo?)
+    (map #(select-keys % [:id :nome :score]))
+    (remove #(nil? (:score %)))))
+
+(<span class="kw">defn</span> top-scores [usuarios]
+  (transduce xf
+             (<span class="kw">fn</span>
+               ([acc] acc)
+               ([acc u]
+                (<span class="kw">if</span> (&gt; (:score u) <span class="num">90</span>)
+                  (conj acc u)
+                  acc)))
+             []
+             usuarios))</code></pre>
+          <p>Transducers evitam colecoes intermediarias e reduzem pressao de GC em fluxos intensivos.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de estilos de projeto</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Abordagem</th><th>Vantagem</th><th>Risco</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Dominio funcional + adaptadores</td><td>Alta testabilidade e manutencao</td><td>Requer disciplina arquitetural</td></tr>
+            <tr><td>Camadas classicas anemicas</td><td>Familiar para times OO</td><td>Regras espalhadas e acoplamento</td></tr>
+            <tr><td>Monolito com estado global</td><td>Implementacao inicial rapida</td><td>Dificulta evolucao e concorrencia</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>HICKEY, R. Simple Made Easy. Disponivel em: <a href="https://www.infoq.com/presentations/Simple-Made-Easy/" target="_blank" rel="noopener">https://www.infoq.com/presentations/Simple-Made-Easy/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>CLOJURE. Clojure Style Guide. Disponivel em: <a href="https://guide.clojure.style/" target="_blank" rel="noopener">https://guide.clojure.style/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>INTEGRANT. Documentation. Disponivel em: <a href="https://cljdoc.org/d/integrant/integrant" target="_blank" rel="noopener">https://cljdoc.org/d/integrant/integrant</a>. Acesso em: 13 mar. 2026.</li>
+          <li>CHAO, A. et al. Clojure Applied. Pragmatic Bookshelf, 2015.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> O melhor projeto Clojure nao e o que usa mais bibliotecas; e o que mantem fronteiras de dados claras para evoluir sem medo.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/fundamentos.html">Clojure: Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/avancado.html">Clojure: Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/bibliotecas_frameworks.html">Clojure: Bibliotecas e Frameworks</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

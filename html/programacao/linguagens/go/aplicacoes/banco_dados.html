@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Banco de dados com Go: database/sql, pgx, sqlx, GORM, migrações e connection pool." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Banco de Dados</h1>
+          <p>Go oferece acesso a bancos de dados relacionais via <code>database/sql</code> (stdlib) com drivers específicos, <code>pgx</code> para PostgreSQL nativo de alta performance, <code>sqlx</code> para mapeamento de structs, e <code>GORM</code> para ORM completo. Migrações são gerenciadas com <code>golang-migrate</code> ou <code>goose</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          <code>database/sql</code> gerencia um <strong>connection pool automático</strong>. Cada chamada <code>db.QueryContext()</code> pega uma conexão do pool e devolve ao terminar. O pool se ajusta automaticamente à carga — configure <code>SetMaxOpenConns</code>, <code>SetMaxIdleConns</code> e <code>SetConnMaxLifetime</code> para ambientes de produção. Não há necessidade de gerenciar conexões manualmente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="database-sql">database/sql — Nível Baixo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Queries, scan de resultados e transações</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"database/sql"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"time"</span>
+    _ <span class="str">"github.com/lib/pq"</span>   <span class="com">// driver PostgreSQL — registra via init()</span>
+)
+
+<span class="kw">type</span> Produto <span class="kw">struct</span> {
+    ID        int
+    Nome      string
+    Preco     float64
+    CriadoEm  time.Time
+}
+
+<span class="kw">func</span> <span class="fn">conectar</span>() *sql.DB {
+    db, err := sql.Open(<span class="str">"postgres"</span>,
+        <span class="str">"host=localhost port=5432 user=app password=senha dbname=shop sslmode=disable"</span>)
+    <span class="kw">if</span> err != nil {
+        panic(err)
+    }
+    <span class="com">// Configurar connection pool</span>
+    db.SetMaxOpenConns(25)
+    db.SetMaxIdleConns(5)
+    db.SetConnMaxLifetime(5 * time.Minute)
+    db.SetConnMaxIdleTime(1 * time.Minute)
+    <span class="kw">return</span> db
+}
+
+<span class="com">// Query — múltiplas linhas</span>
+<span class="kw">func</span> <span class="fn">listarProdutos</span>(ctx context.Context, db *sql.DB) ([]Produto, error) {
+    rows, err := db.QueryContext(ctx,
+        <span class="str">"SELECT id, nome, preco, criado_em FROM produtos WHERE ativo = $1"</span>, true)
+    <span class="kw">if</span> err != nil {
+        <span class="kw">return</span> nil, fmt.Errorf(<span class="str">"listarProdutos: %w"</span>, err)
+    }
+    defer rows.Close()
+
+    <span class="kw">var</span> produtos []Produto
+    <span class="kw">for</span> rows.Next() {
+        <span class="kw">var</span> p Produto
+        <span class="kw">if</span> err := rows.Scan(&amp;p.ID, &amp;p.Nome, &amp;p.Preco, &amp;p.CriadoEm); err != nil {
+            <span class="kw">return</span> nil, fmt.Errorf(<span class="str">"scan: %w"</span>, err)
+        }
+        produtos = append(produtos, p)
+    }
+    <span class="kw">return</span> produtos, rows.Err()
+}
+
+<span class="com">// QueryRow — uma linha</span>
+<span class="kw">func</span> <span class="fn">buscarPorID</span>(ctx context.Context, db *sql.DB, id int) (*Produto, error) {
+    <span class="kw">var</span> p Produto
+    err := db.QueryRowContext(ctx,
+        <span class="str">"SELECT id, nome, preco, criado_em FROM produtos WHERE id = $1"</span>, id).
+        Scan(&amp;p.ID, &amp;p.Nome, &amp;p.Preco, &amp;p.CriadoEm)
+    <span class="kw">if</span> err == sql.ErrNoRows {
+        <span class="kw">return</span> nil, nil   <span class="com">// não encontrado</span>
+    }
+    <span class="kw">return</span> &amp;p, err
+}
+
+<span class="com">// Transação</span>
+<span class="kw">func</span> <span class="fn">transferir</span>(ctx context.Context, db *sql.DB, deID, paraID int, valor float64) error {
+    tx, err := db.BeginTx(ctx, &amp;sql.TxOptions{Isolation: sql.LevelSerializable})
+    <span class="kw">if</span> err != nil { <span class="kw">return</span> err }
+    defer tx.Rollback()   <span class="com">// no-op se Commit() chamou antes</span>
+
+    _, err = tx.ExecContext(ctx,
+        <span class="str">"UPDATE contas SET saldo = saldo - $1 WHERE id = $2"</span>, valor, deID)
+    <span class="kw">if</span> err != nil { <span class="kw">return</span> err }
+
+    _, err = tx.ExecContext(ctx,
+        <span class="str">"UPDATE contas SET saldo = saldo + $1 WHERE id = $2"</span>, valor, paraID)
+    <span class="kw">if</span> err != nil { <span class="kw">return</span> err }
+
+    <span class="kw">return</span> tx.Commit()
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pgx">pgx — Driver PostgreSQL Nativo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pgx v5: batch, COPY e tipos PostgreSQL nativos</div>
+          <pre class="example"><span class="com">// go get github.com/jackc/pgx/v5</span>
+<span class="kw">import</span> (
+    <span class="str">"github.com/jackc/pgx/v5"</span>
+    <span class="str">"github.com/jackc/pgx/v5/pgxpool"</span>
+)
+
+<span class="com">// Pool de conexões pgx</span>
+pool, _ := pgxpool.New(ctx, <span class="str">"postgres://user:pass@localhost/shop"</span>)
+defer pool.Close()
+
+<span class="com">// Row scan sem reflect (tipado)</span>
+row := pool.QueryRow(ctx, <span class="str">"SELECT id, nome, preco FROM produtos WHERE id=$1"</span>, 1)
+<span class="kw">var</span> id int; <span class="kw">var</span> nome string; <span class="kw">var</span> preco float64
+row.Scan(&amp;id, &amp;nome, &amp;preco)
+
+<span class="com">// pgx.CollectRows — scan para slice de structs</span>
+rows, _ := pool.Query(ctx, <span class="str">"SELECT id, nome, preco FROM produtos"</span>)
+produtos, _ := pgx.CollectRows(rows, pgx.RowToStructByName[Produto])
+
+<span class="com">// Batch — enviar múltiplos comandos em 1 roundtrip</span>
+batch := &amp;pgx.Batch{}
+batch.Queue(<span class="str">"INSERT INTO produtos (nome, preco) VALUES ($1, $2)"</span>, <span class="str">"A"</span>, 10.0)
+batch.Queue(<span class="str">"INSERT INTO produtos (nome, preco) VALUES ($1, $2)"</span>, <span class="str">"B"</span>, 20.0)
+pool.SendBatch(ctx, batch).Close()
+
+<span class="com">// COPY — inserção em massa (10x mais rápido que INSERTs)</span>
+_, err := pool.CopyFrom(
+    ctx,
+    pgx.Identifier{<span class="str">"produtos"</span>},
+    []string{<span class="str">"nome"</span>, <span class="str">"preco"</span>},
+    pgx.CopyFromSlice(len(dados), <span class="kw">func</span>(i int) ([]any, error) {
+        <span class="kw">return</span> []any{dados[i].Nome, dados[i].Preco}, nil
+    }),
+)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="migracoes">Migrações com golang-migrate</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criar e aplicar migrações SQL versionadas</div>
+          <pre class="example"><span class="com"># Instalar golang-migrate</span>
+go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+<span class="com"># Criar migração</span>
+migrate create -ext sql -dir migrations/ -seq create_produtos
+
+<span class="com"># migrations/000001_create_produtos.up.sql</span>
+CREATE TABLE produtos (
+    id         SERIAL PRIMARY KEY,
+    nome       VARCHAR(255) NOT NULL,
+    preco      DECIMAL(10,2) NOT NULL CHECK (preco >= 0),
+    ativo      BOOLEAN NOT NULL DEFAULT true,
+    criado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_produtos_nome ON produtos(nome);
+
+<span class="com"># migrations/000001_create_produtos.down.sql</span>
+DROP TABLE IF EXISTS produtos;
+
+<span class="com"># Aplicar migrações</span>
+migrate -path migrations/ -database $DATABASE_URL up
+migrate -path migrations/ -database $DATABASE_URL down 1
+migrate -path migrations/ -database $DATABASE_URL version
+
+<span class="com">// Usar golang-migrate programaticamente no Go</span>
+<span class="kw">import</span> <span class="str">"github.com/golang-migrate/migrate/v4"</span>
+
+m, err := migrate.New(<span class="str">"file://migrations"</span>, databaseURL)
+<span class="kw">if</span> err != nil { log.Fatal(err) }
+<span class="kw">if</span> err := m.Up(); err != nil && err != migrate.ErrNoChange {
+    log.Fatal(err)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis com go-redis</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Cache, sessões e pub/sub com Redis</div>
+          <pre class="example"><span class="com">// go get github.com/redis/go-redis/v9</span>
+<span class="kw">import</span> <span class="str">"github.com/redis/go-redis/v9"</span>
+
+rdb := redis.NewClient(&amp;redis.Options{
+    Addr:     <span class="str">"localhost:6379"</span>,
+    Password: <span class="str">""</span>,
+    DB:       0,
+})
+defer rdb.Close()
+
+<span class="com">// SET com TTL</span>
+rdb.Set(ctx, <span class="str">"sessao:abc"</span>, <span class="str">"userid:42"</span>, 24*time.Hour)
+
+<span class="com">// GET</span>
+val, err := rdb.Get(ctx, <span class="str">"sessao:abc"</span>).Result()
+<span class="kw">if</span> err == redis.Nil {
+    fmt.Println(<span class="str">"sessão expirada"</span>)
+}
+
+<span class="com">// Cache-aside pattern</span>
+<span class="kw">func</span> <span class="fn">buscarComCache</span>(ctx context.Context, id int) (*Produto, error) {
+    chave := fmt.Sprintf(<span class="str">"produto:%d"</span>, id)
+    
+    cached, err := rdb.Get(ctx, chave).Bytes()
+    <span class="kw">if</span> err == nil {
+        <span class="kw">var</span> p Produto
+        json.Unmarshal(cached, &amp;p)
+        <span class="kw">return</span> &amp;p, nil
+    }
+
+    p, err := buscarDoBanco(ctx, id)
+    <span class="kw">if</span> err != nil { <span class="kw">return</span> nil, err }
+
+    data, _ := json.Marshal(p)
+    rdb.Set(ctx, chave, data, 5*time.Minute)
+    <span class="kw">return</span> p, nil
+}
+
+<span class="com">// Pub/Sub</span>
+pubsub := rdb.Subscribe(ctx, <span class="str">"eventos"</span>)
+ch := pubsub.Channel()
+<span class="kw">go</span> <span class="kw">func</span>() {
+    <span class="kw">for</span> msg := <span class="kw">range</span> ch {
+        fmt.Println(<span class="str">"evento:"</span>, msg.Payload)
+    }
+}()
+rdb.Publish(ctx, <span class="str">"eventos"</span>, <span class="str">"produto_criado:42"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>database/sql package</strong>. Disponível em: &lt;https://pkg.go.dev/database/sql&gt;. Acesso em: 2026.</li>
+            <li>pgx. <strong>pgx — PostgreSQL Driver and Toolkit</strong>. Disponível em: &lt;https://github.com/jackc/pgx&gt;. Acesso em: 2026.</li>
+            <li>golang-migrate. <strong>Database migrations written in Go</strong>. Disponível em: &lt;https://github.com/golang-migrate/migrate&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Go</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O padrão de usar <code>defer tx.Rollback()</code> logo após <code>BeginTx()</code> é idiomático em Go e <strong>garante que a transação seja revertida em qualquer caminho de erro</strong> — mesmo que você retorne cedo, mesmo que um panic ocorra (com recover). Quando <code>Commit()</code> é chamado com sucesso, o <code>Rollback()</code> posterior é um no-op. Sem necessidade de try/finally, sem handler de exceção. Lógica clara, segura por construção.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

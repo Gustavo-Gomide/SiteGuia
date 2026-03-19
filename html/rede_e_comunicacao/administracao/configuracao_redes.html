@@ -1,0 +1,287 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Configuração de redes no Linux e Windows: ip, ifconfig, netplan, NetworkManager, rotas estáticas e DNS resolver." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Configuração de Redes | Administração | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Administração de Redes</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="network"></span>
+          <div>
+            <h1 class="page-title">Configuração de Redes</h1>
+            <p class="page-subtitle"><code class="code-inline">ip</code>, ifconfig, netplan, <abbr title="NetworkManager">NM</abbr>, rotas estáticas e resolução <abbr title="Domain Name System">DNS</abbr> no Linux e Windows</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          A configuração correta de interfaces de rede, endereços <abbr title="Internet Protocol">IP</abbr>, rotas e <abbr title="Domain Name System">DNS</abbr> é a base
+          para qualquer comunicação em rede. Este guia cobre as ferramentas modernas (iproute2, netplan)
+          e clássicas (ifconfig, route) no Linux, além do netsh/PowerShell no Windows.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — COMANDOS IP ═══════════════════ -->
+      <section id="comandos-ip">
+        <h2 id="comandos-ip" class="section-title">Comandos ip — iproute2 (Linux moderno)</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Ação</th><th>Comando ip (moderno)</th><th>Equivalente ifconfig/route (legado)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Listar interfaces</td><td><code class="code-inline">ip link show</code></td><td><code class="code-inline">ifconfig -a</code></td></tr>
+              <tr><td>Listar endereços <abbr title="Internet Protocol">IP</abbr></td><td><code class="code-inline">ip addr show</code></td><td><code class="code-inline">ifconfig</code></td></tr>
+              <tr><td>Adicionar <abbr title="Internet Protocol">IP</abbr></td><td><code class="code-inline">ip addr add 192.168.1.10/24 dev eth0</code></td><td><code class="code-inline">ifconfig eth0 192.168.1.10 netmask 255.255.255.0</code></td></tr>
+              <tr><td>Remover <abbr title="Internet Protocol">IP</abbr></td><td><code class="code-inline">ip addr del 192.168.1.10/24 dev eth0</code></td><td><code class="code-inline">ifconfig eth0 0.0.0.0</code></td></tr>
+              <tr><td>Ativar interface</td><td><code class="code-inline">ip link set eth0 up</code></td><td><code class="code-inline">ifconfig eth0 up</code></td></tr>
+              <tr><td>Desativar interface</td><td><code class="code-inline">ip link set eth0 down</code></td><td><code class="code-inline">ifconfig eth0 down</code></td></tr>
+              <tr><td>Ver tabela de rotas</td><td><code class="code-inline">ip route show</code></td><td><code class="code-inline">route -n</code></td></tr>
+              <tr><td>Gateway padrão</td><td><code class="code-inline">ip route add default via 192.168.1.1</code></td><td><code class="code-inline">route add default gw 192.168.1.1</code></td></tr>
+              <tr><td>Rota estática</td><td><code class="code-inline">ip route add 10.0.0.0/8 via 192.168.1.1 dev eth0</code></td><td><code class="code-inline">route add -net 10.0.0.0/8 gw 192.168.1.1</code></td></tr>
+              <tr><td>Remover rota</td><td><code class="code-inline">ip route del 10.0.0.0/8</code></td><td><code class="code-inline">route del -net 10.0.0.0/8</code></td></tr>
+              <tr><td>Ver vizinhos <abbr title="Address Resolution Protocol">ARP</abbr></td><td><code class="code-inline">ip neigh show</code></td><td><code class="code-inline">arp -n</code></td></tr>
+              <tr><td>Ver estatísticas</td><td><code class="code-inline">ip -s link show eth0</code></td><td><code class="code-inline">ifconfig eth0</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">As alterações com <code class="code-inline">ip</code> são voláteis (perdem ao reiniciar). Para persistência, use netplan ou NetworkManager.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — NETPLAN ═══════════════════ -->
+      <section id="netplan">
+        <h2 id="netplan" class="section-title">Netplan (Ubuntu 18.04+)</h2>
+        <div class="section-divider"></div>
+        <p>Netplan é o sistema de configuração de rede padrão no Ubuntu. Gera configurações
+        para NetworkManager (desktop) ou systemd-networkd (servidor) a partir de arquivos <abbr title="YAML Ain't Markup Language">YAML</abbr>.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title"><abbr title="Internet Protocol">IP</abbr> Estático</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">/etc/netplan/01-netcfg.yaml</div>
+              <pre class="code-block">network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    eth0:
+      dhcp4: no
+      addresses:
+        - 192.168.1.100/24
+      routes:
+        - to: default
+          via: 192.168.1.1
+      nameservers:
+        search: [example.com]
+        addresses: [8.8.8.8, 1.1.1.1]</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title"><abbr title="Dynamic Host Configuration Protocol">DHCP</abbr> + <abbr title="Domain Name System">DNS</abbr> personalizado</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">/etc/netplan/01-netcfg.yaml</div>
+              <pre class="code-block">network:
+  version: 2
+  ethernets:
+    eth0:
+      dhcp4: yes
+      dhcp4-overrides:
+        use-dns: false
+      nameservers:
+        addresses: [8.8.8.8, 8.8.4.4]
+    eth1:
+      dhcp4: yes</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Comandos netplan</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Testar config (gera arquivos temporários)
+netplan try
+# Aplica por 120s; reverter com Enter se algo falhar
+
+# Aplicar permanentemente
+netplan apply
+
+# Gerar config (sem aplicar)
+netplan generate
+
+# Checar sintaxe
+netplan info</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — NETWORKMANAGER ═══════════════════ -->
+      <section id="networkmanager">
+        <h2 id="networkmanager" class="section-title">NetworkManager (nmcli / nmtui)</h2>
+        <div class="section-divider"></div>
+        <div class="logic-grid">
+          <div class="card">
+            <h3 class="panel-title">nmcli — linha de comando</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Listar conexões
+nmcli connection show
+nmcli device status
+
+# Criar conexão estática
+nmcli con add type ethernet \
+  con-name "eth0-static" \
+  ifname eth0 \
+  ipv4.addresses 192.168.1.50/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "8.8.8.8 1.1.1.1" \
+  ipv4.method manual
+
+# Ativar / desativar
+nmcli con up   "eth0-static"
+nmcli con down "eth0-static"</pre>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="panel-title">nmtui — interface <abbr title="Text User Interface">TUI</abbr></h3>
+            <p><code class="code-inline">nmtui</code> oferece uma interface de texto interativa — útil quando não há <abbr title="Graphical User Interface">GUI</abbr> disponível.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Iniciar interface TUI
+nmtui
+# Opções: Edit connection / Activate / Set hostname</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — DNS ═══════════════════ -->
+      <section id="dns">
+        <h2 id="dns" class="section-title">Configuração <abbr title="Domain Name System">DNS</abbr></h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">/etc/resolv.conf (legado)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Atenção: pode ser sobrescrito pelo NetworkManager!
+# Em Ubuntu moderno, é um symlink para systemd-resolved
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+search example.com interno.example.com
+options ndots:5 timeout:2 attempts:3</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">systemd-resolved</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Ver DNS atual
+resolvectl status
+resolvectl dns
+
+# Configurar DNS por link
+resolvectl dns eth0 8.8.8.8 1.1.1.1
+resolvectl domain eth0 example.com
+
+# Consulta via systemd-resolved
+resolvectl query google.com</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Windows — netsh / PowerShell</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Ver interfaces
+Get-NetAdapter
+netsh interface show interface
+
+# IP estático
+netsh interface ip set address `
+  name="Ethernet" static 192.168.1.50 255.255.255.0 192.168.1.1
+
+# DNS
+netsh interface ip set dns `
+  name="Ethernet" static 8.8.8.8
+
+# PowerShell moderno
+New-NetIPAddress -InterfaceAlias "Ethernet" `
+  -IPAddress 192.168.1.50 -PrefixLength 24 `
+  -DefaultGateway 192.168.1.1</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 6 — ROTAS ESTÁTICAS ═══════════════════ -->
+      <section id="rotas-estaticas">
+        <h2 id="rotas-estaticas" class="section-title">Rotas Estáticas Persistentes</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Debian/Ubuntu — /etc/network/interfaces (legado)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># /etc/network/interfaces
+iface eth0 inet static
+  address 192.168.1.100
+  netmask 255.255.255.0
+  gateway 192.168.1.1
+  post-up   ip route add 10.0.0.0/8 via 192.168.1.250
+  pre-down  ip route del 10.0.0.0/8 via 192.168.1.250</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title"><abbr title="Red Hat Enterprise Linux">RHEL</abbr>/Rocky — route-eth0</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">/etc/sysconfig/network-scripts/route-eth0</div>
+              <pre class="code-block">10.0.0.0/8 via 192.168.1.250
+172.16.0.0/12 via 192.168.1.250</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Windows — rota persistente</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># -p = persistente (sobrevive ao reboot)
+route -p ADD 10.0.0.0 MASK 255.0.0.0 192.168.1.250
+route PRINT
+route DELETE 10.0.0.0</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde o diagnóstico com as ferramentas certas:
+          <a href="/html/rede_e_comunicacao/administracao/ferramentas_rede.html">Ferramentas de Rede</a> e
+          <a href="/html/rede_e_comunicacao/administracao/troubleshooting.html">Troubleshooting</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Rede que não se configura com precisão, não se diagnostica com facilidade."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

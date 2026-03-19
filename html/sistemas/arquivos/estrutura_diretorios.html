@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Estrutura de diretórios em Linux e Windows: hierarquia FHS, diretórios padrão /etc /var /usr /proc, montagem de volumes e comparação com a estrutura Windows." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Estrutura de Diretórios | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Estrutura de Diretórios</h1>
+            <p class="page-subtitle">FHS, pseudo-filesystems, montagem de volumes e comparação Linux vs Windows</p>
+          </div>
+        </div>
+        <p class="intro-highlight">A hierarquia de diretórios define onde cada tipo de dado deve residir no sistema de arquivos, facilitando administração, automação e portabilidade de scripts. O padrão FHS (Filesystem Hierarchy Standard) codifica essa convenção para sistemas Unix-like, enquanto o Windows usa uma estrutura centrada em letras de drive e no Registry.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — FHS ═══════════════════ -->
+      <section id="fhs">
+        <h2>FHS — Filesystem Hierarchy Standard</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Diretório</th>
+                <th>Conteúdo</th>
+                <th>Montavel separadamente</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>/</td><td>Raiz da arvore; tudo esta aqui</td><td>—</td></tr>
+              <tr><td>/bin</td><td>Binarios essenciais (ls, cp, bash) — necessarios no boot</td><td>Nao</td></tr>
+              <tr><td>/sbin</td><td>Binarios de administracao do sistema (fsck, ifconfig)</td><td>Nao</td></tr>
+              <tr><td>/etc</td><td>Arquivos de configuracao do sistema e servicos</td><td>Nao recomendado</td></tr>
+              <tr><td>/var</td><td>Dados variaveis: logs (/var/log), spools, bancos, caches</td><td>Sim</td></tr>
+              <tr><td>/tmp</td><td>Arquivos temporarios; limpos no boot (ou via tmpfs)</td><td>Sim (tmpfs)</td></tr>
+              <tr><td>/home</td><td>Diretorios pessoais dos usuarios comuns</td><td>Sim</td></tr>
+              <tr><td>/root</td><td>Home do usuario root</td><td>Nao</td></tr>
+              <tr><td>/usr</td><td>Programas e dados nao-essenciais ao boot (/usr/bin, /usr/lib)</td><td>Sim (ro)</td></tr>
+              <tr><td>/lib</td><td>Bibliotecas compartilhadas necessarias para /bin e /sbin</td><td>Nao</td></tr>
+              <tr><td>/proc</td><td>Pseudo-FS de processos e parametros do kernel (RAM)</td><td>Nao (virtual)</td></tr>
+              <tr><td>/sys</td><td>Pseudo-FS de dispositivos e drivers do kernel (sysfs)</td><td>Nao (virtual)</td></tr>
+              <tr><td>/dev</td><td>Arquivos de dispositivo (char e block devices)</td><td>Nao (devtmpfs)</td></tr>
+              <tr><td>/mnt</td><td>Ponto de montagem temporario (uso manual)</td><td>Sim</td></tr>
+              <tr><td>/media</td><td>Montagem automatica de midia removivel (USB, CD)</td><td>Sim</td></tr>
+              <tr><td>/opt</td><td>Software de terceiros instalado fora do gerenciador de pacotes</td><td>Sim</td></tr>
+              <tr><td>/boot</td><td>Kernel (vmlinuz), initrd, GRUB e arquivos necessarios ao boot</td><td>Sim</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — /proc e /sys ═══════════════════ -->
+      <section id="proc-sys">
+        <h2>/proc e /sys — Pseudo-Filesystems</h2>
+        <p><code>/proc</code> expoe processos e parametros do kernel como arquivos de texto. Cada processo tem um subdiretorio <code>/proc/PID/</code> com arquivos como <code>maps</code> (mapa de memoria virtual), <code>fd/</code> (file descriptors abertos), <code>status</code> e <code>cmdline</code>. Arquivos como <code>/proc/meminfo</code> e <code>/proc/cpuinfo</code> expõem hardware ao espaco de usuario sem syscalls dedicadas.</p>
+        <p><code>/sys</code> (sysfs) expõe a arvore de dispositivos do kernel: barramento, drivers, e atributos configuráveis. A filosofia Unix — "tudo é arquivo" — significa que parametros de kernel podem ser lidos e escritos com <code>cat</code> e <code>echo</code>.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — lendo informações via /proc</div>
+          <pre class="code-block"># Informações de memória
+cat /proc/meminfo | head -10
+
+# CPUs disponíveis
+cat /proc/cpuinfo | grep "model name" | uniq
+
+# Mapa de memória do processo 1234
+cat /proc/1234/maps
+
+# File descriptors abertos pelo processo 1234
+ls -la /proc/1234/fd
+
+# Parâmetro do kernel: tamanho máximo de arquivo de core
+cat /proc/sys/kernel/core_pattern
+
+# Alterar limite de arquivos abertos via sysctl / /proc
+echo 1000000 > /proc/sys/fs/file-max</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — MONTAGEM ═══════════════════ -->
+      <section id="montagem">
+        <h2>Montagem de Volumes</h2>
+        <p>No Linux, todos os sistemas de arquivos sao montados em um ponto da arvore unica. O comando <code>mount</code> anexa um volumeao diretorio especificado. O arquivo <code>/etc/fstab</code> define montagens persistentes que ocorrem no boot.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — mount e fstab</div>
+          <pre class="code-block"># Montar um disco manualmente
+mount -t ext4 /dev/sdb1 /mnt/dados
+
+# Ver todas as montagens ativas
+mount | column -t
+
+# /etc/fstab — formato: dispositivo ponto-de-montagem tipo opções dump pass
+# Usando UUID (preferível a /dev/sdX, que pode mudar)
+UUID=a1b2c3d4-...  /home  ext4  defaults,noatime  0  2
+
+# Opções comuns de montagem
+# ro         — somente leitura
+# noexec     — impede execução de binários
+# nosuid     — ignora bits setuid/setgid
+# noatime    — não atualiza atime em leitura (desempenho)
+
+# Bind mount — redireciona /origem para /destino
+mount --bind /var/lib/docker/volumes /mnt/volumes
+
+# Namespace de montagem (containers): cada namespace tem sua própria árvore
+unshare --mount bash</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — LINUX VS WINDOWS ═══════════════════ -->
+      <section id="linux-vs-windows">
+        <h2>Windows vs Linux — Estrutura Comparada</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Função</th>
+                <th>Linux</th>
+                <th>Windows</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Diretorios de usuario</td><td>/home/usuario/</td><td>C:\Users\usuario\</td></tr>
+              <tr><td>Configuracoes do sistema</td><td>/etc/</td><td>Registry (HKLM) + C:\Windows\System32\</td></tr>
+              <tr><td>Logs do sistema</td><td>/var/log/</td><td>C:\Windows\System32\winevt\Logs\</td></tr>
+              <tr><td>Binarios do sistema</td><td>/usr/bin/, /bin/</td><td>C:\Windows\System32\</td></tr>
+              <tr><td>Bibliotecas compartilhadas</td><td>/usr/lib/, /lib/</td><td>C:\Windows\System32\ (DLLs)</td></tr>
+              <tr><td>Software de terceiros</td><td>/usr/local/, /opt/</td><td>C:\Program Files\</td></tr>
+              <tr><td>Temporarios</td><td>/tmp/, /var/tmp/</td><td>C:\Windows\Temp\, %TEMP%</td></tr>
+              <tr><td>Configuracoes do usuario</td><td>~/.config/, dotfiles</td><td>C:\Users\usuario\AppData\</td></tr>
+              <tr><td>Separador de caminho</td><td>/</td><td>\ (aceita / em muitas APIs)</td></tr>
+              <tr><td>Case-sensitive</td><td>Sim (por padrao)</td><td>Nao (por padrao no NTFS)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/sistema_arquivos.html">Sistema de Arquivos</a> e <a href="/html/sistemas/arquivos/permissoes.html">Permissões de Arquivo</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Uma hierarquia bem definida é o que separa um sistema operável de um caos de arquivos sem endereço."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Reconhecimento em Pentest: OSINT, Google Dorks, Shodan, theHarvester, Recon-ng, subfinder — como coletar informações sobre o alvo sem detectar." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Reconhecimento em Pentest | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Reconhecimento (Recon)</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Reconhecimento?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Reconhecimento (Recon)</h1>
+          <p>Coleta passiva de informações sobre o alvo antes de qualquer contato direto.</p>
+        </div>
+
+        <p class="intro-highlight">Reconhecimento é a fase inicial do pentest onde você coleta o máximo de informações sobre o alvo sem interagir diretamente com seus sistemas. Quanto mais você sabe sobre o alvo, mais direcionada e eficaz será sua abordagem nas fases seguintes.</p>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Reconhecimento Passivo</h3>
+            <p>Coleta de informações usando apenas fontes públicas — sem enviar pacotes ao alvo. OSINT (Open Source Intelligence). Não pode ser detectado pela equipe defensiva do alvo.</p>
+            <p><strong>Fontes:</strong> WHOIS, DNS público, Google, LinkedIn, GitHub, Shodan, cert.sh, Wayback Machine</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Reconhecimento Ativo</h3>
+            <p>Interação direta com os sistemas do alvo — DNS queries, port scanning suave, web spidering. Pode ser detectado por IDS/IPS e gerar logs.</p>
+            <p><strong>Ferramentas:</strong> Nmap (scan discreto), dnsx, subfinder, feroxbuster</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="osint" class="section-title">OSINT — Fontes e Técnicas</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>DNS Reconnaissance</h3>
+            <p>Enumeração de DNS revela subdomínios, servidores de email, registros TXT (SPF, DKIM, verificações de serviços externos). Transferência de zona (AXFR) se mal configurado expõe tudo de uma vez.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Subdomínios com subfinder:
+subfinder -d empresa.com.br -o subs.txt
+
+# DNS brute force com dnsx:
+dnsx -l subs.txt -a -cname
+
+# Zone transfer (se permitido):
+dig axfr @ns1.empresa.com.br empresa.com.br</pre>
+          </div>
+          <div class="card">
+            <h3>Google Dorks</h3>
+            <p>Operadores especiais do Google para encontrar informações sensíveis indexadas:</p>
+            <pre class="code-block" style="font-size:0.8rem">
+site:empresa.com.br filetype:pdf
+site:empresa.com.br intitle:"index of"
+site:empresa.com.br "senha" OR "password"
+inurl:empresa.com.br ext:env OR ext:config
+"@empresa.com.br" site:linkedin.com</pre>
+          </div>
+          <div class="card">
+            <h3>theHarvester</h3>
+            <p>Coleta automatizada de emails, subdomínios, hosts, funcionários e outros dados de fontes públicas (Google, Bing, LinkedIn, Hunter.io, Shodan).</p>
+            <pre class="code-block" style="font-size:0.8rem">
+theHarvester -d empresa.com.br \
+    -b google,linkedin,shodan \
+    -f resultado.html</pre>
+          </div>
+          <div class="card">
+            <h3>Shodan</h3>
+            <p>Motor de busca para dispositivos conectados à internet. Encontra servidores, câmeras, roteadores, ICS/SCADA — frequentemente com banners de versão expostos.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Busca por organização:
+org:"Empresa Alvo" port:443
+# IPs com RDP exposto:
+org:"Empresa" port:3389
+# Certificados TLS da empresas:
+ssl.cert.subject.cn:"empresa.com.br"</pre>
+          </div>
+          <div class="card">
+            <h3>GitHub OSINT</h3>
+            <p>Desenvolvedores frequentemente commitam acidentalmente credenciais, chaves de API, senhas e tokens. Buscar pelo nome da empresa ou domínio pode revelar segredos vazados.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Busca manual no GitHub:
+"empresa.com.br" password
+"empresa.com.br" api_key
+"empresa.com.br" secret
+
+# Ferramentas: truffleHog, gitleaks,
+# git-secrets para varredura automatizada</pre>
+          </div>
+          <div class="card">
+            <h3>crt.sh — Certificados</h3>
+            <p>O Certificate Transparency Log é público. Todos os certificados SSL/TLS emitidos ficam registrados — incluindo subdomínios internos criados por engano com certificado público.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Consulta manual:
+https://crt.sh/?q=%25.empresa.com.br
+
+# Via curl + jq:
+curl -s "https://crt.sh/?q=%.empresa.com.br&output=json" \
+  | jq -r '.[].name_value' | sort -u</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="pessoas" class="section-title">Reconhecimento de Pessoas e Engenharia Social</h2>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p><strong>LinkedIn, Instagram, Facebook</strong> revelam: nomes de funcionários, cargos, projetos, tecnologias usadas, viagens, rotinas. Essas informações alimentam spear phishing (emails altamente personalizados) e pretexting (ligações se passando por alguém).</p>
+        </div>
+
+        <p>Emails corporativos têm padrões previsíveis. Se você sabe que a empresa usa <span class="code-inline">nome.sobrenome@empresa.com.br</span>, pode gerar uma lista de emails válidos a partir de funcionários do LinkedIn — para uso em phishing simulado ou password spraying contra o portal de email.</p>
+      </section>
+
+      <div class="callout">
+        <p>O reconhecimento bem feito economiza tempo nas fases seguintes e aumenta a chance de sucesso. Invista tempo aqui — muitos pentests descobrem vulnerabilidades críticas apenas com OSINT, sem nunca explorar tecnicamente. Próxima fase: <a href="/html/seguranca/offensive/enumeracao.html">Enumeração</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Informação é munição. O atacante que fez mais reconhecimento tem mais chances — porque sabe onde mirar."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

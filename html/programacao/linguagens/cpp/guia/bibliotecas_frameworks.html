@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e Frameworks C++: Boost, Qt, SFML, OpenCV, Eigen, nlohmann/json, fmt, spdlog, Catch2 e vcpkg." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Bibliotecas e Frameworks C++ | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>Bibliotecas e Frameworks C++</h1>
+          <p>O ecossistema C++ conta com bibliotecas de altissima qualidade para todos os dominios: utilidades gerais (Boost), interfaces graficas (Qt), jogos (SFML/SDL2), visao computacional (OpenCV), algebra linear (Eigen), JSON (nlohmann), logging (spdlog), testes (Catch2, GoogleTest) e muito mais.</p>
+        </div>
+        <p class="intro-highlight">
+          O gerenciador de pacotes vcpkg (Microsoft) e o Conan (JFrog) tornaram a instalacao de dependencias C++ pratica e reproducivel — acabou a era de copiar headers na mao.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boost">Boost</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Boost &mdash; Boost.Asio, Boost.Beast (HTTP) e Boost.JSON</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;boost/asio.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;boost/beast.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;boost/json.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">namespace</span> asio  = boost::<span class="tp">asio</span>;
+<span class="kw">namespace</span> beast = boost::<span class="tp">beast</span>;
+<span class="kw">namespace</span> http  = beast::<span class="tp">http</span>;
+<span class="kw">namespace</span> json  = boost::<span class="tp">json</span>;
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// --- Boost.JSON: parse e serialize ---</span>
+  json::<span class="tp">value</span> jv = json::<span class="fn">parse</span>(R<span class="str">"({"nome":"C++","versao":23,"ativo":true})"</span>);
+  <span class="kw">auto</span>&amp; obj = jv.<span class="fn">as_object</span>();
+  std::<span class="fn">println</span>(<span class="str">"nome: {}"</span>, json::<span class="fn">value_to</span>&lt;std::<span class="tp">string</span>&gt;(obj.<span class="fn">at</span>(<span class="str">"nome"</span>)));
+
+  <span class="com">// Construir JSON</span>
+  json::<span class="tp">object</span> saida;
+  saida[<span class="str">"resultado"</span>] = <span class="num">42</span>;
+  saida[<span class="str">"itens"</span>]     = json::<span class="tp">array</span>{ <span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span> };
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, json::<span class="fn">serialize</span>(saida));
+
+  <span class="com">// --- Boost.Asio: TCP echo server (coroutine) ---</span>
+  asio::<span class="tp">io_context</span> ctx;
+  asio::<span class="fn">co_spawn</span>(ctx, [&amp;]() -&gt; asio::<span class="tp">awaitable</span>&lt;<span class="kw">void</span>&gt; {
+    asio::<span class="tp">ip</span>::<span class="tp">tcp</span>::<span class="tp">acceptor</span> acc{ ctx,
+      { asio::<span class="tp">ip</span>::<span class="tp">tcp</span>::<span class="fn">v4</span>(), <span class="num">8080</span> } };
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+      <span class="kw">auto</span> sock = <span class="kw">co_await</span> acc.<span class="fn">async_accept</span>(asio::<span class="fn">use_awaitable</span>);
+      asio::<span class="fn">co_spawn</span>(ctx, [s = std::<span class="fn">move</span>(sock)]() mutable
+          -&gt; asio::<span class="tp">awaitable</span>&lt;<span class="kw">void</span>&gt; {
+        std::<span class="tp">array</span>&lt;<span class="kw">char</span>, <span class="num">1024</span>&gt; buf;
+        <span class="kw">for</span> (;;) {
+          <span class="kw">auto</span> n = <span class="kw">co_await</span> s.<span class="fn">async_read_some</span>(
+            asio::<span class="fn">buffer</span>(buf), asio::<span class="fn">use_awaitable</span>);
+          <span class="kw">co_await</span> asio::<span class="fn">async_write</span>(
+            s, asio::<span class="fn">buffer</span>(buf, n), asio::<span class="fn">use_awaitable</span>);
+        }
+      }, asio::<span class="fn">detached</span>);
+    }
+  }, asio::<span class="fn">detached</span>);
+  <span class="com">// ctx.run();  // inicia event loop</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nlohmann">nlohmann/json — JSON moderno</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + nlohmann/json &mdash; parse, serialize e struct mapping</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;nlohmann/json.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;fstream&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">using</span> json = nlohmann::<span class="tp">json</span>;
+<span class="kw">using</span> <span class="kw">namespace</span> nlohmann::literals;
+
+<span class="kw">struct</span> <span class="tp">Pessoa</span> {
+  std::<span class="tp">string</span> nome;
+  <span class="kw">int</span>         idade;
+  std::<span class="tp">vector</span>&lt;std::<span class="tp">string</span>&gt; hobbies;
+};
+
+<span class="com">// Macro de serialization automatica (NLOHMANN_DEFINE_TYPE_INTRUSIVE)</span>
+<span class="fn">NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE</span>(<span class="tp">Pessoa</span>, nome, idade, hobbies)
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Literal operator"_json</span>
+  <span class="kw">auto</span> j = <span class="str">R"({ "nome": "Ana", "idade": 30, "hobbies": ["cpp", "musica"] })"</span>_json;
+
+  <span class="tp">Pessoa</span> p = j.<span class="fn">get</span>&lt;<span class="tp">Pessoa</span>&gt;();
+  std::<span class="fn">println</span>(<span class="str">"Nome: {}, Idade: {}"</span>, p.<span class="fn">nome</span>, p.<span class="fn">idade</span>);
+
+  <span class="com">// Serialize de volta para JSON string</span>
+  p.<span class="fn">hobbies</span>.<span class="fn">push_back</span>(<span class="str">"games"</span>);
+  json j2 = p;
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, j2.<span class="fn">dump</span>(<span class="num">2</span>));    <span class="com">// indent=2</span>
+
+  <span class="com">// Acesso seguro com value() e contains()</span>
+  <span class="kw">if</span> (j2.<span class="fn">contains</span>(<span class="str">"ativo"</span>)) {
+    <span class="kw">bool</span> ativo = j2[<span class="str">"ativo"</span>].<span class="fn">get</span>&lt;<span class="kw">bool</span>&gt;();
+  }
+  <span class="kw">int</span> versao = j2.<span class="fn">value</span>(<span class="str">"versao"</span>, <span class="num">1</span>);  <span class="com">// default=1 se ausente</span>
+
+  <span class="com">// Ler de arquivo</span>
+  std::<span class="tp">ifstream</span> f(<span class="str">"config.json"</span>);
+  <span class="kw">if</span> (f.<span class="fn">is_open</span>()) {
+    json cfg = json::<span class="fn">parse</span>(f);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="spdlog">spdlog — Logging de Alta Performance</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + spdlog &mdash; loggers, sinks e formatacao</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;spdlog/spdlog.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;spdlog/sinks/rotating_file_sink.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;spdlog/sinks/stdout_color_sinks.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;spdlog/async.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Sink para console colorido</span>
+  <span class="kw">auto</span> console = std::<span class="fn">make_shared</span>&lt;spdlog::<span class="tp">sinks</span>::<span class="tp">stdout_color_sink_mt</span>&gt;();
+  console-&gt;<span class="fn">set_level</span>(spdlog::<span class="tp">level</span>::<span class="tp">debug</span>);
+
+  <span class="com">// Sink para arquivo rotativo (10MB, maximo 5 arquivos)</span>
+  <span class="kw">auto</span> fileSink = std::<span class="fn">make_shared</span>&lt;spdlog::<span class="tp">sinks</span>::<span class="tp">rotating_file_sink_mt</span>&gt;(
+    <span class="str">"logs/app.log"</span>, <span class="num">10</span> * <span class="num">1024</span> * <span class="num">1024</span>, <span class="num">5</span>);
+
+  <span class="com">// Logger com multiplos sinks (multi-sink)</span>
+  spdlog::<span class="tp">logger</span> logger{ <span class="str">"app"</span>,
+    { console, fileSink } };
+  logger.<span class="fn">set_level</span>(spdlog::<span class="tp">level</span>::<span class="tp">trace</span>);
+  logger.<span class="fn">set_pattern</span>(<span class="str">"[%Y-%m-%d %H:%M:%S.%e] [%l] [%n] %v"</span>);
+
+  logger.<span class="fn">trace</span>(<span class="str">"trace — detalhe maximo"</span>);
+  logger.<span class="fn">debug</span>(<span class="str">"debug — usuario {}"</span>, <span class="str">"admin"</span>);
+  logger.<span class="fn">info</span>(<span class="str">"servidor ouvindo em :{}"</span>, <span class="num">8080</span>);
+  logger.<span class="fn">warn</span>(<span class="str">"conexao lenta: {} ms"</span>, <span class="num">950</span>);
+  logger.<span class="fn">error</span>(<span class="str">"falha ao abrir arquivo: {}"</span>, <span class="str">"config.json"</span>);
+  logger.<span class="fn">critical</span>(<span class="str">"banco de dados indisponivel!"</span>);
+
+  <span class="com">// Logger assincrono com thread pool</span>
+  spdlog::<span class="fn">init_thread_pool</span>(<span class="num">8192</span>, <span class="num">1</span>);  <span class="com">// fila de 8k, 1 thread</span>
+  <span class="kw">auto</span> async_logger = std::<span class="fn">make_shared</span>&lt;spdlog::<span class="tp">async_logger</span>&gt;(
+    <span class="str">"async"</span>, fileSink,
+    spdlog::<span class="fn">thread_pool</span>(),
+    spdlog::<span class="tp">async_overflow_policy</span>::<span class="tp">block</span>);
+  spdlog::<span class="fn">register_logger</span>(async_logger);
+
+  <span class="kw">auto</span> alog = spdlog::<span class="fn">get</span>(<span class="str">"async"</span>);
+  alog-&gt;<span class="fn">info</span>(<span class="str">"mensagem assincrona"</span>);
+  spdlog::<span class="fn">shutdown</span>();              <span class="com">// flush e encerra thread pool</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="eigen">Eigen — Algebra Linear</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Eigen &mdash; matrizes, vetores, decomposicoes e solvers</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;Eigen/Dense&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">using namespace</span> Eigen;
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Matriz e vetor de tamanho fixo (alocados na stack)</span>
+  <span class="tp">Matrix3d</span> A;
+  A &lt;&lt; <span class="num">2</span>, -<span class="num">1</span>,  <span class="num">0</span>,
+      -<span class="num">1</span>,  <span class="num">2</span>, -<span class="num">1</span>,
+       <span class="num">0</span>, -<span class="num">1</span>,  <span class="num">2</span>;
+  <span class="tp">Vector3d</span> b(<span class="num">1</span>, <span class="num">0</span>, <span class="num">0</span>);
+
+  <span class="com">// Resolver sistema linear A*x = b (LLT — Cholesky: A deve ser SPD)</span>
+  <span class="tp">Vector3d</span> x = A.<span class="fn">llt</span>().<span class="fn">solve</span>(b);
+  std::<span class="fn">println</span>(<span class="str">"x = [{:.4f}, {:.4f}, {:.4f}]"</span>, x(0), x(1), x(2));
+
+  <span class="com">// Valores e vetores proprios</span>
+  <span class="tp">SelfAdjointEigenSolver</span>&lt;<span class="tp">Matrix3d</span>&gt; solver(A);
+  std::<span class="fn">println</span>(<span class="str">"eigenvalues: {}"</span>, solver.<span class="fn">eigenvalues</span>().<span class="fn">transpose</span>());
+
+  <span class="com">// Decomposicao SVD</span>
+  <span class="tp">MatrixXd</span> M = <span class="tp">MatrixXd</span>::<span class="fn">Random</span>(<span class="num">4</span>, <span class="num">3</span>);
+  <span class="tp">JacobiSVD</span>&lt;<span class="tp">MatrixXd</span>&gt; svd(M, <span class="tp">ComputeThinU</span> | <span class="tp">ComputeThinV</span>);
+  std::<span class="fn">println</span>(<span class="str">"Singular values:\n{}"</span>, svd.<span class="fn">singularValues</span>().<span class="fn">transpose</span>());
+
+  <span class="com">// Operacoes element-wise (Array)</span>
+  <span class="tp">ArrayXd</span> arr = <span class="tp">ArrayXd</span>::<span class="fn">LinSpaced</span>(<span class="num">5</span>, <span class="num">1</span>, <span class="num">5</span>);
+  std::<span class="fn">println</span>(<span class="str">"arr^2 = {}"</span>, (arr * arr).<span class="fn">transpose</span>());   <span class="com">// element-wise</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="catch2">Catch2 — Testes Unitarios</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Catch2 &mdash; TEST_CASE, SECTION, matchers e benchmarks</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;catch2/catch_test_macros.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;catch2/matchers/catch_matchers_vector.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;catch2/benchmark/catch_benchmark.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">"calculadora.hpp"</span>
+
+<span class="tp">TEST_CASE</span>(<span class="str">"Calculadora basica"</span>, <span class="str">"[calculadora][basico]"</span>) {
+  <span class="tp">Calculadora</span> calc;
+
+  <span class="tp">SECTION</span>(<span class="str">"soma"</span>) {
+    <span class="tp">REQUIRE</span>(calc.<span class="fn">somar</span>(<span class="num">2</span>, <span class="num">3</span>) == <span class="num">5</span>);
+    <span class="tp">REQUIRE</span>(calc.<span class="fn">somar</span>(-<span class="num">1</span>, <span class="num">1</span>) == <span class="num">0</span>);
+  }
+  <span class="tp">SECTION</span>(<span class="str">"divisao"</span>) {
+    <span class="tp">REQUIRE</span>(calc.<span class="fn">dividir</span>(<span class="num">10.0</span>, <span class="num">4.0</span>) == <span class="tp">Approx</span>(<span class="num">2.5</span>));
+    <span class="tp">REQUIRE_THROWS_AS</span>(calc.<span class="fn">dividir</span>(<span class="num">1.0</span>, <span class="num">0.0</span>), std::<span class="tp">domain_error</span>);
+  }
+}
+
+<span class="tp">TEST_CASE</span>(<span class="str">"Ordenacao"</span>, <span class="str">"[algoritmos]"</span>) {
+  std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt; v = { <span class="num">5</span>, <span class="num">3</span>, <span class="num">1</span>, <span class="num">4</span> };
+  std::<span class="fn">sort</span>(v.<span class="fn">begin</span>(), v.<span class="fn">end</span>());
+
+  <span class="kw">using namespace</span> Catch::Matchers;
+  <span class="tp">REQUIRE_THAT</span>(v, <span class="fn">Equals</span>(std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;{ <span class="num">1</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span> }));
+  <span class="tp">REQUIRE_THAT</span>(v, <span class="fn">Contains</span>(std::<span class="tp">vector</span>&lt;<span class="kw">int</span>&gt;{ <span class="num">1</span>, <span class="num">4</span> }));
+}
+
+<span class="tp">TEST_CASE</span>(<span class="str">"Benchmark soma"</span>, <span class="str">"[!benchmark]"</span>) {
+  <span class="tp">BENCHMARK</span>(<span class="str">"somar 1000 elementos"</span>) {
+    <span class="tp">Calculadora</span> c;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">1000</span>; ++i) c.<span class="fn">somar</span>(i, i + <span class="num">1</span>);
+  };
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="visao-geral">Visao Geral das Principais Bibliotecas</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Qt 6</h3>
+            <p>Framework completo para GUI cross-platform (Windows/Linux/macOS/Android/iOS). QML para interfaces declarativas, Qt Network, Qt SQL, Qt Multimedia. Licenca dual (GPL/comercial).</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>SFML / SDL2</h3>
+            <p>SFML — biblioteca 2D de alto nivel (window, graphics, audio, network). SDL2 — mais baixo nivel, suporte a OpenGL/Vulkan, ampla adocao em jogos indie. Ambas zlib/LGPL.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>OpenCV 4</h3>
+            <p>Biblioteca de visao computacional: leitura/escrita de imagens e video, algoritmos de deteccao, segmentacao, calibracao de camera, DNN module (redes neurais via ONNX).</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>fmt / std::format</h3>
+            <p>Biblioteca de formatacao de strings que inspirou <code>std::format</code> do C++20 e <code>std::println</code> do C++23. API type-safe, mais rapida que printf e iostreams.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>GoogleTest (gtest)</h3>
+            <p>Framework de testes unitarios do Google. ASSERT_*/EXPECT_*, test fixtures (TEST_F), mocking com gMock, integracao nativa com CMake via FetchContent.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Abseil (absl)</h3>
+            <p>Biblioteca base da Google: absl::flat_hash_map (open-addressing), absl::string_view, logging (absl::log), flags, status codes (absl::Status). Usada internamente no Chromium e TensorFlow.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BOOST. <strong>Boost C++ Libraries</strong>. Disponível em: &lt;https://www.boost.org&gt;. Acesso em: 2025.</li>
+            <li>LOHMANN, Niels. <strong>JSON for Modern C++</strong>. Disponível em: &lt;https://github.com/nlohmann/json&gt;. Acesso em: 2025.</li>
+            <li>GUENNEBAUD, Gael; JACOB, Benoit. <strong>Eigen: A C++ Template Library for Linear Algebra</strong>. Disponível em: &lt;https://eigen.tuxfamily.org&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ Avancado</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Use <code>vcpkg install nlohmann-json eigen3 spdlog catch2 boost-asio</code> para instalar todas essas bibliotecas com um unico comando e integracao automatica ao CMake via toolchain file.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

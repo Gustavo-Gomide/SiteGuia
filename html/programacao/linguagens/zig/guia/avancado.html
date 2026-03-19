@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Topicos avancados de Zig: comptime, allocators, metaprogramacao, packed structs, FFI e build modes." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Zig: Avancado | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Zig: Avancado</strong></p>
+			</div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="zig" aria-hidden="true"></span></div>
+					<h1>Quando Zig vira ferramenta de engenharia de alto controle</h1>
+					<p>Comptime, allocators especializados, representacao binaria precisa e integracao nativa com codigo C.</p>
+				</div>
+				<p class="intro-highlight">Os recursos avancados de Zig existem para resolver problemas concretos: gerar codigo com informacao estatica, controlar layout de memoria e compilar para multiplos alvos sem abandonar legibilidade.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="comptime" class="section-title">Comptime e metaprogramacao</h2>
+				<p><strong>comptime</strong> permite executar codigo durante a compilacao e usar esse resultado para especializar tipos, validar contratos e gerar estruturas auxiliares. Diferente de macros textuais, o mecanismo usa a propria semantica da linguagem, preservando tipos e regras normais.</p>
+				<p>Isso e valioso em serializacao, wrappers de FFI, validacoes de layout e construcao de APIs genericas. Em vez de espalhar duplicacao manual, voce escreve uma vez e deixa o compilador expandir com informacao conhecida estaticamente.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">
+						<span>Zig</span>
+						<span>Generic com comptime</span>
+					</div>
+					<pre class="example"><code><span class="kw">const</span> std = @import(<span class="str">"std"</span>);
+
+<span class="kw">fn</span> <span class="fn">Buffer</span>(<span class="kw">comptime</span> T: type, <span class="kw">comptime</span> n: usize) type {
+		<span class="kw">return</span> <span class="kw">struct</span> {
+				data: [n]T,
+
+				<span class="kw">pub</span> <span class="kw">fn</span> <span class="fn">len</span>(self: @This()) usize {
+						<span class="kw">return</span> self.data.len;
+				}
+		};
+}
+
+<span class="com">// O tipo final e calculado na compilacao</span>
+<span class="kw">const</span> ByteBuf = Buffer(u8, 64);</code></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="allocators" class="section-title">Allocators como parte da arquitetura</h2>
+				<p>Em Zig, allocator nao e detalhe de infraestrutura escondido numa biblioteca. Ele aparece como parametro de funcao, campo de struct ou decisao de modulo. Isso permite substituir uma estrategia por outra: page allocator, arena allocator, general purpose allocator, fixed buffer allocator ou um allocator customizado para telemetria.</p>
+				<p>Esse desenho tem impacto direto em testes e profiling. Voce pode injetar allocators instrumentados, verificar vazamentos e medir pressao de heap sem reescrever sua logica de dominio.</p>
+				<div class="panel">
+					<h3 class="panel-title">Regra de maturidade</h3>
+					<p>Projetos pequenos podem comecar com uma estrategia simples, mas APIs publicas devem deixar explicito quem aloca, quem libera e em qual escopo os dados permanecem validos.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="layout-binario" class="section-title">Packed structs e controle de layout</h2>
+				<p><strong>packed struct</strong> permite modelar representacoes compactas de bits, uteis em protocolos, registradores de hardware e formatos binarios. O programador escolhe conscientemente entre alinhamento natural, layout externo e compactacao. Essa precisao e um diferencial em firmware, drivers e parsing de arquivos.</p>
+				<p>Ao mesmo tempo, esse poder exige disciplina. Layout compacto demais pode introduzir custos de acesso ou dependencias de endianess. O ganho vem quando o modelo de dados realmente precisa corresponder ao hardware ou protocolo externo.</p>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Em FFI e formatos binarios, sempre confirme alinhamento, padding e tamanho final com testes e introspeccao de compilacao. Supor layout sem validar e receita para bugs intermitentes.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="ffi-build-modes" class="section-title">FFI, build modes e binarios de producao</h2>
+				<p>Zig trabalha muito bem com bibliotecas C e C++. O fluxo envolve importar cabecalhos, linkar bibliotecas e, quando necessario, adaptar ownership e convencoes de erro entre os mundos. O ganho aqui nao e apenas tecnico: equipes conseguem migrar parte de um sistema sem quebrar toda a cadeia de build.</p>
+				<p>Os build modes tambem influenciam muito: <strong>Debug</strong> privilegia verificacoes e rastreabilidade; <strong>ReleaseSafe</strong> mantem protecoes importantes com desempenho melhor; <strong>ReleaseFast</strong> foca throughput; <strong>ReleaseSmall</strong> prioriza tamanho de binario. Escolher o modo certo e parte do contrato operacional da aplicacao.</p>
+				<div class="grid grid--2">
+					<div class="card">
+						<h3>FFI bem-sucedida</h3>
+						<p>Depende de mapear ownership, tipos numericos, convenções de chamada e ciclo de vida de handles externos.</p>
+					</div>
+					<div class="card">
+						<h3>Build mode bem escolhido</h3>
+						<p>Depende do contexto: depuracao local, benchmark, release segura, firmware pequeno ou distribuicao cross-platform.</p>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="quando-usar" class="section-title">Quando recursos avancados realmente compensam</h2>
+				<p>Nem todo projeto precisa de metaprogramacao, layout packed ou allocators customizados. Eles compensam quando reduzem duplicacao relevante, quando o contrato binario precisa ser exato ou quando o custo de heap precisa ser mensuravel. Em outras palavras: use complexidade tecnica apenas onde houver retorno operacional claro.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<ul>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#comptime" target="_blank" rel="noopener">Language Reference: comptime</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#packed-struct" target="_blank" rel="noopener">Language Reference: packed struct</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/learn/build-system/" target="_blank" rel="noopener">Build System</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#C" target="_blank" rel="noopener">Language Reference: C Interoperability</a>.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><span data-svg="estrela" aria-hidden="true"></span> O nivel avancado de Zig nao existe para impressionar: ele existe para deixar visiveis as decisoes que mudam custo, seguranca e portabilidade do software.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/ecossistema_tooling.html">Conhecer o tooling</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/projetos_boas_praticas.html">Projetos e boas praticas</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/banco_dados.html">Aplicacoes em banco de dados</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

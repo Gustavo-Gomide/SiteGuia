@@ -1,0 +1,308 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SQLite: arquitetura serverless, type affinity, WAL mode, uso com Python, quando usar e comparação com outros SGBDs." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SQLite | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>SQLite</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">SQLite — Pequeno, Rápido e Sem Servidor</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>SQLite — O Banco Más Implantado do Mundo</h1>
+          <p>O banco de dados mais usado — em cada celular, navegador e Smart TV.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>SQLite</strong> é uma biblioteca C que lida diretamente com um arquivo de banco de dados no
+          disco — sem servidor, sem configuração, sem instalação.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é SQLite?</h2>
+        <p>
+          O <strong>SQLite</strong> não é um banco de dados cliente-servidor como MySQL ou PostgreSQL. Ele é
+          uma biblioteca C que lê e escreve diretamente em um único arquivo no disco, sem servidor,
+          sem configuração e sem instalação. Pense nele como um mecanismo de persistência embutido diretamente
+          na sua aplicação — como um arquivo texto, mas com SQL completo.
+        </p>
+        <p>
+          Segundo a documentação oficial: <em>"SQLite is probably the most widely deployed and used database engine
+          in the world."</em> Está presente em cada Android, iPhone, Chrome, Windows e praticamente toda Smart TV.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            O SQLite foi criado por <strong>D. Richard Hipp</strong> em 2000 para um projet de controle de navios
+            da Marinha dos EUA que não podia depender de um servidor de banco de dados externo.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura" class="section-title">Arquitetura Serverless</h2>
+        <p>
+          A diferença fundamental do SQLite para os outros SGBDs é que não existe um processo separado rodando em
+          segundo plano. A "conexão" com o banco é apenas abrir um arquivo — como um <code class="code-inline">fopen()</code>.
+        </p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Sem Instalação</h3>
+            <p class="text-secondary">
+              Não existe "instalar o SQLite" ou gerenciar um serviço. Você inclui a biblioteca no projeto
+              (Python já inclui <code class="code-inline">sqlite3</code> na stdlib) e o banco cria o arquivo
+              automaticamente ao abrir a conexão.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Arquivo Único</h3>
+            <p class="text-secondary">
+              O banco inteiro (tabelas, índices, dados, metadados) reside em um único arquivo
+              <code class="code-inline">.db</code> ou <code class="code-inline">.sqlite</code>.
+              Fazer backup é só copiar o arquivo. Migrar é só mover o arquivo.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Cross-platform</h3>
+            <p class="text-secondary">
+              Um arquivo SQLite criado no Windows pode ser aberto no macOS, Linux, Android ou iOS sem nenhuma
+              conversão. O formato binário é portátil e amplamente documentado como padrão aberto.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Zero-configuration</h3>
+            <p class="text-secondary">
+              Não há arquivos de configuração, parâmetros de conexão, usuários ou senhas a gerenciar.
+              A segurança de acesso é delegada ao sistema de arquivos do SO  quem pode ler o arquivo,
+              pode ler o banco.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipagem" class="section-title">Tipagem Dinâmica — Type Affinity</h2>
+        <p>
+          O SQLite é famoso (e às vezes criticado) por não impor tipos estritamente. Em vez de tipos fixos, usa um
+          sistema de <strong>afinidade de tipos</strong>  o banco <em>prefere</em> um tipo mas aceita outros sem erro.
+          Versões recentes introduziram tabelas <code class="code-inline">STRICT</code> para quem prefere rigor total.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">SQL</div>
+          <pre class="example"><span class="com">-- Comportamento padrão: tipagem flexível</span>
+<span class="kw">CREATE</span> <span class="kw">TABLE</span> exemplo (
+    id    <span class="tp">INTEGER</span> <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,
+    valor <span class="tp">INTEGER</span>
+);
+
+<span class="com">-- SQLite aceita texto numa coluna inteira sem erro!</span>
+<span class="kw">INSERT</span> <span class="kw">INTO</span> exemplo (valor) <span class="kw">VALUES</span> (<span class="str">'Texto num campo Inteiro'</span>);
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> exemplo;
+<span class="com">-- Resultado: 1 | 'Texto num campo Inteiro'</span>
+
+<span class="com">-- Tabela STRICT: tipos são impostos (SQLite 3.37+)</span>
+<span class="kw">CREATE</span> <span class="kw">TABLE</span> strict_demo (
+    id    <span class="tp">INTEGER</span> <span class="kw">PRIMARY</span> <span class="kw">KEY</span>,
+    valor <span class="tp">INTEGER</span>
+) STRICT;
+
+<span class="com">-- Agora esta linha causa erro:</span>
+<span class="kw">INSERT</span> <span class="kw">INTO</span> strict_demo (valor) <span class="kw">VALUES</span> (<span class="str">'Texto'</span>);
+<span class="com">-- Runtime error: datatype mismatch</span></pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Recomendação:</strong> para novos projetos, use tabelas <code class="code-inline">STRICT</code>
+            (SQLite 3.37+). Isso elimina bugs sutis de tipo que são difíceis de detectar em testes mas aparecem
+            em produção com dados inesperados.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="python" class="section-title">Uso com Python</h2>
+        <p>
+          Python inclui o módulo <code class="code-inline">sqlite3</code> na biblioteca padrão 
+          sem nenhum pacote extra a instalar.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python</div>
+          <pre class="example"><span class="kw">import</span> sqlite3
+
+<span class="com"># Conexão  cria o arquivo se não existir</span>
+conn = sqlite3.connect(<span class="str">"meu_banco.db"</span>)
+cursor = conn.cursor()
+
+<span class="com"># Criar tabela</span>
+cursor.execute(<span class="str">"""\n  CREATE TABLE IF NOT EXISTS usuarios (\n    id    INTEGER PRIMARY KEY AUTOINCREMENT,\n    nome  TEXT NOT NULL,\n    email TEXT UNIQUE NOT NULL\n  )\n"""</span>)
+
+<span class="com"># Inserir  parameterized query é segura contra SQL Injection</span>
+cursor.execute(
+    <span class="str">"INSERT INTO usuarios (nome, email) VALUES (?, ?)"</span>,
+    (<span class="str">"Alice"</span>, <span class="str">"alice@exemplo.com"</span>)
+)
+conn.commit()
+
+<span class="com"># Consultar</span>
+cursor.execute(<span class="str">"SELECT * FROM usuarios"</span>)
+<span class="kw">for</span> row <span class="kw">in</span> cursor.fetchall():
+    print(row)
+
+<span class="com"># Banco in-memory  ideal para testes: não persiste em disco</span>
+conn_mem = sqlite3.connect(<span class="str">":memory:"</span>)
+
+<span class="com"># Context manager: commit automático ou rollback em exceção</span>
+<span class="kw">with</span> sqlite3.connect(<span class="str">"meu_banco.db"</span>) <span class="kw">as</span> con:
+    con.execute(<span class="str">"UPDATE usuarios SET nome = ? WHERE id = ?"</span>, (<span class="str">"Alice S."</span>, <span class="num">1</span>))
+
+conn.close()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando Usar SQLite</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Mobile (Android / iOS)</h3>
+            <p>É o padrão nativo para persistência local em aplicativos móveis. O Android SDK inclui APIs de
+            alto nível sobre SQLite, e o iOS usa SQLite internamente no Core Data.</p>
+          </div>
+          <div class="card">
+            <h3>Desktop e IoT</h3>
+            <p>Aplicativos desktop (Electron, wxPython, Qt) e dispositivos embarcados (IoT) usam SQLite para
+            configurações e dados locais. Roda em dispositivos com menos de 1 MB de RAM disponível.</p>
+          </div>
+          <div class="card">
+            <h3>Testes Automatizados</h3>
+            <p>O banco in-memory (<code class="code-inline">:memory:</code>) é perfeito para testes: não persiste
+            estado entre execuções, inicia em microssegundos e não requer nenhum servidor ou configuração Docker.</p>
+          </div>
+          <div class="card">
+            <h3>Prototipagem e Sites Pequenos</h3>
+            <p>Comece com SQLite para não perder tempo configurando MySQL/Docker nas primeiras semanas do projeto.
+            Websites com menos de ~100 k acessos/dia e baixa concorrência de escrita funcionam muito bem.</p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Limitação crítica — concorrência de escrita:</strong> O SQLite permite múltiplas leituras
+            simultâneas (WAL mode), mas <strong>apenas uma escrita por vez</strong>. Se dois processos tentarem
+            gravar simultaneamente, um aguardará o desbloqueamento. Para aplicações de alto volume de escrita
+            ou múltiplos servidores, use PostgreSQL ou MySQL.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">SQLite vs SGBDs Tradicionais</h2>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Critério</th>
+                <th>SQLite</th>
+                <th>MySQL / PostgreSQL</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Configuração</td>
+                <td>Zero — apenas um arquivo</td>
+                <td>Servidor, usuários, portas, conexões</td>
+              </tr>
+              <tr>
+                <td>Concorrência de escrita</td>
+                <td>Uma por vez (WAL melhora, mas não elimina)</td>
+                <td>Múltiplas escritas simultâneas</td>
+              </tr>
+              <tr>
+                <td>Escala</td>
+                <td>Até ~100 GB / baixa concorrência</td>
+                <td>Petabytes / alta concorrência</td>
+              </tr>
+              <tr>
+                <td>Backup</td>
+                <td>Copiar o arquivo .db</td>
+                <td>pg_dump, mysqldump, backups lógicos/físicos</td>
+              </tr>
+              <tr>
+                <td>Acesso remoto</td>
+                <td>Não — arquivo local somente</td>
+                <td>Sim  TCP/IP, rede, cloud</td>
+              </tr>
+              <tr>
+                <td>Uso ideal</td>
+                <td>Mobile, desktop, IoT, testes, protótipos</td>
+                <td>APIs, SaaS, sistemas multiusuário, produção</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>HIPP, D. Richard. <strong>SQLite Documentation</strong>. 2026. Disponível em: <a href="https://www.sqlite.org/docs.html" target="_blank" rel="noopener">sqlite.org/docs</a>.</li>
+            <li>OWENS, Mike; ALLEN, Grant. <strong>The Definitive Guide to SQLite</strong>. 2. ed. Apress, 2010.</li>
+            <li>KORTH, Henry F.; SILBERSCHATZ, Abraham; SUDARSHAN, S. <strong>Database System Concepts</strong>. 7. ed. New York: McGraw-Hill, 2019.</li>
+            <li>HIPP, D. Richard. <strong>SQLite: Past, Present, and Future</strong>. VLDB 2022. Disponível em: <a href="https://www.vldb.org/pvldb/vol15/p3535-gaffney.pdf" target="_blank" rel="noopener">vldb.org</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Explore outros SGBDs e entenda quando cada um é a escolha certa.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/sgbds/postgresql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>PostgreSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/sgbds/mysql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>MySQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/sql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>SQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A melhor ferramenta é a mais simples que resolve o problema."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Chain of Responsibility: padrão comportamental que passa uma requisição por uma cadeia de handlers até alguém tratar." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Chain of Responsibility | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Handlers em cadeia — cada um decide parar ou passar</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Chain of Responsibility</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">Chain of Responsibility encadeia handlers. Cada handler recebe a requisição, decide se trata ou passa ao próximo. Isso elimina <code>if/else</code> longos e torna a cadeia configurável sem alterar os handlers existentes.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura e contexto</h2>
+        <div class="section-divider"></div>
+        <p>Cada handler tem uma responsabilidade e redireciona para o próximo quando não trata:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Parte</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Handler (interface)</strong></td>
+                <td>Define <code>handle(req)</code> e <code>setNext()</code>.</td>
+                <td>Middleware, Validador</td>
+              </tr>
+              <tr>
+                <td><strong>Handler concreto</strong></td>
+                <td>Trata se capaz, caso contrário delega ao próximo.</td>
+                <td>AuthMiddleware, RateLimitMiddleware</td>
+              </tr>
+              <tr>
+                <td><strong>Cliente</strong></td>
+                <td>Monta a cadeia e dispara a requisição no primeiro handler.</td>
+                <td>App.use(auth).use(rateLimit)...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — pipeline de middleware</h2>
+        <div class="section-divider"></div>
+        <p>Cada middleware decide processar ou rejeitar antes de passar adiante:</p>
+        <div class="code-container">
+          <pre class="code-block">interface Handler {
+  setNext(handler: Handler): Handler;
+  handle(req: Request): Response | null;
+}
+
+class AuthMiddleware implements Handler {
+  private next: Handler | null = null;
+
+  setNext(handler: Handler): Handler {
+    this.next = handler;
+    return handler;
+  }
+
+  handle(req: Request): Response | null {
+    if (!req.headers.authorization) {
+      return { status: 401, body: 'Não autorizado' };
+    }
+    // Passou a autenticação, passa ao próximo
+    return this.next?.handle(req) ?? null;
+  }
+}
+
+class RateLimitMiddleware implements Handler {
+  handle(req: Request): Response | null {
+    if (this.excedeuLimite(req.ip)) {
+      return { status: 429, body: 'Muitas requisições' };
+    }
+    return this.next?.handle(req) ?? null;
+  }
+}
+
+// Montagem da cadeia
+const auth = new AuthMiddleware();
+auth.setNext(new RateLimitMiddleware()).setNext(new LogMiddleware());
+const resultado = auth.handle(request);</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e quando não usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Há múltiplos handlers possíveis e a ordem importa. Middlewares HTTP, pipelines de validação, filtros de log.</p>
+          </div>
+          <div class="card">
+            <h3>Configurabilidade</h3>
+            <p>A cadeia pode ser montada dinamicamente (em runtime) sem alterar os handlers já escritos.</p>
+          </div>
+          <div class="card">
+            <h3>Cuidado</h3>
+            <p>Se a requisição chegar ao final sem ser tratada, o comportamento deve estar definido (null, exception, default).</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Apenas um handler vai tratar — nesse caso, Strategy simples resolve sem a estrutura de cadeia.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Chain of Responsibility é a base dos middlewares em Express, Django e .NET. Veja também <a href="/html/engenharia_software/design/design_patterns/behavioral/command.html">Command</a> para encapsular operações como objetos.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A cadeia é flexível quanto à composição, não quanto ao fluxo. Defina bem o que acontece quando nenhum handler trata."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

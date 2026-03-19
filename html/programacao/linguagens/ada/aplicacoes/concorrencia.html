@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Concorrência em Ada: tasks, protected objects, rendezvous, Ravenscar e programação em tempo real." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Concorrência em Ada | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Ada &mdash; Concorrência</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Concorrência em Ada</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Tasks, Protected Objects e Comunicação por Rendezvous</h1>
+          <p>O modelo de concorrência mais seguro e analisável de qualquer linguagem mainstream.</p>
+        </div>
+        <p class="intro-highlight">
+          Ada integra concorrência na <em>linguagem</em>, não em uma biblioteca. Isso garante
+          que o modelo de threading seja verificável formalmente e analisável estaticamente.
+          O mecanismo de <strong>rendezvous</strong> (encontro) permite comunicação segura
+          entre tasks sem memória compartilhada. Os <strong>protected objects</strong>
+          implementam monitores com políticas de escalonamento definidas para análise de
+          tempo real. Esta é a combinação mais robusta para sistemas embarcados críticos.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- TASKS -->
+      <section>
+        <h2 id="tasks-detalhado" class="section-title">1. Tasks &mdash; Threads da Linguagem</h2>
+        <p>
+          Uma <strong>task</strong> Ada é uma unidade de execução concorrente declarada com
+          a mesma sintaxe de qualquer outra entidade Ada. Tasks podem ser declaradas como
+          tipos (para criar múltiplas instâncias) ou como objetos singulares.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; task type: múltiplas instâncias</div>
+          <pre class="example"><span class="kw">with</span> Ada.Text_IO;           <span class="kw">use</span> Ada.Text_IO;
+<span class="kw">with</span> Ada.Integer_Text_IO;   <span class="kw">use</span> Ada.Integer_Text_IO;
+
+<span class="kw">procedure</span> <span class="fn">Produtor_Consumidor</span> <span class="kw">is</span>
+
+   <span class="com">-- Buffer compartilhado com protected object</span>
+   <span class="kw">protected</span> Buffer <span class="kw">is</span>
+      <span class="kw">entry</span>    <span class="fn">Produzir</span> (Item : <span class="kw">in</span>  Integer);
+      <span class="kw">entry</span>    <span class="fn">Consumir</span> (Item : <span class="kw">out</span> Integer);
+   <span class="kw">private</span>
+      Dado    : Integer := <span class="num">0</span>;
+      Cheio   : Boolean := <span class="kw">False</span>;
+   <span class="kw">end</span> Buffer;
+
+   <span class="kw">protected body</span> Buffer <span class="kw">is</span>
+      <span class="kw">entry</span> <span class="fn">Produzir</span> (Item : <span class="kw">in</span> Integer) <span class="kw">when not</span> Cheio <span class="kw">is</span>
+      <span class="kw">begin</span>
+         Dado  := Item;
+         Cheio := <span class="kw">True</span>;
+      <span class="kw">end</span> Produzir;
+
+      <span class="kw">entry</span> <span class="fn">Consumir</span> (Item : <span class="kw">out</span> Integer) <span class="kw">when</span> Cheio <span class="kw">is</span>
+      <span class="kw">begin</span>
+         Item  := Dado;
+         Cheio := <span class="kw">False</span>;
+      <span class="kw">end</span> Consumir;
+   <span class="kw">end</span> Buffer;
+
+   <span class="com">-- Task Produtor</span>
+   <span class="kw">task</span> <span class="tp">Produtor</span>;
+   <span class="kw">task body</span> Produtor <span class="kw">is</span>
+   <span class="kw">begin</span>
+      <span class="kw">for</span> I <span class="kw">in</span> <span class="num">1</span> .. <span class="num">5</span> <span class="kw">loop</span>
+         Buffer.Produzir (I);
+         Put_Line (<span class="str">"Produzido: "</span> &amp; Integer<span class="kw">'Image</span> (I));
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Produtor;
+
+   <span class="com">-- Task Consumidor</span>
+   <span class="kw">task</span> <span class="tp">Consumidor</span>;
+   <span class="kw">task body</span> Consumidor <span class="kw">is</span>
+      Item : Integer;
+   <span class="kw">begin</span>
+      <span class="kw">for</span> I <span class="kw">in</span> <span class="num">1</span> .. <span class="num">5</span> <span class="kw">loop</span>
+         Buffer.Consumir (Item);
+         Put_Line (<span class="str">"Consumido: "</span> &amp; Integer<span class="kw">'Image</span> (Item));
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Consumidor;
+
+<span class="kw">begin</span>
+   <span class="kw">null</span>;  <span class="com">-- Tasks iniciam automaticamente ao entrar no escopo</span>
+          <span class="com">-- Aguarda término de todas as tasks antes de sair</span>
+<span class="kw">end</span> Produtor_Consumidor;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PRIORIDADES -->
+      <section>
+        <h2 id="prioridades" class="section-title">2. Prioridades e Escalonamento</h2>
+        <p>
+          Ada define um modelo de escalonamento por <strong>prioridade</strong> com suporte
+          ao protocolo de teto de prioridade (<em>Priority Ceiling Protocol</em>)
+          para eliminar inversões de prioridade — problema crítico em sistemas de tempo real.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; prioridades e priority ceiling protocol</div>
+          <pre class="example"><span class="kw">with</span> System;  <span class="com">-- Para prioridades: System.Priority</span>
+<span class="kw">with</span> Ada.Real_Time; <span class="kw">use</span> Ada.Real_Time;
+
+<span class="kw">procedure</span> <span class="fn">Sistema_RT</span> <span class="kw">is</span>
+
+   <span class="com">-- Protected object com teto de prioridade</span>
+   <span class="kw">protected</span> Sensor_Temp
+      <span class="kw">with</span> Priority => <span class="num">20</span>  <span class="com">-- ceiling = prioridade mais alta das tasks que acessam</span>
+   <span class="kw">is</span>
+      <span class="kw">function</span>  <span class="fn">Ler</span>       <span class="kw">return</span> Float;
+      <span class="kw">procedure</span> <span class="fn">Atualizar</span> (V : Float);
+   <span class="kw">private</span>
+      Temp : Float := <span class="num">0.0</span>;
+   <span class="kw">end</span> Sensor_Temp;
+
+   <span class="kw">protected body</span> Sensor_Temp <span class="kw">is</span>
+      <span class="kw">function</span>  <span class="fn">Ler</span>           <span class="kw">return</span> Float <span class="kw">is</span> (<span class="kw">return</span> Temp; <span class="kw">end</span> Ler;
+      <span class="kw">procedure</span> <span class="fn">Atualizar</span> (V : Float) <span class="kw">is</span>    <span class="kw">begin</span> Temp := V; <span class="kw">end</span> Atualizar;
+   <span class="kw">end</span> Sensor_Temp;
+
+   <span class="com">-- Task de alta prioridade (controle)</span>
+   <span class="kw">task</span> <span class="tp">Controle</span>
+      <span class="kw">with</span> Priority => <span class="num">20</span>;
+
+   <span class="kw">task body</span> Controle <span class="kw">is</span>
+      Prox : Time := Clock;
+   <span class="kw">begin</span>
+      <span class="kw">loop</span>
+         Prox := Prox + Milliseconds (<span class="num">10</span>);  <span class="com">-- 100Hz</span>
+         <span class="kw">delay until</span> Prox;
+         <span class="com">-- Ler sensor e atuar</span>
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Controle;
+
+   <span class="com">-- Task de baixa prioridade (monitoração)</span>
+   <span class="kw">task</span> <span class="tp">Monitor</span>
+      <span class="kw">with</span> Priority => <span class="num">5</span>;
+
+   <span class="kw">task body</span> Monitor <span class="kw">is</span>
+      Prox : Time := Clock;
+   <span class="kw">begin</span>
+      <span class="kw">loop</span>
+         Prox := Prox + Seconds (<span class="num">1</span>);  <span class="com">-- 1Hz</span>
+         <span class="kw">delay until</span> Prox;
+         <span class="com">-- Logar temperatura</span>
+      <span class="kw">end loop</span>;
+   <span class="kw">end</span> Monitor;
+
+<span class="kw">begin</span>
+   <span class="kw">null</span>;
+<span class="kw">end</span> Sistema_RT;</pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            O <strong>Priority Ceiling Protocol</strong> de Ada garante que uma task de
+            baixa prioridade que detém um protected object nunca bloqueia uma task de
+            alta prioridade por mais tempo que o corpo do objeto protegido. Isso torna
+            o <abbr title="Worst Case Execution Time">WCET</abbr> analisável — essencial
+            para especificação DO-178C.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SELEÇÃO ASSIMÉTRICA -->
+      <section>
+        <h2 id="select-assincrono" class="section-title">3. Select Assíncrono e Timeouts</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ada &mdash; timed entry call e delay alternativo</div>
+          <pre class="example"><span class="com">-- Timed entry call: aguarda atendimento com timeout</span>
+<span class="kw">select</span>
+   Servidor.Processar (Pedido);  <span class="com">-- tenta fazer rendezvous</span>
+<span class="kw">or</span>
+   <span class="kw">delay</span> <span class="num">2.0</span>;  <span class="com">-- desiste após 2 segundos</span>
+   Put_Line (<span class="str">"Timeout: servidor não respondeu"</span>);
+<span class="kw">end select</span>;
+
+<span class="com">-- Conditional entry call: tenta sem esperar</span>
+<span class="kw">select</span>
+   Buffer.Consumir (Item);
+<span class="kw">else</span>
+   Put_Line (<span class="str">"Buffer vazio — pular esta iteração"</span>);
+<span class="kw">end select</span>;
+
+<span class="com">-- Asynchronous Transfer of Control (ATC)</span>
+<span class="kw">select</span>
+   <span class="kw">delay</span> <span class="num">5.0</span>;  <span class="com">-- abortador: dispara após 5s</span>
+<span class="kw">then abort</span>
+   Calcular_Resultado_Lento;  <span class="com">-- abortado se demorar > 5s</span>
+<span class="kw">end select</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BURNS, Alan; WELLINGS, Andy. <strong>Concurrent and Real-Time Programming in Ada</strong>. Cambridge University Press, 2007.</li>
+            <li>BURNS, Alan; WELLINGS, Andy. <strong>Real-Time Systems and Programming Languages</strong>. 4. ed. Addison-Wesley, 2009.</li>
+            <li>GONZALEZ-HARBOUR, M. et al. <strong>Ravenscar: a minimal tasking profile for high-integrity real-time programs</strong>. Ada Europe Workshop, 1997.</li>
+            <li>ISO/IEC 8652:2012. <strong>Ada Reference Manual — Annex D Real-Time Systems</strong>. Disponível em: <a href="https://ada-auth.org/standards/22rm/html/RM-D.html" target="_blank" rel="noopener">ada-auth.org</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/linguagens/ada/guia/avancado.html" class="link-card">
+            <span data-svg="seta-direita" aria-hidden="true"></span>Ada Avançado &mdash; Ravenscar Profile Detalhado
+          </a></li>
+          <li><a href="/html/programacao/linguagens/ada/aplicacoes/sistemas_criticos.html" class="link-card">
+            <span data-svg="seta-direita" aria-hidden="true"></span>Sistemas Críticos &mdash; DO-178C e EN 50128
+          </a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O rendezvous Ada não é apenas uma primitiva de sincronização — é a formalização
+          computacional da ideia de que dois agentes concorrentes só interagem quando ambos
+          estão prontos: a essência da comunicação sem corrida de dados."
+          &mdash; Alan Burns e Andy Wellings, Concurrent and Real-Time Programming in Ada
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,216 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Algoritmo de Dijkstra: caminho de menor custo em grafos ponderados, relaxamento, fila de prioridade, Python. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Algoritmo de Dijkstra | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Algoritmo de Dijkstra</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Algoritmo de Dijkstra</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Dijkstra: o GPS do mundo real</h1>
+          <p>Encontra o caminho de menor custo total em grafos ponderados  a base de roteamento de redes e navegadores GPS.</p>
+        </div>
+        <p class="intro-highlight">
+          O Algoritmo de Dijkstra resolve o problema do caminho mais curto em grafos com pesos não negativos. Ao contrário da BFS (que conta saltos), Dijkstra acumula o custo das arestas. A cada passo, ele é "ganancioso"  sempre processa o nó não visitado com menor custo acumulado, garantindo que, quando um nó é visitado, seu custo já é definitivamente o mínimo.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O conceito de relaxamento</h2>
+        <p>
+          Dijkstra começa assumindo que todos os destinos estão a distância infinita. Conforme explora o grafo, descobre atalhos e "relaxa" (atualiza para menor) as distâncias conhecidas. O processo de relaxamento é: se o custo de chegar ao nó V passando pelo nó U é menor do que o custo atual registrado para V, atualize.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Relaxamento:</strong> Para cada vizinho V de U: se <code class="code-inline">dist[U] + peso(U,V) &lt; dist[V]</code>, então <code class="code-inline">dist[V] = dist[U] + peso(U,V)</code>. Essa simples verificação, repetida sistematicamente, garante as distâncias mínimas.
+          </p>
+        </div>
+
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 520 200" role="img" aria-label="Grafo A-B-C: caminho direto A->B peso 10, caminho A->C peso 2 e C->B peso 3. Dijkstra escolhe A->C->B com custo 5 ao invés de 10">
+            <defs>
+              <style>
+                .dijk-nd   { fill: var(--card-bg-primary); stroke: var(--border); stroke-width: 1.5; }
+                .dijk-vis  { fill: rgba(var(--accent-rgb), 0.3); stroke: var(--accent); stroke-width: 2; }
+                .dijk-cur  { fill: rgba(var(--warn-rgb, 234,179,8), 0.2); stroke: rgba(var(--warn-rgb,234,179,8),0.8); stroke-width: 2; }
+                .dijk-eg   { stroke: var(--border); stroke-width: 1.5; }
+                .dijk-skip { stroke: var(--danger); stroke-width: 1.5; stroke-dasharray: 4; opacity: 0.5; }
+                .dijk-best { stroke: var(--accent); stroke-width: 2.5; }
+                .dijk-txt  { fill: var(--text-primary); font-size: 13px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+                .dijk-wt   { fill: rgba(var(--warn-rgb,234,179,8),0.9); font-size: 11px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+                .dijk-dist { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+                .dijk-lbl  { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+              </style>
+            </defs>
+
+            <!-- Edges -->
+            <line x1="90"  y1="100" x2="420" y2="100" class="dijk-skip"/>
+            <text x="255" y="90"  class="dijk-wt">peso: 10</text>
+
+            <line x1="90"  y1="100" x2="260" y2="165" class="dijk-best"/>
+            <text x="155" y="156" class="dijk-wt">peso: 2</text>
+
+            <line x1="260" y1="165" x2="420" y2="100" class="dijk-best"/>
+            <text x="355" y="156" class="dijk-wt">peso: 3</text>
+
+            <!-- Nodes -->
+            <circle cx="90"  cy="100" r="26" class="dijk-vis"/>
+            <text x="90"  y="100" class="dijk-txt">A</text>
+            <text x="90"  y="64"  class="dijk-dist">dist: 0</text>
+
+            <circle cx="260" cy="165" r="26" class="dijk-vis"/>
+            <text x="260" y="165" class="dijk-txt">C</text>
+            <text x="260" y="200" class="dijk-dist">dist: 2</text>
+
+            <circle cx="420" cy="100" r="26" class="dijk-cur"/>
+            <text x="420" y="100" class="dijk-txt">B</text>
+
+            <!-- Distance update box -->
+            <rect x="440" y="55" width="75" height="50" rx="4" fill="var(--card-bg-primary)" stroke="var(--border)" stroke-width="1"/>
+            <text x="477" y="72"  class="dijk-dist" style="fill: var(--danger); text-decoration: line-through;">antes: 10</text>
+            <text x="477" y="88"  class="dijk-dist" style="fill: var(--accent);">agora: 5</text>
+            <text x="477" y="100" class="dijk-dist">(2 + 3 = 5)</text>
+
+            <text x="260" y="30" class="dijk-lbl">Dijkstra escolhe: A  C  B (custo 5) em vez de A  B (custo 10)</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação em Python</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dijkstra.py</div>
+          <pre class="example"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="tp">dijkstra</span>(grafo, inicio):
+    <span class="str">"""Retorna dict com menor distância de 'inicio' até cada nó.
+    grafo = { no: [(vizinho, peso), ...], ... }"""</span>
+    dist = {no: <span class="tp">float</span>(<span class="str">'inf'</span>) <span class="kw">for</span> no <span class="kw">in</span> grafo}
+    dist[inicio] = <span class="num">0</span>
+    heap = [(<span class="num">0</span>, inicio)]    <span class="com"># (custo_acumulado, nó)</span>
+
+    <span class="kw">while</span> heap:
+        custo, u = heapq.heappop(heap)   <span class="com"># menor custo primeiro</span>
+
+        <span class="kw">if</span> custo > dist[u]:
+            <span class="kw">continue</span>                 <span class="com"># versão desatualizada, pula</span>
+
+        <span class="kw">for</span> v, peso <span class="kw">in</span> grafo[u]:
+            novo_custo = dist[u] + peso
+            <span class="kw">if</span> novo_custo &lt; dist[v]:
+                dist[v] = novo_custo     <span class="com"># relaxamento</span>
+                heapq.heappush(heap, (novo_custo, v))
+
+    <span class="kw">return</span> dist
+
+
+<span class="com"># --- Exemplo de uso ---</span>
+grafo = {
+    <span class="str">'A'</span>: [(<span class="str">'B'</span>, <span class="num">10</span>), (<span class="str">'C'</span>, <span class="num">2</span>)],
+    <span class="str">'B'</span>: [(<span class="str">'D'</span>, <span class="num">1</span>)],
+    <span class="str">'C'</span>: [(<span class="str">'B'</span>, <span class="num">3</span>), (<span class="str">'D'</span>, <span class="num">8</span>)],
+    <span class="str">'D'</span>: []
+}
+<span class="tp">print</span>(dijkstra(grafo, <span class="str">'A'</span>))
+<span class="com"># {'A': 0, 'B': 5, 'C': 2, 'D': 6}</span></pre>
+        </div>
+        <p>Pontos importantes:</p>
+        <ul>
+          <li><code class="code-inline">heapq</code> do Python implementa um min-heap  sempre retira o elemento com menor valor primeiro, servindo como fila de prioridade.</li>
+          <li>A verificação <code class="code-inline">if custo &gt; dist[u]: continue</code> descarta entradas antigas na fila que foram substituídas por caminhos melhores  técnica "lazy deletion".</li>
+          <li>Inicializar todas as distâncias com <code class="code-inline">float('inf')</code> garante que qualquer caminho real seja menor e cause relaxamento.</li>
+          <li>Dijkstra <strong>não funciona com pesos negativos</strong>  use Bellman-Ford nesses casos.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table class="trace-table">
+            <thead>
+              <tr><th>Implementação</th><th>Tempo</th><th>Espaço</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Array simples (fila linear)</td><td>O(V²)</td><td>O(V)</td></tr>
+              <tr><td>Min-heap (heapq)</td><td>O((V + E) log V)</td><td>O(V)</td></tr>
+              <tr><td>Fibonacci Heap (teórico)</td><td>O(E + V log V)</td><td>O(V)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando usar</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Roteamento em redes</h3>
+            <p>O protocolo OSPF (Open Shortest Path First) usado na internet usa Dijkstra para calcular rotas de menor custo entre roteadores.</p>
+          </div>
+          <div class="card">
+            <h3>GPS e navegação</h3>
+            <p>Base dos algoritmos de navegação GPS  encontrar o caminho de menor distância (ou tempo) entre dois pontos em um mapa ponderado.</p>
+          </div>
+          <div class="card">
+            <h3>Jogos e IA</h3>
+            <p>Pathfinding de NPCs em jogos com terrenos de custo variável (estrada vs floresta vs montanha)  cada tipo de terreno tem um peso diferente.</p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Atenção:</strong> Dijkstra falha com pesos negativos. A suposição central do algoritmo é que adicionar uma aresta nunca diminui o custo total do caminho. Com pesos negativos, essa propriedade é violada e Dijkstra pode declarar um caminho ótimo prematuro antes de descobrir um atalho "negativo". Use Bellman-Ford para grafos com pesos negativos.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Dijkstra, E. W. "A note on two problems in connexion with graphs." <em>Numerische Mathematik</em>, 1959.</li>
+            <li>Cormen, T. H. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Seção 22.3.</li>
+            <li>Sedgewick, R.; Wayne, K. <em>Algorithms</em>, 4ª ed. Addison-Wesley, 2011. Cap. 4.4.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Dijkstra é a prova de que ser ganancioso pode ser ótimo  desde que o problema tenha a propriedade de subestrutura ótima. Em grafos ponderados sem pesos negativos, cada escolha local de "menor custo" converge para a solução globalmente ótima.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Dijkstra é BFS com memória de custo  cada vez que ele retira um nó da fila, a distância está garantida."  análise de algoritmos de caminho mínimo
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

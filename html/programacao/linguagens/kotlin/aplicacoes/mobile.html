@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Mobile Android com Kotlin: Jetpack Compose, ViewModel, StateFlow, Retrofit, Room e Kotlin Multiplatform." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Mobile Android | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Mobile Android</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Mobile Android</h1>
+					<p>Kotlin é a linguagem oficial do Android desde 2019. Jetpack Compose substitui o XML por UI declarativa idiomática em Kotlin. ViewModel + StateFlow gerenciam estado de forma reativa, enquanto Retrofit e Room conectam a aplicação à rede e persistência local.</p>
+				</div>
+				<p class="intro-highlight">Android moderno é Kotlin-first em todos os níveis: da UI (Compose) ao gerenciamento de estado (Flow/StateFlow), da camada de rede (Retrofit) ao banco local (Room) — com coroutines unificando o modelo assíncrono.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="compose-android">Jetpack Compose — UI Declarativa</h2>
+				<p>Compose elimina o inflating de XML. <code>@Composable</code> define componentes reutilizáveis. <code>Scaffold</code> monta a estrutura Material3 com TopAppBar, FAB e Snackbar. Navegação é gerenciada via <code>NavController</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Compose tela principal</div>
+					<pre class="example"><span class="kw">import</span> androidx.compose.material3.*
+<span class="kw">import</span> androidx.compose.foundation.lazy.LazyColumn
+<span class="kw">import</span> androidx.compose.foundation.lazy.items
+<span class="kw">import</span> androidx.compose.runtime.*
+<span class="kw">import</span> androidx.navigation.NavController
+
+<span class="kw">@Composable</span>
+<span class="kw">fun</span> <span class="fn">TelaLista</span>(navController: NavController, viewModel: UserViewModel = <span class="fn">viewModel</span>()) {
+    <span class="kw">val</span> uiState <span class="kw">by</span> viewModel.uiState.<span class="fn">collectAsStateWithLifecycle</span>()
+
+    <span class="fn">Scaffold</span>(
+        topBar = { <span class="fn">TopAppBar</span>(title = { <span class="fn">Text</span>(<span class="str">"Usuários"</span>) }) },
+        floatingActionButton = {
+            <span class="fn">FloatingActionButton</span>(onClick = { navController.<span class="fn">navigate</span>(<span class="str">"criar"</span>) }) {
+                <span class="fn">Icon</span>(Icons.Default.Add, <span class="str">"Adicionar"</span>)
+            }
+        }
+    ) { padding -&gt;
+        <span class="kw">when</span> (uiState) {
+            <span class="kw">is</span> UiState.Loading -&gt; <span class="fn">CircularProgressIndicator</span>()
+            <span class="kw">is</span> UiState.Success -&gt; <span class="fn">LazyColumn</span>(contentPadding = padding) {
+                <span class="fn">items</span>((uiState <span class="kw">as</span> UiState.Success).users) { user -&gt;
+                    <span class="fn">ListItem</span>(headlineContent = { <span class="fn">Text</span>(user.nome) })
+                }
+            }
+            <span class="kw">is</span> UiState.Error -&gt; <span class="fn">Text</span>(<span class="str">"Erro: ${(uiState as UiState.Error).mensagem}"</span>)
+        }
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="viewmodel-flow">ViewModel + StateFlow</h2>
+				<p><code>ViewModel</code> sobrevive a recomposições e rotações de tela. <code>MutableStateFlow</code> é a fonte de verdade do estado da UI — coletado com <code>collectAsStateWithLifecycle</code> para respeitar o ciclo de vida.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — ViewModel com StateFlow</div>
+					<pre class="example"><span class="kw">import</span> androidx.lifecycle.ViewModel
+<span class="kw">import</span> androidx.lifecycle.viewModelScope
+<span class="kw">import</span> kotlinx.coroutines.flow.*
+<span class="kw">import</span> kotlinx.coroutines.launch
+
+<span class="kw">sealed class</span> <span class="fn">UiState</span> {
+    <span class="kw">object</span> Loading : UiState()
+    <span class="kw">data class</span> <span class="fn">Success</span>(<span class="kw">val</span> users: List&lt;User&gt;) : UiState()
+    <span class="kw">data class</span> <span class="fn">Error</span>(<span class="kw">val</span> mensagem: String) : UiState()
+}
+
+<span class="kw">class</span> <span class="fn">UserViewModel</span>(<span class="kw">private val</span> repo: UserRepository) : <span class="fn">ViewModel</span>() {
+    <span class="kw">private val</span> _uiState = <span class="fn">MutableStateFlow</span>&lt;UiState&gt;(UiState.Loading)
+    <span class="kw">val</span> uiState: StateFlow&lt;UiState&gt; = _uiState.<span class="fn">asStateFlow</span>()
+
+    <span class="kw">init</span> { <span class="fn">carregarUsers</span>() }
+
+    <span class="kw">fun</span> <span class="fn">carregarUsers</span>() {
+        viewModelScope.<span class="fn">launch</span> {
+            _uiState.<span class="fn">emit</span>(UiState.Loading)
+            <span class="kw">try</span> {
+                <span class="kw">val</span> users = repo.<span class="fn">buscarTodos</span>()
+                _uiState.<span class="fn">emit</span>(UiState.Success(users))
+            } <span class="kw">catch</span> (e: Exception) {
+                _uiState.<span class="fn">emit</span>(UiState.Error(e.message ?: <span class="str">"Erro desconhecido"</span>))
+            }
+        }
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="retrofit-room">Retrofit + Room — Rede e Persistência</h2>
+				<p>Retrofit faz requisições HTTP com interfaces anotadas. Room é o ORM oficial do Android com suporte direto a coroutines e Flow. O padrão Repository encapsula ambos, expondo uma interface única para a ViewModel.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Retrofit + Room + Repository</div>
+					<pre class="example"><span class="kw">import</span> retrofit2.http.*
+<span class="kw">import</span> androidx.room.*
+
+<span class="com">// Retrofit interface</span>
+<span class="kw">interface</span> <span class="fn">UserApi</span> {
+    <span class="kw">@GET</span>(<span class="str">"/users"</span>) <span class="kw">suspend fun</span> <span class="fn">getUsers</span>(): List&lt;UserDto&gt;
+    <span class="kw">@POST</span>(<span class="str">"/users"</span>) <span class="kw">suspend fun</span> <span class="fn">createUser</span>(<span class="kw">@Body</span> user: UserDto): UserDto
+}
+
+<span class="com">// Room Entity e DAO</span>
+<span class="kw">@Entity</span>(tableName = <span class="str">"users"</span>)
+<span class="kw">data class</span> <span class="fn">UserEntity</span>(
+    <span class="kw">@PrimaryKey</span> <span class="kw">val</span> id: Long,
+    <span class="kw">val</span> nome: String,
+    <span class="kw">val</span> email: String,
+    <span class="kw">val</span> sincronizado: Boolean = <span class="kw">false</span>
+)
+
+<span class="kw">@Dao</span>
+<span class="kw">interface</span> <span class="fn">UserDao</span> {
+    <span class="kw">@Query</span>(<span class="str">"SELECT * FROM users"</span>) <span class="kw">fun</span> <span class="fn">observarTodos</span>(): Flow&lt;List&lt;UserEntity&gt;&gt;
+    <span class="kw">@Insert</span>(onConflict = OnConflictStrategy.REPLACE) <span class="kw">suspend fun</span> <span class="fn">inserir</span>(users: List&lt;UserEntity&gt;)
+    <span class="kw">@Query</span>(<span class="str">"SELECT * FROM users WHERE sincronizado = 0"</span>) <span class="kw">suspend fun</span> <span class="fn">naoSincronizados</span>(): List&lt;UserEntity&gt;
+}
+
+<span class="com">// Repository — combina API e Room</span>
+<span class="kw">class</span> <span class="fn">UserRepository</span>(<span class="kw">private val</span> api: UserApi, <span class="kw">private val</span> dao: UserDao) {
+    <span class="kw">suspend fun</span> <span class="fn">buscarTodos</span>(): List&lt;User&gt; {
+        <span class="kw">val</span> remoto = api.<span class="fn">getUsers</span>()
+        dao.<span class="fn">inserir</span>(remoto.<span class="fn">map</span> { it.<span class="fn">toEntity</span>() })
+        <span class="kw">return</span> remoto.<span class="fn">map</span> { it.<span class="fn">toDomain</span>() }
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="kmp">Kotlin Multiplatform (KMP)</h2>
+				<p>KMP permite compartilhar código Kotlin entre Android e iOS (e Desktop/Web) via <code>commonMain</code>. A lógica de negócio, repositórios e modelos ficam no módulo compartilhado; UI fica em cada plataforma com <code>actual/expect</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — KMP shared module</div>
+					<pre class="example"><span class="com">// commonMain/kotlin/com/app/shared/UserRepository.kt</span>
+<span class="kw">expect fun</span> <span class="fn">criarHttpClient</span>(): HttpClient  <span class="com">// implementado por plataforma</span>
+
+<span class="kw">class</span> <span class="fn">UserRepository</span> {
+    <span class="kw">private val</span> client = <span class="fn">criarHttpClient</span>()
+
+    <span class="kw">suspend fun</span> <span class="fn">buscarUsers</span>(): List&lt;User&gt; =
+        client.<span class="fn">get</span>(<span class="str">"https://api.exemplo.com/users"</span>).<span class="fn">body</span>()
+}
+
+<span class="com">// androidMain/kotlin/com/app/shared/HttpClient.kt</span>
+<span class="kw">actual fun</span> <span class="fn">criarHttpClient</span>() = <span class="fn">HttpClient</span>(Android) {
+    <span class="fn">install</span>(ContentNegotiation) { <span class="fn">json</span>() }
+}
+
+<span class="com">// iosMain/kotlin/com/app/shared/HttpClient.kt</span>
+<span class="kw">actual fun</span> <span class="fn">criarHttpClient</span>() = <span class="fn">HttpClient</span>(Darwin) {
+    <span class="fn">install</span>(ContentNegotiation) { <span class="fn">json</span>() }
+}</pre>
+				</div>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Módulo</th><th>Plataformas</th><th>Responsabilidade</th></tr></thead>
+						<tbody>
+							<tr><td>commonMain</td><td>Todas</td><td>Domínio, repositórios, modelos, ViewModels</td></tr>
+							<tr><td>androidMain</td><td>Android</td><td>UI Compose, actuals Android</td></tr>
+							<tr><td>iosMain</td><td>iOS</td><td>SwiftUI bridge, actuals iOS</td></tr>
+							<tr><td>desktopMain</td><td>Desktop</td><td>Compose Desktop, actuals JVM</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>GOOGLE. <strong>Jetpack Compose — Android UI toolkit</strong>. Disponível em: <a href="https://developer.android.com/jetpack/compose" target="_blank" rel="noopener">developer.android.com/jetpack/compose</a>. Acesso em: mar. 2026.</li>
+						<li>GOOGLE. <strong>Architecture Guide — Android</strong>. Disponível em: <a href="https://developer.android.com/topic/architecture" target="_blank" rel="noopener">developer.android.com/topic/architecture</a>. Acesso em: mar. 2026.</li>
+						<li>JETBRAINS. <strong>Kotlin Multiplatform</strong>. Disponível em: <a href="https://kotlinlang.org/docs/multiplatform.html" target="_blank" rel="noopener">kotlinlang.org/docs/multiplatform</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="web.html">Web com Kotlin</a></li>
+					<li><a href="banco_dados.html">Banco de Dados</a></li>
+					<li><a href="gui_desktop.html">GUI Desktop</a></li>
+					<li><a href="../guia/introducao.html">Introdução ao Kotlin</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Android moderno é Kotlin puro: Compose, StateFlow, Room e Retrofit formam a stack oficial — reativa, type-safe e testável.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

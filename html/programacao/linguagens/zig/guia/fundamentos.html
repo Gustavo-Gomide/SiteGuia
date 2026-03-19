@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Fundamentos de Zig: tipos, ponteiros, slices, error unions, defer e estruturas de controle essenciais." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Zig: Fundamentos | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Zig: Fundamentos</strong></p>
+			</div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="zig" aria-hidden="true"></span></div>
+					<h1>Os blocos basicos para escrever Zig com seguranca</h1>
+					<p>Tipos, ponteiros, slices, fluxo de erros e controle de execucao sem artificios escondidos.</p>
+				</div>
+				<p class="intro-highlight">Em Zig, o basico ja mostra a filosofia da linguagem: cada tipo comunica intencao, cada ponteiro carrega um contrato e cada erro faz parte da assinatura da funcao.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="tipos" class="section-title">Tipos e representacao de dados</h2>
+				<p>Zig oferece inteiros assinados e nao assinados com largura explicita, como <strong>i32</strong>, <strong>u64</strong> e <strong>usize</strong>, alem de floats, bools, arrays, structs, enums e unions. A largura faz parte do tipo, o que reduz ambiguidades frequentes em APIs de sistemas e serializacao binaria.</p>
+				<p>Arrays possuem tamanho fixo em tempo de compilacao. Slices representam uma fatia dinamica sobre uma sequencia contigua. Essa distincao e crucial: array diz "tenho exatamente N elementos"; slice diz "tenho um ponteiro e um comprimento".</p>
+				<div class="panel">
+					<h3 class="panel-title">Regra pratica</h3>
+					<p>Use array quando o tamanho e parte do contrato e use slice quando a funcao precisa aceitar um intervalo de dados de tamanho variavel sem copiar memoria.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="ponteiros-slices" class="section-title">Pointers e slices</h2>
+				<p>Ponteiros em Zig nao sao todos iguais. Ha ponteiro para um unico valor, ponteiro para muitos elementos, ponteiros opcionais e slices. Essa granularidade força o programador a comunicar melhor o que espera receber. O efeito pedagogico e importante: a assinatura da funcao vira documentacao executavel.</p>
+				<p>Slices como <strong>[]u8</strong> sao muito comuns em texto, buffers e I/O. Eles nao possuem ownership; apenas descrevem onde os dados estao e quantos bytes existem ali. A gestao da memoria continua sendo responsabilidade da parte que alocou.</p>
+				<div class="callout">
+					<p><span data-svg="info" aria-hidden="true"></span> Um erro comum de iniciantes e retornar slices para memoria temporaria que ja foi liberada. Em Zig, ownership precisa ser planejado com clareza antes de desenhar a API.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="erros-defer" class="section-title">Error unions, try, catch e defer</h2>
+				<p>Uma funcao pode retornar erro explicitamente usando uma error union, como <strong>!u32</strong> ou <strong>!void</strong>. Isso significa que o resultado pode ser um valor valido ou um erro do conjunto declarado. O operador <strong>try</strong> propaga falhas de forma curta e legivel, enquanto <strong>catch</strong> permite tratamento local.</p>
+				<p>O comando <strong>defer</strong> agenda limpeza para o fim do escopo atual, e <strong>errdefer</strong> agenda limpeza apenas se a funcao sair por erro. Em software com allocators ou handles de arquivo, essa dupla evita muitos vazamentos.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">
+						<span>Zig</span>
+						<span>Error union, slice e defer</span>
+					</div>
+					<pre class="example"><code><span class="kw">const</span> std = @import(<span class="str">"std"</span>);
+
+<span class="kw">fn</span> <span class="fn">lerNome</span>(allocator: std.mem.Allocator) ![]u8 {
+		<span class="kw">var</span> buffer = <span class="kw">try</span> allocator.alloc(u8, 32);
+		<span class="kw">errdefer</span> allocator.free(buffer);
+
+		std.mem.copyForwards(u8, buffer[0..4], <span class="str">"Zig!"</span>);
+		<span class="kw">return</span> buffer[0..4];
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="fn">main</span>() !<span class="kw">void</span> {
+		<span class="kw">var</span> arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+		<span class="kw">defer</span> arena.deinit();
+
+		<span class="kw">const</span> nome = <span class="kw">try</span> lerNome(arena.allocator());
+		<span class="com">// nome e um slice sobre memoria controlada pela arena</span>
+		_ = nome;
+}</code></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="controle-fluxo" class="section-title">if, switch, while e for</h2>
+				<p>As estruturas de controle seguem uma sintaxe enxuta. <strong>if</strong> pode capturar valor opcional ou resultado de error union; <strong>switch</strong> cobre enums e inteiros com clareza; <strong>while</strong> e <strong>for</strong> iteram sem esconder indice, elemento ou condicoes de parada.</p>
+				<p>Vale notar que <strong>for</strong> em slices e arrays e extremamente comum, enquanto <strong>while</strong> aparece bastante em parsing, leitura de stream e loops que dependem de estado mutavel. Como a linguagem nao tenta inventar muitos atalhos, o codigo tende a ficar uniforme entre projetos diferentes.</p>
+				<div class="grid grid--2">
+					<div class="card">
+						<h3>if e switch</h3>
+						<p>Excelentes para transformar fluxo de erro e enumeracoes em ramos de decisao claros e auditaveis.</p>
+					</div>
+					<div class="card">
+						<h3>while e for</h3>
+						<p>Permitem modelar desde loops simples em arrays ate iteracao incremental sobre buffers e streams.</p>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="boas-leituras" class="section-title">Como estudar os fundamentos do jeito certo</h2>
+				<p>O melhor caminho e combinar leitura da referencia oficial com pequenos exercicios: manipular slices, escrever funcoes que retornam erros, criar structs simples e testar alocacao com allocators distintos. Zig recompensa repeticao consciente porque a mesma disciplina que vale para um exemplo pequeno vale para um servidor ou firmware real.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<ul>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#Primitive-Types" target="_blank" rel="noopener">Language Reference: Primitive Types</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#Errors" target="_blank" rel="noopener">Language Reference: Errors</a>.</li>
+					<li>Zig Software Foundation. <a href="https://ziglang.org/documentation/master/#defer" target="_blank" rel="noopener">Language Reference: defer</a>.</li>
+					<li>Zig Learn. <a href="https://ziglearn.org/" target="_blank" rel="noopener">Zig Learn</a>.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><span data-svg="estrela" aria-hidden="true"></span> Dominar os fundamentos de Zig significa aprender a enxergar ownership, tempo de vida e falha como partes normais do design, nao como detalhes secundarios.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/introducao.html">Voltar para a introducao</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/guia/avancado.html">Seguir para avancado</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/zig/aplicacoes/embedded_iot.html">Ver Zig em embedded e IoT</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

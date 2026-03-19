@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Hardening Windows: GPO, CIS Benchmarks, ASR rules, Credential Guard, LAPS, AppLocker, WDAC, Windows Firewall e boas práticas de segurança." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Hardening Windows | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Hardening Windows</strong></p>
+      </div>
+
+      <section>
+        <h2 id="ferramentas" class="section-title">Ferramentas e Frameworks</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Hardening Windows</h1>
+          <p>GPOs, CIS Benchmarks e STIG para endurecer servidores e clientes Windows.</p>
+        </div>
+
+        <p class="intro-highlight">Hardening Windows aplica configurações seguras segundo benchmarks CIS e STIG, restringindo serviços, configurando políticas de grupo e removendo funcionalidades desnecessárias para reduzir a superfície de ataque.</p>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>CIS Benchmarks para Windows</h3>
+            <p>Políticas detalhadas para Windows Server 2019/2022 e Windows 10/11 nos níveis 1 e 2. Podem ser importadas como GPOs. Download gratuito em cisecurity.org.</p>
+          </div>
+          <div class="card">
+            <h3>Microsoft Security Compliance Toolkit</h3>
+            <p>Conjunto de GPOs e scripts oficiais da Microsoft para hardening. Inclui baselines para Windows, Edge, Microsoft 365 e Defender. Usa Policy Analyzer para comparar.</p>
+          </div>
+          <div class="card">
+            <h3>LGPO.exe</h3>
+            <p>Ferramenta da Microsoft para aplicar configurações de GPO localmente em máquinas fora de domínio — ideal para workstations standalone.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="controles" class="section-title">Controles Críticos</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Controle</th><th>O que faz</th><th>Como habilitar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Windows Defender Credential Guard</td><td>Isola LSASS em VM separada com Hyper-V; previne Mimikatz</td><td>GPO: Computer → Admin Templates → Device Guard</td></tr>
+              <tr><td>LAPS (Local Admin Password Solution)</td><td>Senha única e rotativa por máquina para conta local Administrator</td><td>Instalar LAPS; configurar GPO; requer AD</td></tr>
+              <tr><td>AppLocker / WDAC</td><td>Whitelist de aplicações permitidas; bloqueia execução de binários não autorizados</td><td>GPO: Computer → Windows Settings → App Control</td></tr>
+              <tr><td>BitLocker</td><td>Criptografia de disco completo com TPM; previne acesso offline a dados</td><td>GPO ou manage-bde; requer TPM 2.0</td></tr>
+              <tr><td>Windows Firewall</td><td>Filtro de tráfego host-based; bloquear por programa, porta, IP</td><td>GPO ou netsh advfirewall</td></tr>
+              <tr><td>Secure Boot</td><td>Garante que apenas bootloaders assinados inicializem</td><td>UEFI + TPM; verificar com msinfo32</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="asr" class="section-title">Attack Surface Reduction Rules</h2>
+        <div class="section-divider"></div>
+
+        <p>ASR Rules do Microsoft Defender bloqueiam técnicas de ataque específicas mesmo sem assinaturas de malware.</p>
+
+        <pre class="code-block">
+# Habilitar ASR Rule via PowerShell:
+# Exemplo: Bloquear execução de conteúdo de macros Office
+Add-MpPreference -AttackSurfaceReductionRules_Ids d4f940ab-401b-4efc-aadc-ad5f3c50688a `
+                 -AttackSurfaceReductionRules_Actions Enabled
+
+# Regras importantes:
+# Block Office from creating child processes:
+# d4f940ab-401b-4efc-aadc-ad5f3c50688a
+
+# Block credential stealing from LSASS:
+# 9e6c4e1f-7d60-472f-ba1a-a39ef669e4b3
+
+# Block execution of potentially obfuscated scripts:
+# 5beb7efe-fd9a-4556-801d-275e5ffc04cc
+
+# Block abuse of exploited vulnerable signed drivers:
+# 56a863a9-875e-4185-98a7-b882c64b5ce5
+
+# Ver status atual:
+Get-MpPreference | Select-Object -ExpandProperty AttackSurfaceReductionRules_Ids</pre>
+      </section>
+
+      <section>
+        <h2 id="checklist" class="section-title">Checklist Básico</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--success">
+            <h3>Contas e Acesso</h3>
+            <ul>
+              <li>Desabilitar conta Administrator padrão (ou usar LAPS)</li>
+              <li>Renomear conta Guest</li>
+              <li>Política de senha: 14+ chars, complexidade obrigatória</li>
+              <li>Lockout: 5 tentativas → bloquear 30 min</li>
+              <li>MFA para RDP e VPN</li>
+            </ul>
+          </div>
+          <div class="card card--success">
+            <h3>Serviços e Rede</h3>
+            <ul>
+              <li>Desabilitar SMBv1 (<span class="code-inline">Set-SmbServerConfiguration -EnableSMB1Protocol $false</span>)</li>
+              <li>Desabilitar LLMNR e NetBIOS</li>
+              <li>Windows Firewall habilitado em todos os perfis</li>
+              <li>RDP via VPN apenas; habilitar NLA</li>
+              <li>Desabilitar serviços não usados (Print Spooler, etc.)</li>
+            </ul>
+          </div>
+          <div class="card card--success">
+            <h3>Atualizações e Monitoramento</h3>
+            <ul>
+              <li>Windows Update automático habilitado</li>
+              <li>Microsoft Defender atualizado</li>
+              <li>Audit Policy: Success+Failure para Logon, Account Management, Policy Change</li>
+              <li>Sysmon instalado e configurado</li>
+              <li>Logs encaminhados ao SIEM</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Para ambientes de domínio, aplique hardening via GPOs do Microsoft Security Compliance Toolkit. Para workstations isoladas, use LGPO.exe. Combine com Defender for Endpoint (EDR) e Microsoft Sentinel (SIEM) para visibilidade completa. Documente toda exceção feita ao baseline.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Credential Guard + LAPS + AppLocker eliminam 80% dos vetores mais comuns em ambientes Windows."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

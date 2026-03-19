@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure para GUI desktop com JavaFX, Swing e Electron via ClojureScript; arquiteturas de estado, eventos e distribuicao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Aplicacoes GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure: Aplicacoes GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Interfaces desktop com arquitetura funcional</h1>
+          <p>Clojure pode construir GUIs desktop sobre JavaFX ou Swing, com estado imutavel e atualizacao orientada a eventos.</p>
+        </div>
+        <p class="intro-highlight">A grande vantagem e separar modelo de estado e renderizacao. Isso reduz bugs de sincronizacao de tela e torna o comportamento previsivel.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Base conceitual</h2>
+        <p>Uma GUI reativa pode ser vista como a funcao <code class="code-inline">view(state)</code>. Em Clojure, esse modelo combina bem com atoms para estado local e filas/eventos para atualizar interface sem mutacao dispersa.</p>
+        <div class="panel">
+          <h3 class="panel-title">Opcoes comuns</h3>
+          <ul>
+            <li>cljfx (JavaFX declarativo)</li>
+            <li>seesaw (DSL para Swing)</li>
+            <li>ClojureScript + Electron (desktop multiplataforma web-first)</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Ciclo de evento em GUI funcional</h2>
+        <svg viewBox="0 0 920 190" role="img" aria-label="Ciclo de GUI: evento, reducer, novo estado, render">
+          <rect x="20" y="60" width="140" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="58" y="100" fill="currentColor">Evento</text>
+          <rect x="210" y="60" width="170" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="252" y="100" fill="currentColor">Reducer</text>
+          <rect x="430" y="60" width="170" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="460" y="100" fill="currentColor">Novo estado</text>
+          <rect x="650" y="60" width="180" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="700" y="100" fill="currentColor">Render</text>
+          <path d="M160 95 L210 95" stroke="currentColor" stroke-width="2"></path>
+          <path d="M380 95 L430 95" stroke="currentColor" stroke-width="2"></path>
+          <path d="M600 95 L650 95" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+        <p>Com esse fluxo, cada acao do usuario vira um evento puro que produz novo estado. O renderer apenas reflete o estado, evitando acoplamento de callbacks com widgets.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso">Exemplo com cljfx</h2>
+        <pre class="example"><code><span class="kw">(ns</span> app.gui
+  <span class="tp">(:require</span> [cljfx.api <span class="str">:as</span> fx]))
+
+(<span class="kw">def</span> *state (atom {:contador <span class="num">0</span>}))
+
+(<span class="kw">defn</span> root-view [{:keys [contador]}]
+  {:fx/type :stage
+   :showing true
+   :title <span class="str">"Contador Clojure"</span>
+   :scene {:fx/type :scene
+           :root {:fx/type :v-box
+                  :spacing <span class="num">12</span>
+                  :children [{:fx/type :label :text (str "Valor: " contador)}
+                             {:fx/type :button
+                              :text "Incrementar"
+                              :on-action {:event/type :inc}}]}}})
+
+(<span class="kw">defn</span> handle-event [{:keys [event/type]}]
+  (<span class="kw">case</span> type
+    :inc (swap! *state update :contador inc)
+    nil))
+
+(<span class="kw">def</span> renderer
+  (fx/create-renderer
+    :middleware (fx/wrap-map-desc (fn [_] (root-view @*state)))
+    :opts {:fx.opt/map-event-handler handle-event}))
+
+(fx/mount-renderer *state renderer)</code></pre>
+        <p>Essa estrutura facilita testar reducao de estado separadamente da camada visual.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Quando GUI desktop em Clojure faz sentido</h2>
+        <ul>
+          <li>Ferramentas internas para operacao, monitoramento e suporte tecnico.</li>
+          <li>Aplicacoes cientificas que exigem integracao com bibliotecas JVM.</li>
+          <li>Produtos B2B com distribuicao controlada e pouco foco em app store.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Padroes avancados</h2>
+        <div class="panel">
+          <h3 class="panel-title">Undo/Redo funcional</h3>
+          <p>Armazene historico de estados imutaveis em vetor e navegue por indice. Isso simplifica implementacao de undo/redo sem copiar arvores inteiras.</p>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite executar I/O pesado na thread de UI. Use canais, futures ou executores para manter interface responsiva.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de caminhos desktop</h2>
+        <table class="table">
+          <thead><tr><th>Caminho</th><th>Vantagem</th><th>Ponto de atencao</th></tr></thead>
+          <tbody>
+            <tr><td>cljfx/JavaFX</td><td>Integracao JVM e performance boa</td><td>Curva de API JavaFX</td></tr>
+            <tr><td>Swing + seesaw</td><td>Maturidade e legado vasto</td><td>Visual mais datado</td></tr>
+            <tr><td>Electron + ClojureScript</td><td>UX web moderna</td><td>Consumo de memoria maior</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>CLJFX. Documentation. Disponivel em: <a href="https://cljfx.github.io/" target="_blank" rel="noopener">https://cljfx.github.io/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>SEESAW. Project Page. Disponivel em: <a href="https://github.com/clj-commons/seesaw" target="_blank" rel="noopener">https://github.com/clj-commons/seesaw</a>. Acesso em: 13 mar. 2026.</li>
+          <li>JAVAFX. OpenJFX Docs. Disponivel em: <a href="https://openjfx.io/" target="_blank" rel="noopener">https://openjfx.io/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>HICKEY, R. The Value of Values. Disponivel em: <a href="https://www.youtube.com/watch?v=-6BsiVyC1kM" target="_blank" rel="noopener">https://www.youtube.com/watch?v=-6BsiVyC1kM</a>. Acesso em: 13 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> GUI desktop em Clojure fica poderosa quando estado, evento e render sao tratados como dados, nao como scripts espalhados.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/projetos_boas_praticas.html">Projetos e Boas Praticas</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/terminal_cli.html">Aplicacoes CLI com Clojure</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/mobile.html">Aplicacoes Mobile com Clojure</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

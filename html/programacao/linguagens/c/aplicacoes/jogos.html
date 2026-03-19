@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para desenvolvimento de jogos: SDL2, game loop, OpenGL, detecção de colisão, rasterização e implementação de Pong do zero." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Desenvolvimento de Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="jogo" aria-hidden="true"></span></div>
+          <h1>C para Jogos</h1>
+          <p>SDL2, game loop, rasterização de pixels, física 2D, OpenGL e a implementação clássica de Pong — todos os fundamentos para criar jogos em C puro.</p>
+        </div>
+        <p class="intro-highlight">
+          Doom, Quake, Wolfenstein 3D, o interpretador do chip DMG (Game Boy) e emuladores como mGBA foram escritos em C. A linguagem oferece controle total sobre memória, tempo de execução e hardware gráfico — fundamental para jogos de alta performance.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sdl2-intro">SDL2: Inicialização e Game Loop</h2>
+        <p>SDL2 (Simple DirectMedia Layer) fornece janela, renderização 2D acelerada por hardware, input de teclado/mouse/joystick e áudio &mdash; tudo em C puro, cross-platform (Windows, Linux, macOS, Android, iOS).</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; SDL2: game loop com delta time</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;SDL2/SDL.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdbool.h&gt;</span>
+
+<span class="kw">#define</span> LARGURA  <span class="num">800</span>
+<span class="kw">#define</span> ALTURA   <span class="num">600</span>
+<span class="kw">#define</span> FPS_ALVO <span class="num">60</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="kw">if</span> (<span class="fn">SDL_Init</span>(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != <span class="num">0</span>) {
+        <span class="fn">fprintf</span>(stderr, <span class="str">"SDL_Init erro: %s\n"</span>, <span class="fn">SDL_GetError</span>());
+        <span class="kw">return</span> <span class="num">1</span>;
+    }
+
+    <span class="tp">SDL_Window</span> *janela = <span class="fn">SDL_CreateWindow</span>(
+        <span class="str">"Meu Jogo C"</span>,
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        LARGURA, ALTURA,
+        SDL_WINDOW_SHOWN
+    );
+    <span class="tp">SDL_Renderer</span> *ren = <span class="fn">SDL_CreateRenderer</span>(
+        janela, -<span class="num">1</span>,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+    );
+
+    <span class="tp">bool</span> rodando = <span class="kw">true</span>;
+    <span class="tp">Uint32</span> ultimo = <span class="fn">SDL_GetTicks</span>();
+
+    <span class="kw">while</span> (rodando) {
+        <span class="tp">Uint32</span> agora = <span class="fn">SDL_GetTicks</span>();
+        <span class="tp">float</span>  dt    = (agora - ultimo) / <span class="num">1000.0f</span>;  <span class="com">/* delta time em segundos */</span>
+        ultimo = agora;
+
+        <span class="com">/* --- Processar eventos --- */</span>
+        <span class="tp">SDL_Event</span> ev;
+        <span class="kw">while</span> (<span class="fn">SDL_PollEvent</span>(&amp;ev)) {
+            <span class="kw">if</span> (ev.type == SDL_QUIT) rodando = <span class="kw">false</span>;
+            <span class="kw">if</span> (ev.type == SDL_KEYDOWN &amp;&amp;
+                ev.key.keysym.sym == SDLK_ESCAPE) rodando = <span class="kw">false</span>;
+        }
+
+        <span class="com">/* --- Atualizar lógica (usando dt) --- */</span>
+        <span class="com">/* ex: player.x += velocidade * dt; */</span>
+
+        <span class="com">/* --- Renderizar --- */</span>
+        <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">30</span>, <span class="num">30</span>, <span class="num">46</span>, <span class="num">255</span>);
+        <span class="fn">SDL_RenderClear</span>(ren);
+
+        <span class="com">/* Exemplo: retângulo em movimento virtual */</span>
+        <span class="tp">SDL_Rect</span> retangulo = {<span class="num">100</span>, <span class="num">100</span>, <span class="num">50</span>, <span class="num">50</span>};
+        <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">137</span>, <span class="num">220</span>, <span class="num">235</span>, <span class="num">255</span>);
+        <span class="fn">SDL_RenderFillRect</span>(ren, &amp;retangulo);
+
+        <span class="fn">SDL_RenderPresent</span>(ren);
+
+        <span class="com">/* Limitar FPS caso VSync não esteja disponível */</span>
+        <span class="tp">Uint32</span> frame_ms = <span class="fn">SDL_GetTicks</span>() - agora;
+        <span class="kw">if</span> (frame_ms &lt; <span class="num">1000</span> / FPS_ALVO)
+            <span class="fn">SDL_Delay</span>(<span class="num">1000</span> / FPS_ALVO - frame_ms);
+    }
+
+    <span class="fn">SDL_DestroyRenderer</span>(ren);
+    <span class="fn">SDL_DestroyWindow</span>(janela);
+    <span class="fn">SDL_Quit</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o jogo main.c $(sdl2-config --cflags --libs) */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pong">Pong: Jogo Completo em SDL2 + C</h2>
+        <p>Implementação completa do Pong com física de bola, detecção de colisão AABB (Axis-Aligned Bounding Box), pontuação e controle por teclado.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; Pong completo: structs, física, colisão e placar</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;SDL2/SDL.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdbool.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;math.h&gt;</span>
+
+<span class="kw">#define</span> W <span class="num">800</span>
+<span class="kw">#define</span> H <span class="num">600</span>
+<span class="kw">#define</span> PAD_L <span class="num">10</span>
+<span class="kw">#define</span> PAD_A <span class="num">80</span>
+<span class="kw">#define</span> BOLA_R <span class="num">8</span>
+<span class="kw">#define</span> VEL_PAD <span class="num">350.0f</span>
+<span class="kw">#define</span> VEL_BOLA <span class="num">280.0f</span>
+
+<span class="kw">typedef</span> <span class="kw">struct</span> { <span class="tp">float</span> x, y, vy; <span class="tp">int</span> pts; } <span class="tp">Raquete</span>;
+<span class="kw">typedef</span> <span class="kw">struct</span> { <span class="tp">float</span> x, y, vx, vy; } <span class="tp">Bola</span>;
+
+<span class="tp">bool</span> <span class="fn">aabb</span>(<span class="tp">float</span> bx, <span class="tp">float</span> by, <span class="tp">float</span> rx, <span class="tp">float</span> ry) {
+    <span class="kw">return</span> bx + BOLA_R &gt; rx &amp;&amp; bx - BOLA_R &lt; rx + PAD_L &amp;&amp;
+           by + BOLA_R &gt; ry &amp;&amp; by - BOLA_R &lt; ry + PAD_A;
+}
+
+<span class="tp">void</span> <span class="fn">resetar_bola</span>(<span class="tp">Bola</span> *b, <span class="tp">int</span> direcao) {
+    b-&gt;x = W / <span class="num">2.0f</span>; b-&gt;y = H / <span class="num">2.0f</span>;
+    b-&gt;vx = direcao * VEL_BOLA;
+    b-&gt;vy = VEL_BOLA * <span class="num">0.5f</span>;
+}
+
+<span class="tp">void</span> <span class="fn">desenhar_raquete</span>(<span class="tp">SDL_Renderer</span> *r, <span class="tp">Raquete</span> *p) {
+    <span class="tp">SDL_Rect</span> rect = {(<span class="tp">int</span>)p-&gt;x, (<span class="tp">int</span>)p-&gt;y, PAD_L, PAD_A};
+    <span class="fn">SDL_SetRenderDrawColor</span>(r, <span class="num">255</span>, <span class="num">255</span>, <span class="num">255</span>, <span class="num">255</span>);
+    <span class="fn">SDL_RenderFillRect</span>(r, &amp;rect);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="fn">SDL_Init</span>(SDL_INIT_VIDEO);
+    <span class="tp">SDL_Window</span>   *win = <span class="fn">SDL_CreateWindow</span>(<span class="str">"Pong"</span>, SDL_WINDOWPOS_CENTERED,
+                           SDL_WINDOWPOS_CENTERED, W, H, <span class="num">0</span>);
+    <span class="tp">SDL_Renderer</span> *ren = <span class="fn">SDL_CreateRenderer</span>(win, -<span class="num">1</span>,
+                           SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+
+    <span class="tp">Raquete</span> p1 = {<span class="num">15.0f</span>,              H/<span class="num">2.0f</span> - PAD_A/<span class="num">2</span>, <span class="num">0</span>, <span class="num">0</span>};
+    <span class="tp">Raquete</span> p2 = {W - <span class="num">15.0f</span> - PAD_L,  H/<span class="num">2.0f</span> - PAD_A/<span class="num">2</span>, <span class="num">0</span>, <span class="num">0</span>};
+    <span class="tp">Bola</span>    b;  <span class="fn">resetar_bola</span>(&amp;b, <span class="num">1</span>);
+
+    <span class="kw">const</span> <span class="tp">Uint8</span> *kb = <span class="fn">SDL_GetKeyboardState</span>(NULL);
+    <span class="tp">bool</span> rodando = <span class="kw">true</span>;
+    <span class="tp">Uint32</span> ultimo = <span class="fn">SDL_GetTicks</span>();
+
+    <span class="kw">while</span> (rodando) {
+        <span class="tp">float</span> dt = (<span class="fn">SDL_GetTicks</span>() - ultimo) / <span class="num">1000.0f</span>;
+        ultimo = <span class="fn">SDL_GetTicks</span>();
+
+        <span class="tp">SDL_Event</span> ev;
+        <span class="kw">while</span> (<span class="fn">SDL_PollEvent</span>(&amp;ev))
+            <span class="kw">if</span> (ev.type == SDL_QUIT) rodando = <span class="kw">false</span>;
+
+        <span class="com">/* Controles: W/S para P1, Up/Down para P2 */</span>
+        <span class="kw">if</span> (kb[SDL_SCANCODE_W])  p1.y -= VEL_PAD * dt;
+        <span class="kw">if</span> (kb[SDL_SCANCODE_S])  p1.y += VEL_PAD * dt;
+        <span class="kw">if</span> (kb[SDL_SCANCODE_UP])   p2.y -= VEL_PAD * dt;
+        <span class="kw">if</span> (kb[SDL_SCANCODE_DOWN]) p2.y += VEL_PAD * dt;
+
+        <span class="com">/* Clampar raquetes nas bordas */</span>
+        <span class="kw">if</span> (p1.y &lt; <span class="num">0</span>) p1.y = <span class="num">0</span>;  <span class="kw">if</span> (p1.y + PAD_A &gt; H) p1.y = H - PAD_A;
+        <span class="kw">if</span> (p2.y &lt; <span class="num">0</span>) p2.y = <span class="num">0</span>;  <span class="kw">if</span> (p2.y + PAD_A &gt; H) p2.y = H - PAD_A;
+
+        <span class="com">/* Mover bola */</span>
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+
+        <span class="com">/* Colisão com paredes superior/inferior */</span>
+        <span class="kw">if</span> (b.y - BOLA_R &lt; <span class="num">0</span> || b.y + BOLA_R &gt; H) b.vy = -b.vy;
+
+        <span class="com">/* Colisão com raquetes */</span>
+        <span class="kw">if</span> (<span class="fn">aabb</span>(b.x, b.y, p1.x, p1.y) && b.vx &lt; <span class="num">0</span>) b.vx = -b.vx * <span class="num">1.05f</span>;
+        <span class="kw">if</span> (<span class="fn">aabb</span>(b.x, b.y, p2.x, p2.y) && b.vx &gt; <span class="num">0</span>) b.vx = -b.vx * <span class="num">1.05f</span>;
+
+        <span class="com">/* Ponto marcado */</span>
+        <span class="kw">if</span> (b.x &lt; <span class="num">0</span>) { p2.pts++;  <span class="fn">resetar_bola</span>(&amp;b, <span class="num">1</span>); }
+        <span class="kw">if</span> (b.x &gt; W) { p1.pts++;  <span class="fn">resetar_bola</span>(&amp;b, -<span class="num">1</span>); }
+
+        <span class="com">/* Renderizar */</span>
+        <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">20</span>, <span class="num">20</span>, <span class="num">20</span>, <span class="num">255</span>);
+        <span class="fn">SDL_RenderClear</span>(ren);
+
+        <span class="fn">desenhar_raquete</span>(ren, &amp;p1);
+        <span class="fn">desenhar_raquete</span>(ren, &amp;p2);
+
+        <span class="com">/* Bola */</span>
+        <span class="tp">SDL_Rect</span> bola = {(<span class="tp">int</span>)(b.x - BOLA_R), (<span class="tp">int</span>)(b.y - BOLA_R),
+                          BOLA_R*<span class="num">2</span>, BOLA_R*<span class="num">2</span>};
+        <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">255</span>, <span class="num">200</span>, <span class="num">0</span>, <span class="num">255</span>);
+        <span class="fn">SDL_RenderFillRect</span>(ren, &amp;bola);
+
+        <span class="fn">SDL_RenderPresent</span>(ren);
+    }
+    <span class="fn">SDL_Quit</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="opengl">OpenGL com GLFW: Triângulo em 3D</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; OpenGL 3.3 core + GLAD + GLFW</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;glad/glad.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;GLFW/glfw3.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="kw">static</span> <span class="kw">const</span> <span class="tp">char</span> *vert_src =
+    <span class="str">"#version 330 core\n"</span>
+    <span class="str">"layout(location=0) in vec3 aPos;\n"</span>
+    <span class="str">"void main(){ gl_Position = vec4(aPos, 1.0); }\n"</span>;
+
+<span class="kw">static</span> <span class="kw">const</span> <span class="tp">char</span> *frag_src =
+    <span class="str">"#version 330 core\n"</span>
+    <span class="str">"out vec4 FragColor;\n"</span>
+    <span class="str">"void main(){ FragColor = vec4(0.3,0.7,1.0,1.0); }\n"</span>;
+
+<span class="kw">static</span> <span class="tp">float</span> vertices[] = {
+    -<span class="num">0.5f</span>, -<span class="num">0.5f</span>, <span class="num">0.0f</span>,
+     <span class="num">0.5f</span>, -<span class="num">0.5f</span>, <span class="num">0.0f</span>,
+     <span class="num">0.0f</span>,  <span class="num">0.5f</span>, <span class="num">0.0f</span>
+};
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="fn">glfwInit</span>();
+    <span class="fn">glfwWindowHint</span>(GLFW_CONTEXT_VERSION_MAJOR, <span class="num">3</span>);
+    <span class="fn">glfwWindowHint</span>(GLFW_CONTEXT_VERSION_MINOR, <span class="num">3</span>);
+    <span class="fn">glfwWindowHint</span>(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+    <span class="tp">GLFWwindow</span> *win = <span class="fn">glfwCreateWindow</span>(<span class="num">800</span>, <span class="num">600</span>, <span class="str">"OpenGL C"</span>, NULL, NULL);
+    <span class="fn">glfwMakeContextCurrent</span>(win);
+    <span class="fn">gladLoadGLLoader</span>((<span class="tp">GLADloadproc</span>)<span class="fn">glfwGetProcAddress</span>);
+
+    <span class="com">/* Compilar shaders */</span>
+    <span class="tp">GLuint</span> vs = <span class="fn">glCreateShader</span>(GL_VERTEX_SHADER);
+    <span class="fn">glShaderSource</span>(vs, <span class="num">1</span>, &amp;vert_src, NULL);
+    <span class="fn">glCompileShader</span>(vs);
+
+    <span class="tp">GLuint</span> fs = <span class="fn">glCreateShader</span>(GL_FRAGMENT_SHADER);
+    <span class="fn">glShaderSource</span>(fs, <span class="num">1</span>, &amp;frag_src, NULL);
+    <span class="fn">glCompileShader</span>(fs);
+
+    <span class="tp">GLuint</span> prog = <span class="fn">glCreateProgram</span>();
+    <span class="fn">glAttachShader</span>(prog, vs); <span class="fn">glAttachShader</span>(prog, fs);
+    <span class="fn">glLinkProgram</span>(prog);
+
+    <span class="com">/* VAO + VBO */</span>
+    <span class="tp">GLuint</span> vao, vbo;
+    <span class="fn">glGenVertexArrays</span>(<span class="num">1</span>, &amp;vao);  <span class="fn">glBindVertexArray</span>(vao);
+    <span class="fn">glGenBuffers</span>(<span class="num">1</span>, &amp;vbo);       <span class="fn">glBindBuffer</span>(GL_ARRAY_BUFFER, vbo);
+    <span class="fn">glBufferData</span>(GL_ARRAY_BUFFER, <span class="kw">sizeof</span>(vertices), vertices, GL_STATIC_DRAW);
+    <span class="fn">glVertexAttribPointer</span>(<span class="num">0</span>, <span class="num">3</span>, GL_FLOAT, GL_FALSE, <span class="num">12</span>, (<span class="tp">void</span>*)<span class="num">0</span>);
+    <span class="fn">glEnableVertexAttribArray</span>(<span class="num">0</span>);
+
+    <span class="kw">while</span> (!<span class="fn">glfwWindowShouldClose</span>(win)) {
+        <span class="fn">glClearColor</span>(<span class="num">0.1f</span>, <span class="num">0.1f</span>, <span class="num">0.15f</span>, <span class="num">1.0f</span>);
+        <span class="fn">glClear</span>(GL_COLOR_BUFFER_BIT);
+        <span class="fn">glUseProgram</span>(prog);
+        <span class="fn">glBindVertexArray</span>(vao);
+        <span class="fn">glDrawArrays</span>(GL_TRIANGLES, <span class="num">0</span>, <span class="num">3</span>);
+        <span class="fn">glfwSwapBuffers</span>(win);
+        <span class="fn">glfwPollEvents</span>();
+    }
+    <span class="fn">glfwTerminate</span>();
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LAZY FOO' PRODUCTIONS. <strong>SDL2 Tutorials</strong>. Disponível em: &lt;https://lazyfoo.net/tutorials/SDL/&gt;. Acesso em: 2025.</li>
+            <li>LEARNOPENGL. <strong>OpenGL Tutorial — Getting Started</strong>. Disponível em: &lt;https://learnopengl.com/&gt;. Acesso em: 2025.</li>
+            <li>ABRASH, Michael. <strong>Michael Abrash's Graphics Programming Black Book</strong>. Coriolis Group, 1997.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para GUI Desktop</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Embarcados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Programming a game is more like writing a novel than writing a compiler." &mdash; John Carmack</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

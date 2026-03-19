@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Firewalls: stateless vs stateful, packet filtering, proxy, NGFW, iptables, nftables, melhores práticas e arquiteturas de firewall." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Firewall | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Firewall</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é um Firewall?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Firewall</h1>
+          <p>Controla o tráfego de rede permitindo ou bloqueando com base em regras.</p>
+        </div>
+
+        <p class="intro-highlight">Firewall é um sistema de controle de tráfego que permite ou bloqueia comunicações de rede com base em regras. É a fundação da segurança perimetral — mas sozinho não é suficiente. Existem vários tipos, cada um com capacidades e posicionamentos distintos.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de Firewall</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Tipo</th><th>Como funciona</th><th>Vantagens</th><th>Limitações</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Packet Filtering (Stateless)</td><td>Avalia cada pacote isoladamente por 5-tupla (src/dst IP, src/dst port, protocolo)</td><td>Rápido, baixo overhead</td><td>Não rastreia sessões; não entende contexto</td></tr>
+              <tr><td>Stateful Inspection</td><td>Rastreia estado das conexões TCP (SYN/SYN-ACK/ACK); permite respostas legítimas automaticamente</td><td>Contexto de sessão; mais inteligente</td><td>Não inspeciona payload de aplicação</td></tr>
+              <tr><td>Application Proxy / ALG</td><td>Atua como intermediário na camada de aplicação (Layer 7); entende HTTP, FTP, DNS</td><td>Deep inspection; pode filtrar conteúdo</td><td>Latência maior; um proxy por protocolo</td></tr>
+              <tr><td>NGFW (Next-Gen Firewall)</td><td>Stateful + IPS integrado + inspeção SSL/TLS + controle de apps + threat intel</td><td>Visibilidade total; proteção multicamada</td><td>Custo; complexidade; CPU-intensivo</td></tr>
+              <tr><td>WAF (Web Application Firewall)</td><td>Protege especificamente aplicações HTTP/S (XSS, SQLi, CSRF, bots)</td><td>Específico para web</td><td>Apenas protocolo HTTP</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="iptables" class="section-title">iptables / nftables (Linux)</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# iptables — estrutura: TABLES → CHAINS → RULES
+
+# Ver regras atuais:
+iptables -L -n -v --line-numbers
+
+# Política padrão: DROP tudo, liberar explicitamente (whitelist):
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+
+# Permitir loopback:
+iptables -A INPUT -i lo -j ACCEPT
+
+# Permitir conexões estabelecidas/relacionadas:
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Liberar SSH apenas de IP específico:
+iptables -A INPUT -p tcp --dport 22 -s 203.0.113.10 -j ACCEPT
+
+# Liberar HTTP e HTTPS:
+iptables -A INPUT -p tcp -m multiport --dports 80,443 -j ACCEPT
+
+# Bloquear IP específico:
+iptables -A INPUT -s 1.2.3.4 -j DROP
+
+# Salvar regras (Debian/Ubuntu):
+iptables-save > /etc/iptables/rules.v4
+
+# ----- nftables (substituto moderno do iptables) -----
+nft list ruleset
+nft add rule inet filter input tcp dport 22 accept</pre>
+      </section>
+
+      <section>
+        <h2 id="boas-praticas" class="section-title">Boas Práticas</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <div class="panel-title">Default Deny</div>
+            <p>Comece bloqueando tudo e libere apenas o necessário. Política <em>whitelist</em> é mais segura que <em>blacklist</em>. Nunca use <span class="code-inline">permit any any</span> em produção.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Princípio do Menor Privilégio</div>
+            <p>Libere apenas as portas, protocolos e IPs estritamente necessários para cada serviço. Revise regras regularmente e remova as que não são mais usadas.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Logging</div>
+            <p>Registre ao menos as conexões bloqueadas (DROP + log). Logs de firewall são essenciais para detectar scanning, tentativas de exploração e movimentação lateral.</p>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Inspeção SSL/TLS</div>
+            <p>NGFWs podem decriptar e inspecionar tráfego HTTPS para detectar malware e exfiltração. Requer certificado CA próprio distribuído nos endpoints. Atenção a questões de privacidade.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Firewalls são necessários mas não suficientes. Um atacante com credenciais válidas passa pelo firewall legitimamente. Combine firewall com segmentação de rede, monitoramento de comportamento (SIEM/NDR) e autenticação forte para criar defesa real em profundidade.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um firewall só é tão bom quanto as regras que o administrador configura — e a disciplina para mantê-las."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,132 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SMTP: entrega de e-mail, ESMTP, portas 25/465/587, SPF, DKIM, DMARC e boas práticas anti-spam." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SMTP | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">SMTP &mdash; Simple Mail Transfer Protocol</h1>
+          <p class="page-subtitle">Protocolo de envio e relay de e-mail, com SPF/DKIM/DMARC para autenticidade</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>SMTP</strong> (RFC 5321) é o protocolo para transferência de e-mail entre servidores e de clientes para servidores. Usa TCP. O <strong>ESMTP</strong> (Extended SMTP) adicionou STARTTLS, AUTH, 8BITMIME e outros. SMTP só envia &mdash; para ler e-mail usa-se IMAP ou POP3.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="portas" class="section-title">Portas SMTP</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Usos das portas</h3>
+            <ul>
+              <li><strong>Porta 25 (MTA &rarr; MTA):</strong> relay entre servidores de e-mail. Bloqueada por ISPs para usuários domésticos (evitar spam). Aceitando conexões STARTTLS</li>
+              <li><strong>Porta 465 (SMTPS):</strong> TLS implícito (TLS antes de qualquer dado); originalmente reservada para SMTPS; reutilizada mas amplamente suportada</li>
+              <li><strong>Porta 587 (Submission):</strong> porta oficial (RFC 6409) para clientes de e-mail enviarem mensagens ao servidor do provedor; requer STARTTLS + AUTH; preferído atualmente</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Sessão SMTP</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Conversão SMTP (simulada)</span></div>
+              <pre class="code-block">S: 220 mail.example.com ESMTP
+C: EHLO client.domain.com
+S: 250-mail.example.com Hello client.domain.com
+S: 250-STARTTLS
+S: 250-AUTH LOGIN PLAIN
+S: 250 OK
+C: STARTTLS
+S: 220 Ready to start TLS
+[TLS handshake]
+C: AUTH LOGIN
+S: 334 VXNlcm5hbWU6
+C: [base64 username]
+S: 334 UGFzc3dvcmQ6
+C: [base64 password]
+S: 235 2.7.0 Authentication successful
+C: MAIL FROM:&lt;sender@example.com&gt;
+S: 250 2.1.0 Ok
+C: RCPT TO:&lt;recipient@other.com&gt;
+S: 250 2.1.5 Ok
+C: DATA
+S: 354 Start mail input
+C: Subject: Teste
+C: From: sender@example.com
+C: To: recipient@other.com
+C: 
+C: Corpo do e-mail aqui.
+C: .
+S: 250 2.0.0 Ok: queued as ABC123
+C: QUIT
+S: 221 Bye</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="spf-dkim-dmarc" class="section-title">SPF, DKIM e DMARC</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">SPF (Sender Policy Framework)</h3>
+            <p>Registro TXT no DNS que lista quais servidores podem enviar e-mail em nome do domínio. O servidor receptor valida o IP de origem contra o registro SPF.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Exemplo de registro SPF</span></div>
+              <pre class="code-block">v=spf1 include:_spf.google.com include:sendgrid.net ip4:203.0.113.1 ~all
+# ~all = softfail (marcar como spam)
+# -all = hardfail (rejeitar)</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">DKIM (DomainKeys Identified Mail)</h3>
+            <p>O servidor de envio assina digitalmente partes do e-mail com chave privada. O receptor verifica usando a chave pública no DNS (registro TXT em <code class="code-inline">_domainkey</code>). Protege integridade e autentica o domínio remetente.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">DMARC (Domain-based Message Authentication)</h3>
+            <p>Policy que combina SPF e DKIM. Define o que fazer quando ambos falham:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Registro DMARC</span></div>
+              <pre class="code-block">_dmarc.example.com. TXT "v=DMARC1; p=reject; rua=mailto:dmarc@example.com; pct=100"
+# p=none (monitor), p=quarantine (spam), p=reject (bloquear)
+# rua: endereço para relatórios agregados</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="pop_imap.html"><strong>POP3 e IMAP</strong></a>, <a href="dns.html"><strong>DNS (MX records)</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "E-mail sem SPF + DKIM + DMARC é uma cartão postal sem identificação. Qualquer um pode escrever seu nome como remetente."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

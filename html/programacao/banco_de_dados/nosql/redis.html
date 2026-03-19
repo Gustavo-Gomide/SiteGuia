@@ -1,0 +1,384 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Redis: banco de dados in-memory chave-valor, estruturas de dados avancadas e latencia abaixo de 1ms." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Redis | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Redis</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Redis</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Redis</h1>
+          <p>In-Memory Data Platform — latencia sub-milissegundo, 10+ estruturas de dados, eventos em tempo real.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Redis</strong> (Remote Dictionary Server) armazena dados inteiramente em RAM.
+          Criado por Salvatore Sanfilippo em 2009, opera em <strong>0.1–0.5ms</strong> de latencia —
+          100 a 10.000 vezes mais rapido que bancos em disco. Nao e apenas um cache:
+          e uma plataforma de dados em tempo real com Strings, Lists, Sets, Sorted Sets,
+          Hashes, Streams, HyperLogLog e busca vetorial via Redis Stack.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE E -->
+      <section>
+        <h2 id="o-que-e" class="section-title">1. O Que E o Redis?</h2>
+        <p>
+          Enquanto bancos tradicionais precisam buscar dados em disco (5–10ms por operacao), o Redis
+          opera inteiramente em RAM. A diferenca nao e de otimizacao — e de arquitetura:
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Hierarquia de latencia:</strong> CPU L1 cache ~0.5ns &rarr; RAM (Redis) ~100ns
+            &rarr; SSD NVMe ~100&micro;s &rarr; HDD ~10ms.
+            O Redis e 100x mais rapido que SSD e 100.000x mais rapido que HDD para leituras simples.
+            Isso e uma diferenca de ordem de grandeza, nao de percentual.
+          </p>
+        </div>
+        <p>
+          Salvatore Sanfilippo projetou o Redis com uma filosofia clara:
+          <em>"Use Redis para o que so funciona com velocidade de memoria;
+          use um banco persistente para o que precisa de durabilidade."</em>
+          A combinacao Redis + PostgreSQL (ou Redis + MongoDB) e uma das arquiteturas mais
+          comuns em sistemas de alta performance — Redis como camada de dados quentes,
+          banco relacional para dados frios e criticos.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona por Dentro</h2>
+        <p>
+          O Redis e single-threaded para operacoes de dados (I/O multiplexado via epoll/kqueue).
+          Isso elimina locks e context-switching — cada operacao e atomica por natureza.
+          Desde a v6.0, o I/O de rede usa threads multiplas, mantendo operacoes em memoria no thread principal.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">arquitetura-redis.txt</div>
+          <pre class="example"><span class="com">Event Loop (Single-Thread de dados):</span>
+  epoll/kqueue I/O multiplexado
+  |-&gt; aceita 100K+ conexoes simultaneas
+  |-&gt; processa um comando por vez (atomicidade garantida)
+  |-&gt; INCR nunca tem race condition
+
+<span class="com">Persistencia (Opcoes):</span>
+  RDB (Snapshot)         &lt;- dump binario do estado em memoria
+    SAVE 900 1           &lt;- salva se 1 mudanca em 900s
+    SAVE 60 10000        &lt;- salva se 10K mudancas em 60s
+    Pro: arquivo compacto, restore rapido
+    Contra: pode perder dados desde o ultimo snapshot
+
+  AOF (Append-Only File) &lt;- log de cada operacao de escrita
+    appendfsync always   &lt;- fsync a cada write (duravel, lento)
+    appendfsync everysec &lt;- fsync por segundo (balanceado)
+    Pro: RPO proximo de zero
+    Contra: arquivo cresce, requer BGREWRITEAOF periodico
+
+  RDB + AOF              &lt;- combinacao recomendada em producao</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Atomicidade Nativa</h3>
+            <p>
+              Toda operacao Redis e atomica. <code class="code-inline">INCR</code> incrementa sem race condition.
+              Para operacoes compostas, <strong>MULTI/EXEC</strong> agrupa comandos em transacao (todos ou nenhum).
+              Scripts <strong>Lua</strong> via <code class="code-inline">EVAL</code> executam como unidade atomica,
+              permitindo logica complexa (compare-and-swap) sem round-trips extras.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Keyspace e TTL</h3>
+            <p>
+              Toda chave pode ter TTL (Time-To-Live) em segundos ou milissegundos.
+              Expiracao e lazy (remove na proxima leitura) + periodica em background (amostra 20 keys/ciclo).
+              <strong>Keyspace Notifications</strong> emitem eventos quando chaves expiram, sao
+              modificadas ou deletadas — cache com invalidacao reativa sem polling.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Sentinel vs Cluster</h3>
+            <p>
+              <strong>Sentinel:</strong> monitora 1 master + N replicas e executa failover automatico
+              sem sharding — ideal para ate ~100 GB de dados.
+              <strong>Cluster:</strong> sharding automatico em 16.384 hash slots — escala horizontal ilimitada.
+              Minimo 3 masters com 3 replicas para tolerancia a falhas de nos.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ESTRUTURAS -->
+      <section>
+        <h2 id="estruturas" class="section-title">3. Estruturas de Dados</h2>
+        <p>
+          Redis nao e apenas chave-string. Cada tipo tem comandos especializados e
+          complexidade de tempo garantida (O(1), O(log N)). Escolher a estrutura certa
+          elimina codigo de aplicacao inteiro.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">redis-estruturas.redis</div>
+          <pre class="example"><span class="com"># STRING — texto, numero, JSON, blob binario (max 512MB)</span>
+<span class="kw">SET</span>    sessao:abc <span class="str">'{"userId":42,"role":"admin"}'</span> <span class="kw">EX</span> <span class="num">3600</span>
+<span class="kw">INCR</span>   visitas:home                           <span class="com"># atomico, O(1)</span>
+<span class="kw">SET</span>    lock:recurso:1 <span class="str">"thread-7"</span> <span class="kw">NX</span> <span class="kw">EX</span> <span class="num">30</span>   <span class="com"># distributed lock</span>
+
+<span class="com"># LIST — duplamente encadeada — O(1) nas extremidades</span>
+<span class="kw">RPUSH</span>  fila:emails <span class="str">"job:1001"</span> <span class="str">"job:1002"</span>
+<span class="kw">LPOP</span>   fila:emails                             <span class="com"># FIFO dequeue</span>
+<span class="kw">BRPOP</span>  fila:emails <span class="num">0</span>                           <span class="com"># blocking pop</span>
+
+<span class="com"># SET — conjunto sem duplicatas</span>
+<span class="kw">SADD</span>   tags:post:99 <span class="str">"nosql"</span> <span class="str">"redis"</span> <span class="str">"cache"</span>
+<span class="kw">SINTER</span> tags:post:99 tags:post:100              <span class="com"># intersecao</span>
+<span class="kw">SUNION</span> tags:post:99 tags:post:100              <span class="com"># uniao</span>
+
+<span class="com"># SORTED SET — membros com score float, ordenados</span>
+<span class="kw">ZADD</span>      ranking <span class="num">2300</span> <span class="str">"carlos"</span>  <span class="num">1500</span> <span class="str">"ana"</span>
+<span class="kw">ZREVRANGE</span> ranking <span class="num">0</span> <span class="num">9</span> <span class="kw">WITHSCORES</span>             <span class="com"># top 10</span>
+<span class="kw">ZADD</span>      agenda <span class="num">1735700000</span> <span class="str">"tarefa:99"</span>       <span class="com"># timestamp como score</span>
+
+<span class="com"># HASH — campos nomeados dentro de uma chave</span>
+<span class="kw">HSET</span>    user:42 nome <span class="str">"Ana"</span> idade <span class="num">28</span> plano <span class="str">"premium"</span>
+<span class="kw">HGET</span>    user:42 nome
+<span class="kw">HINCRBY</span> user:42 pontos <span class="num">100</span>                    <span class="com"># atomico</span>
+
+<span class="com"># STREAM — log imutavel com grupos de consumidores (Kafka-like)</span>
+<span class="kw">XADD</span>       eventos <span class="str">"*"</span> tipo <span class="str">"compra"</span> userId <span class="num">42</span> valor <span class="num">299.90</span>
+<span class="kw">XREADGROUP</span> <span class="kw">GROUP</span> processadores p1 <span class="kw">COUNT</span> <span class="num">10</span> <span class="kw">STREAMS</span> eventos <span class="str">"&gt;"</span>
+<span class="kw">XACK</span>       eventos processadores <span class="str">"1735700000-0"</span>
+
+<span class="com"># HYPERLOGLOG — contagem de unicos com 0.81% erro, 12KB fixo</span>
+<span class="kw">PFADD</span>   visitantes:2024-01-15 <span class="str">"user:1"</span> <span class="str">"user:2"</span> <span class="str">"user:1"</span>
+<span class="kw">PFCOUNT</span> visitantes:2024-01-15               <span class="com"># ~2 usuarios unicos</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PADROES -->
+      <section>
+        <h2 id="padroes" class="section-title">4. Padroes de Uso</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Cache-Aside (Lazy Loading)</h3>
+            <p>
+              A aplicacao busca no Redis primeiro. Se nao encontrar (cache miss),
+              busca no banco principal, armazena no Redis com TTL e retorna.
+              <strong>Problema:</strong> thundering herd — multiplos requests concorrentes causam
+              cache miss simultaneo. <strong>Solucao:</strong> mutex com <code class="code-inline">SET ... NX EX</code>:
+              apenas o primeiro thread busca no banco; os outros aguardam o cache ser preenchido.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Rate Limiting</h3>
+            <p>
+              Use <code class="code-inline">INCR</code> + <code class="code-inline">EXPIRE</code>
+              para limitar requisicoes por janela fixa de tempo.
+              Para janelas deslizantes precisas, use o algoritmo
+              <strong>Token Bucket</strong> com Sorted Sets (score = timestamp) —
+              remove entradas antigas e conta o que resta.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Pub/Sub e Fan-out</h3>
+            <p>
+              <code class="code-inline">PUBLISH</code> / <code class="code-inline">SUBSCRIBE</code>
+              entregam mensagens em tempo real a todos os subscribers.
+              Sem persistencia — se o subscriber desconectar, perde mensagens.
+              Use <strong>Streams</strong> para replay, grupos de consumidores,
+              acknowledgment (delivery garantido) e reprocessamento de falhas.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Distributed Lock (Redlock)</h3>
+            <p>
+              O algoritmo <strong>Redlock</strong> usa N instancias Redis independentes para
+              exclusao mutua distribuida. Para locks simples em um unico no,
+              <code class="code-inline">SET ... NX EX</code> e suficiente.
+              Para garantias fortes em sistemas criticos, prefira ZooKeeper ou etcd
+              (Kleppmann detalhou limitacoes do Redlock extensamente em 2016).
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Usar e Quando Evitar</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Use Redis quando...</h3>
+            <ul>
+              <li><strong>Latencia sub-milissegundo obrigatoria:</strong> sessoes, tokens JWT, configuracoes hot-path.</li>
+              <li><strong>Rankings em tempo real:</strong> Sorted Sets com ZADD/ZREVRANGE em O(log N).</li>
+              <li><strong>Filas de trabalho:</strong> BRPOP com multiplos workers consumers sem polling.</li>
+              <li><strong>Contadores de alta frequencia:</strong> INCR atomico sem coordenacao externa.</li>
+              <li><strong>Pub/Sub em tempo real:</strong> notificacoes, chat, dashboards ao vivo sem polling.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Evite Redis quando...</h3>
+            <ul>
+              <li><strong>Dados maiores que a RAM:</strong> Redis e in-memory; ao atingir o limite, evicta dados ou rejeita escritas.</li>
+              <li><strong>Queries por conteudo:</strong> Redis nao tem linguagem de query — use MongoDB ou PostgreSQL.</li>
+              <li><strong>Durabilidade absoluta:</strong> para dados criticos sem tolerancia a perda, use banco ACID dedicado.</li>
+              <li><strong>Dados relacionais:</strong> sem suporte a JOINs ou schema estruturado.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Redis Cluster</h3>
+            <p>
+              Sharding automatico em 16.384 hash slots distribuidos entre nos. Cada no e responsavel
+              por uma faixa de slots. <strong>Hash tags</strong> (<code class="code-inline">{user:42}</code>)
+              garantem que chaves relacionadas vao ao mesmo slot. Limitacao: comandos multi-chave
+              (MGET, SUNION) so funcionam se todas as chaves estiverem no mesmo slot hash.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Lua Scripting</h3>
+            <p>
+              Scripts Lua executam como unidade atomica no servidor Redis. Permitem
+              compare-and-swap, transacoes condicionais e logica complexa sem round-trips extras.
+              O Redis 7+ introduziu <strong>Redis Functions</strong> como substituto moderno do EVAL —
+              com namespace, persistencia entre reinicializacoes e carregamento dinamico.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Redis Stack</h3>
+            <p>
+              Modulos oficiais empacotados: <strong>RedisSearch</strong> (full-text + busca vetorial ANN com HNSW),
+              <strong>RedisJSON</strong> (documentos JSON nativos com JSON Path),
+              <strong>RedisTimeSeries</strong> (series temporais com downsampling) e
+              <strong>RedisBloom</strong> (Bloom/Cuckoo Filters para membership probabilistico).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Redis 7+ e RESP3</h3>
+            <p>
+              Redis 7 trouxe <strong>Redis Functions</strong>, <strong>ACL v2</strong>
+              (permissoes por padrao de chave) e o protocolo <strong>RESP3</strong> com
+              tipos ricos (mapa, double, null tipado, blob-error) —
+              eliminando parsing manual de strings no cliente para determinar tipo de retorno.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Limite de Memoria e Eviction:</strong> configure sempre
+            <code class="code-inline">maxmemory</code> e a politica de eviction
+            (<code class="code-inline">allkeys-lru</code> para cache puro,
+            <code class="code-inline">volatile-lru</code> para dados mistos).
+            Sem <code class="code-inline">maxmemory</code>, o Redis consome toda a RAM disponivel
+            e o OOM Killer do Linux pode terminar o processo sem aviso.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Redis Cloud</h3>
+            <p>DBaaS gerenciado pela Redis Ltd. Active-Active geo-replication com CRDTs, backups automaticos e SLA de 99.999%. Tier gratuito com 30MB para desenvolvimento.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Redis Insight</h3>
+            <p>GUI oficial gratuita para inspecionar chaves, analisar uso de memoria por tipo, profiler de queries lentas via SLOWLOG e visualizacao de comandos em tempo real (MONITOR).</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Clientes Populares</h3>
+            <p>ioredis (Node.js), redis-py (Python), Lettuce / Jedis (Java), StackExchange.Redis (C#). Todos suportam cluster, pipelining de comandos e SSL/TLS.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>BullMQ (Node.js)</h3>
+            <p>Biblioteca de filas de trabalho sobre Redis. Suporta jobs com prioridade, retry com backoff exponencial, rate limiting, workers concorrentes e dashboard UI integrado via Arena ou BullMQ UI.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Celery (Python)</h3>
+            <p>Sistema de filas e tasks assincronas mais popular do Python, com Redis como broker padrao. Usado para background jobs, agendamento periodico (beat) e workflows com chains e chords.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Valkey</h3>
+            <p>Fork open-source do Redis criado pela Linux Foundation em 2024 apos mudanca de licenca para BSL 1.1. 100% compativel com Redis 7.2. Suportado por AWS, Google Cloud e Oracle como alternativa.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>CARLSON, Josiah L. <strong>Redis in Action</strong>. Manning Publications, 2013.</li>
+            <li>REDIS LTD. <strong>Redis Documentation</strong>. Disponivel em: https://redis.io/docs/. Acesso em: 2026.</li>
+            <li>REDIS LTD. <strong>Redis Data Types Tutorial</strong>. Disponivel em: https://redis.io/docs/data-types/. Acesso em: 2026.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled: A Brief Guide to the Emerging World of Polyglot Persistence</strong>. Addison-Wesley, 2012.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/mongodb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>MongoDB - Documentos BSON</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/cassandra.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Cassandra - Escritas Massivas</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/dynamodb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>DynamoDB - Serverless AWS</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Use Redis para o que so funciona com velocidade de memoria; use um banco persistente para o que precisa de durabilidade." - Salvatore Sanfilippo
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

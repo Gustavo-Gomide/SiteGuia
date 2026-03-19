@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do COBOL: PICTURE clauses, Working-Storage, operações MOVE, COMPUTE, PERFORM, IF/ELSE, EVALUATE, manipulação de strings, aritmética decimal, leitura e escrita de arquivos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Fundamentos</h1>
+          <p>O coração do COBOL é o sistema de tipos da <strong>PICTURE clause</strong> — uma notação de máscara que define formato exato de dados: <code>PIC 9(7)V99</code> representa um número de 7 dígitos inteiros e 2 decimais exatos (sem ponto flutuante). Este sistema tornou COBOL ideal para dados financeiros onde "erros de centavo" são inaceitáveis.</p>
+        </div>
+        <p class="intro-highlight">
+          Ao contrário de outras linguagens que têm "variáveis", o COBOL tem <strong>data items</strong> organizados em níveis hierárquicos (01 a 49, mais especiais 66, 77, 88). Cada item descreve a estrutura física dos dados — quantos bytes, que charset, como são formatados ao exibir — de forma completamente explícita.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="picture">PICTURE Clause — Sistema de Tipos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos de dados PICTURE — guia completo</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+
+<span class="com">      *> ── Tipos numéricos ──────────────────────────────────────</span>
+       01 WS-INT-PEQUENO     PIC 9(3).           <span class="com">*> 0 a 999 (3 dígitos)</span>
+       01 WS-INT-GRANDE      PIC 9(9).           <span class="com">*> 0 a 999999999</span>
+       01 WS-SALDO           PIC 9(10)V99.       <span class="com">*> 9999999999.99 (V=vírgula decimal implícita)</span>
+       01 WS-SALDO-SINAL     PIC S9(10)V99.      <span class="com">*> com sinal (S=signed)</span>
+       01 WS-PERCENTUAL      PIC V9(4).          <span class="com">*> 0.0000 a 0.9999</span>
+
+<span class="com">      *> ── Tipos alfanuméricos ──────────────────────────────────</span>
+       01 WS-NOME            PIC X(40).          <span class="com">*> string de 40 chars</span>
+       01 WS-INICIAL         PIC X.              <span class="com">*> 1 char</span>
+       01 WS-CODIGO          PIC A(5).           <span class="com">*> somente letras (A=alphabetic)</span>
+
+<span class="com">      *> ── Edição numérica (para DISPLAY) ──────────────────────</span>
+       01 WS-EXIBIR-VALOR    PIC $ZZZ,ZZ9.99.    <span class="com">*> $ Z=suprimir zeros . , separadores</span>
+       01 WS-EXIBIR-MAIS     PIC $B(5)9(7).99-.  <span class="com">*> B=espaço, - = sinal se negativo</span>
+       01 WS-CPF             PIC 999B999B999B99. <span class="com">*> 000 000 000 00 formatado</span>
+
+<span class="com">      *> ── Nivelamento hierárquico ───────────────────────────────</span>
+       01 WS-ENDERECO.
+         05 WS-RUA          PIC X(50).
+         05 WS-NUMERO       PIC 9(5).
+         05 WS-COMPLEMENTO  PIC X(20).
+         05 WS-BAIRRO       PIC X(30).
+         05 WS-CIDADE       PIC X(30).
+         05 WS-UF           PIC XX.
+         05 WS-CEP.
+           10 WS-CEP-1      PIC 9(5).          <span class="com">*> 3 níveis de hierarquia</span>
+           10 WS-CEP-2      PIC 9(3).
+
+<span class="com">      *> ── Condition Names (nível 88) ───────────────────────────</span>
+       01 WS-STATUS-CLIENTE  PIC X.
+         88 CLIENTE-ATIVO    VALUE 'A'.
+         88 CLIENTE-INATIVO  VALUE 'I'.
+         88 CLIENTE-BLOQUEADO VALUE 'B'.
+
+       PROCEDURE DIVISION.
+           IF CLIENTE-ATIVO             <span class="com">*> testa: WS-STATUS-CLIENTE = 'A'</span>
+               DISPLAY 'Cliente ativo'
+           END-IF.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="move-compute">MOVE, ADD, SUBTRACT, MULTIPLY, DIVIDE e COMPUTE</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Operações aritméticas e atribuição COBOL</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+       01 WS-A      PIC 9(5)V99 VALUE 1000.50.
+       01 WS-B      PIC 9(5)V99 VALUE 200.75.
+       01 WS-C      PIC 9(6)V99.
+       01 WS-TAXA   PIC V9(4) VALUE .1500.   <span class="com">*> 15.00%</span>
+       01 WS-REM    PIC 9(3).
+
+       PROCEDURE DIVISION.
+       CALCULOS.
+<span class="com">      *> ── MOVE — atribuição ────────────────────────────────────</span>
+           MOVE WS-A TO WS-C.              <span class="com">*> WS-C = WS-A</span>
+           MOVE 0 TO WS-C WS-B WS-A.      <span class="com">*> zerar múltiplos campos</span>
+           MOVE SPACES TO WS-ENDERECO.    <span class="com">*> preencher grupo com espaços</span>
+           MOVE ZEROS  TO WS-SALDO.       <span class="com">*> preencher numérico com zeros</span>
+
+<span class="com">      *> ── ADD ──────────────────────────────────────────────────</span>
+           ADD WS-A TO WS-C.              <span class="com">*> WS-C = WS-C + WS-A</span>
+           ADD WS-A WS-B TO WS-C.         <span class="com">*> WS-C = WS-C + WS-A + WS-B</span>
+           ADD WS-A TO WS-B GIVING WS-C.  <span class="com">*> WS-C = WS-A + WS-B (WS-B não muda)</span>
+
+<span class="com">      *> ── SUBTRACT ─────────────────────────────────────────────</span>
+           SUBTRACT WS-B FROM WS-A.       <span class="com">*> WS-A = WS-A - WS-B</span>
+           SUBTRACT WS-B FROM WS-A GIVING WS-C.
+
+<span class="com">      *> ── MULTIPLY ─────────────────────────────────────────────</span>
+           MULTIPLY WS-A BY WS-TAXA GIVING WS-C ROUNDED.
+<span class="com">      *> ROUNDED arredonda usando regra de negócio correta</span>
+
+<span class="com">      *> ── DIVIDE ───────────────────────────────────────────────</span>
+           DIVIDE 3 INTO WS-A GIVING WS-C REMAINDER WS-REM.
+
+<span class="com">      *> ── COMPUTE — expressões complexas ──────────────────────</span>
+           COMPUTE WS-C ROUNDED =
+               (WS-A + WS-B) * WS-TAXA / 100.
+
+<span class="com">      *> ── ON SIZE ERROR — overflow aritmético ─────────────────</span>
+           COMPUTE WS-C = WS-A * WS-B
+               ON SIZE ERROR
+                   DISPLAY 'ERRO: overflow aritmético!'
+                   MOVE 0 TO WS-C
+               NOT ON SIZE ERROR
+                   DISPLAY 'Resultado: ' WS-C
+           END-COMPUTE.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="controle">Controle de Fluxo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">IF/ELSE, EVALUATE (switch), PERFORM (loop)</div>
+          <pre class="example"><span class="com">      *> ── IF / ELSE ─────────────────────────────────────────────</span>
+           IF WS-SALDO > 1000
+               DISPLAY 'Saldo alto'
+           ELSE IF WS-SALDO > 0
+               DISPLAY 'Saldo positivo'
+           ELSE
+               DISPLAY 'Saldo zerado ou negativo'
+           END-IF.
+
+<span class="com">      *> ── EVALUATE (switch/match) ───────────────────────────────</span>
+           EVALUATE WS-STATUS-CLIENTE
+               WHEN 'A'
+                   PERFORM PROCESSAR-ATIVO
+               WHEN 'I'
+                   PERFORM PROCESSAR-INATIVO
+               WHEN 'B'
+                   DISPLAY 'Cliente bloqueado'
+               WHEN OTHER
+                   DISPLAY 'Status desconhecido'
+           END-EVALUATE.
+
+<span class="com">      *> ── EVALUATE com múltiplas condições ─────────────────────</span>
+           EVALUATE TRUE
+               WHEN WS-SALDO > 10000 AND WS-TIPO = 'P'
+                   PERFORM CLIENTE-PREMIUM
+               WHEN WS-SALDO > 0
+                   PERFORM CLIENTE-PADRAO
+               WHEN OTHER
+                   PERFORM CLIENTE-NEGATIVO
+           END-EVALUATE.
+
+<span class="com">      *> ── PERFORM (loop e subprograma) ─────────────────────────</span>
+       <span class="com">*> Chamar parágrafo</span>
+           PERFORM INICIALIZAR.
+
+       <span class="com">*> Loop com contador</span>
+           PERFORM VARYING WS-I FROM 1 BY 1
+               UNTIL WS-I > 100
+               ADD WS-I TO WS-SOMA
+           END-PERFORM.
+
+       <span class="com">*> Loop com condição</span>
+           PERFORM UNTIL FIM-ARQUIVO
+               PERFORM LER-PROXIMO-REGISTRO
+               ADD 1 TO WS-CONTADOR
+           END-PERFORM.
+
+       <span class="com">*> Inline perform (código direto sem nomear parágrafo)</span>
+           PERFORM
+               DISPLAY 'Executando inline'
+               ADD 1 TO WS-CONTADOR
+           END-PERFORM.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="strings">Manipulação de Strings</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">STRING, UNSTRING, INSPECT, MOVE</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+       01 WS-NOME-COMPLETO  PIC X(80).
+       01 WS-PRIMEIRO-NOME  PIC X(20).
+       01 WS-SOBRENOME      PIC X(40).
+       01 WS-RESULTADO      PIC X(120).
+       01 WS-PONTEIRO       PIC 9(3).
+       01 WS-CONTAGEM       PIC 9(5).
+
+       PROCEDURE DIVISION.
+<span class="com">      *> ── STRING — concatenar campos ───────────────────────────</span>
+           MOVE 'João' TO WS-PRIMEIRO-NOME.
+           MOVE 'Silva' TO WS-SOBRENOME.
+
+           STRING WS-PRIMEIRO-NOME DELIMITED BY SPACE
+                  ' ' DELIMITED BY SIZE
+                  WS-SOBRENOME DELIMITED BY SPACE
+                  INTO WS-NOME-COMPLETO.
+<span class="com">      *> WS-NOME-COMPLETO = 'João Silva'</span>
+
+<span class="com">      *> ── UNSTRING — dividir campo ─────────────────────────────</span>
+           MOVE 'João Silva Santos' TO WS-NOME-COMPLETO.
+           UNSTRING WS-NOME-COMPLETO DELIMITED BY SPACE
+               INTO WS-PRIMEIRO-NOME
+                    WS-SOBRENOME.
+<span class="com">      *> WS-PRIMEIRO-NOME = 'João', WS-SOBRENOME = 'Silva'</span>
+
+<span class="com">      *> ── INSPECT — analisar e transformar ─────────────────────</span>
+           MOVE 'Hello, World!' TO WS-RESULTADO.
+
+       <span class="com">*> Contar ocorrências</span>
+           INSPECT WS-RESULTADO
+               TALLYING WS-CONTAGEM
+               FOR ALL 'l'.
+<span class="com">      *> WS-CONTAGEM = 3</span>
+
+       <span class="com">*> Substituir caracteres</span>
+           INSPECT WS-RESULTADO
+               CONVERTING LOWER-ALPHA TO UPPER-ALPHA.
+<span class="com">      *> WS-RESULTADO = 'HELLO, WORLD!'</span>
+
+           INSPECT WS-RESULTADO
+               REPLACING ALL 'L' BY 'x'.
+<span class="com">      *> WS-RESULTADO = 'HExxO, WORxD!'</span>
+
+<span class="com">      *> ── Funções intrínsecas de string ────────────────────────</span>
+           DISPLAY FUNCTION LENGTH(WS-NOME-COMPLETO).       <span class="com">*> 80 (tamanho PIC)</span>
+           DISPLAY FUNCTION TRIM(WS-NOME-COMPLETO TRAILING). <span class="com">*> sem espaços finais</span>
+           DISPLAY FUNCTION UPPER-CASE(WS-NOME-COMPLETO).
+           DISPLAY FUNCTION LOWER-CASE(WS-NOME-COMPLETO).
+           DISPLAY FUNCTION REVERSE(WS-NOME-COMPLETO).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GnuCOBOL Project. <strong>GnuCOBOL 3.2 Programmer's Guide — DATA Division</strong>. Disponível em: &lt;https://gnucobol.sourceforge.io/guides.html&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>Enterprise COBOL for z/OS — PICTURE Clause</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/cobol-zos/6.4?topic=clause-picture&gt;. Acesso em: 2025.</li>
+            <li>STERN, N.; STERN, R. A. <strong>COBOL for the 21st Century</strong>. 11. ed. Wiley, 2011.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introdução ao COBOL</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> COBOL Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A diferença entre <code>PIC 9(5)V99</code> e <code>PIC 9(5).99</code> é crítica: <code>V</code> indica ponto decimal <em>implícito</em> (não ocupa espaço na memória — é apenas para controle aritmético), enquanto <code>.</code> seria o ponto <em>explícito</em> inserido no dado. Use <code>V</code> para dados internos, e cláusulas de edição (<code>ZZZ,ZZ9.99</code>) apenas para campos de saída/relatório.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

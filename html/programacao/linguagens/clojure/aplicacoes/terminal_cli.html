@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Aplicacoes CLI em Clojure com tools.cli e babashka: comandos, parsing de flags, pipelines, automacao e distribuicao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Aplicacoes Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure: Aplicacoes Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Ferramentas de linha de comando com composicao funcional</h1>
+          <p>CLI e uma das areas onde Clojure entrega alto retorno: parsing, transformacao de dados e automacao com feedback rapido via REPL ou scripts.</p>
+        </div>
+        <p class="intro-highlight">Entre Clojure JVM e babashka, voce pode escolher entre ecossistema completo ou startup ultrarrapido para scripts operacionais.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Conceitos de CLI bem projetada</h2>
+        <p>Uma boa CLI separa interface de comando da logica de dominio. O parser interpreta argumentos, o dominio executa a regra e o formatter serializa saida (texto, JSON, EDN).</p>
+        <ul>
+          <li>Comandos composicionais e previsiveis.</li>
+          <li>Codigos de saida claros para automacao em CI/CD.</li>
+          <li>Mensagens de erro acionaveis para o operador.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Fluxo de execucao de comando</h2>
+        <svg viewBox="0 0 900 180" role="img" aria-label="Fluxo de CLI: argv, parser, dominio, output, exit code">
+          <rect x="20" y="55" width="120" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="57" y="96" fill="currentColor">argv</text>
+          <rect x="180" y="55" width="130" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="214" y="96" fill="currentColor">parser</text>
+          <rect x="350" y="55" width="150" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="394" y="96" fill="currentColor">dominio</text>
+          <rect x="540" y="55" width="120" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="574" y="96" fill="currentColor">output</text>
+          <rect x="700" y="55" width="170" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="742" y="96" fill="currentColor">exit code</text>
+          <path d="M140 90 L180 90" stroke="currentColor" stroke-width="2"></path>
+          <path d="M310 90 L350 90" stroke="currentColor" stroke-width="2"></path>
+          <path d="M500 90 L540 90" stroke="currentColor" stroke-width="2"></path>
+          <path d="M660 90 L700 90" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+        <p>Esse encadeamento facilita testes de contrato da CLI: dado um argv, espera-se saida e codigo de retorno deterministico.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso">Exemplo com clojure.tools.cli</h2>
+        <pre class="example"><code><span class="kw">(ns</span> app.cli
+  <span class="tp">(:require</span>
+    [clojure.tools.cli <span class="str">:refer</span> [parse-opts]]
+    [clojure.string <span class="str">:as</span> str]))
+
+(<span class="kw">def</span> cli-options
+  [[<span class="str">"-n"</span> <span class="str">"--name NAME"</span> <span class="str">"Nome para saudacao"</span>]
+   [<span class="str">"-j"</span> <span class="str">"--json"</span> <span class="str">"Saida em JSON"</span>]
+   [<span class="str">"-h"</span> <span class="str">"--help"</span>]])
+
+(<span class="kw">defn</span> run [{:keys [name json]}]
+  (<span class="kw">let</span> [msg (str "Ola, " (or name "mundo") "!")]
+    (<span class="kw">if</span> json
+      (str "{\"message\":\"" msg "\"}")
+      msg)))
+
+(<span class="kw">defn</span> -main [& args]
+  (<span class="kw">let</span> [{:keys [options errors summary]} (parse-opts args cli-options)]
+    (<span class="kw">cond</span>
+      (:help options) (do (println summary) (System/exit <span class="num">0</span>))
+      (seq errors)    (do (doseq [e errors] (binding [*out* *err*] (println e))) (System/exit <span class="num">2</span>))
+      :else           (do (println (run options)) (System/exit <span class="num">0</span>)))))</code></pre>
+        <p>O retorno de <code class="code-inline">System/exit</code> e essencial para pipelines shell e jobs de automacao.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos de CLI em Clojure</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Ops scripts</h3><p>Automacao de deploy, checks de ambiente e tarefas de suporte.</p></div>
+          <div class="card"><h3>Data pipelines</h3><p>Transformacao de CSV/JSON/EDN em lote ou stream.</p></div>
+          <div class="card"><h3>Dev tooling</h3><p>Geradores de projeto, linters e wrappers de build.</p></div>
+          <div class="card"><h3>Admin tools</h3><p>Comandos de manutencao com auditoria e validacao forte.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Quando usar babashka</h2>
+        <p>Babashka executa scripts Clojure com startup muito rapido, ideal para tarefas de automacao e CLIs menores onde cold start da JVM seria um gargalo.</p>
+        <pre class="example"><code>#!/usr/bin/env bb
+(require '[babashka.fs :as fs])
+
+(doseq [f (fs/glob "." "*.log")]
+  (println "Arquivo:" f))</code></pre>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Padroes avancados para CLIs grandes</h2>
+        <div class="panel">
+          <h3 class="panel-title">Subcomandos e plugin system</h3>
+          <p>Modele comandos como mapa de handlers e metadata. Isso permite carregar subcomandos por namespace e habilitar extensao sem alterar o nucleo.</p>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Cuidado com side effects no parse de args. Parsing deve ser puro; efeitos ficam no executor do comando para manter testes simples.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de stacks CLI</h2>
+        <table class="table">
+          <thead><tr><th>Stack</th><th>Vantagem</th><th>Cenario ideal</th></tr></thead>
+          <tbody>
+            <tr><td>Clojure JVM</td><td>Ecossistema completo JVM</td><td>CLIs robustas com integracao enterprise</td></tr>
+            <tr><td>Babashka</td><td>Startup rapido</td><td>Scripts operacionais e automacao diaria</td></tr>
+            <tr><td>Python</td><td>Adoção ampla</td><td>Times sem stack JVM</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>CLOJURE TOOLS.CLI. Documentation. Disponivel em: <a href="https://github.com/clojure/tools.cli" target="_blank" rel="noopener">https://github.com/clojure/tools.cli</a>. Acesso em: 13 mar. 2026.</li>
+          <li>BABASHKA. Official Site. Disponivel em: <a href="https://babashka.org/" target="_blank" rel="noopener">https://babashka.org/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>POSIX. Utility Conventions. Disponivel em: <a href="https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html" target="_blank" rel="noopener">https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html</a>. Acesso em: 13 mar. 2026.</li>
+          <li>RAYMOND, E. The Art of Unix Programming. Addison-Wesley, 2003.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> CLIs em Clojure funcionam melhor quando comandos sao pequenos, composicionais e orientados a dados.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/banco_dados.html">Aplicacoes com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/embedded_iot.html">Aplicacoes em Embedded e IoT</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

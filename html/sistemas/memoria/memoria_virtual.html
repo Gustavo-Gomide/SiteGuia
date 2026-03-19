@@ -1,0 +1,177 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Memória virtual: como o SO cria a ilusão de mais RAM do que existe fisicamente — swap, demand paging, working set e thrashing." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Memória Virtual | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Memória Virtual</h1>
+            <p class="page-subtitle">A ilusão de memória infinita — executando programas maiores que a RAM física com total isolamento</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Memória virtual permite executar programas maiores que a RAM física disponível, isolando processos com espaços de endereçamento completamente independentes. Cada processo tem a ilusão de possuir toda a memória para si, enquanto o kernel gerencia silenciosamente o que realmente reside na RAM e o que está no disco.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="demand-paging">
+        <h2>Demand Paging</h2>
+        <p><strong>Demand paging</strong> (paginação sob demanda) é o mecanismo pelo qual páginas só são carregadas na RAM quando efetivamente referenciadas. Quando um processo é criado, o kernel mapeia seu espaço virtual mas não carrega nada — as páginas são carregadas conforme o programa as acessa.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Page Fault Minor</h3>
+            <p>A página existe (está no page cache ou foi previamente alocada) mas não está mapeada no page table do processo. O kernel apenas atualiza o mapeamento — sem I/O de disco. Custo: ~100 ns.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Page Fault Major</h3>
+            <p>A página precisa ser carregada do disco (swap ou arquivo). Requer I/O real — o processo fica bloqueado enquanto espera. Custo: ~5-15 ms (HDD) ou ~100 µs (NVMe).</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Fluxo do Page Fault Handler (pseudocódigo do kernel)</div>
+          <pre class="code-block">
+// Chamado quando CPU gera exceção de page fault
+void do_page_fault(struct pt_regs *regs, unsigned long error_code) {
+    address = read_cr2();          // CR2 contém o endereço que causou o fault
+
+    vma = find_vma(mm, address);   // Busca VMA (Virtual Memory Area) que contém o endereço
+    if (!vma || address < vma->vm_start) {
+        send_signal(SIGSEGV);      // Endereço inválido → segmentation fault
+        return;
+    }
+
+    if (error_code & WRITE && !(vma->vm_flags & VM_WRITE)) {
+        send_signal(SIGSEGV);      // Tentativa de escrita em área somente leitura
+        return;
+    }
+
+    // Página válida — determinar onde ela está
+    if (page_in_swap(address)) {
+        page = swap_in(address);   // Major fault: carrega do swap (I/O)
+    } else if (page_in_cache(address)) {
+        page = map_from_cache(address); // Minor fault: apenas atualiza mapeamento
+    } else {
+        page = alloc_zero_page();  // Primeira vez: aloca página zerada (lazy alloc)
+    }
+
+    update_page_table(mm, address, page);  // Instala PTE
+    return;                        // CPU re-executa a instrução que causou o fault
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="swap">
+        <h2>Swap</h2>
+        <p>O <strong>swap</strong> é um espaço em disco reservado para extensão virtual da RAM. Quando a RAM física fica cheia, o kernel move páginas inativas para o swap, liberando RAM para dados mais urgentes. No Linux, pode ser uma partição dedicada ou um arquivo regular.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">swappiness</h3>
+            <p>Parâmetro do kernel (0-200) que controla agressividade de swap. Valor 0 = evitar swap ao máximo (preferir dropar page cache); 100 = comportamento equilibrado; 200 = swapear agressivamente. Default Linux: 60.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">zswap</h3>
+            <p>Cache comprimido em RAM para páginas destinadas ao swap. Páginas são comprimidas (LZ4/zstd) antes de ir ao disco. Reduz I/O de swap até 80% para cargas compressíveis. Ativado via <code>/sys/module/zswap/parameters/enabled</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">zram</h3>
+            <p>Dispositivo de bloco comprimido inteiramente em RAM. Usado como swap para sistemas com pouca RAM (Chromebooks, Android). Evita totalmente o I/O de disco ao custo de CPU para compressão/descompressão.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Quando O Swap Vira Problema</h3>
+            <p>Swap em HDD com latência de 10 ms: se o kernel swap-in/swap-out continuamente (thrashing), o sistema torna-se irresponsivo. Detectável via <code>vmstat 1</code> vendo campos <code>si</code> e <code>so</code> constantemente altos.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="working-set">
+        <h2>Working Set e Thrashing</h2>
+        <p>O <strong>working set</strong> de um processo é o conjunto de páginas que ele usa ativamente em uma janela de tempo. É a quantidade mínima de RAM necessária para o processo progredir sem gerar page faults continuamente.</p>
+        <p><strong>Thrashing</strong> ocorre quando a RAM total é menor que a soma dos working sets de todos os processos em execução. O SO fica em um ciclo vicioso: página A entra → página B sai → processo que precisava de B gera page fault → B entra → A sai → e assim por diante. A CPU fica quase ociosa enquanto o disco opera no limite.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Diagnóstico de Thrashing com vmstat</div>
+          <pre class="code-block">
+$ vmstat 1 5
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 8  5 2097152  32768   4096  65536  850  920  8500  9200  650  320  5  3  2 90  0
+ 9  6 2097152  28672   4096  65536  920  980  9100  9800  700  340  4  3  1 92  0
+10  7 2097152  20480   4096  65536 1100 1150 10500 11000  780  380  3  2  1 94  0
+
+Interpretação:
+  si (swap in)  = 1100 KB/s — páginas sendo carregadas do swap
+  so (swap out) = 1150 KB/s — páginas sendo enviadas ao swap
+  wa (I/O wait) = 94%       — CPU quase toda esperando disco
+  r  (run queue)= 10        — 10 processos querendo CPU mas esperando
+  → Sistema em thrashing severo</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="cow">
+        <h2>Copy-on-Write (CoW)</h2>
+        <p>Copy-on-Write é uma otimização crucial onde páginas de memória são compartilhadas entre processo pai e filho após um <code>fork()</code>. Nenhuma cópia real é feita inicialmente — ambos referenciam as mesmas páginas físicas, marcadas como somente leitura.</p>
+        <p>Quando qualquer um dos processos escreve em uma página compartilhada, a MMU gera uma exceção de proteção. O kernel então <strong>duplica apenas essa página</strong> específica, atualiza os mapeamentos e retoma a execução. Páginas nunca escritas nunca são copiadas.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">fork() com CoW</h3>
+            <p>Um processo com 1 GB de dados pode ser "copiado" via <code>fork()</code> em microssegundos. Apenas as estruturas de controle (page tables, task_struct) são realmente duplicadas. Páginas físicas são compartilhadas até o primeiro write.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Redis RDB Snapshots</h3>
+            <p>Redis usa <code>fork()</code> + CoW para salvar snapshots sem bloquear operações de escrita. O processo filho lê os dados do snapshot enquanto o pai continua aceitando escritas que copiam apenas as páginas modificadas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">CoW em Linguagens</h3>
+            <p>PHP e Python usam CoW para módulos importados — o interpretador compartilha páginas de código entre workers. Ruby on Rails com Unicorn usa o mesmo princípio: um processo master que faz fork para workers que compartilham código da aplicação.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Custo do CoW</h3>
+            <p>Cada page fault de CoW custa ~1 µs (minor fault). Se um processo escreve em muitas páginas rapidamente após o fork (alta taxa de "dirtying"), o benefício do CoW diminui. Monitorável via <code>/proc/PID/stat</code> campo <code>minflt</code>.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Entenda o mecanismo que dispara quando uma página não está na RAM em <a href="/html/sistemas/memoria/page_fault.html">Page Fault</a> e como o kernel decide qual página despejar em <a href="/html/sistemas/memoria/algoritmos_substituicao.html">Algoritmos de Substituição</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Thrashing é o estado em que um computador transforma hardware de 1000 dólares em uma máquina de escrever — ocupado demais paginando para fazer qualquer trabalho útil."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

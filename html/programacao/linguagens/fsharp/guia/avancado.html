@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="F# Avançado: computation expressions (async, result), Type Providers, modules e namespaces, interop C#, OOP em F# e Railway Oriented Programming." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Avançado</h1>
+          <p>F# avançado cobre computation expressions para programação monádica (<code>async</code>, <code>result</code>, <code>seq</code>), Type Providers para acesso tipado a dados externos, Railway Oriented Programming para tratamento de erros composável, interoperabilidade bidirecional com C# e o sistema completo de OOP quando necessário.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>Railway Oriented Programming</strong> (ROP) é um padrão F# para encadear operações que podem falhar. Em vez de exceções ou ifs aninhados, cada função retorna <code>Result&lt;'ok, 'erro&gt;</code> e o operador <code>bind</code> conecta trilhos — desvio automático para o trilho de erro caso qualquer etapa falhe, sem if aninhado.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="async">Computation Expressions — async e task</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">async workflow e task computation expression</div>
+          <pre class="example">open System.Net.Http
+open System.Threading.Tasks
+
+<span class="com">// async { } — computation expression do F#</span>
+<span class="com">// (baseado em F# Async, diferente de Task C#)</span>
+<span class="kw">let</span> buscarTexto (url: string) : Async&lt;string&gt; =
+    async {
+        use client = new HttpClient()
+        <span class="kw">let</span>! conteudo = client.GetStringAsync(url) |> Async.AwaitTask
+        return conteudo
+    }
+
+<span class="com">// Compor asyncs</span>
+<span class="kw">let</span> buscarMultiplos urls : Async&lt;string list&gt; =
+    urls
+    |> List.map buscarTexto
+    |> Async.Parallel
+    |> Async.map Array.toList
+
+<span class="com">// Executar async</span>
+<span class="kw">let</span> resultado = buscarTexto <span class="str">"https://example.com"</span> |> Async.RunSynchronously
+
+<span class="com">// task { } — F# 6+, compatível com C# Task diretamente</span>
+<span class="kw">let</span> buscarTask (url: string) : Task&lt;string&gt; =
+    task {
+        use client = new HttpClient()
+        <span class="kw">let</span>! resp = client.GetStringAsync(url)
+        return resp
+    }
+
+<span class="com">// seq { } — sequence expression (lazy)</span>
+<span class="kw">let</span> infinita =
+    seq {
+        <span class="kw">let</span> mutable i = 0
+        while true do
+            yield i
+            i <- i + 1
+    }
+
+<span class="kw">let</span> primeiros10 = infinita |> Seq.take 10 |> Seq.toList</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="result-rop">Result e Railway Oriented Programming</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Encadear operações falíveis com Result e bind</div>
+          <pre class="example">type Erro =
+    | EntradaInvalida of string
+    | BancoDeDadosErro of string
+    | NaoEncontrado
+
+<span class="com">// Cada função retorna Result — composição via bind</span>
+<span class="kw">let</span> validarEmail (email: string) : Result&lt;string, Erro&gt; =
+    if email.Contains(<span class="str">"@"</span>) then Ok email
+    else Error (EntradaInvalida <span class="str">"Email inválido"</span>)
+
+<span class="kw">let</span> validarIdade (idade: int) : Result&lt;int, Erro&gt; =
+    if idade > 0 && idade < 150 then Ok idade
+    else Error (EntradaInvalida <span class="str">"Idade inválida"</span>)
+
+<span class="kw">let</span> buscarNoBanco (email: string) : Result&lt;Pessoa, Erro&gt; =
+    <span class="com">// simulado</span>
+    if email = <span class="str">"teste@ex.com"</span> then
+        Ok { Nome = <span class="str">"Teste"</span>; Idade = 25; Email = email }
+    else Error NaoEncontrado
+
+<span class="com">// result computation expression (com FsToolkit.ErrorHandling)</span>
+<span class="kw">let</span> processarCadastro email idade =
+    result {
+        <span class="kw">let</span>! emailV = validarEmail email
+        <span class="kw">let</span>! idadeV = validarIdade idade
+        <span class="kw">let</span>! pessoa  = buscarNoBanco emailV
+        return { pessoa with Idade = idadeV }
+    }
+
+<span class="com">// Sem computation expression — pipeline manual com bind</span>
+<span class="kw">let</span> processarManual email idade =
+    validarEmail email
+    |> Result.bind (fun emailV ->
+        validarIdade idade
+        |> Result.map (fun _ -> emailV))
+    |> Result.bind buscarNoBanco
+
+<span class="com">// Tratar resultado final</span>
+match processarCadastro <span class="str">"teste@ex.com"</span> 25 with
+| Ok pessoa -> printfn <span class="str">"Processado: %s"</span> pessoa.Nome
+| Error (EntradaInvalida msg) -> printfn <span class="str">"Erro de entrada: %s"</span> msg
+| Error NaoEncontrado         -> printfn <span class="str">"Não encontrado"</span>
+| Error (BancoDeDadosErro e)  -> printfn <span class="str">"Banco: %s"</span> e</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="type-providers">Type Providers</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">FSharp.Data — CSV, JSON e HTML type providers</div>
+          <pre class="example"><span class="com">// Instalar: dotnet add package FSharp.Data</span>
+open FSharp.Data
+
+<span class="com">// CSV Type Provider — tipos gerados a partir de CSV real</span>
+type Populacao = CsvProvider&lt;<span class="str">"populacao.csv"</span>&gt;
+<span class="con">// populacao.csv: País,Ano,Populacao</span>
+<span class="com">//                Brasil,2020,212000000</span>
+
+<span class="kw">let</span> dados = Populacao.Load(<span class="str">"populacao.csv"</span>)
+<span class="kw">for</span> row <span class="kw">in</span> dados.Rows do
+    printfn <span class="str">"%s (%d): %d"</span> row.País row.Ano row.Populacao   <span class="com">// tipado!</span>
+
+<span class="kw">let</span> total = dados.Rows |> Seq.sumBy (fun r -> r.Populacao)
+
+<span class="com">// JSON Type Provider</span>
+type GitHubApi = JsonProvider&lt;<span class="str">"https://api.github.com/repos/dotnet/fsharp"</span>&gt;
+<span class="kw">let</span> repo = GitHubApi.GetSample()
+printfn <span class="str">"Stars: %d"</span> repo.StargazersCount   <span class="com">// completamente tipado!</span>
+
+<span class="com">// HTML Type Provider</span>
+type TableauHtml = HtmlProvider&lt;<span class="str">"https://en.wikipedia.org/wiki/F_Sharp_(programming_language)"</span>&gt;
+<span class="kw">let</span> pagina = TableauHtml.GetSample()
+<span class="kw">for</span> tabela <span class="kw">in</span> pagina.Tables do
+    printfn <span class="str">"Tabela: %s"</span> tabela.Name
+
+<span class="com">// SQL Type Provider (SqlProvider)</span>
+<span class="com">// type Db = SqlDataProvider&lt;connectionString = "..."&gt;</span>
+<span class="com">// let ctx = Db.GetDataContext()</span>
+<span class="com">// let users = ctx.Dbo.Users |> Seq.toList</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interop-csharp">Interoperabilidade com C#</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Usar bibliotecas C# de F# e exportar para C#</div>
+          <pre class="example">open System.Collections.Generic
+open Microsoft.Extensions.Logging
+
+<span class="com">// Usar classes C# normalmente</span>
+<span class="kw">let</span> lista = List&lt;int&gt;()      <span class="com">// System.Collections.Generic.List</span>
+lista.Add(1); lista.Add(2)
+lista.Count                  <span class="com">// 2</span>
+
+<span class="com">// Implementar interfaces C#</span>
+type MeuComparador() =
+    interface System.IComparable&lt;int&gt; with
+        member _.CompareTo(other) = 0   <span class="com">// F# é estrito: todos os membros</span>
+
+<span class="com">// Classes F# para consumo em C#</span>
+type MinhaClasse(nome: string) =
+    <span class="kw">let</span> mutable _contador = 0
+
+    member _.Nome = nome                     <span class="com">// property</span>
+    member _.Contador = _contador
+    member _.Incrementar() = _contador <- _contador + 1
+
+    static member Criar nome = MinhaClasse(nome)
+
+<span class="com">// Usar NuGet C# (ex: Newtonsoft.Json)</span>
+open Newtonsoft.Json
+
+type Configuracao = { Host: string; Porta: int }
+<span class="kw">let</span> config = { Host = <span class="str">"localhost"</span>; Porta = 5432 }
+<span class="kw">let</span> json    = JsonConvert.SerializeObject(config)
+<span class="kw">let</span> config2 = JsonConvert.DeserializeObject&lt;Configuracao&gt;(json)
+
+<span class="com">// Nullable interop — C# pode retornar null</span>
+<span class="kw">let</span> buscarEnv chave =
+    System.Environment.GetEnvironmentVariable(chave)
+    |> Option.ofObj   <span class="com">// null → None, valor → Some</span>
+
+buscarEnv <span class="str">"PATH"</span> |> Option.defaultValue <span class="str">"não definido"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>WLASCHIN, S. <strong>F# for Fun and Profit — Railway Oriented Programming</strong>. Disponível em: &lt;https://fsharpforfunandprofit.com/rop/&gt;. Acesso em: 2026.</li>
+            <li>Microsoft. <strong>F# Computation Expressions</strong>. Disponível em: &lt;https://learn.microsoft.com/fsharp/language-reference/computation-expressions&gt;. Acesso em: 2026.</li>
+            <li>SMITH, C. <strong>Programming F# 3.0</strong>. 2. ed. O'Reilly, 2012.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a href="../aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Type Providers é uma feature que nenhuma outra linguagem mainstream tem na mesma forma: o compilador conecta-se a uma fonte externa (um arquivo CSV, um endpoint REST, um banco SQL) e <strong>gera tipos em tempo de compilação</strong>. Você tem IntelliSense, completação automática e verificação de tipo para dados externos — um erro de nome de coluna ou campo virar um erro de compilação, não um crash em produção.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

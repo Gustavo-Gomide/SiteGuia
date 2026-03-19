@@ -1,0 +1,112 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pipeline de texturas: PBR, bake maps e padronizacao para engines." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Texturizacao | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Texturizacao 3D</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">Texturizacao 3D</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>Texturizacao: PBR, Bake e Pipeline para Engines</h1>
+        <p>Maps de albedo, normal, metallic e roughness — cada um com funcao tecnica especifica.</p>
+      </div>
+      <p class="intro-highlight">Textura de jogo nao e apenas pintura: e um conjunto de maps com papeis tecnicos distintos. Cada canal carrega informacao que o shader interpreta para calcular iluminacao, reflexao e superficie em tempo real.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">O que e PBR</h2>
+      <p><strong>Physically Based Rendering (PBR)</strong> e o modelo de material dominante em jogos modernos. Ao inves de pintar luz e sombra diretamente na textura (diffuse baked), PBR separa informacao de superficie (cor, rugosidade, metalicidade) da iluminacao em si. Isso significa que o mesmo asset parece correto sob qualquer condicao de luz da engine, sem precisar de retextura.</p>
+      <p>O workflow mais comum em jogos usa dois modelos: <strong>Metal/Roughness</strong> (Unreal, Unity URP/HDRP, Godot) e <strong>Spec/Gloss</strong> (legado, ainda usado em alguns pipelines mobile). Metal/Roughness e o padrao atual para novos projetos.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">Os Maps PBR e suas Funcoes</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Maps Essenciais</h3>
+          <ul>
+            <li><strong>Albedo/Base Color:</strong> cor base sem luz, sem sombra. Tons muito escuros ou muito claros quebram PBR.</li>
+            <li><strong>Normal Map:</strong> simula microgeometria sem poligonos extras. Espaço tangente (azulado).</li>
+            <li><strong>Metallic:</strong> 0 = dieletrico (plastico, pedra), 1 = metal. Sem meios-termos em superficies reais.</li>
+            <li><strong>Roughness:</strong> 0 = espelho perfeito, 1 = superficie completamente opaca. Controla nitidez das reflexoes.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Maps de Suporte</h3>
+          <ul>
+            <li><strong>AO (Ambient Occlusion):</strong> sombra de contato e cavidades. Baked do high poly ou calculado em runtime.</li>
+            <li><strong>Height/Displacement:</strong> deslocamento real de vertices (custo alto) ou parallax occlusion (custo medio).</li>
+            <li><strong>Emissive:</strong> area que emite luz propria. Multiplica por intensidade no shader para HDR bloom.</li>
+            <li><strong>Opacity/Alpha:</strong> mascara de transparencia. Evitar em objetos opacos (quebra early-z).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="workflow" class="section-title">Workflow: Substance e Bake</h2>
+      <p>O pipeline moderno para personagens e props hero usa dois softwares em sequencia: <strong>Marmoset Toolbag</strong> ou <strong>Substance Painter/Designer</strong> para bake de maps do high poly para o low poly, e depois pintura procedural sobre esses maps.</p>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">pipeline_textura.txt</div>
+        <pre class="example">1. Modelar High Poly (detalhe sculpt/chamfers)
+2. Modelar Low Poly + UV Mapping
+3. Bake: Normal, AO, Curvature, Position
+4. Pintar em Substance Painter usando maps baked
+5. Exportar para engine:
+   Unity HDRP:   Albedo + MetallicSmooth(RGB+A)
+   Unreal:       BaseColor + ORM(R=AO G=Rough B=Metal)
+   Godot:        Albedo + Normal + ORM separados</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">Compressao e Performance</h2>
+      <div class="panel">
+        <p>Texturas nao comprimidas consomem memoria de VRAM muito alem do necessario. Engines usam compressao por hardware: <strong>BC7</strong> (DXT nao-legado, PC/console), <strong>ASTC</strong> (mobile/Apple Silicon) e <strong>ETC2</strong> (Android legado). Cada formato reduz o tamanho da textura em memoria 4x a 8x com perda visual minima em textures bem preparadas.</p>
+        <p>Regra para empacotamento: colocar mapas que nao precisam de precisao de cor em canais separados para aproveitar compressao por canal. Exemplo canonico Unreal ORM: Occlusion (R), Roughness (G), Metallic (B) empacotados em uma unica textura RGB — tres maps pelo custo de um.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>ADOBE. <strong>Substance 3D Painter — Export Presets</strong>. Adobe Substance Documentation, 2024.</li>
+        <li>EPIC GAMES. <strong>Physical Materials and PBR in Unreal Engine</strong>. Unreal Engine Documentation, 2024.</li>
+        <li>LAGARDE, Sebastien; DE ROUSIERS, Charles. <strong>Moving Frostbite to PBR</strong>. SIGGRAPH 2014.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>Textura PBR bem feita parece certa sob qualquer luz da cena — esse e o teste real de qualidade.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"PBR nao e estilo visual, e um contrato entre o artista e o motor de renderizacao."</p>
+    </div>
+  </div></main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

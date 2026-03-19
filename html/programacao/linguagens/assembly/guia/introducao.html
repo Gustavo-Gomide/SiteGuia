@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Introducao ao Assembly: historia, arquiteturas x86/x86_64/ARM, sintaxes NASM e GAS AT&T, registradores, estrutura de programa, primeiro hello world e compilacao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Introdução | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Introdução</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Introdução</h1>
+          <p><strong>Assembly</strong> (ou linguagem de montagem) é a representação textual legível do código de máquina. Cada instrução corresponde diretamente a uma operação do processador — sem camadas de abstração. É a linguagem mais próxima do hardware que ainda é escrita por humanos, sendo essencial para desenvolvimento de sistemas operacionais, drivers, firmware, otimizações críticas e engenharia reversa.</p>
+        </div>
+        <p class="intro-highlight">
+          Diferente de linguagens de alto nível, em Assembly o programador controla diretamente registradores, memória, flags e o fluxo de execução do processador. Assemblers como <strong>NASM</strong>, <strong>GAS</strong> e <strong>MASM</strong> traduzem o texto assembly em bytecode binário executável.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="historia">História e Contexto</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Anos 1940–50</h3>
+            <p>Primeiros computadores (ENIAC, UNIVAC) eram programados diretamente em código de máquina binário. Assembly surgiu como mnemônicos para facilitar a escrita — <code>ADD</code> em vez de <code>00000011</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Anos 1960–70</h3>
+            <p>IBM System/360 padronizou arquiteturas. Assembly era a linguagem principal para sistemas operacionais, BIOS e software de alto desempenho antes de C surgir.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Anos 1980–90</h3>
+            <p>DOS e Windows 3.x usavam extensamente assembly. Jogos como Wolfenstein 3D e Doom tinham kernels de renderização em ASM x86 para máxima performance no 386/486.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Hoje</h3>
+            <p>Compiladores modernos geram assembly excelente, mas ASM ainda é indispensável em: bootloaders, kernels de SO, firmware embarcado, criptografia de baixo nível, SIMD/AVX e engenharia reversa/malware.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquiteturas">Arquiteturas Principais</h2>
+        <div class="panel">
+          <p class="panel-title">Comparativo de arquiteturas — Assembly</p>
+          <table class="table">
+            <thead><tr>
+              <th>Arquitetura</th><th>ISA</th><th>Registradores gerais</th><th>Endianess</th><th>Uso</th>
+            </tr></thead>
+            <tbody>
+              <tr><td>x86 (32-bit)</td><td>CISC</td><td>EAX, EBX, ECX, EDX, ESI, EDI, ESP, EBP</td><td>Little-endian</td><td>PCs legados, Windows 32-bit</td></tr>
+              <tr><td>x86-64 (64-bit)</td><td>CISC + estendido</td><td>RAX..R15 (16 registradores)</td><td>Little-endian</td><td>PCs/servidores modernos</td></tr>
+              <tr><td>ARM32 (ARMv7)</td><td>RISC</td><td>R0–R15 (16 registradores)</td><td>Bi-endian</td><td>Mobile (Android antigo), embarcado</td></tr>
+              <tr><td>ARM64 (AArch64)</td><td>RISC (ARMv8+)</td><td>X0–X30 + SP (31+1)</td><td>Little-endian</td><td>iPhones, Apple Silicon, Android moderno</td></tr>
+              <tr><td>RISC-V</td><td>RISC (aberto)</td><td>x0–x31 (32 registradores)</td><td>Little-endian</td><td>Embarcado, academia, HPC emergente</td></tr>
+              <tr><td>AVR (8-bit)</td><td>RISC</td><td>R0–R31 (32 de 8 bits)</td><td>Little-endian</td><td>Arduino, microcontroladores Atmel</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sintaxes">Sintaxes: Intel vs AT&amp;T</h2>
+        <p>Assembly x86 tem duas sintaxes principais. <strong>Intel</strong> (usada por NASM, MASM) é mais legível: <code>dst, src</code>. <strong>AT&amp;T</strong> (usada por GAS/gcc) inverte a ordem: <code>src, dst</code> com prefixos obrigatorios.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Assembly x86-64 &mdash; Intel (NASM) vs AT&T (GAS)</div>
+          <pre class="example"><span class="com">; ===== Sintaxe Intel (NASM) =====</span>
+<span class="com">; dst ← src  (destino à esquerda)</span>
+<span class="kw">mov</span>   rax, <span class="num">42</span>          <span class="com">; rax = 42</span>
+<span class="kw">add</span>   rax, rbx          <span class="com">; rax = rax + rbx</span>
+<span class="kw">mov</span>   rax, [rbp - <span class="num">8</span>]    <span class="com">; rax = *(rbp - 8)  — desreferencia memória</span>
+<span class="kw">mov</span>   [rsi], rdx        <span class="com">; *rsi = rdx</span>
+<span class="kw">lea</span>   rdi, [rip + msg]  <span class="com">; rdi = endereço de msg (RIP-relative)</span>
+
+<span class="com">; ===== Sintaxe AT&T (GAS / gcc -S) =====</span>
+<span class="com">// src, dst  (origem à esquerda — invertido)  sufixos de tamanho</span>
+<span class="kw">movq</span>  $<span class="num">42</span>,    %rax       <span class="com">// rax = 42   (q = quadword = 64-bit)</span>
+<span class="kw">addq</span>  %rbx,   %rax       <span class="com">// rax += rbx</span>
+<span class="kw">movq</span>  -<span class="num">8</span>(%rbp), %rax     <span class="com">// rax = *(rbp - 8)</span>
+<span class="kw">movq</span>  %rdx,   (%rsi)     <span class="com">// *rsi = rdx</span>
+<span class="kw">leaq</span>  msg(%rip), %rdi    <span class="com">// rdi = &amp;msg</span>
+
+<span class="com">; Sufixos AT&T: b=byte(8), w=word(16), l=long(32), q=quad(64)</span>
+<span class="kw">movb</span>  $<span class="num">0x41</span>, %al          <span class="com">// al = 'A'  (8-bit)</span>
+<span class="kw">movw</span>  $<span class="num">1000</span>, %cx          <span class="com">// cx = 1000 (16-bit)</span>
+<span class="kw">movl</span>  $<span class="num">0</span>,    %edi         <span class="com">// edi = 0   (32-bit — zera bits 32..63 de rdi)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-programa">Estrutura de um Programa NASM</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 Linux &mdash; Hello World com syscall</div>
+          <pre class="example"><span class="com">; Compilar:  nasm -f elf64 hello.asm -o hello.o</span>
+<span class="com">;            ld hello.o -o hello</span>
+<span class="com">;            ./hello</span>
+
+<span class="kw">section</span> .data
+    msg     <span class="fn">db</span>  <span class="str">"Hello, World!"</span>, <span class="num">10</span>  <span class="com">; string + newline (LF)</span>
+    msg_len <span class="kw">equ</span> $ - msg            <span class="com">; tamanho calculado em tempo de montagem</span>
+
+    numero  <span class="fn">dq</span>  <span class="num">42</span>                  <span class="com">; quadword (64-bit) = 42</span>
+    pi      <span class="fn">dd</span>  <span class="num">3.14159</span>             <span class="com">; float 32-bit</span>
+
+<span class="kw">section</span> .bss                         <span class="com">; variáveis não inicializadas</span>
+    buffer  <span class="fn">resb</span> <span class="num">64</span>                  <span class="com">; reserva 64 bytes</span>
+    count   <span class="fn">resq</span> <span class="num">1</span>                   <span class="com">; reserva 1 quadword</span>
+
+<span class="kw">section</span> .text
+    <span class="kw">global</span> _start                   <span class="com">; ponto de entrada para o linker</span>
+
+_start:
+    <span class="com">; syscall write(1, msg, msg_len)</span>
+    <span class="com">; Linux x86-64: syscall number em RAX, args em RDI, RSI, RDX...</span>
+    <span class="kw">mov</span>  rax, <span class="num">1</span>           <span class="com">; syscall: sys_write</span>
+    <span class="kw">mov</span>  rdi, <span class="num">1</span>           <span class="com">; fd: 1 = stdout</span>
+    <span class="kw">mov</span>  rsi, msg         <span class="com">; ponteiro para string</span>
+    <span class="kw">mov</span>  rdx, msg_len     <span class="com">; quantidade de bytes</span>
+    <span class="kw">syscall</span>               <span class="com">; executa a syscall</span>
+
+    <span class="com">; syscall exit(0)</span>
+    <span class="kw">mov</span>  rax, <span class="num">60</span>          <span class="com">; syscall: sys_exit</span>
+    <span class="kw">mov</span>  rdi, <span class="num">0</span>           <span class="com">; exit code 0</span>
+    <span class="kw">syscall</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Declaracoes de dados (db/dw/dd/dq)</div>
+          <pre class="example"><span class="kw">section</span> .data
+    <span class="com">; Bytes individuais e strings</span>
+    byte_val    <span class="fn">db</span>  <span class="num">0xFF</span>                    <span class="com">; define byte</span>
+    char_a      <span class="fn">db</span>  <span class="str">'A'</span>                     <span class="com">; caractere ASCII = 65</span>
+    texto       <span class="fn">db</span>  <span class="str">"Ola"</span>, <span class="num">0</span>               <span class="com">; string null-terminated</span>
+    array_bytes <span class="fn">db</span>  <span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>         <span class="com">; array de 5 bytes</span>
+
+    <span class="com">; Word (16-bit), Dword (32-bit), Qword (64-bit)</span>
+    w           <span class="fn">dw</span>  <span class="num">1000</span>                   <span class="com">; 2 bytes</span>
+    d           <span class="fn">dd</span>  <span class="num">100000</span>                 <span class="com">; 4 bytes</span>
+    q           <span class="fn">dq</span>  <span class="num">9999999999</span>             <span class="com">; 8 bytes</span>
+
+    <span class="com">; Constantes com EQU (sem alocação de memória)</span>
+    STDIN       <span class="kw">equ</span> <span class="num">0</span>
+    STDOUT      <span class="kw">equ</span> <span class="num">1</span>
+    SYS_WRITE   <span class="kw">equ</span> <span class="num">1</span>
+    SYS_EXIT    <span class="kw">equ</span> <span class="num">60</span>
+
+<span class="kw">section</span> .bss
+    <span class="com">; resb/resw/resd/resq N — reservar N unidades sem inicializar</span>
+    buf64   <span class="fn">resb</span> <span class="num">64</span>     <span class="com">; 64 bytes</span>
+    matrix  <span class="fn">resq</span> <span class="num">16</span>     <span class="com">; 16 quadwords = 128 bytes (ex: matriz 4x4 float64)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="registradores">Registradores x86-64</h2>
+        <div class="panel">
+          <p class="panel-title">Registradores gerais x86-64 — visao por tamanho</p>
+          <table class="table">
+            <thead><tr><th>64-bit</th><th>32-bit</th><th>16-bit</th><th>8-bit alto</th><th>8-bit baixo</th><th>Convencao de uso (System V ABI)</th></tr></thead>
+            <tbody>
+              <tr><td>RAX</td><td>EAX</td><td>AX</td><td>AH</td><td>AL</td><td>Valor de retorno / acumulador</td></tr>
+              <tr><td>RBX</td><td>EBX</td><td>BX</td><td>BH</td><td>BL</td><td>Salvo por callee (callee-saved)</td></tr>
+              <tr><td>RCX</td><td>ECX</td><td>CX</td><td>CH</td><td>CL</td><td>4° argumento / contador de loop</td></tr>
+              <tr><td>RDX</td><td>EDX</td><td>DX</td><td>DH</td><td>DL</td><td>3° argumento / extensão de RAX</td></tr>
+              <tr><td>RSI</td><td>ESI</td><td>SI</td><td>—</td><td>SIL</td><td>2° argumento / source index</td></tr>
+              <tr><td>RDI</td><td>EDI</td><td>DI</td><td>—</td><td>DIL</td><td>1° argumento / dest index</td></tr>
+              <tr><td>RSP</td><td>ESP</td><td>SP</td><td>—</td><td>SPL</td><td>Stack pointer (não usar livremente)</td></tr>
+              <tr><td>RBP</td><td>EBP</td><td>BP</td><td>—</td><td>BPL</td><td>Frame pointer (callee-saved)</td></tr>
+              <tr><td>R8</td><td>R8D</td><td>R8W</td><td>—</td><td>R8B</td><td>5° argumento</td></tr>
+              <tr><td>R9</td><td>R9D</td><td>R9W</td><td>—</td><td>R9B</td><td>6° argumento</td></tr>
+              <tr><td>R10–R11</td><td>…D</td><td>…W</td><td>—</td><td>…B</td><td>Temporários (caller-saved)</td></tr>
+              <tr><td>R12–R15</td><td>…D</td><td>…W</td><td>—</td><td>…B</td><td>Callee-saved</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> <strong>Importante:</strong> Ao escrever em um registrador de 32-bit (ex: EAX), os bits 32–63 de RAX são zerados automaticamente em x86-64. Mas ao escrever em 8-bit ou 16-bit, os bits superiores <em>não</em> são alterados — o que pode gerar bugs sutis.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ferramentas">Ferramentas e Primeiros Passos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Instalacao e compilacao com NASM no Linux</div>
+          <pre class="example"><span class="com"># Instalar NASM</span>
+sudo apt install nasm build-essential
+
+<span class="com"># Montar (assemblar) para ELF64</span>
+nasm -f elf64 hello.asm -o hello.o
+
+<span class="com"># Linkar com ld (sem libc)</span>
+ld hello.o -o hello
+
+<span class="com"># Executar</span>
+./hello
+
+<span class="com"># Montar com listagem (útil para aprender)</span>
+nasm -f elf64 -l hello.lst hello.asm -o hello.o
+cat hello.lst   <span class="com"># mostra endereços, bytes e código</span>
+
+<span class="com"># Inspecionar o binário</span>
+objdump -d hello                  <span class="com"># disassembly</span>
+objdump -s -j .data hello         <span class="com"># conteúdo da seção .data</span>
+readelf -h hello                  <span class="com"># cabeçalho ELF</span>
+
+<span class="com"># Compilar com GCC (usa GAS / AT&T por padrão)</span>
+gcc -no-pie -o hello_c hello.c
+
+<span class="com"># Ver assembly gerado pelo GCC (sintaxe Intel)</span>
+gcc -S -masm=intel -O2 hello.c -o hello.s
+cat hello.s</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>INTEL. <strong>Intel 64 and IA-32 Architectures Software Developer's Manual</strong>. Santa Clara: Intel Corporation, 2024. Disponível em: &lt;https://www.intel.com/sdm&gt;. Acesso em: 2025.</li>
+            <li>KUSSWURM, D. <strong>Modern X86 Assembly Language Programming</strong>. 3. ed. Apress, 2023.</li>
+            <li>NASM. <strong>NASM — The Netwide Assembler Manual</strong>. Disponível em: &lt;https://nasm.us/doc&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Fundamentos</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em x86-64, <strong>escrever em um registrador de 32 bits zera automaticamente os 32 bits superiores</strong> — portanto <code>mov eax, 0</code> é tão eficaz quanto <code>xor rax, rax</code> para zerar RAX, mas <code>xor eax, eax</code> é a idioma preferida por gerar 2 bytes em vez de 3–4 e ser reconhecida como zero-idiom pelo processador.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

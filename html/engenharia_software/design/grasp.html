@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="GRASP: padrões de responsabilidade para orientar design OO (Expert, Creator, Controller, coesão e acoplamento) com exemplos.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>GRASP | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Padrões para atribuir responsabilidades em OO</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">GRASP</h1>
+          <p class="page-subtitle">General Responsibility Assignment Software Patterns — Craig Larman</p>
+        </div>
+        <p class="intro-highlight">GRASP é um conjunto de padrões que orientam como distribuir responsabilidades entre classes e objetos em OO. O objetivo é maximizar a coesão, minimizar o acoplamento e tornar as decisões de design explícitas e defensaveis.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="padroes" class="section-title">Os padrões GRASP</h2>
+        <div class="section-divider"></div>
+        <p>Cada padrão responde a uma questão de design sobre onde colocar responsabilidade:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Padrão</th>
+                <th>Questão respondida</th>
+                <th>Resposta / Heurística</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Information Expert</strong></td>
+                <td>Quem deve ter a responsabilidade?</td>
+                <td>A classe que possui a informação necessária.</td>
+              </tr>
+              <tr>
+                <td><strong>Creator</strong></td>
+                <td>Quem deve criar instâncias de X?</td>
+                <td>Quem agrega, contém, usa muito ou inicializa X.</td>
+              </tr>
+              <tr>
+                <td><strong>Controller</strong></td>
+                <td>Quem coordena o caso de uso?</td>
+                <td>Um objeto dedicado que orquestra sem concentrar regras.</td>
+              </tr>
+              <tr>
+                <td><strong>Low Coupling</strong></td>
+                <td>Como minimizar dependências?</td>
+                <td>Distribua responsabilidades para reduzir acoplamento.</td>
+              </tr>
+              <tr>
+                <td><strong>High Cohesion</strong></td>
+                <td>Como manter o foco?</td>
+                <td>Uma classe deve ter responsabilidades relacionadas.</td>
+              </tr>
+              <tr>
+                <td><strong>Polymorphism</strong></td>
+                <td>Como tratar alternativas baseadas em tipo?</td>
+                <td>Defina operações polimórficas na classe base.</td>
+              </tr>
+              <tr>
+                <td><strong>Protected Variations</strong></td>
+                <td>Como proteger de mudanças em pontos instáveis?</td>
+                <td>Envolva o ponto de variação com uma interface/adaptador.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — Expert e Controller</h2>
+        <div class="section-divider"></div>
+        <p>Na prática, Expert e Controller trabalham juntos: o Controller orquestra, o Expert calcula:</p>
+        <div class="code-container">
+          <pre class="code-block">// EXPERT: Pedido sabe calcular seu total (tem os dados)
+class Pedido {
+  constructor(private itens: ItemPedido[]) {}
+
+  calcularTotal(): number {
+    return this.itens.reduce((acc, item) => acc + item.preco * item.quantidade, 0);
+  }
+}
+
+// CONTROLLER: checkout orquestra o caso de uso
+class CheckoutController {
+  constructor(
+    private pedidoRepo: PedidoRepositorio,
+    private pagamentoService: PagamentoService,
+  ) {}
+
+  async finalizarCompra(pedidoId: string, cartao: Cartao): Promise<void> {
+    const pedido = await this.pedidoRepo.buscar(pedidoId);
+    const total = pedido.calcularTotal(); // delega ao Expert
+    await this.pagamentoService.cobrar(cartao, total);
+    pedido.confirmar();
+    await this.pedidoRepo.salvar(pedido);
+  }
+}
+
+// EVITE: Controller calculando o total (viola Expert + cria acoplamento)
+// CheckoutController.calcularTotal(itens) { ... }</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>Os erros mais frequentes ao aplicar GRASP em projetos reais:</p>
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Controller gordo</h3>
+            <p>O Controller concentra toda a lógica de negócio em vez de delegar aos Experts. Resultado: classe com 1000 linhas.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Expert mal aplicado</h3>
+            <p>Coloca-se tudo na entidade por pureza, criando acoplamento entre domínio e detalhes técnicos.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Indirection demais</h3>
+            <p>Camadas extra de coordenação sem ganho real de coesão ou desacoplamento.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Low Coupling dogmático</h3>
+            <p>Tentar zero acoplamento resulta em over-engineering com interfaces para tudo sem necessidade real.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>GRASP é complementar a <a href="/html/engenharia_software/design/solid.html">SOLID</a> e aos <a href="/html/engenharia_software/design/design_patterns/introducao_patterns.html">Design Patterns</a>. Use-os juntos para tomar decisões de design fundamentadas.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Onde colocar responsabilidade é a decisão de design mais frequente. GRASP a torna explícita."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

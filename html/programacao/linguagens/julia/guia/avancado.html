@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Julia avançado: metaprogramação, macros, tipos paramétricos, concorrência e performance." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Julia — Tópicos Avançados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+	<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+	<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+	<div class="content-area">
+
+	  <div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Tópicos Avançados</strong></p></div>
+
+	  <section>
+		<div class="page-header">
+		  <div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+		  <h1>Julia — Tópicos Avançados</h1>
+		  <p>Metaprogramação com macros, tipos paramétricos, geração de código, concorrência com tasks e threads, análise de inferência de tipos e técnicas de performance que aproximam Julia de C e Fortran.</p>
+		</div>
+		<p class="intro-highlight">
+		  O diferencial de Julia em nível avançado é que a linguagem expõe quase tudo: AST, macros, inferência, código LLVM e assembly. Isso permite escrever software altamente expressivo e, ao mesmo tempo, entender exatamente por que uma função está rápida ou lenta.
+		</p>
+	  </section>
+
+	  <section>
+		<h2 class="section-title" id="tipos-parametricos">Tipos Paramétricos e Hierarquia Abstrata</h2>
+		<div class="code-container rounded-md border overflow-hidden">
+		  <div class="code-header">Modelagem genérica e especializada por tipo</div>
+		  <pre class="example"><span class="com"># Tipos abstratos criam hierarquias sem instâncias diretas</span>
+abstract type Forma end
+abstract type Forma2D &lt;: Forma end
+abstract type Forma3D &lt;: Forma end
+
+<span class="com"># Tipos concretos paramétricos</span>
+struct Circulo{T&lt;:Real} &lt;: Forma2D
+	raio::T
+end
+
+struct Retangulo{T&lt;:Real} &lt;: Forma2D
+	largura::T
+	altura::T
+end
+
+struct Esfera{T&lt;:Real} &lt;: Forma3D
+	raio::T
+end
+
+area(c::Circulo) = π * c.raio^2
+area(r::Retangulo) = r.largura * r.altura
+volume(e::Esfera) = (4 / 3) * π * e.raio^3
+
+function descrever(f::Forma2D)
+	"$(typeof(f)) com área $(round(area(f), digits = 2))"
+end
+
+<span class="com"># Tipos com múltiplos parâmetros</span>
+struct Par{A, B}
+	primeiro::A
+	segundo::B
+end
+
+Base.first(p::Par) = p.primeiro
+Base.last(p::Par) = p.segundo
+
+<span class="com"># where restringe e nomeia parâmetros</span>
+function soma_convertida(v::Vector{T}) where {T&lt;:Real}
+	total = zero(T)
+	for x in v
+		total += x
+	end
+	total
+end
+
+<span class="com"># Union para aceitar conjunto fechado de tipos</span>
+function processar(x::Union{Int, Float64, String})
+	println("Recebido: $x")
+end
+
+<span class="com"># Observação importante: containers são invariantes</span>
+<span class="com"># Vector{Float64} não é subtipo de Vector{Real}</span>
+Vector{Float64} &lt;: Vector{Real}         <span class="com"># false</span>
+Vector{Float64} &lt;: AbstractVector{Float64}  <span class="com"># true</span></pre>
+		</div>
+		<div class="section-divider"></div>
+	  </section>
+
+	  <section>
+		<h2 class="section-title" id="metaprogramacao">Metaprogramação e Macros</h2>
+		<div class="code-container rounded-md border overflow-hidden">
+		  <div class="code-header">Código que gera código</div>
+		  <pre class="example"><span class="com"># Expressões: código como estrutura de dados</span>
+expr = :(1 + 2 * 3)
+dump(expr)
+eval(expr)                     <span class="com"># 7</span>
+
+<span class="com"># quote cria blocos de AST</span>
+codigo = quote
+	x = 10
+	y = 20
+	x + y
+end
+
+eval(codigo)                   <span class="com"># 30</span>
+Meta.parse("a = b + c")
+
+<span class="com"># Macro simples</span>
+macro verificar(expr)
+	quote
+		local resultado = $(esc(expr))
+		if resultado
+			println("OK: ", $(string(expr)))
+		else
+			println("Falhou: ", $(string(expr)))
+		end
+		resultado
+	end
+end
+
+@verificar 2 + 2 == 4
+
+<span class="com"># Macro para medição manual</span>
+macro medir(expr)
+	quote
+		local inicio = time()
+		local valor = $(esc(expr))
+		local fim = time()
+		println("Tempo: ", round(fim - inicio, digits = 6), " s")
+		valor
+	end
+end
+
+<span class="com"># @generated escolhe código conforme o tipo</span>
+@generated function construir_zeros(::Type{T}, n::Int) where {T}
+	if T &lt;: Integer
+		:(fill(zero(T), n))
+	else
+		:(zeros(T, n))
+	end
+end
+
+<span class="com"># Macros padrão úteis</span>
+@time sum(rand(10^6))
+@elapsed sum(rand(10^6))
+@allocated sum(rand(10^6))
+@show sqrt(81)
+@assert 1 + 1 == 2
+@info "Executando pipeline"
+@warn "Valor aproximado"
+
+<span class="com"># Interpolação com $ insere valores/expressões no AST</span>
+nome = :ola
+corpo = :(println("gerado dinamicamente"))
+macro criar_funcao(nome, corpo)
+	quote
+		function $(esc(nome))()
+			$(esc(corpo))
+		end
+	end
+end
+
+@criar_funcao ola corpo</pre>
+		</div>
+		<div class="section-divider"></div>
+	  </section>
+
+	  <section>
+		<h2 class="section-title" id="concorrencia">Concorrência e Paralelismo</h2>
+		<div class="code-container rounded-md border overflow-hidden">
+		  <div class="code-header">Tasks, Channels, Threads e Distributed</div>
+		  <pre class="example">using Base.Threads
+using Distributed
+
+<span class="com"># Tasks cooperativas</span>
+function produtor(c::Channel)
+	for i in 1:5
+		put!(c, i)
+		sleep(0.1)
+	end
+	close(c)
+end
+
+function consumidor(c::Channel)
+	for valor in c
+		println("Recebido: $valor")
+	end
+end
+
+canal = Channel(10)
+@sync begin
+	@async produtor(canal)
+	@async consumidor(canal)
+end
+
+<span class="com"># fetch aguarda o resultado de uma task</span>
+tarefa = @async begin
+	sleep(1)
+	42
+end
+resultado = fetch(tarefa)
+
+<span class="com"># Threads para CPU-bound</span>
+dados = rand(1_000)
+saida = zeros(length(dados))
+
+@threads for i in eachindex(dados)
+	saida[i] = sqrt(dados[i])
+end
+
+<span class="com"># Seção crítica com lock</span>
+lock_global = ReentrantLock()
+contador = Ref(0)
+
+@threads for _ in 1:1_000
+	lock(lock_global) do
+		contador[] += 1
+	end
+end
+
+<span class="com"># Atomics para contadores simples</span>
+contador_atomic = Atomic{Int}(0)
+@threads for _ in 1:1_000
+	atomic_add!(contador_atomic, 1)
+end
+
+<span class="com"># Múltiplos processos</span>
+addprocs(4)
+
+quadrados = @distributed (+) for i in 1:1_000
+	i^2
+end
+
+raizes = pmap(sqrt, 1:20)</pre>
+		</div>
+		<div class="section-divider"></div>
+	  </section>
+
+	  <section>
+		<h2 class="section-title" id="performance">Performance e Ferramentas de Diagnóstico</h2>
+		<div class="code-container rounded-md border overflow-hidden">
+		  <div class="code-header">Inferência de tipos e otimizações práticas</div>
+		  <pre class="example">using BenchmarkTools
+using StaticArrays
+
+<span class="com"># Inspecionar inferência de tipos</span>
+function soma_vetor(v)
+	s = 0.0
+	for x in v
+		s += x
+	end
+	s
+end
+
+@code_warntype soma_vetor(rand(10))
+@code_llvm soma_vetor(rand(10))
+@code_native soma_vetor(rand(10))
+
+<span class="com"># Instabilidade de tipo prejudica desempenho</span>
+function instavel(x)
+	if x &gt; 0
+		x
+	else
+		"negativo"
+	end
+end
+
+function estavel(x::Int)
+	x &gt; 0 ? x : 0
+end
+
+<span class="com"># Globais devem ser const ou tipadas</span>
+const TAXA = 0.15
+global limite::Int = 100
+
+<span class="com"># Remover checagem de bounds</span>
+function soma_inbounds(v::Vector{Float64})
+	total = 0.0
+	@inbounds for i in eachindex(v)
+		total += v[i]
+	end
+	total
+end
+
+<span class="com"># SIMD</span>
+function soma_simd(v::Vector{Float64})
+	total = 0.0
+	@inbounds @simd for i in eachindex(v)
+		total += v[i]
+	end
+	total
+end
+
+<span class="com"># Pré-alocação evita garbage collector excessivo</span>
+function sqrt_buffer!(destino::Vector{Float64}, origem::Vector{Float64})
+	@inbounds for i in eachindex(origem)
+		destino[i] = sqrt(origem[i])
+	end
+	destino
+end
+
+buffer = Vector{Float64}(undef, 1_000)
+origem = rand(1_000)
+sqrt_buffer!(buffer, origem)
+
+<span class="com"># Benchmark confiável</span>
+@benchmark soma_simd($origem)
+
+<span class="com"># StaticArrays brilham para vetores pequenos e fixos</span>
+v3 = @SVector [1.0, 2.0, 3.0]
+m2 = @SMatrix [1.0 0.0; 0.0 1.0]
+m2 * v3[1:2]
+
+<span class="com"># Dicas essenciais:</span>
+<span class="com"># 1. Coloque lógica quente dentro de funções.</span>
+<span class="com"># 2. Evite Any em estruturas críticas.</span>
+<span class="com"># 3. Prefira operações vetorizadas e broadcasting quando fizer sentido.</span>
+<span class="com"># 4. Meça com BenchmarkTools antes de otimizar.</span></pre>
+		</div>
+		<div class="section-divider"></div>
+	  </section>
+
+	  <section>
+		<h2 class="section-title" id="referencias">Referências</h2>
+		<div class="panel">
+		  <ul>
+			<li>JULIA DOCUMENTATION. <strong>Metaprogramming</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/manual/metaprogramming/&gt;. Acesso em: 2026.</li>
+			<li>JULIA DOCUMENTATION. <strong>Multi-Threading</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/manual/multi-threading/&gt;. Acesso em: 2026.</li>
+			<li>JULIA DOCUMENTATION. <strong>Performance Tips</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/manual/performance-tips/&gt;. Acesso em: 2026.</li>
+		  </ul>
+		</div>
+	  </section>
+
+	  <div class="callout">
+		<ul class="link-list">
+		  <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+		  <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+		</ul>
+		<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Julia, performance raramente depende de "truques secretos". Quase sempre depende de três fundamentos: estabilidade de tipo, poucas alocações e loops dentro de funções. O resto é medição, inspeção e refino guiado por ferramentas da própria linguagem.</p>
+	  </div>
+
+	</div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

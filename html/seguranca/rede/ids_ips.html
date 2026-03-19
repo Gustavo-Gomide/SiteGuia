@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="IDS e IPS: detecção e prevenção de intrusões, diferenças, tipos de detecção, Snort, Suricata, regras e posicionamento na rede." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>IDS e IPS | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>IDS e IPS</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">IDS vs IPS</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>IDS e IPS</h1>
+          <p>IDS alerta sobre intrusões; IPS bloqueia em tempo real — a diferença é a posição no fluxo.</p>
+        </div>
+
+        <p class="intro-highlight">IDS (Intrusion Detection System) monitora o tráfego e <strong>alerta</strong> sobre atividades suspeitas. IPS (Intrusion Prevention System) faz o mesmo mas também <strong>bloqueia</strong> em tempo real. A diferença é a posição: IDS fora do fluxo de tráfego (passivo/tap), IPS inline (ativo).</p>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="message-block">
+            <h3>IDS — Detecção</h3>
+            <ul>
+              <li>Monitora e gera alertas</li>
+              <li>Modo passivo (cópia do tráfego via TAP/SPAN)</li>
+              <li>Sem impacto no tráfego em caso de falha</li>
+              <li>Maior taxa de falsos positivos aceitável</li>
+              <li>Ideal para visibilidade e análise forense</li>
+            </ul>
+          </div>
+          <div class="message-block">
+            <h3>IPS — Prevenção</h3>
+            <ul>
+              <li>Bloqueia tráfego malicioso em tempo real</li>
+              <li>Modo inline — está no caminho do tráfego</li>
+              <li>Falso positivo bloqueia tráfego legítimo</li>
+              <li>Requer alta disponibilidade (fail-open/fail-closed)</li>
+              <li>Ideal para proteção automática ativa</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="deteccao" class="section-title">Métodos de Detecção</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Baseado em Assinaturas</h3>
+            <p>Compara tráfego com um banco de padrões conhecidos (signatures). Muito eficaz para ameaças conhecidas, zero falsos positivos para assinaturas bem escritas. Não detecta ameaças novas (zero-days).</p>
+          </div>
+          <div class="card">
+            <h3>Baseado em Anomalia</h3>
+            <p>Cria um baseline do comportamento normal e alerta desvios (ex: pico de tráfego DNS, novo protocolo). Detecta zero-days mas tem alta taxa de falsos positivos. Requer período de aprendizado.</p>
+          </div>
+          <div class="card">
+            <h3>Baseado em Política (Policy-based)</h3>
+            <p>Define o que é permitido (whitelist de comportamentos). Qualquer coisa fora da política é alerta. Muito preciso, mas difícil de manter atualizado em ambientes dinâmicos.</p>
+          </div>
+          <div class="card">
+            <h3>HIDS vs NIDS</h3>
+            <p><strong>HIDS</strong> (Host-based) monitora dentro do sistema operacional — arquivos, processos, logs, chamadas de sistema. <strong>NIDS</strong> (Network-based) monitora o tráfego de rede. São complementares.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="snort" class="section-title">Snort e Suricata</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# ----- Suricata (NIDS/NIPS open source, multi-thread) -----
+
+# Rodar em modo IDS na interface eth0:
+suricata -c /etc/suricata/suricata.yaml -i eth0
+
+# Rodar contra um arquivo .pcap:
+suricata -c /etc/suricata/suricata.yaml -r captura.pcap
+
+# Ver alertas em tempo real:
+tail -f /var/log/suricata/fast.log
+
+# ----- Estrutura de uma regra Suricata/Snort -----
+# action proto src_ip src_port direction dst_ip dst_port (options)
+
+alert tcp any any -> any 22 (
+    msg:"SSH Brute Force Attempt";
+    threshold: type threshold, track by_src, count 5, seconds 60;
+    sid:1000001;
+    rev:1;
+)
+
+alert http any any -> any any (
+    msg:"SQL Injection Attempt";
+    content:"union select";
+    nocase;
+    http.uri;
+    sid:1000002;
+    rev:1;
+)
+
+# Drop (modo IPS inline):
+drop tcp any any -> $HOME_NET 23 (
+    msg:"Telnet Connection Blocked";
+    sid:1000003;
+    rev:1;
+)</pre>
+      </section>
+
+      <div class="callout">
+        <p>IDS/IPS são complementares a firewalls: enquanto o firewall filtra por porta/IP, o IDS/IPS analisa o conteúdo dos pacotes. Em ambientes modernos, NGFWs muitas vezes integram IPS embutido. Para redes críticas, use Suricata com regras atualizadas (Emerging Threats ruleset) e integre os alertas ao SIEM.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um IDS sem resposta é apenas ruído. Um IPS mal configurado derruba produção. Calibre com cuidado."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

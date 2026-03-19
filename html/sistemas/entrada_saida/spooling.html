@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Spooling (Simultaneous Peripheral Operations On-Line): conceito, uso em fila de impressão, CUPS no Linux, spool de e-mail e como o spooling maximiza uso de dispositivos lentos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Spooling | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Spooling</h1>
+            <p class="page-subtitle">Simultaneous Peripheral Operations On-Line: filas para dispositivos lentos</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Spooling (Simultaneous Peripheral Operations On-Line) permite que processos enviem trabalhos para dispositivos lentos sem bloquear enquanto aguardam. Os trabalhos são armazenados em fila (spool) no disco e processados sequencialmente por um daemon dedicado. O conceito surgiu nos anos 1960 com leitoras de cartão e impressoras, e permanece central em sistemas modernos de impressão, e-mail e agendamento de tarefas.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CONCEITO ═══════════════════ -->
+      <section id="conceito">
+        <h2>Conceito de Spooling</h2>
+        <p>Sem spooling, um processo que quisesse imprimir teria que manter controle da impressora até ela terminar, bloqueando outros processos durante minutos. Com spooling, o processo escreve rapidamente no spool (disco) e continua imediatamente — o daemon de spool gerencia a impressora de forma serializada.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Aspecto</th>
+                <th>Sem Spooling</th>
+                <th>Com Spooling</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bloqueio do processo</td><td>Processo fica bloqueado ate o dispositivo terminar</td><td>Processo retorna imediatamente apos escrever no spool</td></tr>
+              <tr><td>Concorrência</td><td>Apenas 1 processo usa o dispositivo por vez; outros esperam</td><td>N processos submitam jobs simultaneamente; daemon processa em ordem</td></tr>
+              <tr><td>Complexidade</td><td>Simples (acesso direto)</td><td>Requer daemon dedicado e gerenciamento de fila</td></tr>
+              <tr><td>Falha do dispositivo</td><td>Processo falha junto com o dispositivo</td><td>Job fica na fila; reprocessado quando dispositivo voltar</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — CUPS ═══════════════════ -->
+      <section id="cups">
+        <h2>CUPS — Fila de Impressão no Linux</h2>
+        <p>CUPS (Common UNIX Printing System) é o daemon de spool de impressão padrão em Linux e macOS. Ele gerencia filas de impressão, converte formatos de documento e se comunica com impressoras via protocolos IPP, LPD, JetDirect e USB.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — gerenciamento de fila CUPS</div>
+          <pre class="code-block"># Ver fila de impressão de todas as impressoras
+lpq
+# Rank    Owner   Job  File(s)                       Total Size
+# 1st     alice   42   relatorio.pdf                 1024 bytes
+# 2nd     bob     43   foto.jpg                      4096 bytes
+
+# Enviar arquivo para imprimir (default printer)
+lpr documento.pdf
+
+# Enviar para impressora específica
+lpr -P HP_LaserJet documento.pdf
+
+# Imprimir 3 cópias
+lpr -#3 documento.pdf
+
+# Ver status das impressoras
+lpstat -p
+
+# Remover job da fila (job ID 42)
+lprm 42
+
+# Remover todos os seus jobs
+lprm -
+
+# Diretório de spool (jobs aguardando processamento)
+ls /var/spool/cups/</pre>
+        </div>
+        <p>Arquivos PPD (PostScript Printer Description) descrevem as capacidades de cada impressora: resoluções disponíveis, tamanhos de papel, recursos de cor. O CUPS usa esses arquivos para converter corretamente o documento antes de enviar ao hardware.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — SPOOL DE E-MAIL ═══════════════════ -->
+      <section id="email">
+        <h2>Spool de E-mail</h2>
+        <p>MTAs (Mail Transfer Agents) como Postfix e Sendmail usam spooling porque o protocolo SMTP pode falhar temporariamente — o servidor destino pode estar fora do ar. Em vez de falhar a entrega, a mensagem fica em fila e o MTA tenta novamente com backoff exponencial.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fila de entrada (incoming)</h3>
+            <p>Mensagens recebidas por SMTP que ainda precisam ser processadas (filtradas por spam, entregues localmente ou roteadas para o próximo hop). Localização típica: <code>/var/spool/postfix/incoming/</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fila de entrega ativa</h3>
+            <p>Mensagens sendo ativamente entregues neste momento. O Postfix usa <code>/var/spool/postfix/active/</code> para o que está em processamento imediato.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fila de diferidos (deferred)</h3>
+            <p>Mensagens que falharam temporariamente (servidor destino unreachable, timeout). Postfix tenta novamente com intervalos crescentes (5 min, 10 min, 1 h…) por até 5 dias antes de gerar bounce.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — administração de fila Postfix</div>
+          <pre class="code-block"># Ver fila de e-mail (todos os jobs pendentes)
+mailq
+# ou equivalente:
+postqueue -p
+
+# Forçar tentativa imediata de entregar todos os diferidos
+postqueue -f
+
+# Ver conteúdo de uma mensagem na fila (ID: ABC123)
+postcat -q ABC123
+
+# Deletar uma mensagem específica da fila
+postsuper -d ABC123
+
+# Deletar todos os diferidos (cuidado!)
+postsuper -d ALL deferred
+
+# Local de entrega de e-mail local
+ls /var/mail/         # ou /var/spool/mail/</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — OUTROS CONTEXTOS ═══════════════════ -->
+      <section id="outros">
+        <h2>Spool em Outros Contextos</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Sistema</th>
+                <th>Daemon</th>
+                <th>Localização do spool</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Impressao (Linux)</td><td>cupsd</td><td>/var/spool/cups/</td><td>Jobs de impressao aguardando processamento</td></tr>
+              <tr><td>E-mail (Postfix)</td><td>postfix</td><td>/var/spool/postfix/</td><td>Filas incoming, active, deferred, bounce</td></tr>
+              <tr><td>cron (tarefas agendadas)</td><td>crond</td><td>/var/spool/cron/crontabs/</td><td>Um arquivo por usuario com suas regras de cron</td></tr>
+              <tr><td>at (tarefas unicas)</td><td>atd</td><td>/var/spool/atjobs/</td><td>Scripts a executar em horario especifico</td></tr>
+              <tr><td>Impressao (Windows)</td><td>spoolsv.exe</td><td>C:\Windows\System32\spool\PRINTERS\</td><td>Print spooler do Windows; ponto frequente de ataques (PrintNightmare)</td></tr>
+              <tr><td>Cloud Printing</td><td>CUPS + IPP Everywhere</td><td>Varies</td><td>Impressao sem driver via protocolo IPP 2.x; cameras e celulares imprimem nativamente</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/entrada_saida/io_software.html">I/O — Software</a> e <a href="/html/sistemas/entrada_saida/io_hardware.html">I/O — Hardware</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Spooling é a diferença entre um sistema que trava esperando a impressora e um que continua trabalhando enquanto ela faz seu trabalho."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

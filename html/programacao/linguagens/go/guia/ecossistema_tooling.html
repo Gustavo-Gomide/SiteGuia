@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e tooling Go: go tool, módulos, testes, benchmarks, go generate, race detector e análise estática." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Ecossistema e Tooling</h1>
+          <p>Go inclui tudo o que você precisa na instalação padrão: compilador, formatador (<code>gofmt</code>), analisador estático (<code>go vet</code>), gerenciador de módulos (<code>go mod</code>), framework de testes (<code>testing</code>) com benchmarks e race detector. Sem depender de ferramentas de terceiros para o ciclo básico de desenvolvimento.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong><code>gofmt</code></strong> é obrigatório — não uma sugestão. Todo código Go é formatado identicamente. Não há debate sobre estilo, não há configuração de linters para espaço vs tab. Qualquer desenvolvedor pode abrir qualquer projeto Go no mundo e ver o mesmo estilo. Pull requests de formatação não existem.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="go-modules">Go Modules</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">go.mod, go.sum e comandos de dependência</div>
+          <pre class="example"><span class="com"># Criar módulo</span>
+go mod init github.com/usuario/meuprojeto
+
+<span class="com"># go.mod — define o módulo</span>
+module github.com/usuario/meuprojeto
+
+go 1.22
+
+require (
+    github.com/gin-gonic/gin v1.9.1
+    golang.org/x/text v0.14.0
+)
+
+require (
+    <span class="com">// dependências indiretas (transitivas)</span>
+    github.com/bytedance/sonic v1.10.2 // indirect
+)
+
+<span class="com"># Adicionar dependência</span>
+go get github.com/pkg/errors@v0.9.1
+
+<span class="com"># Atualizar para versão mais recente</span>
+go get -u github.com/gin-gonic/gin
+
+<span class="com"># Remover dependências não usadas</span>
+go mod tidy
+
+<span class="com"># Download de todas as dependências</span>
+go mod download
+
+<span class="com"># Verificar integridade (go.sum)</span>
+go mod verify
+
+<span class="com"># Substituir módulo local (para dev)</span>
+<span class="com"># replace github.com/usuario/lib => ../lib</span>
+
+<span class="com"># Vendor — copiar deps para /vendor (CI offline)</span>
+go mod vendor
+go build -mod=vendor ./...</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Testing — Testes, Benchmarks e Fuzzing</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Testes unitários, table-driven, benchmarks e fuzz</div>
+          <pre class="example"><span class="com">// soma_test.go (sufixo _test.go — não vai no binário final)</span>
+<span class="kw">package</span> calc_test
+
+<span class="kw">import</span> (
+    <span class="str">"testing"</span>
+    <span class="str">"github.com/usuario/meuprojeto/calc"</span>
+)
+
+<span class="com">// Table-driven test — idioma padrão Go</span>
+<span class="kw">func</span> TestSoma(t *testing.T) {
+    casos := []<span class="kw">struct</span> {
+        nome     string
+        a, b     int
+        esperado int
+    }{
+        {<span class="str">"positivo"</span>, 2, 3, 5},
+        {<span class="str">"zero"</span>, 0, 0, 0},
+        {<span class="str">"negativo"</span>, -1, 1, 0},
+        {<span class="str">"grande"</span>, 1000, 999, 1999},
+    }
+    <span class="kw">for</span> _, tc := <span class="kw">range</span> casos {
+        t.Run(tc.nome, <span class="kw">func</span>(t *testing.T) {
+            resultado := calc.Soma(tc.a, tc.b)
+            <span class="kw">if</span> resultado != tc.esperado {
+                t.Errorf(<span class="str">"Soma(%d,%d) = %d; quero %d"</span>, tc.a, tc.b, resultado, tc.esperado)
+            }
+        })
+    }
+}
+
+<span class="com">// Benchmark</span>
+<span class="kw">func</span> BenchmarkSoma(b *testing.B) {
+    <span class="kw">for</span> i := 0; i &lt; b.N; i++ {
+        calc.Soma(100, 200)
+    }
+}
+
+<span class="com">// Fuzz testing (Go 1.18+)</span>
+<span class="kw">func</span> FuzzDividir(f *testing.F) {
+    f.Add(10.0, 2.0)   <span class="com">// seed corpus</span>
+    f.Add(0.0, 1.0)
+    f.Fuzz(<span class="kw">func</span>(t *testing.T, a, b float64) {
+        resultado, err := calc.Dividir(a, b)
+        <span class="kw">if</span> err == nil && b != 0 {
+            epsilon := 1e-10
+            <span class="kw">if</span> resultado * b - a > epsilon {
+                t.Errorf(<span class="str">"Dividir inconsistente: a=%v b=%v res=%v"</span>, a, b, resultado)
+            }
+        }
+    })
+}
+
+<span class="com"># Executar testes</span>
+<span class="com"># go test ./...</span>
+<span class="com"># go test -v ./...                  (verbose)</span>
+<span class="com"># go test -run TestSoma             (filtrar por nome)</span>
+<span class="com"># go test -bench=. -benchmem ./...  (benchmarks)</span>
+<span class="com"># go test -fuzz=FuzzDividir         (fuzz por 60s)</span>
+<span class="com"># go test -race ./...               (race detector)</span>
+<span class="com"># go test -cover ./...              (cobertura)</span>
+<span class="com"># go test -coverprofile=cov.out ; go tool cover -html=cov.out</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="go-tool">go tool — Comandos Avançados</h2>
+        <div class="panel">
+          <p class="panel-title">Referência de comandos essenciais</p>
+          <table class="table">
+            <thead><tr><th>Comando</th><th>Descrição</th></tr></thead>
+            <tbody>
+              <tr><td><code>go build -race ./...</code></td><td>Compila com race detector (detecta data races em runtime)</td></tr>
+              <tr><td><code>go vet ./...</code></td><td>Análise estática — detects printf errada, unreachable code etc.</td></tr>
+              <tr><td><code>go generate ./...</code></td><td>Executa <code>//go:generate</code> directives (mockgen, stringer, etc.)</td></tr>
+              <tr><td><code>go doc http.ListenAndServe</code></td><td>Documentação de qualquer símbolo</td></tr>
+              <tr><td><code>go env GOPATH</code></td><td>Variável de ambiente Go</td></tr>
+              <tr><td><code>go list -m all</code></td><td>Lista todos os módulos do projeto</td></tr>
+              <tr><td><code>go tool pprof cpu.out</code></td><td>Análise de profiling CPU/mem</td></tr>
+              <tr><td><code>go tool trace trace.out</code></td><td>Visualização de execução de goroutines</td></tr>
+              <tr><td><code>go install cmd/address</code></td><td>Instala executável em $GOBIN</td></tr>
+              <tr><td><code>GOOS=linux GOARCH=amd64 go build</code></td><td>Cross-compile para Linux x64</td></tr>
+              <tr><td><code>CGO_ENABLED=0 go build</code></td><td>Binário puramente estático (sem libc)</td></tr>
+              <tr><td><code>go build -ldflags="-s -w"</code></td><td>Remove debug info (binário ~30% menor)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="staticcheck-golangcilint">Linters e Análise Estática</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">golangci-lint e staticcheck</div>
+          <pre class="example"><span class="com"># Instalar golangci-lint (aggrega 50+ linters)</span>
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+<span class="com"># Rodar</span>
+golangci-lint run ./...
+
+<span class="com"># .golangci.yml — configuração</span>
+linters:
+  enable:
+    - staticcheck    <span class="com"># erros sutis de API e lógica</span>
+    - errcheck       <span class="com"># erros não verificados</span>
+    - govet          <span class="com"># análise do compilador ampliada</span>
+    - ineffassign    <span class="com"># atribuições nunca usadas</span>
+    - unused         <span class="com"># código não referenciado</span>
+    - gosec          <span class="com"># vulnerabilidades de segurança (OWASP)</span>
+    - gocyclo        <span class="com"># complexidade ciclomática</span>
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15
+
+<span class="com"># staticcheck standalone</span>
+go install honnef.co/go/tools/cmd/staticcheck@latest
+staticcheck ./...</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ide">IDEs e Extensões</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>VS Code + Go Extension</h3>
+            <p>Extensão oficial <code>golang.go</code>: completação via gopls (Language Server), import automático, debug via Delve, test runner integrado e snippets de struct/func/test.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>GoLand (JetBrains)</h3>
+            <p>IDE comercial com refatorações avançadas, análise de data flow, profiler integrado, suporte nativo a Docker/Kubernetes e debugger com watches de goroutines.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>gopls — Language Server</h3>
+            <p>LSP oficial do Go Team: hover, completação, rename, inlay hints, semantic tokens. Usado por VS Code, Neovim, Emacs, Helix e qualquer editor LSP-compatível.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Delve — Debugger</h3>
+            <p><code>dlv debug</code> — breakpoints, step into/over, inspect goroutines, avaliar expressões em runtime. Integrado no VS Code e GoLand. Funciona com remote debug em containers Docker.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>go command documentation</strong>. Disponível em: &lt;https://pkg.go.dev/cmd/go&gt;. Acesso em: 2026.</li>
+            <li>golangci-lint. <strong>Fast linters runner for Go</strong>. Disponível em: &lt;https://golangci-lint.run&gt;. Acesso em: 2026.</li>
+            <li>GO TEAM. <strong>Testing package</strong>. Disponível em: &lt;https://pkg.go.dev/testing&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks Go</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>race detector</strong> (<code>go test -race</code>, <code>go run -race</code>) é uma das ferramentas mais poderosas da linguagem. Ele instrumenta o binário para rastrear todos os acessos a memória compartilhada e reporta exatamente onde duas goroutines acessam a mesma variável sem sincronização — com o stack trace de ambas. Não é uma análise estática: detecta races reais em tempo de execução. Indispensável em code review e CI.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

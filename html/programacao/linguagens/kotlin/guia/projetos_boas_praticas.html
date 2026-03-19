@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Boas práticas de projetos Kotlin: arquitetura modular, SOLID, KDoc, testes e checklist de release." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Projetos e Boas Práticas</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Projetos e Boas Práticas</h1>
+					<p>Projetos Kotlin bem estruturados combinam arquitetura modular, princípios SOLID expressos naturalmente com data classes e interfaces, documentação KDoc e uma suíte de testes robusta com Kotest e MockK.</p>
+				</div>
+				<p class="intro-highlight">Boas práticas em Kotlin não são impostas pela linguagem — elas emergem quando usamos os recursos idiomáticos certos: extension functions em vez de herança, sealed classes para modelagem de domínio, e coroutines para concorrência limpa.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="arquitetura-modular">Arquitetura Modular</h2>
+				<p>Projetos Kotlin grandes beneficiam-se de uma estrutura Gradle multi-módulo. Cada módulo tem responsabilidade única e pode ser compilado e testado de forma independente, reduzindo tempos de build incrementais.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Estrutura — Projeto multi-módulo</div>
+					<pre class="example"><span class="com">meu-projeto/
+├── settings.gradle.kts        # inclui todos os módulos
+├── build.gradle.kts           # configurações compartilhadas
+├── domain/                    # entidades, regras de negócio
+│   └── src/main/kotlin/
+│       └── com/app/domain/
+│           ├── User.kt
+│           └── UserRepository.kt  (interface)
+├── data/                      # implementações de repositórios, BD
+│   └── src/main/kotlin/
+│       └── com/app/data/
+│           └── UserRepositoryImpl.kt
+├── api/                       # endpoints HTTP (Ktor ou Spring)
+│   └── src/main/kotlin/
+│       └── com/app/api/
+│           └── UserRoutes.kt
+└── app/                       # entry point, injeção de dependências
+    └── src/main/kotlin/
+        └── Main.kt</span></pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — settings.gradle.kts</div>
+					<pre class="example">rootProject.name = <span class="str">"meu-projeto"</span>
+<span class="fn">include</span>(<span class="str">"domain"</span>, <span class="str">"data"</span>, <span class="str">"api"</span>, <span class="str">"app"</span>)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="solid-kotlin">SOLID em Kotlin</h2>
+				<p>Os princípios SOLID se expressam de forma muito concisa em Kotlin. Data classes eliminam boilerplate de SRP, interfaces pequenas implementam ISP, e extension functions permitem abrir comportamento sem modificar a classe original (OCP).</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — SOLID na prática</div>
+					<pre class="example"><span class="com">// SRP — cada data class tem responsabilidade única</span>
+<span class="kw">data class</span> <span class="fn">Pedido</span>(<span class="kw">val</span> id: Long, <span class="kw">val</span> itens: List&lt;Item&gt;, <span class="kw">val</span> status: StatusPedido)
+
+<span class="com">// ISP — interfaces pequenas e focadas</span>
+<span class="kw">interface</span> <span class="fn">PedidoLeitor</span> { <span class="kw">suspend fun</span> <span class="fn">buscar</span>(id: Long): Pedido? }
+<span class="kw">interface</span> <span class="fn">PedidoEscritor</span> { <span class="kw">suspend fun</span> <span class="fn">salvar</span>(p: Pedido): Pedido }
+
+<span class="com">// DIP — domínio depende de interfaces, não implementações</span>
+<span class="kw">class</span> <span class="fn">ProcessarPedidoUseCase</span>(
+    <span class="kw">private val</span> leitor: PedidoLeitor,
+    <span class="kw">private val</span> escritor: PedidoEscritor
+) {
+    <span class="kw">suspend fun</span> <span class="fn">executar</span>(id: Long): Pedido {
+        <span class="kw">val</span> pedido = leitor.<span class="fn">buscar</span>(id) ?: <span class="kw">throw</span> <span class="fn">IllegalArgumentException</span>(<span class="str">"Pedido não encontrado"</span>)
+        <span class="kw">return</span> escritor.<span class="fn">salvar</span>(pedido.<span class="fn">copy</span>(status = StatusPedido.PROCESSADO))
+    }
+}
+
+<span class="com">// OCP — abrir comportamento via extension function sem alterar a classe</span>
+<span class="kw">fun</span> Pedido.<span class="fn">valorTotal</span>(): Double = itens.<span class="fn">sumOf</span> { it.preco * it.quantidade }</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="documentacao-kdoc">Documentação com KDoc</h2>
+				<p>KDoc é o padrão de documentação do Kotlin, análogo ao Javadoc. Ferramentas como Dokka geram sites de documentação HTML ou Markdown a partir dos comentários KDoc do código-fonte.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — KDoc</div>
+					<pre class="example"><span class="com">/**
+ * Representa um usuário da plataforma.
+ *
+ * @property id identificador único no banco de dados
+ * @property nome nome completo do usuário
+ * @property email endereço de e-mail único
+ */</span>
+<span class="kw">data class</span> <span class="fn">User</span>(<span class="kw">val</span> id: Long, <span class="kw">val</span> nome: String, <span class="kw">val</span> email: String)
+
+<span class="com">/**
+ * Calcula o desconto aplicável ao [valor] baseado na [categoria].
+ *
+ * @param valor preço original em reais
+ * @param categoria tipo de desconto a aplicar
+ * @return valor com desconto aplicado, nunca negativo
+ * @throws IllegalArgumentException se [valor] for negativo
+ */</span>
+<span class="kw">fun</span> <span class="fn">calcularDesconto</span>(valor: Double, categoria: String): Double {
+    require(valor &gt;= <span class="str">0</span>) { <span class="str">"Valor não pode ser negativo: $valor"</span> }
+    <span class="kw">return when</span> (categoria) {
+        <span class="str">"vip"</span> -&gt; valor * <span class="str">0.80</span>
+        <span class="str">"regular"</span> -&gt; valor * <span class="str">0.95</span>
+        <span class="kw">else</span> -&gt; valor
+    }
+}</pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Dokka no build.gradle.kts</div>
+					<pre class="example">plugins {
+    <span class="fn">id</span>(<span class="str">"org.jetbrains.dokka"</span>) version <span class="str">"1.9.20"</span>
+}
+
+tasks.<span class="fn">dokkaHtml</span> {
+    outputDirectory.<span class="fn">set</span>(layout.buildDirectory.dir(<span class="str">"dokka"</span>))
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="testes-qualidade">Testes com Kotest e MockK</h2>
+				<p>Kotest oferece DSLs expressivas para assertions (<code>shouldBe</code>, <code>shouldThrow</code>) e múltiplos estilos de spec (BehaviorSpec, StringSpec). MockK é o framework de mocking nativo para Kotlin, com suporte a coroutines via <code>coEvery</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Kotest + MockK</div>
+					<pre class="example"><span class="kw">import</span> io.kotest.core.spec.style.StringSpec
+<span class="kw">import</span> io.kotest.matchers.shouldBe
+<span class="kw">import</span> io.mockk.*
+<span class="kw">import</span> kotlinx.coroutines.test.runTest
+
+<span class="kw">class</span> <span class="fn">ProcessarPedidoTest</span> : <span class="fn">StringSpec</span>({
+    <span class="kw">val</span> leitor = <span class="fn">mockk</span>&lt;PedidoLeitor&gt;()
+    <span class="kw">val</span> escritor = <span class="fn">mockk</span>&lt;PedidoEscritor&gt;()
+    <span class="kw">val</span> useCase = <span class="fn">ProcessarPedidoUseCase</span>(leitor, escritor)
+
+    <span class="str">"deve processar pedido existente"</span> {
+        <span class="fn">runTest</span> {
+            <span class="kw">val</span> pedido = <span class="fn">Pedido</span>(<span class="str">1L</span>, <span class="fn">emptyList</span>(), StatusPedido.ABERTO)
+            <span class="fn">coEvery</span> { leitor.<span class="fn">buscar</span>(<span class="str">1L</span>) } returns pedido
+            <span class="fn">coEvery</span> { escritor.<span class="fn">salvar</span>(<span class="kw">any</span>()) } answers { firstArg() }
+
+            <span class="kw">val</span> resultado = useCase.<span class="fn">executar</span>(<span class="str">1L</span>)
+            resultado.status shouldBe StatusPedido.PROCESSADO
+            <span class="fn">coVerify</span>(exactly = <span class="str">1</span>) { escritor.<span class="fn">salvar</span>(<span class="kw">any</span>()) }
+        }
+    }
+
+    <span class="str">"deve lançar exceção para pedido inexistente"</span> {
+        <span class="fn">runTest</span> {
+            <span class="fn">coEvery</span> { leitor.<span class="fn">buscar</span>(<span class="str">99L</span>) } returns <span class="kw">null</span>
+            <span class="fn">shouldThrow</span>&lt;IllegalArgumentException&gt; { useCase.<span class="fn">executar</span>(<span class="str">99L</span>) }
+        }
+    }
+})</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="checklist-release">Checklist de Release</h2>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Etapa</th><th>Ação</th><th>Ferramenta</th></tr></thead>
+						<tbody>
+							<tr><td>Versioning</td><td>Seguir SemVer (MAJOR.MINOR.PATCH)</td><td>git tag / Gradle</td></tr>
+							<tr><td>Changelog</td><td>CHANGELOG.md com Keep a Changelog</td><td>manual / git-cliff</td></tr>
+							<tr><td>Qualidade</td><td>Detekt (linting) + JaCoCo (cobertura &gt;80%)</td><td>Gradle tasks</td></tr>
+							<tr><td>Testes</td><td>Todos os testes passando no CI</td><td>GitHub Actions</td></tr>
+							<tr><td>Build Android</td><td>ProGuard / R8 configurado, shrinkResources=true</td><td>build.gradle.kts</td></tr>
+							<tr><td>Assinatura</td><td>Keystore configurado nas env vars do CI</td><td>CI secrets</td></tr>
+							<tr><td>Publicação lib</td><td>maven-publish + Sonatype OSSRH</td><td>Gradle plugin</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="panel panel--positive">
+					<p><strong>Conselho:</strong> automatize releases com GitHub Actions: ao criar uma tag <code>v*.*.*</code>, dispare o workflow de build, testes, geração de changelog e publicação. Zero intervenção manual.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>JETBRAINS. <strong>Kotlin coding conventions</strong>. Disponível em: <a href="https://kotlinlang.org/docs/coding-conventions.html" target="_blank" rel="noopener">kotlinlang.org/docs/coding-conventions</a>. Acesso em: mar. 2026.</li>
+						<li>JETBRAINS. <strong>Dokka documentation engine</strong>. Disponível em: <a href="https://kotlinlang.org/docs/dokka-introduction.html" target="_blank" rel="noopener">kotlinlang.org/docs/dokka</a>. Acesso em: mar. 2026.</li>
+						<li>MOCKK. <strong>MockK — mocking library for Kotlin</strong>. Disponível em: <a href="https://mockk.io/" target="_blank" rel="noopener">mockk.io</a>. Acesso em: mar. 2026.</li>
+						<li>KOTEST. <strong>Kotest — Kotlin test framework</strong>. Disponível em: <a href="https://kotest.io/" target="_blank" rel="noopener">kotest.io</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="introducao.html">Introdução ao Kotlin</a></li>
+					<li><a href="fundamentos.html">Fundamentos</a></li>
+					<li><a href="avancado.html">Avançado</a></li>
+					<li><a href="ecossistema_tooling.html">Ecossistema e Tooling</a></li>
+					<li><a href="bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+					<li><a href="../aplicacoes/web.html">Web com Kotlin</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projetos Kotlin sustentáveis nascem de convenções idiomáticas, módulos com responsabilidades claras e testes automatizados como primeira classe.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

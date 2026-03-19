@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas em Haskell: estrutura de projeto, Newtype pattern, polysemy e deployment." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Projetos e Boas Práticas</h1>
+          <p>Boas práticas em Haskell incluem o <strong>Newtype pattern</strong> para segurança de tipos sem custo em runtime, o <strong>AppM pattern</strong> com monad transformers para injeção de dependências, uso de <code>Text</code> em vez de <code>String</code> para performance, e estrutura de projetos com separação clara entre domínio e efeitos.</p>
+        </div>
+        <p class="intro-highlight">
+          O princípio central: <strong>"make illegal states unrepresentable"</strong>. Use o sistema de tipos para tornar estados inválidos impossíveis de expressar. Um campo que pode ou não existir é <code>Maybe</code>. Uma operação que pode falhar retorna <code>Either Erro</code>. Dois IDs que não deveriam ser trocados são <code>newtype UserId = UserId Int</code> e <code>newtype ProductId = ProductId Int</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura de Projeto</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Layout recomendado para projetos Haskell</div>
+          <pre class="example">meu-projeto/
+├── meu-projeto.cabal
+├── stack.yaml              <span class="com">-- se usar Stack</span>
+├── cabal.project           <span class="com">-- se usar Cabal multi-package</span>
+├── app/
+│   └── Main.hs             <span class="com">-- ponto de entrada (execútavel)</span>
+├── src/
+│   ├── Domain/             <span class="com">-- tipos e lógica pura (sem IO)</span>
+│   │   ├── Types.hs        <span class="com">-- data Pedido = ..., newtype PedidoId = ...</span>
+│   │   ├── Validator.hs    <span class="com">-- validações puras :: Input -> Either Erro Output</span>
+│   │   └── Logic.hs        <span class="com">-- regras de negócio puras</span>
+│   ├── Repository/         <span class="com">-- interfaces de dados (type classes)</span>
+│   │   └── Pedido.hs       <span class="com">-- class PedidoRepo m where ...</span>
+│   ├── Service/            <span class="com">-- casos de uso (usa Repository + Domain)</span>
+│   │   └── PedidoService.hs
+│   ├── Infrastructure/     <span class="com">-- implementações concretas (IO, BD, HTTP)</span>
+│   │   └── PedidoPostgres.hs
+│   └── App.hs              <span class="com">-- definição do AppM, Config, runApp</span>
+└── test/
+    ├── Spec.hs             <span class="com">-- main do test-suite HSpec</span>
+    ├── Domain/
+    │   └── ValidatorSpec.hs
+    └── Service/
+        └── PedidoServiceSpec.hs</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="newtype-pattern" class="section-title">Newtype Pattern — Tipos Seguros sem Custo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Evitar confusão de IDs e primitivos com tipos distintos</div>
+          <pre class="example">{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DerivingStrategies #-}
+
+<span class="com">-- Newtype: zero runtime cost, máxima type safety</span>
+newtype UserId    = UserId    Int     deriving (Show, Eq, Ord)
+newtype ProdutoId = ProdutoId Int     deriving (Show, Eq, Ord)
+newtype Email     = Email     String  deriving (Show, Eq)
+newtype Preco     = Preco     Double  deriving (Show, Num, Ord, Eq)
+
+<span class="com">-- Agora estas funções são type-safe — impossível trocar os IDs</span>
+buscarPedidoDoUsuario :: UserId -> ProdutoId -> IO (Maybe Pedido)
+buscarPedidoDoUsuario uid pid = undefined
+
+<span class="com">-- Smart constructors — validação centralizada</span>
+mkEmail :: String -> Either String Email
+mkEmail s
+    | '@' `elem` s && '.' `elem` (dropWhile (/='@') s)
+                 = Right (Email s)
+    | otherwise  = Left $ "email inválido: " ++ s
+
+mkPreco :: Double -> Either String Preco
+mkPreco v
+    | v >= 0    = Right (Preco v)
+    | otherwise = Left "preço não pode ser negativo"
+
+<span class="com">-- Usar com do-notation</span>
+criarUsuario :: String -> Double -> Either String (Email, Preco)
+criarUsuario rawEmail precoBase = do
+    email &lt;- mkEmail rawEmail
+    preco &lt;- mkPreco precoBase
+    return (email, preco)
+
+<span class="com">-- Phantom types — segurança ainda maior</span>
+data Estado = Rascunho | Publicado | Arquivado
+
+newtype Documento (estado :: Estado) = Documento String
+
+publicar :: Documento 'Rascunho -> Documento 'Publicado
+publicar (Documento conteudo) = Documento conteudo
+
+<span class="com">-- arquivar só aceita documentos publicados</span>
+arquivar :: Documento 'Publicado -> Documento 'Arquivado
+arquivar (Documento conteudo) = Documento conteudo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="repo-di" class="section-title">Repository Pattern e Injeção de Dependências</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Type classes como interfaces + AppM para DI</div>
+          <pre class="example"><span class="com">-- Interface como type class</span>
+class Monad m => PedidoRepo m where
+    salvarPedido  :: Pedido -> m PedidoId
+    buscarPedido  :: PedidoId -> m (Maybe Pedido)
+    listarPedidos :: UserId -> m [Pedido]
+
+<span class="com">-- Implementação de produção (usa banco de dados)</span>
+newtype AppDB a = AppDB { runDB :: ReaderT Conexao IO a }
+    deriving (Functor, Applicative, Monad, MonadReader Conexao, MonadIO)
+
+instance PedidoRepo AppDB where
+    salvarPedido pedido = do
+        conn &lt;- ask
+        liftIO $ executarInsert conn pedido
+
+    buscarPedido pid = do
+        conn &lt;- ask
+        liftIO $ executarQuery conn pid
+
+<span class="com">-- Implementação de teste (in-memory)</span>
+newtype AppTeste a = AppTeste { runTeste :: StateT (Map PedidoId Pedido) Identity a }
+    deriving (Functor, Applicative, Monad)
+
+instance PedidoRepo AppTeste where
+    salvarPedido p = AppTeste $ do
+        pid &lt;- gets (PedidoId . Map.size)
+        modify (Map.insert pid p)
+        return pid
+    buscarPedido pid = AppTeste $ gets (Map.lookup pid)
+    listarPedidos uid = AppTeste $ gets (filter (\p -> pedidoUserId p == uid) . Map.elems)
+
+<span class="com">-- Service layer — independente de implementação</span>
+processarPedido :: PedidoRepo m => UserId -> Pedido -> m (Either String PedidoId)
+processarPedido uid pedido
+    | pedidoValor pedido &lt;= 0 = return $ Left "valor inválido"
+    | otherwise = do
+        pid &lt;- salvarPedido pedido { pedidoUserId = uid }
+        return $ Right pid</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="decisoes-arquitetura" class="section-title">Decisoes de Arquitetura em Producao</h2>
+        <p>Boas praticas tambem envolvem escolher conscientemente onde Haskell entrega mais valor. Em geral, ele e excelente no nucleo de regra de negocio, validacao de contratos, servicos de dados e processamento concorrente confiavel. Em camadas de UI nativa, costuma ser mais eficaz atuar por integracao.</p>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h3 class="panel-title">Priorizar Haskell</h3>
+            <ul>
+              <li>API e servidor com requisitos de corretude.</li>
+              <li>Regras financeiras, compliance e trilha de auditoria.</li>
+              <li>Pipelines de dados reproduziveis e testaveis.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Integrar com outras stacks</h3>
+            <ul>
+              <li>Mobile/GUI com forte dependencia de SDK nativo.</li>
+              <li>Jogos com pipeline grafico especializado.</li>
+              <li>Embedded hard real-time de hardware restrito.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PIERSON, Matt. <strong>Three Layer Haskell Cake</strong>. Disponível em: &lt;https://www.parsonsmatt.org/2018/03/22/three_layer_haskell_cake.html&gt;. Acesso em: 2026.</li>
+            <li>GABRIELLA, Gonzalez. <strong>Haskell Programming Guidelines</strong>. Disponível em: &lt;https://github.com/gabriella439/post-rfc/blob/main/sotu.md&gt;. Acesso em: 2026.</li>
+            <li>HASKELL.ORG. <strong>Haskell Best Practices</strong>. Disponível em: &lt;https://wiki.haskell.org/Best_practice&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Haskell</a></li>
+          <li><a href="../aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Haskell</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O pattern <strong>"make illegal states unrepresentable"</strong> atinge sua forma mais pura em Haskell: tipos de dados algébricos garantem que apenas estados válidos existem; phantom types adicionam restrições de fluxo em compile-time (só podemos publicar um <code>Documento 'Rascunho</code>); smart constructors centralizam validação. O resultado é código onde uma enorme classe de bugs <strong>simplesmente não pode existir</strong> — o compilador os rejeita antes mesmo de rodar.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

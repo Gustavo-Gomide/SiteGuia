@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Python para Web: FastAPI com async routes, Pydantic, dependency injection, Django ORM, Flask, middleware, autenticação JWT e deploy." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Python para Web</h1>
+          <p>FastAPI assíncrono com validação Pydantic, injeção de dependência, Django ORM, Flask, autenticação JWT e deploy com Gunicorn + Nginx.</p>
+        </div>
+        <p class="intro-highlight">
+          Python é a segunda linguagem mais usada em backends web. FastAPI domina APIs modernas por sua velocidade (comparable ao Go em benchmarks assíncronos), tipagem nativa e documentação automática OpenAPI. Django permanece insuperável para aplicações completas com admin, ORM, autenticação e templates.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fastapi">FastAPI: API REST Assíncrona Completa</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; FastAPI: modelos Pydantic, rotas, dependency injection, JWT</div>
+          <pre class="example"><span class="kw">from</span> fastapi <span class="kw">import</span> FastAPI, Depends, HTTPException, status
+<span class="kw">from</span> fastapi.security <span class="kw">import</span> OAuth2PasswordBearer, OAuth2PasswordRequestForm
+<span class="kw">from</span> fastapi.middleware.cors <span class="kw">import</span> CORSMiddleware
+<span class="kw">from</span> pydantic <span class="kw">import</span> BaseModel, EmailStr, Field
+<span class="kw">from</span> datetime <span class="kw">import</span> datetime, timedelta
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated
+<span class="kw">import</span> jwt, bcrypt
+
+app = <span class="fn">FastAPI</span>(title=<span class="str">"Loja API"</span>, version=<span class="str">"1.0.0"</span>)
+
+app.<span class="fn">add_middleware</span>(
+    CORSMiddleware,
+    allow_origins=[<span class="str">"https://meusite.com"</span>],
+    allow_methods=[<span class="str">"*"</span>], allow_headers=[<span class="str">"*"</span>],
+)
+
+SECRET_KEY = <span class="str">"sua-chave-secreta"</span>     <span class="com"># use os.environ em produção</span>
+oauth2_scheme = <span class="fn">OAuth2PasswordBearer</span>(tokenUrl=<span class="str">"token"</span>)
+
+<span class="com"># --- Modelos ---</span>
+<span class="kw">class</span> <span class="tp">Produto</span>(<span class="tp">BaseModel</span>):
+    id:    <span class="tp">int</span>
+    nome:  <span class="tp">str</span>
+    preco: <span class="tp">float</span> = <span class="fn">Field</span>(gt=<span class="num">0</span>)
+
+<span class="kw">class</span> <span class="tp">ProdutoCreate</span>(<span class="tp">BaseModel</span>):
+    nome:  <span class="tp">str</span> = <span class="fn">Field</span>(min_length=<span class="num">1</span>, max_length=<span class="num">200</span>)
+    preco: <span class="tp">float</span> = <span class="fn">Field</span>(gt=<span class="num">0</span>)
+
+<span class="kw">class</span> <span class="tp">Token</span>(<span class="tp">BaseModel</span>):
+    access_token: <span class="tp">str</span>
+    token_type:   <span class="tp">str</span>
+
+<span class="com"># --- Dependency injection ---</span>
+<span class="kw">async def</span> <span class="fn">get_usuario_atual</span>(token: <span class="tp">Annotated</span>[<span class="tp">str</span>, <span class="fn">Depends</span>(oauth2_scheme)]) -&gt; <span class="tp">str</span>:
+    <span class="kw">try</span>:
+        payload = jwt.<span class="fn">decode</span>(token, SECRET_KEY, algorithms=[<span class="str">"HS256"</span>])
+        sub: <span class="tp">str</span> = payload[<span class="str">"sub"</span>]
+    <span class="kw">except</span> jwt.PyJWTError:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(status_code=<span class="num">401</span>, detail=<span class="str">"Token inválido"</span>)
+    <span class="kw">return</span> sub
+
+<span class="com"># --- Rotas ---</span>
+<span class="at">@app.post</span>(<span class="str">"/token"</span>, response_model=<span class="tp">Token</span>)
+<span class="kw">async def</span> <span class="fn">login</span>(form: <span class="tp">Annotated</span>[<span class="tp">OAuth2PasswordRequestForm</span>, <span class="fn">Depends</span>()]):
+    <span class="com"># Em produção: verificar hash no banco</span>
+    <span class="kw">if</span> form.username != <span class="str">"admin"</span> <span class="kw">or</span> form.password != <span class="str">"secret"</span>:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(<span class="num">401</span>, <span class="str">"Credenciais inválidas"</span>)
+    token = jwt.<span class="fn">encode</span>(
+        {<span class="str">"sub"</span>: form.username, <span class="str">"exp"</span>: datetime.utcnow() + <span class="fn">timedelta</span>(hours=<span class="num">1</span>)},
+        SECRET_KEY, algorithm=<span class="str">"HS256"</span>
+    )
+    <span class="kw">return</span> <span class="fn">Token</span>(access_token=token, token_type=<span class="str">"bearer"</span>)
+
+<span class="com"># banco em memória para demonstração</span>
+_db: <span class="tp">dict</span>[<span class="tp">int</span>, <span class="tp">ProdutoCreate</span>] = {}
+_seq = <span class="fn">iter</span>(<span class="fn">range</span>(<span class="num">1</span>, <span class="num">10</span>_<span class="num">000</span>))
+
+<span class="at">@app.get</span>(<span class="str">"/produtos"</span>, response_model=<span class="tp">list</span>[<span class="tp">Produto</span>])
+<span class="kw">async def</span> <span class="fn">listar_produtos</span>():
+    <span class="kw">return</span> [<span class="fn">Produto</span>(id=k, **v.<span class="fn">model_dump</span>()) <span class="kw">for</span> k, v <span class="kw">in</span> _db.items()]
+
+<span class="at">@app.post</span>(<span class="str">"/produtos"</span>, response_model=<span class="tp">Produto</span>, status_code=<span class="num">201</span>)
+<span class="kw">async def</span> <span class="fn">criar_produto</span>(
+    body: <span class="tp">ProdutoCreate</span>,
+    _user: <span class="tp">Annotated</span>[<span class="tp">str</span>, <span class="fn">Depends</span>(get_usuario_atual)],
+):
+    pid = <span class="fn">next</span>(_seq)
+    _db[pid] = body
+    <span class="kw">return</span> <span class="fn">Produto</span>(id=pid, **body.<span class="fn">model_dump</span>())
+
+<span class="at">@app.delete</span>(<span class="str">"/produtos/{pid}"</span>, status_code=<span class="num">204</span>)
+<span class="kw">async def</span> <span class="fn">deletar_produto</span>(pid: <span class="tp">int</span>, _user: <span class="tp">Annotated</span>[<span class="tp">str</span>, <span class="fn">Depends</span>(get_usuario_atual)]):
+    <span class="kw">if</span> pid <span class="kw">not in</span> _db:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(<span class="num">404</span>, <span class="str">"Produto não encontrado"</span>)
+    <span class="kw">del</span> _db[pid]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fastapi-async-db">FastAPI com SQLAlchemy Assíncrono</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; FastAPI + SQLAlchemy async + asyncpg + Alembic</div>
+          <pre class="example"><span class="kw">from</span> sqlalchemy.ext.asyncio <span class="kw">import</span> AsyncSession, create_async_engine, async_sessionmaker
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> DeclarativeBase, Mapped, mapped_column
+<span class="kw">from</span> fastapi <span class="kw">import</span> Depends
+
+DATABASE_URL = <span class="str">"postgresql+asyncpg://user:pass@localhost/appdb"</span>
+
+engine = <span class="fn">create_async_engine</span>(DATABASE_URL, pool_size=<span class="num">20</span>, max_overflow=<span class="num">0</span>)
+AsyncSessionLocal = <span class="fn">async_sessionmaker</span>(engine, expire_on_commit=<span class="kw">False</span>)
+
+<span class="kw">class</span> <span class="tp">Base</span>(<span class="tp">DeclarativeBase</span>): <span class="kw">pass</span>
+
+<span class="kw">class</span> <span class="tp">Pedido</span>(<span class="tp">Base</span>):
+    __tablename__ = <span class="str">"pedidos"</span>
+    id:     <span class="tp">Mapped</span>[<span class="tp">int</span>] = <span class="fn">mapped_column</span>(primary_key=<span class="kw">True</span>)
+    valor:  <span class="tp">Mapped</span>[<span class="tp">float</span>]
+    status: <span class="tp">Mapped</span>[<span class="tp">str</span>] = <span class="fn">mapped_column</span>(default=<span class="str">"pendente"</span>)
+
+<span class="kw">async def</span> <span class="fn">get_db</span>() -&gt; <span class="tp">AsyncSession</span>:
+    <span class="kw">async with</span> <span class="fn">AsyncSessionLocal</span>() <span class="kw">as</span> session:
+        <span class="kw">yield</span> session
+
+<span class="at">@app.get</span>(<span class="str">"/pedidos/{pid}"</span>)
+<span class="kw">async def</span> <span class="fn">get_pedido</span>(pid: <span class="tp">int</span>, db: <span class="tp">AsyncSession</span> = <span class="fn">Depends</span>(get_db)):
+    pedido = <span class="kw">await</span> db.<span class="fn">get</span>(<span class="tp">Pedido</span>, pid)
+    <span class="kw">if</span> <span class="kw">not</span> pedido:
+        <span class="kw">raise</span> <span class="fn">HTTPException</span>(<span class="num">404</span>)
+    <span class="kw">return</span> pedido
+
+<span class="com"># Rodar: uvicorn app.main:app --reload --workers 4</span>
+<span class="com"># Alembic: alembic init alembic && alembic revision --autogenerate -m "init"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="django">Django: Framework Full-Stack</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; Django: models, views class-based, serializers DRF</div>
+          <pre class="example"><span class="com"># models.py</span>
+<span class="kw">from</span> django.db <span class="kw">import</span> models
+<span class="kw">from</span> django.contrib.auth.models <span class="kw">import</span> AbstractUser
+
+
+<span class="kw">class</span> <span class="tp">UsuarioCustom</span>(<span class="tp">AbstractUser</span>):
+    bio       = models.<span class="fn">TextField</span>(blank=<span class="kw">True</span>)
+    avatar    = models.<span class="fn">ImageField</span>(upload_to=<span class="str">"avatars/"</span>, null=<span class="kw">True</span>)
+
+
+<span class="kw">class</span> <span class="tp">Artigo</span>(<span class="tp">models.Model</span>):
+    titulo   = models.<span class="fn">CharField</span>(max_length=<span class="num">200</span>)
+    conteudo = models.<span class="fn">TextField</span>()
+    autor    = models.<span class="fn">ForeignKey</span>(UsuarioCustom, on_delete=models.CASCADE, related_name=<span class="str">"artigos"</span>)
+    criado   = models.<span class="fn">DateTimeField</span>(auto_now_add=<span class="kw">True</span>)
+    publicado = models.<span class="fn">BooleanField</span>(default=<span class="kw">False</span>)
+
+    <span class="kw">class</span> Meta:
+        ordering = [<span class="str">"-criado"</span>]
+        indexes  = [models.<span class="fn">Index</span>(fields=[<span class="str">"autor"</span>, <span class="str">"-criado"</span>])]
+
+
+<span class="com"># serializers.py (Django REST Framework)</span>
+<span class="kw">from</span> rest_framework <span class="kw">import</span> serializers
+
+<span class="kw">class</span> <span class="tp">ArtigoSerializer</span>(<span class="tp">serializers.ModelSerializer</span>):
+    autor_nome = serializers.<span class="fn">CharField</span>(source=<span class="str">"autor.get_full_name"</span>, read_only=<span class="kw">True</span>)
+
+    <span class="kw">class</span> Meta:
+        model  = <span class="tp">Artigo</span>
+        fields = [<span class="str">"id"</span>, <span class="str">"titulo"</span>, <span class="str">"autor_nome"</span>, <span class="str">"criado"</span>, <span class="str">"publicado"</span>]
+
+
+<span class="com"># views.py (class-based)</span>
+<span class="kw">from</span> rest_framework <span class="kw">import</span> viewsets, permissions
+
+<span class="kw">class</span> <span class="tp">ArtigoViewSet</span>(<span class="tp">viewsets.ModelViewSet</span>):
+    serializer_class   = <span class="tp">ArtigoSerializer</span>
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    <span class="kw">def</span> <span class="fn">get_queryset</span>(self):
+        qs = Artigo.objects.<span class="fn">select_related</span>(<span class="str">"autor"</span>)
+        <span class="kw">if</span> publicado := self.request.query_params.<span class="fn">get</span>(<span class="str">"publicado"</span>):
+            qs = qs.<span class="fn">filter</span>(publicado=publicado.<span class="fn">lower</span>() == <span class="str">"true"</span>)
+        <span class="kw">return</span> qs
+
+    <span class="kw">def</span> <span class="fn">perform_create</span>(self, serializer):
+        serializer.<span class="fn">save</span>(autor=self.request.user)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deploy">Deploy com Gunicorn, Uvicorn e Docker</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Docker &mdash; Dockerfile multi-stage para FastAPI</div>
+          <pre class="example">FROM python:3.12-slim AS builder
+WORKDIR /app
+RUN pip install uv
+COPY pyproject.toml .
+RUN uv pip install --system -e ".[prod]"
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY src/ ./src/
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8000
+
+EXPOSE 8000
+CMD ["uvicorn", "src.meuapp.api.main:app",
+     "--host", "0.0.0.0",
+     "--port", "8000",
+     "--workers", "4",
+     "--access-log"]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FASTAPI. <strong>FastAPI Documentation</strong>. Disponível em: &lt;https://fastapi.tiangolo.com/&gt;. Acesso em: 2025.</li>
+            <li>DJANGO. <strong>Django Documentation 5.0</strong>. Disponível em: &lt;https://docs.djangoproject.com/&gt;. Acesso em: 2025.</li>
+            <li>RAMALHO, Luciano. <strong>Python Fluente</strong>. 2. ed. Novatec, 2023. Capítulo 21 — Programação Assíncrona.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python e Bancos de Dados</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> FastAPI gera documentação OpenAPI automática acessível em /docs e /redoc</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

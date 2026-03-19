@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Python e bancos de dados: sqlite3 nativo, SQLAlchemy ORM, asyncpg PostgreSQL assíncrono, Redis com redis-py e migrations com Alembic." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python — Bancos de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Bancos de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Python e Bancos de Dados</h1>
+          <p>sqlite3 embutido, SQLAlchemy ORM e Core com tipagem, asyncpg para alta performance, Redis como cache e Alembic para migrations versionadas.</p>
+        </div>
+        <p class="intro-highlight">
+          Python tem suporte nativo a SQLite e um ecossistema robusto para todos os bancos populares. A combinação SQLAlchemy + asyncpg permite atingir throughput de dezenas de milhares de queries por segundo em APIs assíncronas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite3">sqlite3: Banco Embutido</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; sqlite3: CRUD completo com Row factory e context manager</div>
+          <pre class="example"><span class="kw">import</span> sqlite3
+<span class="kw">from</span> contextlib <span class="kw">import</span> contextmanager
+<span class="kw">from</span> typing <span class="kw">import</span> Iterator
+
+<span class="at">@contextmanager</span>
+<span class="kw">def</span> <span class="fn">get_conn</span>(path: <span class="tp">str</span>) -&gt; <span class="tp">Iterator</span>[sqlite3.Connection]:
+    conn = sqlite3.<span class="fn">connect</span>(path, detect_types=sqlite3.PARSE_DECLTYPES)
+    conn.row_factory = sqlite3.Row   <span class="com"># acesso por col[nome]</span>
+    conn.<span class="fn">execute</span>(<span class="str">"PRAGMA journal_mode=WAL"</span>)
+    conn.<span class="fn">execute</span>(<span class="str">"PRAGMA foreign_keys=ON"</span>)
+    <span class="kw">try</span>:
+        <span class="kw">yield</span> conn
+        conn.<span class="fn">commit</span>()
+    <span class="kw">except</span>:
+        conn.<span class="fn">rollback</span>()
+        <span class="kw">raise</span>
+    <span class="kw">finally</span>:
+        conn.<span class="fn">close</span>()
+
+
+DDL = <span class="str">"""
+CREATE TABLE IF NOT EXISTS produtos (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome    TEXT    NOT NULL,
+    preco   REAL    NOT NULL CHECK (preco > 0),
+    estoque INTEGER NOT NULL DEFAULT 0
+)
+"""</span>
+
+<span class="kw">with</span> <span class="fn">get_conn</span>(<span class="str">"loja.db"</span>) <span class="kw">as</span> conn:
+    conn.<span class="fn">executescript</span>(DDL)
+
+    <span class="com"># INSERT com parâmetros nomeados (previne SQL injection)</span>
+    conn.<span class="fn">execute</span>(
+        <span class="str">"INSERT INTO produtos (nome, preco, estoque) VALUES (:nome, :preco, :estoque)"</span>,
+        {<span class="str">"nome"</span>: <span class="str">"Produto A"</span>, <span class="str">"preco"</span>: <span class="num">29.90</span>, <span class="str">"estoque"</span>: <span class="num">100</span>},
+    )
+    conn.<span class="fn">executemany</span>(
+        <span class="str">"INSERT INTO produtos (nome, preco, estoque) VALUES (?, ?, ?)"</span>,
+        [(<span class="str">"B"</span>, <span class="num">9.90</span>, <span class="num">50</span>), (<span class="str">"C"</span>, <span class="num">49.90</span>, <span class="num">20</span>)],
+    )
+
+<span class="kw">with</span> <span class="fn">get_conn</span>(<span class="str">"loja.db"</span>) <span class="kw">as</span> conn:
+    <span class="kw">for</span> row <span class="kw">in</span> conn.<span class="fn">execute</span>(<span class="str">"SELECT * FROM produtos WHERE preco &lt; ?"</span>, (<span class="num">50</span>,)):
+        <span class="fn">print</span>(row[<span class="str">"nome"</span>], row[<span class="str">"preco"</span>])</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlalchemy">SQLAlchemy 2.0 ORM — Relacionamentos e Queries</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; SQLAlchemy: eager loading, transactions, bulk insert</div>
+          <pre class="example"><span class="kw">from</span> sqlalchemy <span class="kw">import</span> create_engine, select, func, text
+<span class="kw">from</span> sqlalchemy.orm <span class="kw">import</span> Session, selectinload
+
+<span class="com"># Reutilizando modelos Autor/Livro do guia</span>
+engine = <span class="fn">create_engine</span>(<span class="str">"postgresql+psycopg2://user:pass@localhost/app"</span>,
+                         pool_size=<span class="num">10</span>, pool_pre_ping=<span class="kw">True</span>)
+
+<span class="kw">with</span> <span class="fn">Session</span>(engine) <span class="kw">as</span> session:
+
+    <span class="com"># Eager loading evita N+1 queries</span>
+    stmt = (
+        <span class="fn">select</span>(<span class="tp">Autor</span>)
+        .<span class="fn">options</span>(<span class="fn">selectinload</span>(Autor.livros))
+        .<span class="fn">where</span>(Autor.nome.<span class="fn">ilike</span>(<span class="str">"%silva%"</span>))
+    )
+    autores = session.<span class="fn">scalars</span>(stmt).<span class="fn">all</span>()
+
+    <span class="com"># Aggregation</span>
+    media = session.<span class="fn">scalar</span>(
+        <span class="fn">select</span>(<span class="fn">func.avg</span>(<span class="tp">Livro</span>.paginas))
+    )
+
+    <span class="com"># Bulk insert (muito mais rápido que add() em loop)</span>
+    session.<span class="fn">execute</span>(
+        <span class="fn">text</span>(<span class="str">"INSERT INTO livros (titulo, autor_id) VALUES (:t, :a)"</span>),
+        [{<span class="str">"t"</span>: <span class="str">f"Livro {i}"</span>, <span class="str">"a"</span>: <span class="num">1</span>} <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">1000</span>)],
+    )
+    session.<span class="fn">commit</span>()
+
+
+<span class="com"># Transação com rollback automático</span>
+<span class="kw">from</span> sqlalchemy.exc <span class="kw">import</span> IntegrityError
+
+<span class="kw">with</span> <span class="fn">Session</span>(engine) <span class="kw">as</span> session:
+    <span class="kw">with</span> session.<span class="fn">begin</span>():
+        <span class="kw">try</span>:
+            session.<span class="fn">add</span>(<span class="fn">Autor</span>(nome=<span class="str">"Novo Autor"</span>))
+        <span class="kw">except</span> <span class="tp">IntegrityError</span>:
+            session.<span class="fn">rollback</span>()
+            <span class="fn">print</span>(<span class="str">"Autor já existe"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="asyncpg">asyncpg: PostgreSQL Assíncrono Direto</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; asyncpg: pool de conexões, prepared statements, copy</div>
+          <pre class="example"><span class="kw">import</span> asyncio
+<span class="kw">import</span> asyncpg
+
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="tp">None</span>:
+    pool = <span class="kw">await</span> asyncpg.<span class="fn">create_pool</span>(
+        dsn=<span class="str">"postgresql://user:pass@localhost/app"</span>,
+        min_size=<span class="num">5</span>, max_size=<span class="num">20</span>,
+    )
+    <span class="kw">async with</span> pool.<span class="fn">acquire</span>() <span class="kw">as</span> conn:
+        <span class="com"># Query com parâmetros posicionais ($1, $2...)</span>
+        rows = <span class="kw">await</span> conn.<span class="fn">fetch</span>(
+            <span class="str">"SELECT id, nome FROM produtos WHERE preco &lt; $1 LIMIT $2"</span>,
+            <span class="num">50.0</span>, <span class="num">100</span>
+        )
+        <span class="kw">for</span> row <span class="kw">in</span> rows:
+            <span class="fn">print</span>(row[<span class="str">"id"</span>], row[<span class="str">"nome"</span>])
+
+        <span class="com"># Prepared statement (reutilizável)</span>
+        stmt = <span class="kw">await</span> conn.<span class="fn">prepare</span>(<span class="str">"SELECT * FROM pedidos WHERE usuario_id = $1"</span>)
+        pedidos = <span class="kw">await</span> stmt.<span class="fn">fetch</span>(<span class="num">42</span>)
+
+        <span class="com"># COPY para bulk insert ultra-rápido</span>
+        dados = [(i, <span class="str">f"Prod {i}"</span>, i * <span class="num">9.9</span>) <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="num">10_000</span>)]
+        <span class="kw">await</span> conn.<span class="fn">copy_records_to_table</span>(
+            <span class="str">"produtos"</span>, records=dados, columns=[<span class="str">"id"</span>, <span class="str">"nome"</span>, <span class="str">"preco"</span>]
+        )
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis: Cache, Filas e Pub/Sub</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; redis-py: cache, rate limiting, pub/sub</div>
+          <pre class="example"><span class="kw">import</span> redis, json, functools, time
+<span class="kw">from</span> typing <span class="kw">import</span> Callable, TypeVar
+<span class="kw">from</span> redis.asyncio <span class="kw">import</span> Redis <span class="kw">as</span> AsyncRedis
+
+<span class="com"># Cache decorator com Redis</span>
+r = redis.<span class="fn">Redis</span>(host=<span class="str">"localhost"</span>, port=<span class="num">6379</span>, decode_responses=<span class="kw">True</span>)
+
+<span class="kw">def</span> <span class="fn">cache_redis</span>(ttl: <span class="tp">int</span> = <span class="num">300</span>):
+    <span class="kw">def</span> <span class="fn">decorator</span>(func):
+        <span class="at">@functools.wraps</span>(func)
+        <span class="kw">def</span> <span class="fn">wrapper</span>(*args, **kwargs):
+            chave = <span class="str">f"{func.__name__}:{args}:{kwargs}"</span>
+            cached = r.<span class="fn">get</span>(chave)
+            <span class="kw">if</span> cached:
+                <span class="kw">return</span> json.<span class="fn">loads</span>(cached)
+            resultado = <span class="fn">func</span>(*args, **kwargs)
+            r.<span class="fn">setex</span>(chave, ttl, json.<span class="fn">dumps</span>(resultado))
+            <span class="kw">return</span> resultado
+        <span class="kw">return</span> wrapper
+    <span class="kw">return</span> decorator
+
+
+<span class="at">@cache_redis</span>(ttl=<span class="num">60</span>)
+<span class="kw">def</span> <span class="fn">buscar_produto</span>(produto_id: <span class="tp">int</span>) -&gt; <span class="tp">dict</span>:
+    <span class="com"># query ao banco real</span>
+    <span class="kw">return</span> {<span class="str">"id"</span>: produto_id, <span class="str">"nome"</span>: <span class="str">"Produto X"</span>}
+
+
+<span class="com"># Rate limiting com sliding window</span>
+<span class="kw">def</span> <span class="fn">checar_rate_limit</span>(usuario_id: <span class="tp">str</span>, limite: <span class="tp">int</span> = <span class="num">100</span>, janela: <span class="tp">int</span> = <span class="num">60</span>) -&gt; <span class="tp">bool</span>:
+    chave = <span class="str">f"rate:{usuario_id}"</span>
+    agora = time.<span class="fn">time</span>()
+    pipe = r.<span class="fn">pipeline</span>()
+    pipe.<span class="fn">zremrangebyscore</span>(chave, <span class="num">0</span>, agora - janela)
+    pipe.<span class="fn">zadd</span>(chave, {<span class="fn">str</span>(agora): agora})
+    pipe.<span class="fn">zcard</span>(chave)
+    pipe.<span class="fn">expire</span>(chave, janela)
+    _, _, contagem, _ = pipe.<span class="fn">execute</span>()
+    <span class="kw">return</span> contagem &lt;= limite
+
+
+<span class="com"># Pub/Sub assíncrono</span>
+<span class="kw">async def</span> <span class="fn">subscriber</span>() -&gt; <span class="tp">None</span>:
+    ar = <span class="kw">await</span> AsyncRedis.<span class="fn">from_url</span>(<span class="str">"redis://localhost"</span>)
+    ps = ar.<span class="fn">pubsub</span>()
+    <span class="kw">await</span> ps.<span class="fn">subscribe</span>(<span class="str">"eventos"</span>)
+    <span class="kw">async for</span> mensagem <span class="kw">in</span> ps.<span class="fn">listen</span>():
+        <span class="kw">if</span> mensagem[<span class="str">"type"</span>] == <span class="str">"message"</span>:
+            <span class="fn">print</span>(<span class="str">"Evento:"</span>, mensagem[<span class="str">"data"</span>])</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="alembic">Alembic: Migrations Versionadas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell + Python &mdash; Alembic: setup e migration manual</div>
+          <pre class="example"><span class="com"># Inicializar</span>
+alembic init alembic
+
+<span class="com"># alembic/env.py — apontar para seus modelos</span>
+<span class="com"># from app.models import Base</span>
+<span class="com"># target_metadata = Base.metadata</span>
+
+<span class="com"># Gerar migration automática (detecta diff do ORM)</span>
+alembic revision --autogenerate -m <span class="str">"adicionar coluna telefone em usuarios"</span>
+
+<span class="com"># Aplicar</span>
+alembic upgrade head
+
+<span class="com"># Reverter uma migration</span>
+alembic downgrade -1</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</html>
+        <div class="panel">
+          <ul>
+            <li>SQLALCHEMY. <strong>SQLAlchemy 2.0 ORM Documentation</strong>. Disponível em: &lt;https://docs.sqlalchemy.org/en/20/&gt;. Acesso em: 2025.</li>
+            <li>ASYNCPG DOCS. <strong>asyncpg — A fast PostgreSQL Database Client Library for Python/asyncio</strong>. Disponível em: &lt;https://magicstack.github.io/asyncpg/&gt;. Acesso em: 2025.</li>
+            <li>REDIS DOCS. <strong>redis-py — The Python interface to Redis</strong>. Disponível em: &lt;https://redis.readthedocs.io/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Web: FastAPI e Django</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Prefira sempre parâmetros nomeados ou posicionais em queries &mdash; nunca f-strings em SQL</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

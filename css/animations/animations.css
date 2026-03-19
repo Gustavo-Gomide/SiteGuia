@@ -1,0 +1,558 @@
+/*
+============================================================
+animations.css — utilitários de animação (customizáveis + a11y)
+============================================================
+
+OBJETIVO
+- Centralizar animações em um único lugar.
+- Facilitar customização via CSS variables (duração/easing/distância).
+- Respeitar acessibilidade via prefers-reduced-motion.
+
+COMO USAR (exemplos)
+- Fade-in simples:
+  <div class="anim-fade-in">...</div>
+
+- Entrar “subindo”:
+  <div class="anim-slide-up">...</div>
+
+- Entrar com leve zoom:
+  <div class="anim-scale-in">...</div>
+
+- No hover (recomendado para micro-interações):
+  <button class="anim-hover-lift">...</button>
+
+CUSTOMIZAÇÃO (variáveis)
+- Globais (em :root):
+  --anim-duration-fast / --anim-duration-normal / --anim-duration-slow
+  --anim-ease-standard / --anim-ease-emphasis / --anim-ease-decelerate
+  --anim-distance-1 / --anim-distance-2
+  --anim-scale-in / --anim-scale-out
+
+- Por elemento (override local):
+  style="--anim-duration: 600ms; --anim-distance: 18px"
+
+ACESSIBILIDADE
+- `prefers-reduced-motion: reduce`:
+  As classes de animação são neutralizadas (sem transições/animações)
+  para evitar desconforto. Se você precisar de exceções pontuais, use:
+  - `.motion-allow` (permite motion mesmo com reduce)
+  - `.motion-reduce` (força reduzir motion mesmo sem reduce)
+
+NOTAS
+- Prefira animar `transform` e `opacity` para performance.
+- Evite animar `width/height/top/left` quando possível.
+*/
+
+/* =========================================================
+   TOKENS DE ANIMAÇÃO (customização)
+   ========================================================= */
+:root {
+    --anim-duration-fast: 140ms;
+    --anim-duration-normal: 240ms;
+    --anim-duration-slow: 420ms;
+
+    --anim-delay-none: 0ms;
+    --anim-delay-short: 60ms;
+
+    --anim-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+    --anim-ease-decelerate: cubic-bezier(0, 0, 0, 1);
+    --anim-ease-emphasis: cubic-bezier(0.2, 0, 0, 1);
+
+    --anim-distance-1: 8px;
+    --anim-distance-2: 16px;
+
+    --anim-scale-in: 0.98;
+    --anim-scale-out: 1.02;
+
+    /* Fallbacks por elemento (podem ser sobrescritos inline) */
+    --anim-duration: var(--anim-duration-normal);
+    --anim-delay: var(--anim-delay-none);
+    --anim-ease: var(--anim-ease-standard);
+    --anim-distance: var(--anim-distance-1);
+}
+
+/* =========================================================
+   BASE (helpers)
+   ========================================================= */
+.anim {
+    animation-duration: var(--anim-duration);
+    animation-timing-function: var(--anim-ease);
+    animation-delay: var(--anim-delay);
+    animation-fill-mode: both;
+}
+
+.anim-once {
+    animation-iteration-count: 1;
+}
+
+.anim-infinite {
+    animation-iteration-count: infinite;
+}
+
+.anim-paused {
+    animation-play-state: paused;
+}
+
+/* Transições úteis (para hover/focus) */
+.trans {
+    transition-property: transform, opacity, filter, background-color, color, border-color, box-shadow;
+    transition-duration: var(--anim-duration);
+    transition-timing-function: var(--anim-ease);
+    transition-delay: var(--anim-delay);
+}
+
+/* =========================================================
+   KEYFRAMES
+   ========================================================= */
+@keyframes kf-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes kf-fade-out {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes kf-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(var(--anim-distance));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes kf-slide-down {
+    from {
+        opacity: 0;
+        transform: translateY(calc(var(--anim-distance) * -1));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes kf-slide-left {
+    from {
+        opacity: 0;
+        transform: translateX(var(--anim-distance));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes kf-slide-right {
+    from {
+        opacity: 0;
+        transform: translateX(calc(var(--anim-distance) * -1));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes kf-scale-in {
+    from {
+        opacity: 0;
+        transform: scale(var(--anim-scale-in));
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes kf-scale-out {
+    from {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(var(--anim-scale-out));
+    }
+}
+
+@keyframes kf-pop {
+    0% {
+        transform: scale(var(--anim-scale-in));
+        opacity: 0;
+    }
+
+    70% {
+        transform: scale(1.01);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes kf-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(var(--anim-scale-out));
+    }
+}
+
+@keyframes kf-breath {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+@keyframes kf-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* =========================================================
+   KEYFRAMES LEGADOS (mantidos por compatibilidade)
+   =========================================================
+   Estes nomes são usados no CSS existente (ex.: base.css).
+   Foram movidos para este arquivo sem alteração para manter
+   o comportamento atual e centralizar animações.
+*/
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes tableRowEnter {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes neonGlow {
+
+    0%,
+    100% {
+        opacity: 0.5;
+    }
+
+    50% {
+        opacity: 1;
+    }
+}
+
+@keyframes tableRowAppear {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes entradaEspecial {
+    0% {
+        opacity: 0;
+        transform: translateY(50px) scale(0.98);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes rotateBorder {
+    0% {
+        --gradient-angle: 0deg;
+    }
+
+    100% {
+        --gradient-angle: 360deg;
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================================================
+   CLASSES DE ANIMAÇÃO (entrada/saída)
+   ---------------------------------------------------------
+   Cada classe é auto-suficiente: não precisa da classe base
+   `.anim`. Para customizar, use vars inline no elemento:
+     style="--anim-duration: 600ms; --anim-delay: 100ms"
+   ========================================================= */
+
+/* Propriedades comuns a todas as classes de entrada/saída */
+.anim-fade-in,
+.anim-fade-out,
+.anim-slide-up,
+.anim-slide-down,
+.anim-slide-left,
+.anim-slide-right,
+.anim-scale-in,
+.anim-scale-out,
+.anim-pop {
+    animation-duration: var(--anim-duration, 420ms);
+    animation-timing-function: var(--anim-ease, cubic-bezier(0.2, 0, 0, 1));
+    animation-delay: var(--anim-delay, 0ms);
+    animation-fill-mode: both;
+}
+
+.anim-fade-in {
+    animation-name: kf-fade-in;
+}
+
+.anim-fade-out {
+    animation-name: kf-fade-out;
+}
+
+.anim-slide-up {
+    animation-name: kf-slide-up;
+}
+
+.anim-slide-down {
+    animation-name: kf-slide-down;
+}
+
+.anim-slide-left {
+    animation-name: kf-slide-left;
+}
+
+.anim-slide-right {
+    animation-name: kf-slide-right;
+}
+
+.anim-scale-in {
+    animation-name: kf-scale-in;
+}
+
+.anim-scale-out {
+    animation-name: kf-scale-out;
+}
+
+.anim-pop {
+    animation-name: kf-pop;
+}
+
+/* =========================================================
+   CLASSES DE ANIMAÇÃO (loop/micro)
+   ========================================================= */
+.anim-pulse {
+    animation-name: kf-pulse;
+    animation-duration: var(--anim-duration-slow);
+    animation-timing-function: var(--anim-ease-decelerate);
+    animation-iteration-count: infinite;
+}
+
+.anim-breath {
+    animation-name: kf-breath;
+    animation-duration: 1200ms;
+    animation-timing-function: var(--anim-ease-decelerate);
+    animation-iteration-count: infinite;
+}
+
+.anim-spin {
+    animation-name: kf-spin;
+    animation-duration: 900ms;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+
+/* =========================================================
+   HOVER/FOCUS UTILITIES (sem keyframes)
+   ========================================================= */
+.anim-hover-lift {
+    transition-property: transform, box-shadow, filter;
+    transition-duration: var(--anim-duration-normal);
+    transition-timing-function: var(--anim-ease);
+    will-change: transform;
+}
+
+.anim-hover-lift:hover,
+.anim-hover-lift:focus-visible {
+    transform: translateY(-2px);
+}
+
+.anim-hover-scale {
+    transition-property: transform;
+    transition-duration: var(--anim-duration-normal);
+    transition-timing-function: var(--anim-ease);
+    will-change: transform;
+}
+
+.anim-hover-scale:hover,
+.anim-hover-scale:focus-visible {
+    transform: scale(1.01);
+}
+
+/* =========================================================
+   GLOW PULSE — brilho neon pulsante (bom para páginas de placeholder/hero)
+   ========================================================= */
+@keyframes kf-glow-pulse {
+    0%, 100% { filter: drop-shadow(0 0 20px var(--accent)); }
+    50%       { filter: drop-shadow(0 0 30px var(--accent-hover)); }
+}
+
+.anim-glow-pulse {
+    animation: kf-glow-pulse 20s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .anim-glow-pulse { animation: none; }
+}
+
+/* =========================================================
+   SCROLL REVEAL — ativado pelo IntersectionObserver
+   (scroll-reveal.js adiciona .is-visible na entrada da viewport)
+   ---------------------------------------------------------
+   ATRIBUTOS HTML:
+     data-reveal="tipo"           tipo: fade | slide-up | slide-down |
+                                        slide-left | slide-right | scale | pop
+     data-reveal-once             apenas anima na entrada (não some ao sair)
+     style="--reveal-delay:200ms"  atraso por elemento
+     style="--reveal-duration:600ms" duração por elemento
+
+   EXEMPLO:
+     <div data-reveal="slide-up">…</div>
+     <div data-reveal="fade" data-reveal-once style="--reveal-delay:150ms">…</div>
+   ========================================================= */
+
+/* Estado inicial — antes de entrar na viewport */
+[data-reveal] {
+    opacity: 0;
+    transform: translateY(var(--anim-distance-2, 16px));
+    transition:
+        opacity   var(--reveal-duration, 500ms) var(--anim-ease-decelerate, cubic-bezier(0, 0, 0, 1)),
+        transform var(--reveal-duration, 500ms) var(--anim-ease-decelerate, cubic-bezier(0, 0, 0, 1));
+    transition-delay: var(--reveal-delay, 0ms);
+    will-change: opacity, transform;
+}
+
+[data-reveal="fade"]        { transform: none; }
+[data-reveal="slide-up"]    { transform: translateY(var(--anim-distance-2, 16px)); }
+[data-reveal="slide-down"]  { transform: translateY(calc(var(--anim-distance-2, 16px) * -1)); }
+[data-reveal="slide-left"]  { transform: translateX(var(--anim-distance-2, 16px)); }
+[data-reveal="slide-right"] { transform: translateX(calc(var(--anim-distance-2, 16px) * -1)); }
+[data-reveal="scale"]       { transform: scale(0.94); }
+[data-reveal="pop"]         { transform: scale(0.92); }
+
+/* Estado visível — JS adiciona .is-visible ao entrar na viewport */
+[data-reveal].is-visible {
+    opacity: 1;
+    transform: none;
+}
+
+/* Acessibilidade: desativa a transição para quem prefere sem motion */
+@media (prefers-reduced-motion: reduce) {
+    [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+        will-change: auto;
+    }
+}
+
+/* =========================================================
+   CONTROLE DE MOTION (a11y)
+   =========================================================
+   - `.motion-reduce` força reduzir motion.
+   - `.motion-allow` permite motion mesmo quando sistema pede reduce.
+*/
+.motion-reduce * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --anim-duration-fast: 1ms;
+        --anim-duration-normal: 1ms;
+        --anim-duration-slow: 1ms;
+    }
+
+    * {
+        scroll-behavior: auto;
+    }
+
+    /* Neutraliza animações/transições por padrão */
+    *:not(.motion-allow):not(.motion-allow *) {
+        animation-duration: 1ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 1ms !important;
+    }
+}

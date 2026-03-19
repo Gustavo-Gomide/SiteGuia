@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Algoritmo de Tarjan: SCCs com um único DFS usando discovery time e low-link. Python. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Tarjan (SCC) | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Tarjan  SCC</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Algoritmo de Tarjan</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Tarjan: SCCs em um único DFS</h1>
+          <p>Encontrar todos os componentes fortemente conexos com um só passe de busca em profundidade  usando discovery time e low-link para identificar raízes de SCC.</p>
+        </div>
+        <p class="intro-highlight">
+          O algoritmo de Tarjan encontra todos os <strong>Componentes Fortemente Conexos (SCCs)</strong> de um dígrafo em <strong>O(V + E)</strong> com um único DFS. Cada vértice recebe um <em>discovery time</em> (quando foi visitado) e um <em>low-link</em> (o menor discovery time alcançável a partir de sua subárvore). Quando <code class="code-inline">disc[v] == low[v]</code>, v é a raiz de um SCC  e todos os vértices até ele na pilha formam esse componente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">Conceito: discovery time e low-link</h2>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>disc[v]</strong>: timestamp em que v foi visitado pelo DFS.<br/>
+            <strong>low[v]</strong>: menor disc acessível de v usando arestas da árvore DFS + uma back edge.<br/>
+            <strong>Raiz do SCC</strong>: quando <code>low[v] == disc[v]</code>, nenhuma back edge alcança um ancestral de v  v é raiz do seu SCC.
+          </p>
+        </div>
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 480 228" role="img" aria-label="Tarjan: árvore DFS com disc/low mostrando 3 SCCs">
+            <defs><style>
+              .tj-s1 {fill:rgba(220,80,40,.25);stroke:rgba(220,80,40,.85);stroke-width:2.5}
+              .tj-s2 {fill:rgba(80,160,220,.25);stroke:rgba(80,160,220,.85);stroke-width:2.5}
+              .tj-s3 {fill:rgba(80,200,120,.25);stroke:rgba(80,200,120,.85);stroke-width:2.5}
+              .tj-et {stroke:var(--accent);stroke-width:2;fill:none;marker-end:url(#tj-ta)}
+              .tj-eb {stroke:var(--border);stroke-width:1.5;stroke-dasharray:5 3;fill:none;marker-end:url(#tj-tb)}
+              .tj-t  {fill:var(--text-primary);font-size:11px;font-weight:700;text-anchor:middle;dominant-baseline:central}
+              .tj-dl {fill:var(--text-secondary);font-size:8.5px;font-weight:600;text-anchor:middle}
+              .tj-lbl{fill:var(--text-secondary);font-size:10px;font-weight:600;text-anchor:middle}
+            </style>
+            <marker id="tj-ta" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="var(--accent)"/>
+            </marker>
+            <marker id="tj-tb" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L6,3 z" fill="var(--border)"/>
+            </marker></defs>
+
+            <!-- DFS árvore: A→B→D→E  &  D→C→F  disc: A=0 B=1 D=2 E=3 C=4 F=5 -->
+            <!-- Arestas da árvore DFS (sólidas, accent) -->
+            <line x1="224" y1="40"  x2="170" y2="74"  class="tj-et"/><!-- A→B -->
+            <line x1="150" y1="106" x2="150" y2="123" class="tj-et"/><!-- B→D -->
+            <line x1="131" y1="147" x2="95"  y2="147" class="tj-et"/><!-- D→E -->
+            <line x1="169" y1="147" x2="301" y2="147" class="tj-et"/><!-- D→C -->
+            <line x1="325" y1="166" x2="325" y2="181" class="tj-et"/><!-- C→F -->
+            <!-- Back-edges (tracejados, border) -->
+            <path d="M65,133 Q38,100 130,93"  class="tj-eb"/><!-- E→B -->
+            <path d="M343,205 Q360,176 343,161" class="tj-eb"/><!-- F→C -->
+            <!-- Nós (sobre as linhas) -->
+            <!-- SCC {A} verde -->
+            <circle cx="240" cy="30"  r="18" class="tj-s3"/><text x="240" y="30"  class="tj-t">A</text>
+            <!-- SCC {B,D,E} laranja -->
+            <circle cx="150" cy="87"  r="18" class="tj-s1"/><text x="150" y="87"  class="tj-t">B</text>
+            <circle cx="150" cy="147" r="18" class="tj-s1"/><text x="150" y="147" class="tj-t">D</text>
+            <circle cx="75"  cy="147" r="18" class="tj-s1"/><text x="75"  y="147" class="tj-t">E</text>
+            <!-- SCC {C,F} azul -->
+            <circle cx="325" cy="147" r="18" class="tj-s2"/><text x="325" y="147" class="tj-t">C</text>
+            <circle cx="325" cy="205" r="18" class="tj-s2"/><text x="325" y="205" class="tj-t">F</text>
+            <!-- Rótulos disc/low -->
+            <text x="240" y="9"   class="tj-dl">disc=0  low=0</text>
+            <text x="95"  y="72"  class="tj-dl">disc=1  low=1</text>
+            <text x="186" y="130" class="tj-dl">disc=2  low=1</text>
+            <text x="36"  y="165" class="tj-dl">disc=3  low=1</text>
+            <text x="378" y="130" class="tj-dl">disc=4  low=4</text>
+            <text x="378" y="207" class="tj-dl">disc=5  low=4</text>
+            <!-- Legenda -->
+            <circle cx="20"  cy="220" r="8" class="tj-s1"/>
+            <text x="33"  y="220" fill="var(--text-secondary)" font-size="9" text-anchor="start">SCC {B,D,E}</text>
+            <circle cx="110" cy="220" r="8" class="tj-s2"/>
+            <text x="123" y="220" fill="var(--text-secondary)" font-size="9" text-anchor="start">SCC {C,F}</text>
+            <circle cx="192" cy="220" r="8" class="tj-s3"/>
+            <text x="205" y="220" fill="var(--text-secondary)" font-size="9" text-anchor="start">SCC {A}</text>
+            <text x="472" y="220" fill="var(--text-secondary)" font-size="9" text-anchor="end">low[v]=disc[v] → raiz de SCC  |  back-edges tracejados</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação em Python</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tarjan.py</div>
+          <pre class="example"><span class="kw">def</span> <span class="tp">tarjan</span>(grafo, vertices):
+    disc  = {}           <span class="com"># discovery time</span>
+    low   = {}           <span class="com"># low-link</span>
+    em_pilha = <span class="tp">set</span>()
+    pilha = []
+    timer = [<span class="num">0</span>]          <span class="com"># mutável via lista</span>
+    sccs  = []
+
+    <span class="kw">def</span> <span class="tp">dfs</span>(v):
+        disc[v] = low[v] = timer[<span class="num">0</span>]; timer[<span class="num">0</span>] += <span class="num">1</span>
+        pilha.append(v); em_pilha.add(v)
+
+        <span class="kw">for</span> u <span class="kw">in</span> grafo.get(v, []):
+            <span class="kw">if</span> u <span class="kw">not in</span> disc:
+                <span class="tp">dfs</span>(u)
+                low[v] = <span class="tp">min</span>(low[v], low[u])
+            <span class="kw">elif</span> u <span class="kw">in</span> em_pilha:
+                low[v] = <span class="tp">min</span>(low[v], disc[u])
+
+        <span class="kw">if</span> low[v] == disc[v]:        <span class="com"># v é raiz do SCC</span>
+            scc = []
+            <span class="kw">while True</span>:
+                w = pilha.pop(); em_pilha.discard(w); scc.append(w)
+                <span class="kw">if</span> w == v: <span class="kw">break</span>
+            sccs.append(scc)
+
+    <span class="kw">for</span> v <span class="kw">in</span> vertices:
+        <span class="kw">if</span> v <span class="kw">not in</span> disc: <span class="tp">dfs</span>(v)
+
+    <span class="kw">return</span> sccs
+
+<span class="com"># Exemplo</span>
+g = {<span class="num">0</span>:[<span class="num">1</span>], <span class="num">1</span>:[<span class="num">2</span>], <span class="num">2</span>:[<span class="num">0</span>], <span class="num">3</span>:[<span class="num">2</span>,<span class="num">4</span>], <span class="num">4</span>:[<span class="num">3</span>]}
+<span class="tp">print</span>(tarjan(g, <span class="tp">range</span>(<span class="num">5</span>)))
+<span class="com"># [[2,1,0], [4,3]]  dois SCCs</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table class="trace-table">
+            <thead><tr><th>Algoritmo</th><th>Tempo</th><th>Passes de DFS</th><th>Transposto necessário</th></tr></thead>
+            <tbody>
+              <tr><td>Tarjan</td><td>O(V + E)</td><td>1</td><td>Não</td></tr>
+              <tr><td>Kosaraju</td><td>O(V + E)</td><td>2</td><td>Sim</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Aplicações</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Condensação de gráfos</h3><p>Condensar SCCs em super-nós transforma qualquer dígrafo em um DAG  habilitando ordenação topológica.</p></div>
+          <div class="card"><h3>Detecção de dependências circulares</h3><p>Build systems usam Tarjan para detectar ciclos de dependência e reportar grupos problemáticos.</p></div>
+          <div class="card"><h3>Jogos e IA</h3><p>Análise de estados de jogos  identificar estados equivalentes (mutuamente alcançáveis) em grafos de estado.</p></div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Atenção:</strong> A versão recursiva de Tarjan pode causar stack overflow em Python para grafos com profundidade de DFS maior que ~1000. Para grafos grandes, converta para versão iterativa com pilha explícita simulando o frame de chamada.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Tarjan, R. E. "Depth-first search and linear graph algorithms." <em>SIAM J. Comput.</em>, 1(2), 1972.</li>
+            <li>Cormen, T. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Seção 20.5.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Tarjan é uma prova da elegância da busca em profundidade  com dois números simples (disc e low), um único DFS revela toda a estrutura de conectividade forte de um dígrafo.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O low-link é a memória do vértice  guarda o elo mais antigo que sua subárvore ainda consegue alcançar."  R. E. Tarjan, 1972
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

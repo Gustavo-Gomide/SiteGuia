@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang em jogos: matchmaking, chat, presença, servidores de sessão e infraestrutura multiplayer orientada a mensagens." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Erlang — Jogos</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Erlang em Jogos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Jogos</h1>
+          <p>Erlang não é uma linguagem de engine gráfica ou renderização 3D, mas é extremamente competente nos bastidores de jogos online: matchmaking, presença, chat, sessões multiplayer, gateways de evento e serviços que precisam sustentar muitos jogadores simultâneos com alta disponibilidade.</p>
+        </div>
+        <p class="intro-highlight">Em game backend, a pergunta mais cara não é “quantos polígonos eu desenho?”, mas “como mantenho milhares de jogadores conectados, sincronizados e recuperáveis quando partes do sistema falham?”. É aí que Erlang aparece com força.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="onde-usar">Onde a linguagem entrega valor</h2>
+        <div class="grid grid--auto">
+          <div class="card">
+            <h3>Matchmaking</h3>
+            <p>filas concorrentes, balanceamento por região e criação de salas sob demanda.</p>
+          </div>
+          <div class="card">
+            <h3>Presença e chat</h3>
+            <p>conexões longas, canais, status online e broadcast com isolamento de falhas.</p>
+          </div>
+          <div class="card">
+            <h3>Serviços persistentes</h3>
+            <p>guildas, lobby, ranking, inventário e telemetria de sessão.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura-multiplayer">Arquitetura típica de backend multiplayer</h2>
+        <svg viewBox="0 0 760 180" role="img" aria-label="Arquitetura de jogos com Erlang" class="w-full">
+          <rect x="35" y="60" width="130" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="100" y="88" text-anchor="middle">Cliente</text>
+          <rect x="205" y="60" width="130" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="270" y="88" text-anchor="middle">Gateway</text>
+          <rect x="375" y="60" width="130" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="440" y="88" text-anchor="middle">Sala OTP</text>
+          <rect x="545" y="60" width="170" height="46" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="630" y="88" text-anchor="middle">Ranking / Chat / Dados</text>
+          <line x1="165" y1="83" x2="205" y2="83" stroke="currentColor"></line>
+          <line x1="335" y1="83" x2="375" y2="83" stroke="currentColor"></line>
+          <line x1="505" y1="83" x2="545" y2="83" stroke="currentColor"></line>
+          <text x="440" y="135" text-anchor="middle">uma sala pode ser modelada como processo supervisionado</text>
+        </svg>
+        <p>Essa ideia funciona bem porque partidas, lobbies e canais são unidades naturais de concorrência. Cada uma pode ser tratada como processo com estado local, timeout, reinício e observabilidade próprios.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="exemplo-sala">Exemplo de sala como processo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Loop simplificado de sala multiplayer</div>
+          <pre class="example">loop(Estado = #{jogadores := Jogadores, eventos := Eventos}) -&gt;
+    receive
+        {entrar, PlayerPid} -&gt;
+            monitor(process, PlayerPid),
+            loop(Estado#{jogadores =&gt; [PlayerPid | Jogadores]});
+        {acao, PlayerPid, Acao} -&gt;
+            broadcast(Jogadores, {evento_jogo, PlayerPid, Acao}),
+            loop(Estado#{eventos =&gt; [Acao | Eventos]});
+        {'DOWN', _, process, PlayerPid, _} -&gt;
+            loop(Estado#{jogadores =&gt; lists:delete(PlayerPid, Jogadores)})
+    end.</pre>
+        </div>
+        <p>Não é um servidor de jogo completo, mas ensina o essencial: o domínio multiplayer pode ser descrito como troca de mensagens, monitoramento de participantes e evolução explícita de estado.</p>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Erlang é excelente para o backend social e distribuído do jogo. Para física, renderização e frame loop em tempo real estrito, a engine continua sendo a ferramenta certa.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ARMSTRONG, J. <strong>Programming Erlang</strong>. 2. ed. Pragmatic Bookshelf, 2013.</li>
+            <li>ERLANG/OTP. <strong>Distributed Erlang</strong>. Disponível em: &lt;https://www.erlang.org/doc/reference_manual/distributed.html&gt;. Acesso em: 2026.</li>
+            <li>NINE NINES. <strong>Cowboy Websocket Guide</strong>. Disponível em: &lt;https://ninenines.eu/docs/en/cowboy/&gt;. Acesso em: 2026.</li>
+            <li>CESARINI, F.; VINOSKI, S. <strong>Designing for Scalability with Erlang/OTP</strong>. O'Reilly Media, 2016.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/Desenvolvimento_Jogos/engines_o_que_e.html"><span data-svg="seta-direita" aria-hidden="true"></span> Entender engines e pipeline real de jogos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> WebSockets e gateways para multiplayer</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Clientes mobile conectados ao backend</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em jogos online, Erlang rende mais onde estado compartilhado, presença e tolerância a falhas são o verdadeiro desafio. Ele não substitui a engine, mas pode sustentar a parte do produto que precisa ficar viva o tempo todo.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

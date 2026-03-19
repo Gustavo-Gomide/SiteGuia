@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript no terminal e CLI: Commander tipado, Inquirer com generics, chalk e ora com tipos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript no Terminal e CLI</h1>
+          <p>Commander com options tipadas, Inquirer com generics de resposta, Chalk + Ora + Listr2 tipados e distribuicao de CLIs como pacotes npm com shebang e bin.</p>
+        </div>
+        <p class="intro-highlight">
+          CLIs em TypeScript tem opcoes e respostas de prompt tipadas &mdash; sem possibilidade de acessar uma opcao que nao foi declarada. O resultado e uma CLI cujo contrato e verificavel em compilacao.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="commander">Commander com Tipos e Subcomandos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Commander &mdash; Options tipadas com interface</div>
+          <pre class="example"><span class="com">#!/usr/bin/env node</span>
+<span class="kw">import</span> { <span class="tp">Command</span>, <span class="tp">Option</span>, <span class="tp">InvalidArgumentError</span> } <span class="kw">from</span> <span class="str">"commander"</span>;
+<span class="kw">import</span> { createWriteStream } <span class="kw">from</span> <span class="str">"node:fs"</span>;
+
+<span class="com">// Interfaces para as opcoes de cada comando</span>
+<span class="kw">interface</span> <span class="tp">OpcoesBuild</span> {
+  saida:    <span class="kw">string</span>;
+  formato:  <span class="str">"esm"</span> | <span class="str">"cjs"</span> | <span class="str">"iife"</span>;
+  minify:   <span class="kw">boolean</span>;
+  dts:      <span class="kw">boolean</span>;
+  watch:    <span class="kw">boolean</span>;
+  external: <span class="kw">string</span>[];
+}
+
+<span class="kw">interface</span> <span class="tp">OpcoesPublish</span> {
+  tag:    <span class="kw">string</span>;
+  dry:    <span class="kw">boolean</span>;
+  access: <span class="str">"public"</span> | <span class="str">"restricted"</span>;
+}
+
+<span class="kw">function</span> <span class="fn">parsearInteiro</span>(valor: <span class="kw">string</span>): <span class="kw">number</span> {
+  <span class="kw">const</span> n = <span class="tp">Number</span>(valor);
+  <span class="kw">if</span> (!<span class="tp">Number</span>.<span class="fn">isInteger</span>(n)) <span class="kw">throw new</span> <span class="tp">InvalidArgumentError</span>(<span class="str">"Deve ser inteiro"</span>);
+  <span class="kw">return</span> n;
+}
+
+<span class="kw">const</span> programa = <span class="kw">new</span> <span class="tp">Command</span>()
+  .<span class="fn">name</span>(<span class="str">"minha-cli"</span>)
+  .<span class="fn">description</span>(<span class="str">"Ferramenta de build e publicacao"</span>)
+  .<span class="fn">version</span>(<span class="str">"1.0.0"</span>);
+
+programa
+  .<span class="fn">command</span>(<span class="str">"build &lt;entrada&gt;"</span>)
+  .<span class="fn">description</span>(<span class="str">"Compila o projeto"</span>)
+  .<span class="fn">option</span>(<span class="str">"-o, --saida &lt;dir&gt;"</span>, <span class="str">"Diretorio de saida"</span>, <span class="str">"dist"</span>)
+  .<span class="fn">addOption</span>(
+    <span class="kw">new</span> <span class="tp">Option</span>(<span class="str">"-f, --formato &lt;fmt&gt;"</span>, <span class="str">"Formato de saida"</span>)
+      .<span class="fn">choices</span>([<span class="str">"esm"</span>, <span class="str">"cjs"</span>, <span class="str">"iife"</span>])
+      .<span class="fn">default</span>(<span class="str">"esm"</span>),
+  )
+  .<span class="fn">option</span>(<span class="str">"--minify"</span>,              <span class="str">"Minificar saida"</span>)
+  .<span class="fn">option</span>(<span class="str">"--dts"</span>,                <span class="str">"Gerar declaracoes .d.ts"</span>)
+  .<span class="fn">option</span>(<span class="str">"-w, --watch"</span>,          <span class="str">"Modo watch"</span>)
+  .<span class="fn">option</span>(<span class="str">"-e, --external &lt;mods&gt;"</span>, <span class="str">"Modulos externos (CSV)"</span>, (v: <span class="kw">string</span>) => v.<span class="fn">split</span>(<span class="str">","</span>), [])
+  .<span class="fn">action</span>(<span class="kw">async</span> (entrada: <span class="kw">string</span>, opts: <span class="tp">OpcoesBuild</span>) => {
+    console.<span class="fn">log</span>(<span class="str">`Compilando </span><span class="str">${entrada}</span><span class="str"> -> </span><span class="str">${opts.saida}</span><span class="str"> (</span><span class="str">${opts.formato}</span><span class="str">)`</span>);
+    <span class="kw">if</span> (opts.dts)    console.<span class="fn">log</span>(<span class="str">"Gerando .d.ts..."</span>);
+    <span class="kw">if</span> (opts.minify) console.<span class="fn">log</span>(<span class="str">"Minificando..."</span>);
+    <span class="kw">if</span> (opts.watch)  console.<span class="fn">log</span>(<span class="str">"Modo watch ativo"</span>);
+  });
+
+programa
+  .<span class="fn">command</span>(<span class="str">"publish"</span>)
+  .<span class="fn">description</span>(<span class="str">"Publica no npm"</span>)
+  .<span class="fn">option</span>(<span class="str">"--tag &lt;tag&gt;"</span>,    <span class="str">"Tag npm"</span>,     <span class="str">"latest"</span>)
+  .<span class="fn">option</span>(<span class="str">"--dry",        "Dry-run"</span>)
+  .<span class="fn">addOption</span>(
+    <span class="kw">new</span> <span class="tp">Option</span>(<span class="str">"--access &lt;nivel&gt;"</span>).<span class="fn">choices</span>([<span class="str">"public"</span>, <span class="str">"restricted"</span>]).<span class="fn">default</span>(<span class="str">"public"</span>),
+  )
+  .<span class="fn">action</span>((<span class="tp">opts</span>: <span class="tp">OpcoesPublish</span>) => {
+    <span class="kw">if</span> (opts.dry) { console.<span class="fn">log</span>(<span class="str">"[dry-run] publicaria com tag:"</span>, opts.tag); <span class="kw">return</span>; }
+    console.<span class="fn">log</span>(<span class="str">`Publicando com tag </span><span class="str">${opts.tag}</span><span class="str"> (</span><span class="str">${opts.access}</span><span class="str">)...`</span>);
+  });
+
+programa.<span class="fn">parse</span>();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="inquirer">Inquirer com Generics Tipados</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Inquirer &mdash; Wizard de configuracao completamente tipado</div>
+          <pre class="example"><span class="kw">import</span> { input, select, checkbox, confirm, password } <span class="kw">from</span> <span class="str">"@inquirer/prompts"</span>;
+<span class="kw">import</span> { writeFile } <span class="kw">from</span> <span class="str">"node:fs/promises"</span>;
+
+<span class="kw">type</span> <span class="tp">Banco</span>      = <span class="str">"postgresql"</span> | <span class="str">"mysql"</span> | <span class="str">"sqlite"</span>;
+<span class="kw">type</span> <span class="tp">Framework</span>  = <span class="str">"express"</span> | <span class="str">"fastify"</span> | <span class="str">"hono"</span>;
+<span class="kw">type</span> <span class="tp">Extra</span>      = <span class="str">"prisma"</span> | <span class="str">"vitest"</span> | <span class="str">"eslint"</span> | <span class="str">"docker"</span>;
+
+<span class="kw">interface</span> <span class="tp">ConfigProjeto</span> {
+  nome:      <span class="kw">string</span>;
+  framework: <span class="tp">Framework</span>;
+  banco:     <span class="tp">Banco</span>;
+  extras:    <span class="tp">Extra</span>[];
+  porta:     <span class="kw">number</span>;
+  dbUrl:     <span class="kw">string</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">wizardCriarProjeto</span>(): <span class="tp">Promise</span>&lt;<span class="tp">ConfigProjeto</span>&gt; {
+  <span class="kw">const</span> nome = <span class="kw">await</span> <span class="fn">input</span>({
+    message: <span class="str">"Nome do projeto:"</span>,
+    <span class="fn">validate</span>(v) {
+      <span class="kw">if</span> (!/^[a-z][a-z0-9-]*$/<span class="fn">.test</span>(v))
+        <span class="kw">return</span> <span class="str">"Use letras minusculas, numeros e hifens"</span>;
+      <span class="kw">return</span> <span class="kw">true</span>;
+    },
+  });
+
+  <span class="kw">const</span> framework = <span class="kw">await</span> <span class="fn">select</span>&lt;<span class="tp">Framework</span>&gt;({
+    message: <span class="str">"Framework HTTP:"</span>,
+    choices: [
+      { value: <span class="str">"express"</span>,  name: <span class="str">"Express — maduro, ecossistema grande"</span> },
+      { value: <span class="str">"fastify"</span>,  name: <span class="str">"Fastify — rapido, TypeBox nativo"</span> },
+      { value: <span class="str">"hono"</span>,     name: <span class="str">"Hono — edge-ready, RPC client"</span> },
+    ],
+  });
+
+  <span class="kw">const</span> banco = <span class="kw">await</span> <span class="fn">select</span>&lt;<span class="tp">Banco</span>&gt;({
+    message: <span class="str">"Banco de dados:"</span>,
+    choices: [
+      { value: <span class="str">"postgresql"</span>, name: <span class="str">"PostgreSQL"</span> },
+      { value: <span class="str">"mysql"</span>,      name: <span class="str">"MySQL"</span> },
+      { value: <span class="str">"sqlite"</span>,     name: <span class="str">"SQLite (dev/embed)"</span> },
+    ],
+  });
+
+  <span class="kw">const</span> extras = <span class="kw">await</span> <span class="fn">checkbox</span>&lt;<span class="tp">Extra</span>&gt;({
+    message: <span class="str">"Extras:"</span>,
+    choices: [
+      { value: <span class="str">"prisma"</span>,    name: <span class="str">"Prisma ORM"</span>,   checked: <span class="kw">true</span> },
+      { value: <span class="str">"vitest"</span>,    name: <span class="str">"Vitest"</span>,        checked: <span class="kw">true</span> },
+      { value: <span class="str">"eslint"</span>,    name: <span class="str">"ESLint + TS"</span>,   checked: <span class="kw">false</span> },
+      { value: <span class="str">"docker"</span>,    name: <span class="str">"Dockerfile"</span>,    checked: <span class="kw">false</span> },
+    ],
+  });
+
+  <span class="kw">const</span> porta = <span class="kw">await</span> <span class="fn">input</span>({
+    message: <span class="str">"Porta:"</span>,
+    default: <span class="str">"3000"</span>,
+    <span class="fn">validate</span>(v) {
+      <span class="kw">const</span> n = parseInt(v, <span class="num">10</span>);
+      <span class="kw">if</span> (isNaN(n) || n &lt; <span class="num">1</span> || n &gt; <span class="num">65535</span>) <span class="kw">return</span> <span class="str">"Porta invalida"</span>;
+      <span class="kw">return</span> <span class="kw">true</span>;
+    },
+  });
+
+  <span class="kw">const</span> dbUrl = <span class="kw">await</span> <span class="fn">password</span>({
+    message: <span class="str">"DATABASE_URL:"</span>,
+    <span class="fn">validate</span>(v) {
+      <span class="kw">if</span> (!v.<span class="fn">startsWith</span>(<span class="str">"postgres://"</span>) &amp;&amp; !v.<span class="fn">startsWith</span>(<span class="str">"mysql://"</span>) &amp;&amp; v !== <span class="str">":memory:"</span>)
+        <span class="kw">return</span> <span class="str">"URL invalida"</span>;
+      <span class="kw">return</span> <span class="kw">true</span>;
+    },
+  });
+
+  <span class="kw">const</span> config: <span class="tp">ConfigProjeto</span> = {
+    nome, framework, banco, extras, porta: parseInt(porta, <span class="num">10</span>), dbUrl,
+  };
+
+  <span class="kw">const</span> confirmar = <span class="kw">await</span> <span class="fn">confirm</span>({
+    message: <span class="str">`Criar projeto "</span><span class="str">${nome}</span><span class="str">" com </span><span class="str">${framework}</span><span class="str"> + </span><span class="str">${banco}</span><span class="str">?`</span>,
+    default: <span class="kw">true</span>,
+  });
+  <span class="kw">if</span> (!confirmar) process.<span class="fn">exit</span>(<span class="num">0</span>);
+
+  <span class="kw">await</span> <span class="fn">writeFile</span>(<span class="str">".projeto-config.json"</span>, <span class="tp">JSON</span>.<span class="fn">stringify</span>(config, <span class="kw">null</span>, <span class="num">2</span>));
+  <span class="kw">return</span> config;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>TJ HOLOWAYCHUK. <strong>Commander.js — The complete solution for node.js command-line programs</strong>. Disponível em: &lt;https://github.com/tj/commander.js&gt;. Acesso em: 2025.</li>
+            <li>INQUIRER. <strong>@inquirer/prompts — A collection of common interactive command line user interfaces</strong>. Disponível em: &lt;https://github.com/SBoudrias/Inquirer.js&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript Handbook — Enums</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/enums.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Jogos</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript no Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> CLIs tipadas sao especialmente poderosas em monorepos &mdash; o tipo das opcoes serve de documentacao viva para outros times que usam a ferramenta</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

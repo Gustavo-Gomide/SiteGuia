@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="IPv6: cabeçalho de 40 bytes, tipos de endereço (GUA, LLA, ULA), EUI-64, SLAAC, NDP e estratégias de transição do IPv4." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>IPv6 | Camada de Rede | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Rede</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">IPv6 &mdash; Internet Protocol v6</h1>
+          <p class="page-subtitle">128 bits, 340 undecilhões de endereços: o substituto do IPv4 projetado para durar séculos</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>IPv6</strong> (RFC 8200) usa endereços de <strong>128 bits</strong> em vez de 32, resolvendo o esgotamento do IPv4. Além da quantidade de endereços, o IPv6 simplificou o cabeçalho, eliminou broadcasts, tornou o checksum de Camada 3 opcional e trouxe configuração automática (SLAAC) nativa. IPv6 é a norma de hoje em data centers modernos, mobile e redes de operadoras.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="notacao" class="section-title">Notação e Tipos de Endereço</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Notação Hexadecimal</h3>
+            <p>8 grupos de 4 hex separados por <code class="code-inline">:</code>. Regras de compressão:</p>
+            <ul>
+              <li>Zeros à esquerda de cada grupo podem ser omitidos: <code class="code-inline">0064</code> &rarr; <code class="code-inline">64</code></li>
+              <li>Um ou mais grupos consecutivos de <code class="code-inline">0000</code> podem ser substituídos por <code class="code-inline">::</code> &mdash; só uma vez por endereço: <code class="code-inline">2001:0db8:0000:0000:0000:0000:0000:0001</code> &rarr; <code class="code-inline">2001:db8::1</code></li>
+            </ul>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Exemplos</span></div>
+              <pre class="code-block">::1                  # loopback (127.0.0.1 do IPv6)
+::                   # endereço não especificado
+fe80::1              # link-local
+2001:db8::1          # GUA de documentação
+fc00::1              # ULA
+ff02::1              # all nodes (multicast link-local)
+ff02::2              # all routers
+ff02::1:ff00:1       # solicited-node multicast (NDP)</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Tipos de Endereço IPv6</h3>
+            <ul>
+              <li><strong>GUA (Global Unicast):</strong> <code class="code-inline">2000::/3</code>; roteável globalmente; prefixo <code class="code-inline">2001::/16</code> (IANA) ou blocos atribuídos pelo ISP; equivalente ao IP público IPv4</li>
+              <li><strong>LLA (Link-Local):</strong> <code class="code-inline">fe80::/10</code>; gerado automaticamente em toda interface; válido apenas no link local; usado para NDP, OSPF, protocolos de roteamento</li>
+              <li><strong>ULA (Unique Local):</strong> <code class="code-inline">fc00::/7</code> (incluindo <code class="code-inline">fd00::/8</code>); equivalente ao RFC 1918 do IPv4; roteável dentro da organização, não para a internet</li>
+              <li><strong>Multicast:</strong> <code class="code-inline">ff00::/8</code>; substitui broadcast do IPv4. <code class="code-inline">ff02::1</code> = all nodes; <code class="code-inline">ff02::2</code> = all routers</li>
+              <li><strong>Loopback:</strong> <code class="code-inline">::1/128</code> &mdash; equivalente a <code class="code-inline">127.0.0.1</code></li>
+              <li><strong>Não especificado:</strong> <code class="code-inline">::/128</code> &mdash; equivalente a <code class="code-inline">0.0.0.0</code></li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="eui64" class="section-title">EUI-64: Interface ID a partir do MAC</h2>
+        <p>O SLAAC gera automaticamente o <strong>Interface ID de 64 bits</strong> a partir do MAC de 48 bits usando o método EUI-64:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>EUI-64: MAC &rarr; Interface ID de 64 bits</span></div>
+          <pre class="code-block">MAC original:   AA:BB:CC:DD:EE:FF
+
+1. Dividir ao meio:     AA:BB:CC  |  DD:EE:FF
+2. Inserir FF:FE no meio: AA:BB:CC:FF:FE:DD:EE:FF
+3. Inverter bit U/L (bit 6 do 1º octeto):
+   AA = 1010 1010 &rarr; inverter bit 6 &rarr; 1010 1000 = A8
+
+Interface ID resultante: A8BB:CCFF:FEDD:EEFF
+
+Endereço completo (com prefixo fe80::/10):
+fe80::A8BB:CCFF:FEDD:EEFF</pre>
+        </div>
+        <p class="note">Muitos SOs modernos usam <strong>Privacy Extensions</strong> (RFC 4941) que geram Interface IDs aleatórios temporarios para evitar rastreamento por EUI-64.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="header" class="section-title">Cabeçalho IPv6 (40 bytes fixos)</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Campos do Cabeçalho</h3>
+            <ul>
+              <li><strong>Version (4b):</strong> sempre 6</li>
+              <li><strong>Traffic Class (8b):</strong> equivalente ao DSCP/ECN do IPv4</li>
+              <li><strong>Flow Label (20b):</strong> identifica fluxos para tratamento especial por roteadores (QoS, MPLS)</li>
+              <li><strong>Payload Length (16b):</strong> tamanho do payload após o cabeçalho base (inclui extension headers)</li>
+              <li><strong>Next Header (8b):</strong> tipo do próximo header (protocolo do payload ou extension header); funciona como o campo Protocol do IPv4</li>
+              <li><strong>Hop Limit (8b):</strong> equivalente ao TTL do IPv4</li>
+              <li><strong>Source / Destination (128b cada):</strong> endereços IPv6</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">O que foi removido vs IPv4</h3>
+            <ul>
+              <li><strong>Sem Header Checksum:</strong> confiado às camadas inferiores (Ethernet FCS) e superiores (TCP/UDP checksum)</li>
+              <li><strong>Sem Fragmentação em roteadores:</strong> apenas o host de origem pode fragmentar (via Extension Header); roteadores retornam ICMPv6 Packet Too Big. PMTUD obrigatório</li>
+              <li><strong>Sem Options no header base:</strong> substituidas por Extension Headers encadeados (Hop-by-Hop, Routing, Fragment, Destination, AH, ESP)</li>
+              <li><strong>Sem IHL:</strong> cabeçalho base é sempre 40 bytes fixos</li>
+              <li><strong>Sem Broadcast:</strong> substituído por multicast específico (all nodes = ff02::1)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="transicao" class="section-title">Transição IPv4 &harr; IPv6</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Dual Stack</h3>
+            <p>O host ou roteador possui <strong>ambos</strong> IPv4 e IPv6 ativos simultaneamente. Usa IPv6 quando possível, cai para IPv4 se necessário. Método preferido durante transição.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Tunneling</h3>
+            <p>Encapsula IPv6 dentro de IPv4 para traversar redes que só entendem IPv4:</p>
+            <ul>
+              <li><strong>6in4 / 6to4:</strong> manualmente configurado ou automático via anycast <code class="code-inline">2002::/16</code></li>
+              <li><strong>Teredo:</strong> IPv6 via UDP/IPv4 (atravessa NAT); obsoleto em favor de dual-stack</li>
+              <li><strong>ISATAP:</strong> intra-site automatic tunnel</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">NAT64 / DNS64</h3>
+            <p>Permite que hosts IPv6-only se comuniquem com servidores IPv4-only:</p>
+            <ul>
+              <li><strong>DNS64:</strong> servidor DNS sintetiza registros AAAA fictícios para domínios que só têm registros A</li>
+              <li><strong>NAT64:</strong> traduz pacotes IPv6 &harr; IPv4 no ponto de saída da rede</li>
+              <li>Prefixo NAT64 padrão: <code class="code-inline">64:ff9b::/96</code></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando: <a href="ip_v4.html"><strong>IPv4</strong></a>, <a href="enderecamento.html"><strong>Endereçamento</strong></a> e <a href="../fundamentos/modelo_tcp_ip.html"><strong>Modelo TCP/IP</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Em IPv6, todo dispositivo tem seu próprio endereço público globál. O NAT volta a ser o que era: uma exceção, não a regra."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="WAF — Web Application Firewall: tipos, ModSecurity, AWS WAF, OWASP CRS, técnicas de bypass e boas práticas para proteção de aplicações web." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>WAF | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>WAF — Web Application Firewall</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é um WAF?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>WAF — Web Application Firewall</h1>
+          <p>Filtra tráfego HTTP/S contra ataques web — SQLi, XSS, CSRF e bots.</p>
+        </div>
+
+        <p class="intro-highlight">WAF inspeciona tráfego HTTP/S em busca de ataques como SQLi, XSS, CSRF, path traversal e bots. Diferente de firewalls de rede (Layer 3/4), o WAF opera na Layer 7 entendendo a semântica das requisições web.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Tipo</th><th>Como funciona</th><th>Exemplos</th><th>Quando usar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Network-based WAF</td><td>Appliance físico ou VM na borda da rede; mínima latência</td><td>F5 BIG-IP, Fortiweb</td><td>Data center próprio, baixa latência</td></tr>
+              <tr><td>Host-based WAF</td><td>Módulo embutido no servidor web (Apache/Nginx)</td><td>ModSecurity, Naxsi</td><td>Servidor único, controle granular</td></tr>
+              <tr><td>Cloud WAF</td><td>Tráfego roteado via CDN/proxy do provedor</td><td>AWS WAF, Cloudflare WAF, Imperva</td><td>Infraestrutura na nuvem, SaaS</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="modsecurity" class="section-title">ModSecurity + OWASP CRS</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# ModSecurity no Nginx (nginx.conf):
+modsecurity on;
+modsecurity_rules_file /etc/nginx/modsec/main.conf;
+
+# main.conf:
+Include /usr/share/modsecurity-crs/crs-setup.conf
+Include /usr/share/modsecurity-crs/rules/*.conf
+
+# OWASP CRS — paranoia levels (crs-setup.conf):
+# PL1 = mínimo de falsos positivos (recomendado para início)
+# PL2 = mais regras, alguns falsos positivos
+# PL3 = agressivo
+# PL4 = máximo, muitos falsos positivos
+
+SecAction \
+  "id:900000,\
+  phase:1,\
+  nolog,\
+  pass,\
+  t:none,\
+  setvar:tx.paranoia_level=2"
+
+# Modo detecção (log only, sem bloquear):
+SecRuleEngine DetectionOnly
+
+# Modo bloqueio:
+SecRuleEngine On</pre>
+      </section>
+
+      <section>
+        <h2 id="bypass" class="section-title">Técnicas de Bypass (para Pentesters)</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Encoding / Obfuscation</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# URL encoding duplo:
+%25%32%37 → %27 → '
+
+# Unicode:
+ʼ ou ᾿ podem funcionar como aspas
+
+# Case mixing:
+SeLeCt vs select</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Comment Injection (SQLi)</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Comentários como separadores:
+SELECT/**/username/**/FROM/**/users
+/*!UNION*/ SELECT 1,2,3
+
+# Whitespace alternatives:
+SELECT%09FROM</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">HTTP Parameter Pollution</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Enviar parâmetro duplicado:
+?id=1&id=1 UNION SELECT 1,2
+# WAF avalia apenas o primeiro,
+# app usa o segundo</pre>
+          </div>
+          <div class="card card--success">
+            <h3>Mitigação de Bypasses</h3>
+            <ul>
+              <li>Aumentar paranoia level do CRS</li>
+              <li>Habilitar normalização de encoding</li>
+              <li>Usar WAF com ML/comportamental</li>
+              <li>Combinar WAF + input validation na app</li>
+              <li>Auditar regras regularmente com testes</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>WAF não substitui desenvolvimento seguro. Um atacante determinado frequentemente encontra formas de bypass. Use WAF como camada adicional de defesa, não como única proteção contra vulnerabilidades de aplicação. Sempre combine com SAST/DAST e code review.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "WAF é a última linha de defesa, não a primeira. Construa aplicações seguras e use WAF como rede de segurança."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

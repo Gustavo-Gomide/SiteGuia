@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para Dados e IA: TensorFlow Lite com tflite_flutter, Google ML Kit, inferencia local em Flutter, Gemini API (dart_google_generativeai) e processamento de dados com dart:math." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — Dados e Inteligencia Artificial</h1>
+          <p>Dart/Flutter permite integrar IA diretamente em apps mobile, desktop e web sem depender de servidores externos. <strong>tflite_flutter</strong> executa modelos TensorFlow Lite localmente na CPU/GPU/NPU do dispositivo, <strong>Google ML Kit</strong> oferece APIs de ML prontas (OCR, traducao, deteccao de objetos) e a <strong>Gemini API</strong> via <code>google_generative_ai</code> conecta ao LLM multimodal da Google com respostas em streaming.</p>
+        </div>
+        <p class="intro-highlight">
+          A inferencia <strong>on-device</strong> com TFLite nao envia dados ao servidor, preserva privacidade, funciona offline e elimina latencia de rede — ideal para apps de saude, financeiro e producao industrial.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tflite">TensorFlow Lite com tflite_flutter</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + tflite_flutter &mdash; Classificacao de imagens on-device</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:tflite_flutter/tflite_flutter.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:image/image.dart'</span> <span class="kw">as</span> img;
+<span class="kw">import</span> <span class="str">'dart:typed_data'</span>;
+
+<span class="kw">class</span> <span class="tp">ClassificadorImagens</span> {
+  <span class="kw">late</span> <span class="tp">Interpreter</span> _interpreter;
+  <span class="kw">late</span> <span class="tp">List</span>&lt;<span class="tp">String</span>&gt; _labels;
+
+  <span class="kw">static</span> <span class="kw">const</span> _inputSize = <span class="num">224</span>;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">carregar</span>() <span class="kw">async</span> {
+    <span class="com">// Opcoes de delegate: GPU acelerada no Android/iOS</span>
+    <span class="kw">final</span> options = <span class="tp">InterpreterOptions</span>();
+    <span class="kw">if</span> (<span class="tp">Platform</span>.isAndroid) {
+      options.<span class="fn">addDelegate</span>(<span class="tp">GpuDelegateV2</span>());
+    } <span class="kw">else</span> <span class="kw">if</span> (<span class="tp">Platform</span>.isIOS) {
+      options.<span class="fn">addDelegate</span>(<span class="tp">GpuDelegate</span>());
+    }
+    _interpreter = <span class="kw">await</span> <span class="tp">Interpreter</span>.<span class="fn">fromAsset</span>(
+      <span class="str">'assets/mobilenet_v2.tflite'</span>,
+      options: options,
+    );
+    <span class="kw">final</span> labelsData = <span class="kw">await</span> <span class="fn">rootBundle</span>.<span class="fn">loadString</span>(<span class="str">'assets/labels.txt'</span>);
+    _labels = labelsData.<span class="fn">split</span>(<span class="str">'\n'</span>).<span class="fn">where</span>((l) => l.<span class="fn">isNotEmpty</span>).<span class="fn">toList</span>();
+  }
+
+  <span class="tp">List</span>&lt;<span class="tp">MapEntry</span>&lt;<span class="tp">String</span>, <span class="tp">double</span>&gt;&gt; <span class="fn">classificar</span>(<span class="tp">img</span>.<span class="tp">Image</span> imagem) {
+    <span class="com">// Pre-processamento: redimensionar + normalizar [-1, 1]</span>
+    <span class="kw">final</span> redim = img.<span class="fn">copyResize</span>(imagem, width: _inputSize, height: _inputSize);
+    <span class="kw">final</span> input = <span class="tp">List</span>.<span class="fn">generate</span>(<span class="num">1</span>, (_) =>
+      <span class="tp">List</span>.<span class="fn">generate</span>(_inputSize, (y) =>
+        <span class="tp">List</span>.<span class="fn">generate</span>(_inputSize, (x) {
+          <span class="kw">final</span> px = redim.<span class="fn">getPixel</span>(x, y);
+          <span class="kw">return</span> [
+            (px.r / <span class="num">127.5</span>) - <span class="num">1.0</span>,
+            (px.g / <span class="num">127.5</span>) - <span class="num">1.0</span>,
+            (px.b / <span class="num">127.5</span>) - <span class="num">1.0</span>,
+          ];
+        })));
+
+    <span class="kw">final</span> output = [<span class="tp">List</span>&lt;<span class="tp">double</span>&gt;.<span class="fn">filled</span>(_labels.length, <span class="num">0</span>)];
+    _interpreter.<span class="fn">run</span>(input, output);
+
+    <span class="com">// Top-5 resultados</span>
+    <span class="kw">final</span> scores = output[<span class="num">0</span>];
+    <span class="kw">return</span> <span class="tp">List</span>.<span class="fn">generate</span>(_labels.length, (i) =>
+      <span class="tp">MapEntry</span>(_labels[i], scores[i]))
+      ..sort((a, b) => b.value.<span class="fn">compareTo</span>(a.value))
+      ..<span class="fn">sublist</span>(<span class="num">0</span>, <span class="num">5</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">fechar</span>() => _interpreter.<span class="fn">close</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mlkit">Google ML Kit</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + google_mlkit &mdash; OCR, deteccao de faces e traducao</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:google_mlkit_face_detection/google_mlkit_face_detection.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:google_mlkit_translation/google_mlkit_translation.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:camera/camera.dart'</span>;
+
+<span class="com">// OCR — reconhecimento de texto em imagens</span>
+<span class="kw">class</span> <span class="tp">OcrService</span> {
+  <span class="kw">final</span> _reconhecedor = <span class="tp">TextRecognizer</span>(script: <span class="tp">TextRecognitionScript</span>.latin);
+
+  <span class="tp">Future</span>&lt;<span class="tp">String</span>&gt; <span class="fn">extrairTexto</span>(<span class="tp">String</span> caminhoImagem) <span class="kw">async</span> {
+    <span class="kw">final</span> input  = <span class="tp">InputImage</span>.<span class="fn">fromFilePath</span>(caminhoImagem);
+    <span class="kw">final</span> result = <span class="kw">await</span> _reconhecedor.<span class="fn">processImage</span>(input);
+    <span class="kw">return</span> result.blocks
+      .<span class="fn">map</span>((b) => b.lines.<span class="fn">map</span>((l) => l.text).<span class="fn">join</span>(<span class="str">' '</span>))
+      .<span class="fn">join</span>(<span class="str">'\n'</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">fechar</span>() => _reconhecedor.<span class="fn">close</span>();
+}
+
+<span class="com">// Deteccao de faces com landmarks</span>
+<span class="kw">class</span> <span class="tp">FaceDetector</span> {
+  <span class="kw">final</span> _detector = <span class="tp">FaceDetector</span>(
+    options: <span class="tp">FaceDetectorOptions</span>(
+      enableLandmarks:  <span class="kw">true</span>,
+      enableClassification: <span class="kw">true</span>,  <span class="com">// open mouth, smiling</span>
+      performanceMode:  <span class="tp">FaceDetectorMode</span>.accurate,
+    ),
+  );
+
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Face</span>&gt;&gt; <span class="fn">detectar</span>(<span class="tp">CameraImage</span> camImg, <span class="tp">InputImageRotation</span> rot) <span class="kw">async</span> {
+    <span class="kw">final</span> planes = camImg.planes;
+    <span class="kw">final</span> bytes  = <span class="tp">Uint8List</span>.<span class="fn">fromList</span>(planes.<span class="fn">fold</span>&lt;<span class="tp">List</span>&lt;<span class="tp">int</span>&gt;&gt;([], (b, p) => b..addAll(p.bytes)));
+    <span class="kw">final</span> input  = <span class="tp">InputImage</span>.<span class="fn">fromBytes</span>(bytes: bytes, metadata: <span class="tp">InputImageMetadata</span>(
+      size:     <span class="tp">Size</span>(camImg.width.<span class="fn">toDouble</span>(), camImg.height.<span class="fn">toDouble</span>()),
+      rotation: rot,
+      format:   <span class="tp">InputImageFormat</span>.yuv_420_888,
+      bytesPerRow: planes[<span class="num">0</span>].bytesPerRow,
+    ));
+    <span class="kw">return</span> _detector.<span class="fn">processImage</span>(input);
+  }
+}
+
+<span class="com">// Traducao on-device (modelo baixado no primeiro uso)</span>
+<span class="kw">class</span> <span class="tp">TradutorService</span> {
+  <span class="kw">late</span> <span class="tp">OnDeviceTranslator</span> _tradutor;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">inicializar</span>() <span class="kw">async</span> {
+    <span class="kw">final</span> gerenciador = <span class="tp">OnDeviceTranslatorModelManager</span>();
+    <span class="kw">if</span> (!<span class="kw">await</span> gerenciador.<span class="fn">isModelDownloaded</span>(<span class="str">'pt'</span>)) {
+      <span class="kw">await</span> gerenciador.<span class="fn">downloadModel</span>(<span class="str">'pt'</span>);
+    }
+    _tradutor = <span class="tp">OnDeviceTranslator</span>(
+      sourceLanguage: <span class="tp">TranslateLanguage</span>.english,
+      targetLanguage: <span class="tp">TranslateLanguage</span>.portuguese,
+    );
+  }
+
+  <span class="tp">Future</span>&lt;<span class="tp">String</span>&gt; <span class="fn">traduzir</span>(<span class="tp">String</span> texto) => _tradutor.<span class="fn">translateText</span>(texto);
+  <span class="kw">void</span> <span class="fn">fechar</span>() => _tradutor.<span class="fn">close</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gemini">Gemini API — LLM Multimodal</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + google_generative_ai &mdash; Chat com streaming e visao</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:google_generative_ai/google_generative_ai.dart'</span>;
+
+<span class="kw">class</span> <span class="tp">GeminiService</span> {
+  <span class="kw">late</span> <span class="tp">GenerativeModel</span> _model;
+  <span class="kw">late</span> <span class="tp">ChatSession</span>     _session;
+
+  <span class="kw">void</span> <span class="fn">inicializar</span>() {
+    _model = <span class="tp">GenerativeModel</span>(
+      model:  <span class="str">'gemini-1.5-flash'</span>,
+      apiKey: <span class="kw">const</span> <span class="tp">String</span>.<span class="fn">fromEnvironment</span>(<span class="str">'GEMINI_KEY'</span>),
+      generationConfig: <span class="tp">GenerationConfig</span>(
+        temperature:    <span class="num">0.7</span>,
+        maxOutputTokens: <span class="num">2048</span>,
+        responseMimeType: <span class="str">'text/plain'</span>,
+      ),
+      safetySettings: [
+        <span class="tp">SafetySetting</span>(<span class="tp">HarmCategory</span>.harassment,      <span class="tp">HarmBlockThreshold</span>.mediumAndAbove),
+        <span class="tp">SafetySetting</span>(<span class="tp">HarmCategory</span>.hateSpeech,        <span class="tp">HarmBlockThreshold</span>.mediumAndAbove),
+        <span class="tp">SafetySetting</span>(<span class="tp">HarmCategory</span>.sexuallyExplicit,   <span class="tp">HarmBlockThreshold</span>.mediumAndAbove),
+        <span class="tp">SafetySetting</span>(<span class="tp">HarmCategory</span>.dangerousContent,   <span class="tp">HarmBlockThreshold</span>.mediumAndAbove),
+      ],
+      systemInstruction: <span class="tp">Content</span>.<span class="fn">system</span>(<span class="str">'Voce e um assistente tecnico especializado em Dart/Flutter.'</span>),
+    );
+    _session = _model.<span class="fn">startChat</span>();
+  }
+
+  <span class="com">// Resposta em streaming</span>
+  <span class="tp">Stream</span>&lt;<span class="tp">String</span>&gt; <span class="fn">perguntarStream</span>(<span class="tp">String</span> mensagem) async* {
+    <span class="kw">final</span> stream = _session.<span class="fn">sendMessageStream</span>(<span class="tp">Content</span>.<span class="fn">text</span>(mensagem));
+    <span class="kw">await</span> <span class="kw">for</span> (<span class="kw">final</span> chunk <span class="kw">in</span> stream) {
+      <span class="kw">final</span> texto = chunk.text;
+      <span class="kw">if</span> (texto != <span class="kw">null</span>) <span class="kw">yield</span> texto;
+    }
+  }
+
+  <span class="com">// Analise de imagem (multimodal)</span>
+  <span class="tp">Future</span>&lt;<span class="tp">String</span>&gt; <span class="fn">analisarImagem</span>(<span class="tp">Uint8List</span> bytes, <span class="tp">String</span> pergunta) <span class="kw">async</span> {
+    <span class="kw">final</span> content = <span class="tp">Content</span>.<span class="fn">multi</span>([
+      <span class="tp">DataPart</span>(<span class="str">'image/jpeg'</span>, bytes),
+      <span class="tp">TextPart</span>(pergunta),
+    ]);
+    <span class="kw">final</span> resp = <span class="kw">await</span> _model.<span class="fn">generateContent</span>([content]);
+    <span class="kw">return</span> resp.text ?? <span class="str">'Sem resposta'</span>;
+  }
+}
+
+<span class="com">// Widget com streaming de resposta</span>
+<span class="kw">class</span> <span class="tp">ChatWidget</span> <span class="kw">extends</span> <span class="tp">StatefulWidget</span> {
+  <span class="kw">const</span> <span class="tp">ChatWidget</span>({<span class="kw">super</span>.key, <span class="kw">required</span> <span class="kw">this</span>.gemini});
+  <span class="kw">final</span> <span class="tp">GeminiService</span> gemini;
+  <span class="at">@override</span>
+  <span class="tp">State</span>&lt;<span class="tp">ChatWidget</span>&gt; <span class="fn">createState</span>() => _<span class="tp">ChatWidgetState</span>();
+}
+
+<span class="kw">class</span> _<span class="tp">ChatWidgetState</span> <span class="kw">extends</span> <span class="tp">State</span>&lt;<span class="tp">ChatWidget</span>&gt; {
+  <span class="kw">final</span> _controller = <span class="tp">TextEditingController</span>();
+  <span class="kw">final</span> _resposta   = <span class="tp">ValueNotifier</span>&lt;<span class="tp">String</span>&gt;(<span class="str">''</span>);
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">_enviar</span>() <span class="kw">async</span> {
+    _resposta.value = <span class="str">''</span>;
+    widget.gemini.<span class="fn">perguntarStream</span>(_controller.text).<span class="fn">listen</span>((chunk) {
+      _resposta.value += chunk;
+    });
+    _controller.<span class="fn">clear</span>();
+  }
+
+  <span class="at">@override</span>
+  <span class="tp">Widget</span> <span class="fn">build</span>(<span class="tp">BuildContext</span> ctx) => <span class="tp">Column</span>(children: [
+    <span class="tp">ValueListenableBuilder</span>&lt;<span class="tp">String</span>&gt;(
+      valueListenable: _resposta,
+      builder: (_, text, __) => <span class="tp">Text</span>(text),
+    ),
+    <span class="tp">Row</span>(children: [
+      <span class="tp">Expanded</span>(child: <span class="tp">TextField</span>(controller: _controller)),
+      <span class="tp">IconButton</span>(icon: <span class="kw">const</span> <span class="tp">Icon</span>(<span class="tp">Icons</span>.send), onPressed: <span class="fn">_enviar</span>),
+    ]),
+  ]);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dados-dart-math">Processamento de Dados com dart:math</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Estatistica descritiva, normalizacao e regressao linear</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:math'</span>;
+
+<span class="kw">extension</span> <span class="tp">Estatistica</span> <span class="kw">on</span> <span class="tp">List</span>&lt;<span class="tp">double</span>&gt; {
+  <span class="tp">double</span> <span class="kw">get</span> media  => <span class="fn">reduce</span>((a, b) => a + b) / length;
+
+  <span class="tp">double</span> <span class="kw">get</span> variancia {
+    <span class="kw">final</span> m = media;
+    <span class="kw">return</span> <span class="fn">map</span>((x) => <span class="fn">pow</span>(x - m, <span class="num">2</span>).<span class="fn">toDouble</span>()).<span class="fn">reduce</span>((a, b) => a + b) / length;
+  }
+
+  <span class="tp">double</span> <span class="kw">get</span> desvioPadrao => <span class="fn">sqrt</span>(variancia);
+
+  <span class="tp">double</span> <span class="kw">get</span> mediana {
+    <span class="kw">final</span> s = [...<span class="kw">this</span>]..sort();
+    <span class="kw">return</span> length.isOdd
+      ? s[length ~/ <span class="num">2</span>]
+      : (s[length ~/ <span class="num">2</span> - <span class="num">1</span>] + s[length ~/ <span class="num">2</span>]) / <span class="num">2</span>;
+  }
+
+  <span class="com">// Normalizacao Min-Max</span>
+  <span class="tp">List</span>&lt;<span class="tp">double</span>&gt; <span class="fn">normalizar</span>() {
+    <span class="kw">final</span> mn = <span class="fn">reduce</span>(<span class="fn">min</span>);
+    <span class="kw">final</span> mx = <span class="fn">reduce</span>(<span class="fn">max</span>);
+    <span class="kw">final</span> alcance = mx - mn;
+    <span class="kw">return</span> <span class="fn">map</span>((x) => alcance == <span class="num">0</span> ? <span class="num">0.0</span> : (x - mn) / alcance).<span class="fn">toList</span>();
+  }
+
+  <span class="com">// Z-Score</span>
+  <span class="tp">List</span>&lt;<span class="tp">double</span>&gt; <span class="fn">zScore</span>() {
+    <span class="kw">final</span> m = media, s = desvioPadrao;
+    <span class="kw">return</span> s == <span class="num">0</span> ? <span class="tp">List</span>.<span class="fn">filled</span>(length, <span class="num">0.0</span>) : <span class="fn">map</span>((x) => (x - m) / s).<span class="fn">toList</span>();
+  }
+}
+
+<span class="com">// Regressao linear simples (minimos quadrados)</span>
+({<span class="tp">double</span> a, <span class="tp">double</span> b, <span class="tp">double</span> r2}) <span class="fn">regressaoLinear</span>(
+    <span class="tp">List</span>&lt;<span class="tp">double</span>&gt; x, <span class="tp">List</span>&lt;<span class="tp">double</span>&gt; y) {
+  <span class="kw">final</span> n   = x.length;
+  <span class="kw">final</span> mx  = x.media, my = y.media;
+  <span class="kw">final</span> num = <span class="tp">List</span>.<span class="fn">generate</span>(n, (i) => (x[i] - mx) * (y[i] - my)).<span class="fn">reduce</span>((a,b) => a+b);
+  <span class="kw">final</span> den = <span class="tp">List</span>.<span class="fn">generate</span>(n, (i) => <span class="fn">pow</span>(x[i] - mx, <span class="num">2</span>).<span class="fn">toDouble</span>()).<span class="fn">reduce</span>((a,b) => a+b);
+  <span class="kw">final</span> b   = num / den;
+  <span class="kw">final</span> a   = my - b * mx;
+
+  <span class="com">// Coeficiente R2</span>
+  <span class="kw">final</span> ssRes = <span class="tp">List</span>.<span class="fn">generate</span>(n, (i) => <span class="fn">pow</span>(y[i] - (a + b * x[i]), <span class="num">2</span>).<span class="fn">toDouble</span>()).<span class="fn">reduce</span>((p,q) => p+q);
+  <span class="kw">final</span> ssTot = <span class="tp">List</span>.<span class="fn">generate</span>(n, (i) => <span class="fn">pow</span>(y[i] - my, <span class="num">2</span>).<span class="fn">toDouble</span>()).<span class="fn">reduce</span>((p,q) => p+q);
+  <span class="kw">return</span> (a: a, b: b, r2: <span class="num">1</span> - ssRes / ssTot);
+}
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="kw">final</span> x = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>].<span class="fn">map</span>((v) => v.<span class="fn">toDouble</span>()).<span class="fn">toList</span>();
+  <span class="kw">final</span> y = [<span class="num">2.1</span>, <span class="num">3.9</span>, <span class="num">6.0</span>, <span class="num">8.2</span>, <span class="num">9.8</span>];
+  <span class="kw">final</span> reg = <span class="fn">regressaoLinear</span>(x, y);
+  print(<span class="str">'y = ${reg.b.toStringAsFixed(3)}x + ${reg.a.toStringAsFixed(3)} | R² = ${reg.r2.toStringAsFixed(4)}'</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ml-kit-cards">Capacidades do ML Kit</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Visao Computacional</h3>
+            <p><strong>Reconhecimento de texto</strong> (OCR) em 38 idiomas, <strong>deteccao de faces</strong> com landmarks e expressoes, <strong>scanner de codigos de barras</strong> (QR, EAN, Code 128), <strong>segmentacao de temas</strong> (selfie vs fundo)</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Linguagem Natural</h3>
+            <p><strong>Identificacao de idioma</strong> em 110 linguas, <strong>traducao on-device</strong> sem internet (modelos compactos ~30MB), <strong>Smart Reply</strong> para sugestoes de resposta</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Pose e Corpo</h3>
+            <p><strong>Deteccao de pose</strong> com 33 landmarks do corpo, <strong>reconhecimento de gestos</strong> (classifica maos), pose para fitness tracking e realidade aumentada</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Objetos</h3>
+            <p><strong>Classificacao de objetos</strong> em 400+ categorias, <strong>rastreamento de objetos</strong> entre frames, <strong>deteccao de imagens digitais</strong> (Google Lens-like), busca por produto via imagem</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>TFLITE-FLUTTER. <strong>tflite_flutter — TensorFlow Lite for Dart and Flutter</strong>. Disponível em: &lt;https://pub.dev/packages/tflite_flutter&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>ML Kit for Flutter</strong>. Disponível em: &lt;https://developers.google.com/ml-kit&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>google_generative_ai — Gemini API Dart SDK</strong>. Disponível em: &lt;https://pub.dev/packages/google_generative_ai&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Banco de Dados</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Embedded e IoT</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Nunca incorpore chaves de API diretamente no codigo-fonte. Use <code>String.fromEnvironment('GEMINI_KEY')</code> com <code>--dart-define</code> na build, ou carregue de arquivo <code>.env</code> via <code>flutter_dotenv</code> em desenvolvimento e variaveis de ambiente seguras em producao.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

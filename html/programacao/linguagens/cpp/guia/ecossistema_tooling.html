@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e Tooling C++: CMake, Ninja, vcpkg, Conan, Clang-Tidy, AddressSanitizer, Valgrind, perf, GDB e CI/CD para projetos C++." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Ecossistema e Tooling C++ | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>Ecossistema e Tooling C++</h1>
+          <p>CMake como meta-sistema de build, Ninja para compilacao rapida, vcpkg e Conan para gerenciamento de pacotes, Clang-Tidy e sanitizers para qualidade, GDB e AddressSanitizer para debugging, e integracao continua com GitHub Actions.</p>
+        </div>
+        <p class="intro-highlight">
+          Um projeto C++ bem configurado com CMake + vcpkg + Clang-Tidy + ASan e tao produtivo quanto qualquer outra linguagem moderna. A configuracao inicial compensa em manutencao e qualidade.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cmake">CMake — Sistema de Build</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CMake &mdash; CMakeLists.txt moderno com targets, tests e vcpkg</div>
+          <pre class="example"><span class="com"># CMakeLists.txt — projeto moderno C++23</span>
+cmake_minimum_required(VERSION <span class="num">3.27</span>)
+project(MeuApp VERSION <span class="num">1.0.0</span> LANGUAGES CXX)
+
+<span class="com"># Padrao da linguagem — aplicado a todos os targets</span>
+set(CMAKE_CXX_STANDARD <span class="num">23</span>)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS <span class="kw">OFF</span>)         <span class="com"># sem extensoes GCC/Clang</span>
+set(CMAKE_EXPORT_COMPILE_COMMANDS <span class="kw">ON</span>)  <span class="com"># para clangd/clang-tidy</span>
+
+<span class="com"># Dependencias via vcpkg (toolchain passada no preset ou CLI)</span>
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog         CONFIG REQUIRED)
+find_package(Catch2         CONFIG REQUIRED)
+
+<span class="com"># Biblioteca principal (separada do executavel — testavel)</span>
+add_library(core STATIC
+  src/calculadora.cpp
+  src/parser.cpp)
+target_include_directories(core PUBLIC include)
+target_link_libraries(core
+  PUBLIC  nlohmann_json::nlohmann_json
+  PRIVATE spdlog::spdlog)
+target_compile_options(core PRIVATE
+  $&lt;$&lt;CXX_COMPILER_ID:GNU,Clang&gt;:-Wall -Wextra -Wpedantic&gt;
+  $&lt;$&lt;CXX_COMPILER_ID:MSVC&gt;:/W4&gt;)
+
+<span class="com"># Executavel</span>
+add_executable(app src/main.cpp)
+target_link_libraries(app PRIVATE core)
+
+<span class="com"># Testes com CTest + Catch2</span>
+enable_testing()
+add_executable(tests
+  tests/calculadora_test.cpp
+  tests/parser_test.cpp)
+target_link_libraries(tests PRIVATE core Catch2::Catch2WithMain)
+include(Catch)
+catch_discover_tests(tests)
+
+<span class="com"># target de instalacao</span>
+install(TARGETS app DESTINATION bin)</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; build com CMake Presets e Ninja</div>
+          <pre class="example"><span class="com"># CMakePresets.json — configura builds de forma padronizada</span>
+<span class="com"># (arquivo JSON na raiz do projeto)</span>
+
+<span class="com"># Configurar (debug)</span>
+cmake --preset debug
+
+<span class="com"># Compilar</span>
+cmake --build --preset debug -- -j$(nproc)
+
+<span class="com"># Rodar testes</span>
+ctest --preset debug --output-on-failure
+
+<span class="com"># Build release com Ninja</span>
+cmake -B build/release -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+cmake --build build/release</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="vcpkg">vcpkg — Gerenciador de Pacotes</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell + vcpkg.json &mdash; manifest mode</div>
+          <pre class="example"><span class="com"># vcpkg.json — dependencias declarativas no projeto</span>
+{
+  "name": "meu-app",
+  "version": "1.0.0",
+  "dependencies": [
+    "nlohmann-json",
+    "spdlog",
+    "eigen3",
+    { "name": "boost-asio",    "version>=": "1.83.0" },
+    { "name": "catch2",        "features": ["with-main"] }
+  ],
+  "overrides": [
+    { "name": "openssl", "version": "3.2.2" }
+  ]
+}
+
+<span class="com"># Instalar as dependencias (manifest mode)</span>
+vcpkg install
+
+<span class="com"># Instalar biblioteca especifica sem manifest</span>
+vcpkg install opencv4 --triplet x64-linux
+
+<span class="com"># Listar instalados</span>
+vcpkg list
+
+<span class="com"># Atualizar tudo</span>
+vcpkg upgrade --no-dry-run</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sanitizers">Sanitizers e Analise Estatica</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; AddressSanitizer, UBSan, ThreadSanitizer e Valgrind</div>
+          <pre class="example"><span class="com"># AddressSanitizer (ASan) — detecta use-after-free, heap overflow, stack overflow</span>
+g++ -std=c++23 -g -fsanitize=address \
+    -fno-omit-frame-pointer -o app_asan main.cpp
+./app_asan
+
+<span class="com"># Undefined Behaviour Sanitizer (UBSan)</span>
+g++ -std=c++23 -g -fsanitize=undefined -o app_ub main.cpp
+./app_ub
+
+<span class="com"># Combinar ASan + UBSan (mais comum em CI)</span>
+g++ -std=c++23 -g -fsanitize=address,undefined -o app_san main.cpp
+
+<span class="com"># ThreadSanitizer (TSan) — detecta data races</span>
+g++ -std=c++23 -g -fsanitize=thread -o app_tsan main.cpp
+
+<span class="com"># Valgrind Memcheck — analise de memoria (mais lento, mas sem recompilacao)</span>
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes ./app
+
+<span class="com"># Clang-Tidy — analise estatica com auto-fix</span>
+clang-tidy src/*.cpp -- -std=c++23 -Iinclude
+clang-tidy --fix src/*.cpp -- -std=c++23 -Iinclude
+
+<span class="com"># .clang-tidy (configuracao de checks)</span>
+<span class="com"># Checks: cppcoreguidelines-*, modernize-*, performance-*, bugprone-*</span>
+
+<span class="com"># cppcheck — analise estatica alternativa</span>
+cppcheck --enable=all --std=c++23 --suppress=missingInclude src/</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gdb">GDB e Profiling</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GDB &mdash; comandos essenciais e perf para profiling</div>
+          <pre class="example"><span class="com"># Compilar com simbolos de debug</span>
+g++ -std=c++23 -g3 -O0 -o app main.cpp
+
+<span class="com"># Iniciar GDB</span>
+gdb ./app
+
+<span class="com"># Dentro do GDB:</span>
+(gdb) break main              <span class="com"># breakpoint na funcao main</span>
+(gdb) break calculadora.cpp:<span class="num">42</span> <span class="com"># breakpoint na linha 42</span>
+(gdb) run                     <span class="com"># executar</span>
+(gdb) next    (ou n)          <span class="com"># proxima linha (nao entra em funcao)</span>
+(gdb) step    (ou s)          <span class="com"># entra na funcao</span>
+(gdb) print valor             <span class="com"># imprime variavel</span>
+(gdb) print *ptr              <span class="com"># derreferencia ponteiro</span>
+(gdb) backtrace               <span class="com"># stack trace atual</span>
+(gdb) frame <span class="num">2</span>                 <span class="com"># navega para frame 2 do stack trace</span>
+(gdb) watch variavel          <span class="com"># watchpoint: para quando variavel muda</span>
+(gdb) continue (ou c)         <span class="com"># continua ate proximo breakpoint</span>
+(gdb) quit                    <span class="com"># sair</span>
+
+<span class="com"># Profiling com perf (Linux)</span>
+perf record -g ./app
+perf report --stdio
+
+<span class="com"># Profiling com gprof</span>
+g++ -std=c++23 -pg -O2 -o app main.cpp
+./app
+gprof app gmon.out | head -50
+
+<span class="com"># Micro-benchmark com Google Benchmark</span>
+<span class="com"># g++ -std=c++23 -O3 -lbenchmark -o bench bench.cpp &amp;&amp; ./bench</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ci">CI/CD com GitHub Actions</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">YAML &mdash; .github/workflows/ci.yml para C++ com CMake e vcpkg</div>
+          <pre class="example">name: CI C++
+
+on: [push, pull_request]
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+        compiler: [gcc, clang]
+        exclude:
+          - os: windows-2022
+            compiler: gcc
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Cache vcpkg
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.VCPKG_ROOT }}/installed
+          key: vcpkg-${{ matrix.os }}-${{ hashFiles('vcpkg.json') }}
+
+      - name: Install vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg $VCPKG_ROOT
+          $VCPKG_ROOT/bootstrap-vcpkg.sh -disableMetrics
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Upload coverage (opcional)
+        uses: codecov/codecov-action@v4</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>KITWARE. <strong>CMake Documentation</strong>. Disponível em: &lt;https://cmake.org/documentation&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>vcpkg — C/C++ Dependency Manager</strong>. Disponível em: &lt;https://vcpkg.io&gt;. Acesso em: 2025.</li>
+            <li>CLANG. <strong>Clang-Tidy</strong>. Disponível em: &lt;https://clang.llvm.org/extra/clang-tidy&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Sempre compile em debug com <code>-fsanitize=address,undefined</code> e em release com <code>-O3 -march=native</code>. Os sanitizers encontram bugues de memoria antes deles chegarem a producao.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

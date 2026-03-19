@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fortran Ecossistema e Tooling: fpm (Fortran Package Manager), compiladores (gfortran/ifx/nvfortran), BLAS/LAPACK/FFTW, ferramentas de debug e profiling." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — Ecossistema e Tooling</h1>
+          <p>O ecossistema Fortran moderno inclui o <strong>fpm</strong> (Fortran Package Manager) para gerenciar projetos e dependências, compiladores de classe mundial (gfortran livre, ifx/ifort Intel, nvfortran NVIDIA para GPU), e um conjunto de bibliotecas numéricas — BLAS, LAPACK, FFTW, ScaLAPACK — sem par em qualquer outra linguagem.</p>
+        </div>
+        <p class="intro-highlight">
+          O compilador Intel Fortran (<strong>ifx</strong>) gera código que explora ao máximo as instruções AVX-512 dos processadores Intel, com otimizações automáticas para loops numéricos. Para código rodando em hardware Intel — que é a maioria dos supercomputadores do TOP500 — ifx muitas vezes supera gfortran em 20–40% em benchmarks LINPACK.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fpm">fpm — Fortran Package Manager</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criar projetos e gerenciar dependências com fpm</div>
+          <pre class="example"><span class="com"># Instalar fpm</span>
+<span class="com"># Via conda:        conda install -c conda-forge fpm</span>
+<span class="com"># Via macOS/Linux:  Download do binário em fpm.fortran-lang.org</span>
+
+<span class="com"># Criar novo projeto</span>
+fpm new meu_projeto
+cd meu_projeto
+
+<span class="com"># Estrutura gerada:</span>
+<span class="com"># meu_projeto/</span>
+<span class="com">#   fpm.toml          ← manifest do projeto</span>
+<span class="com">#   src/              ← código fonte</span>
+<span class="com">#     meu_projeto.f90</span>
+<span class="com">#   app/              ← programa principal</span>
+<span class="com">#     main.f90</span>
+<span class="com">#   test/             ← testes</span>
+
+<span class="com"># Compilar e executar</span>
+fpm run                          <span class="com"># compila e roda</span>
+fpm run -- arg1 arg2             <span class="com"># com argumentos</span>
+fpm build                        <span class="com"># só compila</span>
+fpm build --profile release      <span class="com"># build otimizado</span>
+fpm test                         <span class="com"># rodar testes</span>
+
+<span class="com"># fpm.toml — configuração do projeto</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">fpm.toml com dependências</div>
+          <pre class="example">name = "meu_projeto"
+version = "0.1.0"
+license = "MIT"
+author = "Seu Nome"
+maintainer = "voce@email.com"
+copyright = "2025"
+
+[build]
+auto-executables = true
+auto-tests = true
+auto-examples = true
+
+[install]
+library = true
+
+[[executable]]
+name = "calcular"
+source-dir = "app"
+main = "main.f90"
+
+[dependencies]
+stdlib = { git = "https://github.com/fortran-lang/stdlib" }
+json-fortran = { git = "https://github.com/jacobwilliams/json-fortran" }
+
+[dev-dependencies]
+test-drive = { git = "https://github.com/fortran-lang/test-drive" }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="compiladores">Compiladores e Flags de Otimização</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Flag gfortran</th><th>Efeito</th></tr></thead>
+            <tbody>
+              <tr><td><code>-O0</code></td><td>Sem otimização (debug)</td></tr>
+              <tr><td><code>-O2</code></td><td>Otimizações seguras padrão</td></tr>
+              <tr><td><code>-O3</code></td><td>Otimizações agressivas (pode alterar comportamento FP)</td></tr>
+              <tr><td><code>-march=native</code></td><td>Instruções SIMD do CPU atual (AVX2/AVX-512)</td></tr>
+              <tr><td><code>-fopenmp</code></td><td>Habilitar OpenMP</td></tr>
+              <tr><td><code>-ffast-math</code></td><td>Matemática inexata mas muito mais rápida</td></tr>
+              <tr><td><code>-fcheck=all</code></td><td>Verificações de bounds, null ptr (debug)</td></tr>
+              <tr><td><code>-Wall -Wextra</code></td><td>Todos os avisos</td></tr>
+              <tr><td><code>-g</code></td><td>Informações de debug (para gdb)</td></tr>
+              <tr><td><code>-pg</code></td><td>Profiling com gprof</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="blas-lapack">BLAS, LAPACK e FFTW</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Álgebra linear de alto desempenho com BLAS/LAPACK</div>
+          <pre class="example"><span class="com">! BLAS — Basic Linear Algebra Subprograms</span>
+<span class="com">! Nível 1: operações vetor-vetor (dot, axpy, norm)</span>
+<span class="com">! Nível 2: operações matriz-vetor (gemv, trmv)</span>
+<span class="com">! Nível 3: operações matriz-matriz (gemm, trmm)</span>
+program blas_demo
+    implicit none
+    integer, parameter :: N = 1000, dp = kind(1.0d0)
+    real(dp) :: A(N,N), B(N,N), C(N,N)
+    real(dp) :: alpha = 1.0_dp, beta = 0.0_dp
+
+    <span class="com">! Inicializar A e B com valores aleatórios</span>
+    call random_number(A); call random_number(B)
+
+    <span class="com">! DGEMM: C = alpha*A*B + beta*C</span>
+    <span class="com">! Muito mais rápido que loop triplo manual!</span>
+    call dgemm(<span class="str">'N'</span>, <span class="str">'N'</span>, N, N, N, alpha, A, N, B, N, beta, C, N)
+
+    print *, <span class="str">"Trace(C) ="</span>, sum([(C(i,i), i=1,N)])
+
+    <span class="com">! Compilar: gfortran blas_demo.f90 -o blas_demo -lblas -llapack</span>
+    <span class="com">!           ou com OpenBLAS: -lopenblas</span>
+    <span class="com">!           ou com Intel MKL: -mkl</span>
+end program blas_demo</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LAPACK — sistemas lineares e autovalores</div>
+          <pre class="example"><span class="com">! Resolver sistema linear A*x = b com DGESV</span>
+program lapack_demo
+    implicit none
+    integer, parameter :: N = 3, dp = kind(1.0d0)
+    real(dp) :: A(N,N), b(N), x(N)
+    integer  :: ipiv(N), info
+
+    A = reshape([2.0_dp, 1.0_dp, 0.0_dp,   &
+                 1.0_dp, 3.0_dp, 1.0_dp,   &
+                 0.0_dp, 1.0_dp, 2.0_dp], [N,N])
+    b = [1.0_dp, 2.0_dp, 3.0_dp]
+    x = b   <span class="com">! DGESV sobrescreve x com solução</span>
+
+    <span class="com">! LU decomposition + solve</span>
+    call dgesv(N, 1, A, N, ipiv, x, N, info)
+
+    if (info == 0) then
+        print *, <span class="str">"Solução:"</span>, x
+    else
+        print *, <span class="str">"LAPACK erro:"</span>, info
+    end if
+
+    <span class="com">! Autovalores com DSYEV (matriz simétrica)</span>
+    <span class="com">! call dsyev('N', 'U', N, A, N, eigenvalues, work, lwork, info)</span>
+
+end program lapack_demo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bibliotecas">Principais Bibliotecas do Ecossistema</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Fortran Stdlib</h3>
+            <p>Biblioteca padrão da comunidade Fortran-lang: arrays dinâmicos, strings, algoritmos de sorting, funções especiais matemáticas, I/O de CSV, linalg de alto nível.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>FFTW</h3>
+            <p>Fastest Fourier Transform in the West — implementação de FFT mais rápida disponível. Interface Fortran nativa. Usado em oceanografia, processamento de sinais, solucionadores de EDP.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>MPI (Message Passing Interface)</h3>
+            <p>OpenMPI e MPICH têm bindings Fortran nativos. Comunicação entre processos em supercomputadores com milhares de cores — <code>MPI_Send</code>, <code>MPI_Recv</code>, <code>MPI_Bcast</code>, <code>MPI_Reduce</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>NetCDF / HDF5</h3>
+            <p>Formatos de dados auto-descritivos para ciências da terra e física. NetCDF4 usa HDF5 internamente. Toda a meteorologia mundial usa NetCDF — com bindings Fortran completos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>json-fortran</h3>
+            <p>Parse e geração de JSON em Fortran puro. Essencial para interoperar com APIs web, arquivos de configuração modernos e integrar código Fortran em pipelines de dados.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>OpenACC / CUDA Fortran</h3>
+            <p>OpenACC: diretivas para offload em GPU (similar ao OpenMP). CUDA Fortran (nvfortran): acessar CUDA diretamente de Fortran com kernels e mecanismo de cópia explícito.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Fortran-lang. <strong>Fortran Package Manager (fpm)</strong>. Disponível em: &lt;https://fpm.fortran-lang.org/&gt;. Acesso em: 2026.</li>
+            <li>Anderson, E. et al. <strong>LAPACK Users' Guide</strong>. 3. ed. SIAM, 1999.</li>
+            <li>FRIGO, M.; JOHNSON, S. G. <strong>The Design and Implementation of FFTW3</strong>. Proc. IEEE, v. 93, n. 2, 2005.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+          <li><a href="../aplicacoes/hpc.html"><span data-svg="seta-direita" aria-hidden="true"></span> HPC e Supercomputação</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> BLAS e LAPACK — escritos originalmente em FORTRAN 77 nos anos 1970–80 — são a base oculta de <strong>toda computação numérica de alto desempenho</strong>: NumPy/SciPy chamam BLAS, R usa BLAS, MATLAB usa MKL (variante Intel do BLAS). Otimizar essas rotinas para cada arquitetura de CPU é um trabalho de décadas — e é por isso que código Fortran batendo chamadas Python/NumPy "ingênuas" quase nunca acontece: ambos chamam o mesmo LAPACK no final.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

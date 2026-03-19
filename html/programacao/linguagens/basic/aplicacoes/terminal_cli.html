@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="BASIC para terminal e CLI: programas de linha de comando em FreeBASIC e QB64, argumentos de linha de comando, leitura de arquivos, pipes, processamento de texto e utilitários CLI em BASIC." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>BASIC — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>BASIC &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="basic" aria-hidden="true"></span></div>
+          <h1>BASIC — Terminal e CLI</h1>
+          <p>O FreeBASIC produz executáveis de linha de comando nativos — sem runtime, sem VM. Um programa FreeBASIC pode ler argumentos da linha de comando, processar arquivos de texto e binários, interagir com pipes do sistema operacional, e chamar programas externos via <code>Shell</code> ou <code>Exec</code>. É uma escolha prática para scripts de automação compilados mais rápidos que Python ou Bash.</p>
+        </div>
+        <p class="intro-highlight">
+          O QB64 também gera executáveis nativos (via conversão para C++) que rodam no terminal, mantendo total compatibilidade com programas originais do MS-DOS que usavam <code>INPUT</code>, <code>PRINT</code> e operações de arquivo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="args">Argumentos de Linha de Comando</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">FreeBASIC — Command, Command$, e parsing de argumentos</div>
+          <pre class="example"><span class="com">' FreeBASIC: ler argumentos da linha de comando</span>
+<span class="com">' Executar: ./programa arg1 arg2 "texto com espaços"</span>
+
+<span class="kw">Dim</span> num_args <span class="kw">As</span> <span class="tp">Integer</span>
+
+<span class="com">' __FB_ARGC__ e __FB_ARGV__ são macros que espelham argc/argv do C</span>
+<span class="com">' Mas a forma idiomática usa Command() e Command$</span>
+
+<span class="com">' Command(n) retorna o n-ésimo argumento (0 = nome do programa)</span>
+num_args = 0
+<span class="kw">Do While</span> Command(num_args + <span class="num">1</span>) &lt;&gt; <span class="str">""</span>
+    num_args = num_args + <span class="num">1</span>
+<span class="kw">Loop</span>
+
+<span class="kw">Print</span> <span class="str">"Programa: "</span> &amp; Command(<span class="num">0</span>)
+<span class="kw">Print</span> <span class="str">"Argumentos: "</span> &amp; num_args
+
+<span class="kw">Dim</span> i <span class="kw">As</span> <span class="tp">Integer</span>
+<span class="kw">For</span> i = <span class="num">1</span> <span class="kw">To</span> num_args
+    <span class="kw">Print</span> <span class="str">"  arg["</span> &amp; i &amp; <span class="str">"] = "</span> &amp; Command(i)
+<span class="kw">Next</span> i
+
+<span class="com">' Command$() — retorna TODOS os argumentos como uma única string</span>
+<span class="kw">Print</span> <span class="str">"Todos: "</span> &amp; Command$()
+
+<span class="com">' ── Programa utilitário: contar linhas de um arquivo ──</span>
+<span class="com">' Uso: ./contar_linhas arquivo.txt</span>
+<span class="kw">Dim</span> arquivo <span class="kw">As</span> <span class="tp">String</span> = Command(<span class="num">1</span>)
+<span class="kw">If</span> arquivo = <span class="str">""</span> <span class="kw">Then</span>
+    <span class="kw">Print</span> <span class="str">"Uso: contar_linhas &lt;arquivo&gt;"</span>
+    End <span class="num">1</span>    <span class="com">' exit code 1</span>
+<span class="kw">End If</span>
+
+<span class="kw">Dim</span> arq <span class="kw">As</span> <span class="tp">Integer</span> = FreeFile()
+<span class="kw">Open</span> arquivo <span class="kw">For Input As</span> #arq
+<span class="kw">If</span> Err &lt;&gt; <span class="num">0</span> <span class="kw">Then</span>
+    <span class="kw">Print</span> <span class="str">"Erro ao abrir: "</span> &amp; arquivo
+    End <span class="num">1</span>
+<span class="kw">End If</span>
+
+<span class="kw">Dim</span> linhas <span class="kw">As</span> <span class="tp">Long</span> = <span class="num">0</span>
+<span class="kw">Dim</span> buf    <span class="kw">As</span> <span class="tp">String</span>
+<span class="kw">Do While</span> <span class="kw">Not</span> EOF(arq)
+    Line Input #arq, buf
+    linhas = linhas + <span class="num">1</span>
+<span class="kw">Loop</span>
+<span class="kw">Close</span> #arq
+<span class="kw">Print</span> linhas &amp; <span class="str">" linhas em "</span> &amp; arquivo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processamento">Processamento de Texto e CSV</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Parser de CSV simples em FreeBASIC</div>
+          <pre class="example"><span class="com">' Ler e parsear CSV</span>
+<span class="com">' Formato: id,nome,salario</span>
+
+<span class="kw">Type</span> TFuncionario
+    id      <span class="kw">As</span> <span class="tp">Integer</span>
+    nome    <span class="kw">As</span> <span class="tp">String</span>
+    salario <span class="kw">As</span> <span class="tp">Double</span>
+<span class="kw">End Type</span>
+
+<span class="com">' Função para extrair campo de uma linha CSV</span>
+<span class="kw">Function</span> CampoCSV(linha <span class="kw">As</span> <span class="tp">String</span>, indice <span class="kw">As</span> <span class="tp">Integer</span>) <span class="kw">As</span> <span class="tp">String</span>
+    <span class="kw">Dim</span> campo_atual <span class="kw">As</span> <span class="tp">Integer</span> = <span class="num">0</span>
+    <span class="kw">Dim</span> inicio      <span class="kw">As</span> <span class="tp">Integer</span> = <span class="num">1</span>
+    <span class="kw">Dim</span> pos         <span class="kw">As</span> <span class="tp">Integer</span>
+
+    <span class="kw">Do While</span> campo_atual &lt; indice
+        pos = InStr(inicio, linha, <span class="str">","</span>)
+        <span class="kw">If</span> pos = <span class="num">0</span> <span class="kw">Then</span>
+            CampoCSV = <span class="str">""</span>
+            <span class="kw">Exit Function</span>
+        <span class="kw">End If</span>
+        inicio = pos + <span class="num">1</span>
+        campo_atual = campo_atual + <span class="num">1</span>
+    <span class="kw">Loop</span>
+
+    pos = InStr(inicio, linha, <span class="str">","</span>)
+    <span class="kw">If</span> pos = <span class="num">0</span> <span class="kw">Then</span>
+        CampoCSV = Mid(linha, inicio)
+    <span class="kw">Else</span>
+        CampoCSV = Mid(linha, inicio, pos - inicio)
+    <span class="kw">End If</span>
+<span class="kw">End Function</span>
+
+<span class="com">' Ler arquivo CSV</span>
+<span class="kw">Dim</span> arq <span class="kw">As</span> <span class="tp">Integer</span> = FreeFile()
+<span class="kw">Open</span> <span class="str">"funcionarios.csv"</span> <span class="kw">For Input As</span> #arq
+
+<span class="kw">Dim</span> buf  <span class="kw">As</span> <span class="tp">String</span>
+<span class="kw">Dim</span> func <span class="kw">As</span> TFuncionario
+<span class="kw">Dim</span> total_salario <span class="kw">As</span> <span class="tp">Double</span> = <span class="num">0</span>
+<span class="kw">Dim</span> count <span class="kw">As</span> <span class="tp">Integer</span> = <span class="num">0</span>
+<span class="kw">Dim</span> linha_num <span class="kw">As</span> <span class="tp">Integer</span> = <span class="num">0</span>
+
+<span class="kw">Do While</span> <span class="kw">Not</span> EOF(arq)
+    Line Input #arq, buf
+    linha_num = linha_num + <span class="num">1</span>
+    <span class="kw">If</span> linha_num = <span class="num">1</span> <span class="kw">Then</span> <span class="kw">GoTo</span> ProximaLinha  <span class="com">' pular cabeçalho</span>
+
+    func.id      = CInt(CampoCSV(buf, <span class="num">0</span>))
+    func.nome    = CampoCSV(buf, <span class="num">1</span>)
+    func.salario = CDbl(CampoCSV(buf, <span class="num">2</span>))
+
+    total_salario = total_salario + func.salario
+    count = count + <span class="num">1</span>
+    <span class="kw">Print</span> func.id &amp; <span class="str">": "</span> &amp; func.nome &amp; <span class="str">" — R$"</span> &amp; func.salario
+
+    ProximaLinha:
+<span class="kw">Loop</span>
+<span class="kw">Close</span> #arq
+
+<span class="kw">If</span> count > <span class="num">0</span> <span class="kw">Then</span>
+    <span class="kw">Print</span> <span class="str">"Média salarial: R$"</span> &amp; Format(total_salario / count, <span class="str">"0.00"</span>)
+<span class="kw">End If</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shell">Executar Comandos do Sistema</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell — executar programas externos</div>
+          <pre class="example"><span class="com">' FreeBASIC — Shell() para executar comandos do SO</span>
+
+<span class="com">' Executar e aguardar (retorna exit code)</span>
+<span class="kw">Dim</span> ret <span class="kw">As</span> <span class="tp">Integer</span>
+ret = Shell(<span class="str">"ls -la"</span>)                    <span class="com">' Linux</span>
+ret = Shell(<span class="str">"dir /b"</span>)                   <span class="com">' Windows</span>
+<span class="kw">Print</span> <span class="str">"Exit code: "</span> &amp; ret
+
+<span class="com">' Com redirecionamento de saída</span>
+ret = Shell(<span class="str">"find /etc -name '*.conf' &gt; result.txt 2&gt;&amp;1"</span>)
+
+<span class="com">' Capturar saída de um comando via arquivo temporário</span>
+<span class="kw">Function</span> CapturarComando(cmd <span class="kw">As</span> <span class="tp">String</span>) <span class="kw">As</span> <span class="tp">String</span>
+    <span class="kw">Dim</span> tmp_file <span class="kw">As</span> <span class="tp">String</span> = <span class="str">"/tmp/fb_out_"</span> &amp; Timer &amp; <span class="str">".txt"</span>
+    Shell cmd &amp; <span class="str">" &gt; "</span> &amp; tmp_file
+
+    <span class="kw">Dim</span> arq <span class="kw">As</span> <span class="tp">Integer</span> = FreeFile()
+    <span class="kw">Dim</span> resultado <span class="kw">As</span> <span class="tp">String</span> = <span class="str">""</span>
+    <span class="kw">Dim</span> buf <span class="kw">As</span> <span class="tp">String</span>
+
+    <span class="kw">Open</span> tmp_file <span class="kw">For Input As</span> #arq
+    <span class="kw">Do While</span> <span class="kw">Not</span> EOF(arq)
+        Line Input #arq, buf
+        resultado = resultado &amp; buf &amp; Chr(<span class="num">10</span>)
+    <span class="kw">Loop</span>
+    <span class="kw">Close</span> #arq
+    Kill tmp_file    <span class="com">' deletar arquivo temporário</span>
+    CapturarComando = resultado
+<span class="kw">End Function</span>
+
+<span class="kw">Dim</span> saida <span class="kw">As</span> <span class="tp">String</span> = CapturarComando(<span class="str">"uname -a"</span>)
+<span class="kw">Print</span> saida</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FreeBASIC Developers. <strong>Command Function</strong>. Disponível em: &lt;https://www.freebasic.net/wiki/KeyPgCommand&gt;. Acesso em: 2025.</li>
+            <li>FreeBASIC Developers. <strong>Shell Statement</strong>. Disponível em: &lt;https://www.freebasic.net/wiki/KeyPgShell&gt;. Acesso em: 2025.</li>
+            <li>QB64 Phoenix Edition. <strong>COMMAND$</strong>. Disponível em: &lt;https://qb64phoenix.com/qb64wiki/index.php/COMMAND%24&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> BASIC — GUI Desktop</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <code>FreeFile()</code> é uma função crucial no BASIC que retorna o menor número de handle de arquivo disponível. Sempre use <code>FreeFile()</code> em vez de números hardcoded como <code>#1</code> — isso evita conflitos quando múltiplos arquivos são abertos simultaneamente no mesmo programa.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

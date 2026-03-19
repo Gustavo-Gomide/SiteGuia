@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R Avançado: ambientes, closures, sistemas de objetos S3/S4/R5/R6, metaprogramação com rlang, Rcpp, paralelismo e profiling." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R Avançado</h1>
+          <p>Ambientes e escopo lexical, sistemas de objetos, metaprogramação com rlang, integração C++ via Rcpp e computação paralela.</p>
+        </div>
+        <p class="intro-highlight">
+          Dominar R avançado significa entender a máquina interna da linguagem: como ambientes chain é usada para escopo lexical, como <strong>NSE</strong> (<em>non-standard evaluation</em>) permite DSLs expressivas como dplyr, como <strong>S3/S4/R6</strong> implementam orientação a objetos e como <strong>Rcpp</strong> permite código C++ compilado a partir do R para gargalos de performance.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ambientes-escopo">Ambientes e Escopo Lexical</h2>
+        <p>
+          Um <strong>ambiente</strong> (<em>environment</em>) em R é um dicionário de nomes para valores, mais um ponteiro para um ambiente pai. O escopo lexical significa que as funções buscam variáveis no <em>ambiente de sua definição</em>, não de onde são chamadas.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ambientes.R</div>
+          <pre class="example"><span class="com"># Ambiente global e seus pais</span>
+<span class="fn">environmentName</span>(<span class="fn">globalenv</span>())    <span class="com"># "R_GlobalEnv"</span>
+<span class="fn">environmentName</span>(<span class="fn">baseenv</span>())      <span class="com"># "base"</span>
+<span class="fn">environmentName</span>(<span class="fn">emptyenv</span>())     <span class="com"># "R_EmptyEnv" — topo da cadeia</span>
+
+<span class="com"># Criar e inspecionar ambientes</span>
+e1 &lt;- <span class="fn">new.env</span>(parent = <span class="fn">emptyenv</span>())
+e1$x &lt;- <span class="num">42</span>
+<span class="fn">ls</span>(e1)                          <span class="com"># "x"</span>
+<span class="fn">get</span>(<span class="str">"x"</span>, envir = e1)            <span class="com"># 42</span>
+<span class="fn">exists</span>(<span class="str">"x"</span>, envir = e1)         <span class="com"># TRUE</span>
+
+<span class="com"># Escopo lexical em ação</span>
+x &lt;- <span class="num">1</span>
+f &lt;- <span class="kw">function</span>() {
+  x &lt;- <span class="num">2</span>
+  <span class="kw">function</span>() x   <span class="com"># retorna closure que captura x = 2</span>
+}
+g &lt;- <span class="fn">f</span>()
+<span class="fn">g</span>()  <span class="com"># 2 — lê x do ambiente de f, não do global</span>
+
+<span class="com"># &lt;&lt;- — atribuição no ambiente pai (permite mutação de estado)</span>
+contador &lt;- <span class="kw">function</span>() {
+  n &lt;- <span class="num">0</span>
+  <span class="fn">list</span>(
+    incrementar = <span class="kw">function</span>() { n &lt;&lt;- n + <span class="num">1</span> },
+    valor       = <span class="kw">function</span>() n
+  )
+}
+c1 &lt;- <span class="fn">contador</span>()
+c1$incrementar(); c1$incrementar()
+c1$valor()   <span class="com"># 2</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sistemas-oo">Sistemas de Objetos: S3, S4, R5 e R6</h2>
+        <p>
+          R tem quatro sistemas de orientação a objetos principais. <strong>S3</strong> é informal e prevalente na base; <strong>S4</strong> é formal com validação de tipos; <strong>R5</strong> (Reference Classes) e <strong>R6</strong> introduzem semântica de referência com mutação in-place.
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">S3 — Sistema Informal (o mais usado)</h3>
+          <div class="code-container rounded-md border overflow-hidden">
+            <div class="code-header">s3.R</div>
+            <pre class="example"><span class="com"># S3: classe é apenas um atributo "class" no objeto</span>
+novo_animal &lt;- <span class="kw">function</span>(nome, som) {
+  obj &lt;- <span class="fn">list</span>(nome = nome, som = som)
+  <span class="fn">class</span>(obj) &lt;- <span class="str">"Animal"</span>
+  obj
+}
+
+<span class="com"># Método genérico S3</span>
+falar &lt;- <span class="kw">function</span>(x, ...) <span class="fn">UseMethod</span>(<span class="str">"falar"</span>)
+
+<span class="com"># Despacho por classe</span>
+falar.<span class="tp">Animal</span> &lt;- <span class="kw">function</span>(x, ...) {
+  <span class="fn">cat</span>(x$nome, <span class="str">"diz:"</span>, x$som, <span class="str">"\n"</span>)
+}
+falar.<span class="kw">default</span> &lt;- <span class="kw">function</span>(x, ...) <span class="fn">cat</span>(<span class="str">"Objeto sem voz\n"</span>)
+
+gato &lt;- <span class="fn">novo_animal</span>(<span class="str">"Mimi"</span>, <span class="str">"Miau"</span>)
+<span class="fn">falar</span>(gato)   <span class="com"># Mimi diz: Miau</span>
+
+<span class="com"># print.Animal — método print customizado</span>
+print.<span class="tp">Animal</span> &lt;- <span class="kw">function</span>(x, ...) {
+  <span class="fn">cat</span>(<span class="str">"&lt;Animal&gt;"</span>, x$nome, <span class="str">"\n"</span>)
+}
+<span class="fn">print</span>(gato)   <span class="com"># &lt;Animal&gt; Mimi</span></pre>
+          </div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">R6 — Orientação a Objetos por Referência</h3>
+          <div class="code-container rounded-md border overflow-hidden">
+            <div class="code-header">r6.R — requer library(R6)</div>
+            <pre class="example"><span class="com"># library(R6)</span>
+<span class="tp">Conta</span> &lt;- <span class="tp">R6</span>::<span class="fn">R6Class</span>(<span class="str">"Conta"</span>,
+  public = <span class="fn">list</span>(
+    saldo = <span class="num">0</span>,
+    titular = <span class="kw">NULL</span>,
+    initialize = <span class="kw">function</span>(titular, saldo_inicial = <span class="num">0</span>) {
+      self$titular &lt;- titular
+      self$saldo   &lt;- saldo_inicial
+    },
+    depositar = <span class="kw">function</span>(valor) {
+      self$saldo &lt;- self$saldo + valor
+      <span class="fn">invisible</span>(self)   <span class="com"># retorna self para encadeamento</span>
+    },
+    sacar = <span class="kw">function</span>(valor) {
+      <span class="kw">if</span> (valor &gt; self$saldo) <span class="fn">stop</span>(<span class="str">"Saldo insuficiente"</span>)
+      self$saldo &lt;- self$saldo - valor
+      <span class="fn">invisible</span>(self)
+    },
+    print = <span class="kw">function</span>(...) {
+      <span class="fn">cat</span>(<span class="str">"Conta de"</span>, self$titular, <span class="str">"| Saldo: R$"</span>, self$saldo, <span class="str">"\n"</span>)
+    }
+  )
+)
+
+conta &lt;- <span class="tp">Conta</span>$<span class="fn">new</span>(<span class="str">"Ana"</span>, saldo_inicial = <span class="num">100</span>)
+conta$<span class="fn">depositar</span>(<span class="num">50</span>)$<span class="fn">sacar</span>(<span class="num">30</span>)   <span class="com"># encadeamento de métodos</span>
+conta    <span class="com"># Conta de Ana | Saldo: R$ 120</span>
+
+<span class="com"># Herança em R6</span>
+<span class="tp">ContaPoupanca</span> &lt;- <span class="tp">R6</span>::<span class="fn">R6Class</span>(<span class="str">"ContaPoupanca"</span>,
+  inherit = <span class="tp">Conta</span>,
+  public = <span class="fn">list</span>(
+    taxa_juros = <span class="num">0.005</span>,
+    render = <span class="kw">function</span>() {
+      self$saldo &lt;- self$saldo * (<span class="num">1</span> + self$taxa_juros)
+    }
+  )
+)</pre>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="metaprogramacao">Metaprogramação e NSE com rlang</h2>
+        <p>
+          <strong>Non-standard evaluation (NSE)</strong> é a capacidade de R de capturar expressões <em>sem avaliá-las</em>, permitindo DSLs como <code>dplyr::filter(dados, coluna &gt; 10)</code> onde <code>coluna</code> não precisa existir no escopo global. O pacote <strong>rlang</strong> fornece ferramentas modernas e seguras para NSE.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">metaprogramacao.R — rlang, quasiquotation</div>
+          <pre class="example"><span class="com"># library(rlang)</span>
+
+<span class="com"># enquo() captura uma expressão sem avaliá-la</span>
+mostrar_expr &lt;- <span class="kw">function</span>(x) {
+  expr &lt;- <span class="fn">rlang</span>::<span class="fn">enquo</span>(x)
+  <span class="fn">cat</span>(<span class="str">"Expressão:"</span>, <span class="fn">rlang</span>::<span class="fn">expr_text</span>(expr), <span class="str">"\n"</span>)
+  <span class="fn">rlang</span>::<span class="fn">eval_tidy</span>(expr)
+}
+<span class="fn">mostrar_expr</span>(<span class="num">1</span> + <span class="num">2</span> * <span class="num">3</span>)
+<span class="com"># Expressão: 1 + 2 * 3</span>
+<span class="com"># [1] 7</span>
+
+<span class="com"># quo() / expr() — capturar expressão no site da definição</span>
+e &lt;- <span class="fn">rlang</span>::<span class="fn">expr</span>(x + y)
+<span class="fn">rlang</span>::<span class="fn">eval_tidy</span>(e, <span class="fn">list</span>(x = <span class="num">3</span>, y = <span class="num">4</span>))   <span class="com"># 7</span>
+
+<span class="com"># !! (bang-bang) — unquoting: injeta valor em expressão</span>
+var &lt;- <span class="fn">rlang</span>::<span class="fn">sym</span>(<span class="str">"mpg"</span>)   <span class="com"># símbolo R</span>
+<span class="fn">dplyr</span>::<span class="fn">select</span>(mtcars, !!var)   <span class="com"># seleciona coluna "mpg" programaticamente</span>
+
+<span class="com"># !!! (bang-bang-bang) — splice: injeta lista de expressões</span>
+filtros &lt;- <span class="fn">list</span>(<span class="fn">rlang</span>::<span class="fn">expr</span>(cyl == <span class="num">6</span>), <span class="fn">rlang</span>::<span class="fn">expr</span>(hp &gt; <span class="num">110</span>))
+<span class="fn">dplyr</span>::<span class="fn">filter</span>(mtcars, !!!filtros)   <span class="com"># aplica todos os filtros</span>
+
+<span class="com"># Função que aceita coluna por nome (tidyeval pattern)</span>
+resumir_por &lt;- <span class="kw">function</span>(df, grupo, valor) {
+  df |&gt;
+    <span class="fn">dplyr</span>::<span class="fn">group_by</span>({{ grupo }}) |&gt;
+    <span class="fn">dplyr</span>::<span class="fn">summarise</span>(media = <span class="fn">mean</span>({{ valor }}, na.rm = <span class="kw">TRUE</span>))
+}
+<span class="fn">resumir_por</span>(mtcars, cyl, mpg)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rcpp">Rcpp — Integração com C++</h2>
+        <p>
+          <strong>Rcpp</strong> permite escrever funções C++ que são compiladas e chamadas diretamente do R, eliminando gargalos de performance em laços computacionalmente intensos. Desenvolvido por Dirk Eddelbuettel e Romain François, é um dos pacotes mais baixados do CRAN.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">rcpp_exemplo.R + rcpp_soma.cpp</div>
+          <pre class="example"><span class="com"># library(Rcpp)</span>
+
+<span class="com"># Compilação inline — cppFunction() define a função diretamente na string</span>
+<span class="fn">Rcpp</span>::<span class="fn">cppFunction</span>(<span class="str">'
+  double soma_c(NumericVector x) {
+    double total = 0;
+    for (int i = 0; i &lt; x.size(); i++) {
+      total += x[i];
+    }
+    return total;
+  }
+'</span>)
+
+<span class="fn">soma_c</span>(<span class="fn">c</span>(<span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>))   <span class="com"># 6 — executado em C++</span>
+
+<span class="com"># sourceCpp() — arquivo .cpp separado</span>
+<span class="com"># Arquivo: rcpp_soma.cpp</span>
+<span class="com"># #include &lt;Rcpp.h&gt;</span>
+<span class="com"># using namespace Rcpp;</span>
+<span class="com">#</span>
+<span class="com"># // [[Rcpp::export]]</span>
+<span class="com"># NumericVector cumsum_c(NumericVector x) {</span>
+<span class="com">#   int n = x.size();</span>
+<span class="com">#   NumericVector out(n);</span>
+<span class="com">#   out[0] = x[0];</span>
+<span class="com">#   for (int i = 1; i &lt; n; i++) out[i] = out[i-1] + x[i];</span>
+<span class="com">#   return out;</span>
+<span class="com"># }</span>
+
+<span class="fn">Rcpp</span>::<span class="fn">sourceCpp</span>(<span class="str">"rcpp_soma.cpp"</span>)
+<span class="fn">cumsum_c</span>(<span class="fn">c</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>))   <span class="com"># 1 3 6 10</span>
+
+<span class="com"># Benchmark: R vs C++ em laço intenso</span>
+<span class="com"># library(bench)</span>
+x &lt;- <span class="fn">runif</span>(<span class="num">1e6</span>)
+<span class="fn">bench</span>::<span class="fn">mark</span>(
+  r_puro  = <span class="fn">cumsum</span>(x),
+  cpp_fn  = <span class="fn">cumsum_c</span>(x),
+  check   = <span class="kw">FALSE</span>
+)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="programacao-funcional">Programação Funcional com purrr</h2>
+        <p>
+          <strong>purrr</strong> (tidyverse) fornece um conjunto consistente e type-safe de funções para programação funcional em R, substituindo e expandindo a família <code>apply</code> com APIs mais previsíveis e composíveis.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">purrr.R</div>
+          <pre class="example"><span class="com"># library(purrr)</span>
+
+<span class="com"># map() — sempre retorna lista (equivalente a lapply)</span>
+<span class="fn">purrr</span>::<span class="fn">map</span>(<span class="num">1</span>:<span class="num">5</span>, \(x) x ^ <span class="num">2</span>)          <span class="com"># lista de 5 elementos</span>
+
+<span class="com"># map_dbl, map_int, map_chr, map_lgl — type-safe</span>
+<span class="fn">purrr</span>::<span class="fn">map_dbl</span>(<span class="num">1</span>:<span class="num">5</span>, \(x) x ^ <span class="num">2</span>)      <span class="com"># vetor double: 1 4 9 16 25</span>
+<span class="fn">purrr</span>::<span class="fn">map_chr</span>(<span class="fn">c</span>(<span class="str">"a"</span>,<span class="str">"b"</span>), <span class="fn">toupper</span>)  <span class="com"># "A" "B"</span>
+
+<span class="com"># map2() — dois vetores em paralelo</span>
+<span class="fn">purrr</span>::<span class="fn">map2_dbl</span>(<span class="num">1</span>:<span class="num">3</span>, <span class="num">10</span>:<span class="num">12</span>, \(x, y) x + y)   <span class="com"># 11 13 15</span>
+
+<span class="com"># pmap() — múltiplos vetores via lista</span>
+parametros &lt;- <span class="fn">list</span>(
+  media = <span class="fn">c</span>(<span class="num">0</span>, <span class="num">5</span>, <span class="num">10</span>),
+  sd    = <span class="fn">c</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>)
+)
+<span class="fn">purrr</span>::<span class="fn">pmap</span>(parametros, \(media, sd) <span class="fn">rnorm</span>(<span class="num">5</span>, media, sd))
+
+<span class="com"># walk() — efeitos colaterais, descarta resultado</span>
+<span class="fn">purrr</span>::<span class="fn">walk</span>(<span class="fn">c</span>(<span class="str">"a.csv"</span>, <span class="str">"b.csv"</span>), \(f) <span class="fn">message</span>(<span class="str">"Processando:"</span>, f))
+
+<span class="com"># reduce() e accumulate()</span>
+<span class="fn">purrr</span>::<span class="fn">reduce</span>(<span class="num">1</span>:<span class="num">5</span>, `+`)             <span class="com"># 15 = ((((1+2)+3)+4)+5)</span>
+<span class="fn">purrr</span>::<span class="fn">accumulate</span>(<span class="num">1</span>:<span class="num">5</span>, `+`)       <span class="com"># 1 3 6 10 15 — como cumsum</span>
+
+<span class="com"># safely() e possibly() — tratamento de erros funcional</span>
+safe_log &lt;- <span class="fn">purrr</span>::<span class="fn">safely</span>(<span class="fn">log</span>)
+<span class="fn">safe_log</span>(-<span class="num">1</span>)   <span class="com"># list(result = NaN, error = NULL) — não lança erro</span>
+
+poss_log &lt;- <span class="fn">purrr</span>::<span class="fn">possibly</span>(<span class="fn">log</span>, otherwise = <span class="kw">NA_real_</span>)
+<span class="fn">purrr</span>::<span class="fn">map_dbl</span>(<span class="fn">c</span>(<span class="num">1</span>, -<span class="num">1</span>, <span class="num">10</span>), poss_log)   <span class="com"># 0 NA 2.30</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="paralelismo">Paralelismo: parallel, future e furrr</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">paralelismo.R</div>
+          <pre class="example"><span class="com"># parallel — biblioteca padrão do R</span>
+<span class="fn">library</span>(<span class="str">"parallel"</span>)
+cores &lt;- <span class="fn">detectCores</span>() - <span class="num">1L</span>   <span class="com"># deixa 1 core para o SO</span>
+
+<span class="com"># mclapply — fork (Unix/macOS apenas)</span>
+resultado &lt;- <span class="fn">mclapply</span>(<span class="num">1</span>:<span class="num">8</span>, <span class="kw">function</span>(x) x^<span class="num">2</span>, mc.cores = cores)
+
+<span class="com"># parLapply — cross-platform (Windows + Unix)</span>
+cl &lt;- <span class="fn">makeCluster</span>(cores)
+<span class="fn">clusterExport</span>(cl, <span class="fn">c</span>(<span class="str">"minha_funcao"</span>))
+resultado &lt;- <span class="fn">parLapply</span>(cl, <span class="num">1</span>:<span class="num">100</span>, minha_funcao)
+<span class="fn">stopCluster</span>(cl)
+
+<span class="com"># future — abstração de back-ends de paralelismo</span>
+<span class="com"># library(future)</span>
+<span class="fn">future</span>::<span class="fn">plan</span>(<span class="fn">future</span>::<span class="fn">multisession</span>, workers = cores)
+
+f1 &lt;- <span class="fn">future</span>::<span class="fn">future</span>({ <span class="fn">Sys.sleep</span>(<span class="num">2</span>); <span class="num">42</span> })  <span class="com"># assíncrono</span>
+f2 &lt;- <span class="fn">future</span>::<span class="fn">future</span>({ <span class="fn">Sys.sleep</span>(<span class="num">1</span>); <span class="num">99</span> })
+<span class="fn">future</span>::<span class="fn">value</span>(f1)   <span class="com"># bloqueia até completar: 42</span>
+<span class="fn">future</span>::<span class="fn">value</span>(f2)   <span class="com"># 99</span>
+
+<span class="com"># furrr — purrr + future (drop-in replacement)</span>
+<span class="com"># library(furrr)</span>
+<span class="fn">future</span>::<span class="fn">plan</span>(<span class="fn">future</span>::<span class="fn">multisession</span>)
+<span class="fn">furrr</span>::<span class="fn">future_map_dbl</span>(<span class="num">1</span>:<span class="num">100</span>, \(x) { <span class="fn">Sys.sleep</span>(<span class="num">0.01</span>); x^<span class="num">2</span> })
+<span class="com"># executa em paralelo — ~4x mais rápido com 4 workers</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="profiling">Profiling e Benchmarking</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">profiling.R</div>
+          <pre class="example"><span class="com"># bench::mark() — benchmarking de alta precisão</span>
+<span class="com"># library(bench)</span>
+x &lt;- <span class="fn">runif</span>(<span class="num">1e5</span>)
+<span class="fn">bench</span>::<span class="fn">mark</span>(
+  loop    = { s &lt;- <span class="num">0</span>; <span class="kw">for</span>(i <span class="kw">in</span> x) s &lt;- s + i; s },
+  sum_r   = <span class="fn">sum</span>(x),
+  min_iterations = <span class="num">100</span>
+)
+<span class="com"># expression  min   median  `itr/sec`</span>
+<span class="com"># loop       72ms    75ms      13.3</span>
+<span class="com"># sum_r     210µs   215µs    4650</span>
+<span class="com"># sum() é ~350x mais rápido — vetorização compensa sempre</span>
+
+<span class="com"># profvis — profiler visual interativo</span>
+<span class="com"># library(profvis)</span>
+<span class="fn">profvis</span>::<span class="fn">profvis</span>({
+  x &lt;- <span class="fn">rnorm</span>(<span class="num">1e6</span>)
+  m &lt;- <span class="fn">mean</span>(x)
+  s &lt;- <span class="fn">sd</span>(x)
+  <span class="fn">hist</span>(x, breaks = <span class="num">100</span>)
+})
+<span class="com"># Abre interface HTML com flame graph do tempo de execução</span>
+
+<span class="com"># Rprof — profiler nativo do R</span>
+<span class="fn">Rprof</span>(<span class="str">"perfil.out"</span>, interval = <span class="num">0.01</span>)
+  <span class="com"># ... código a perfilar ...</span>
+<span class="fn">Rprof</span>(<span class="kw">NULL</span>)
+<span class="fn">summaryRprof</span>(<span class="str">"perfil.out"</span>)$by.self</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>WICKHAM, Hadley. <strong>Advanced R</strong>. 2. ed. CRC Press, 2019. Disponível em: <a href="https://adv-r.hadley.nz/" target="_blank" rel="noopener">adv-r.hadley.nz</a></li>
+          <li>EDDELBUETTEL, Dirk; BALAMUTA, James Joseph. <strong>Extending R with C++: A Brief Introduction to Rcpp</strong>. The American Statistician, v. 72, n. 1, p. 28–36, 2018. Disponível em: <a href="https://doi.org/10.1080/00031305.2017.1375990" target="_blank" rel="noopener">doi.org/10.1080/00031305.2017.1375990</a></li>
+          <li>HENRY, Lionel; WICKHAM, Hadley. <strong>rlang: Functions for Base Types and Core R and Tidyverse Features</strong>. R package, 2024. Disponível em: <a href="https://rlang.r-lib.org/" target="_blank" rel="noopener">rlang.r-lib.org</a></li>
+          <li>CHANG, Winston. <strong>R6: Encapsulated Classes with Reference Semantics</strong>. R package, 2022. Disponível em: <a href="https://r6.r-lib.org/" target="_blank" rel="noopener">r6.r-lib.org</a></li>
+          <li>BENGTSSON, Henrik. <strong>A Unifying Framework for Parallel and Distributed Processing in R using Futures</strong>. The R Journal, v. 13, n. 2, 2021. Disponível em: <a href="https://doi.org/10.32614/RJ-2021-048" target="_blank" rel="noopener">doi.org/10.32614/RJ-2021-048</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Good judgment comes from experience, and experience comes from bad judgment." — Sobre otimização prematura em R: meça antes de otimizar.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

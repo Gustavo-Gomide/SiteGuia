@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java para Web: Spring Boot 3 REST API completa, Spring Security JWT, OpenAPI/Swagger, WebSocket e testes de integracao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java para Web</h1>
+          <p>Spring Boot 3 REST API com paginacao, HATEOAS, Spring Security JWT stateless, documentacao OpenAPI 3 com springdoc, WebSocket com STOMP e testes de integracao com MockMvc e Testcontainers.</p>
+        </div>
+        <p class="intro-highlight">
+          Spring Boot 3 requer Java 17+ e traz suporte nativo a native image (GraalVM), Jakarta EE 10 (renomeado de javax para jakarta) e programacao reativa aprimorada com Spring WebFlux. Virtual Threads do Java 21 tornam o Tomcat tradicional competitivo com servidores reativos em workloads I/O-bound.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rest-api">REST API com Paginacao e HATEOAS</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Spring Boot 3 &mdash; Controller com paginacao e links hipermidia</div>
+          <pre class="example"><span class="kw">import</span> org.springframework.data.domain.*;
+<span class="kw">import</span> org.springframework.hateoas.*;
+<span class="kw">import static</span> org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
+<span class="com">// DTO de resposta com suporte a HATEOAS</span>
+<span class="kw">public class</span> <span class="tp">ProdutoModel</span> <span class="kw">extends</span> <span class="tp">RepresentationModel</span>&lt;<span class="tp">ProdutoModel</span>&gt; {
+  <span class="kw">private</span> <span class="tp">UUID</span>       id;
+  <span class="kw">private</span> <span class="tp">String</span>     nome;
+  <span class="kw">private</span> <span class="tp">BigDecimal</span> preco;
+  <span class="kw">private</span> <span class="kw">int</span>        estoque;
+  <span class="com">// getters + setters</span>
+}
+
+@<span class="at">RestController</span>
+@<span class="at">RequestMapping</span>(<span class="str">"/api/v1/produtos"</span>)
+<span class="kw">public class</span> <span class="tp">ProdutoController</span> {
+
+  <span class="kw">private final</span> <span class="tp">ProdutoService</span>   service;
+  <span class="kw">private final</span> <span class="tp">ProdutoAssembler</span> assembler;
+
+  <span class="kw">public</span> <span class="tp">ProdutoController</span>(<span class="tp">ProdutoService</span> s, <span class="tp">ProdutoAssembler</span> a) {
+    <span class="kw">this</span>.service   = s;
+    <span class="kw">this</span>.assembler = a;
+  }
+
+  <span class="com">// GET /api/v1/produtos?page=0&size=20&sort=nome,asc</span>
+  @<span class="at">GetMapping</span>
+  <span class="kw">public</span> <span class="tp">PagedModel</span>&lt;<span class="tp">ProdutoModel</span>&gt; <span class="fn">listar</span>(
+      @<span class="at">PageableDefault</span>(size = <span class="num">20</span>, sort = <span class="str">"nome"</span>) <span class="tp">Pageable</span> pageable) {
+    <span class="kw">return</span> assembler.<span class="fn">toPagedModel</span>(service.<span class="fn">listarPaginado</span>(pageable));
+  }
+
+  <span class="com">// GET /api/v1/produtos/{id}</span>
+  @<span class="at">GetMapping</span>(<span class="str">"/{id}"</span>)
+  <span class="kw">public</span> <span class="tp">EntityModel</span>&lt;<span class="tp">ProdutoModel</span>&gt; <span class="fn">buscar</span>(@<span class="at">PathVariable</span> <span class="tp">UUID</span> id) {
+    <span class="kw">var</span> produto = service.<span class="fn">buscarOuLancar</span>(id);
+    <span class="kw">var</span> model   = assembler.<span class="fn">toModel</span>(produto);
+    model.<span class="fn">add</span>(<span class="fn">linkTo</span>(<span class="fn">methodOn</span>(<span class="tp">ProdutoController</span>.<span class="kw">class</span>).<span class="fn">listar</span>(<span class="kw">null</span>)).<span class="fn">withRel</span>(<span class="str">"produtos"</span>));
+    <span class="kw">return</span> <span class="tp">EntityModel</span>.<span class="fn">of</span>(model);
+  }
+
+  @<span class="at">PostMapping</span>
+  @<span class="at">ResponseStatus</span>(<span class="tp">HttpStatus</span>.<span class="tp">CREATED</span>)
+  <span class="kw">public</span> <span class="tp">ResponseEntity</span>&lt;<span class="tp">ProdutoModel</span>&gt; <span class="fn">criar</span>(@<span class="at">RequestBody</span> @<span class="at">Valid</span> <span class="tp">CriarProdutoRequest</span> req) {
+    <span class="kw">var</span> produto = service.<span class="fn">criar</span>(req);
+    <span class="kw">var</span> uri = <span class="fn">linkTo</span>(<span class="fn">methodOn</span>(<span class="tp">ProdutoController</span>.<span class="kw">class</span>)
+      .<span class="fn">buscar</span>(produto.<span class="fn">getId</span>())).<span class="fn">toUri</span>();
+    <span class="kw">return</span> <span class="tp">ResponseEntity</span>.<span class="fn">created</span>(uri).<span class="fn">body</span>(assembler.<span class="fn">toModel</span>(produto));
+  }
+
+  @<span class="at">PutMapping</span>(<span class="str">"/{id}"</span>)
+  <span class="kw">public</span> <span class="tp">ProdutoModel</span> <span class="fn">atualizar</span>(
+      @<span class="at">PathVariable</span> <span class="tp">UUID</span> id,
+      @<span class="at">RequestBody</span> @<span class="at">Valid</span> <span class="tp">AtualizarProdutoRequest</span> req) {
+    <span class="kw">return</span> assembler.<span class="fn">toModel</span>(service.<span class="fn">atualizar</span>(id, req));
+  }
+
+  @<span class="at">DeleteMapping</span>(<span class="str">"/{id}"</span>)
+  @<span class="at">ResponseStatus</span>(<span class="tp">HttpStatus</span>.<span class="tp">NO_CONTENT</span>)
+  <span class="kw">public void</span> <span class="fn">remover</span>(@<span class="at">PathVariable</span> <span class="tp">UUID</span> id) {
+    service.<span class="fn">remover</span>(id);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="jwt">Spring Security com JWT</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Spring Security 6 &mdash; Geração e validação de JWT</div>
+          <pre class="example"><span class="kw">import</span> com.auth0.jwt.JWT;
+<span class="kw">import</span> com.auth0.jwt.algorithms.Algorithm;
+
+@<span class="at">Service</span>
+<span class="kw">public class</span> <span class="tp">TokenService</span> {
+
+  @<span class="at">Value</span>(<span class="str">"${app.jwt.secret}"</span>)       <span class="com">// variavel de ambiente — nunca hardcode</span>
+  <span class="kw">private</span> <span class="tp">String</span> secret;
+
+  @<span class="at">Value</span>(<span class="str">"${app.jwt.expiracao-horas:2}"</span>)
+  <span class="kw">private</span> <span class="kw">long</span> expiracaoHoras;
+
+  <span class="kw">public</span> <span class="tp">String</span> <span class="fn">gerarToken</span>(<span class="tp">Usuario</span> usuario) {
+    <span class="kw">var</span> alg = <span class="tp">Algorithm</span>.<span class="fn">HMAC256</span>(secret);
+    <span class="kw">return</span> <span class="tp">JWT</span>.<span class="fn">create</span>()
+      .<span class="fn">withIssuer</span>(<span class="str">"loja-api"</span>)
+      .<span class="fn">withSubject</span>(usuario.<span class="fn">getEmail</span>())
+      .<span class="fn">withClaim</span>(<span class="str">"roles"</span>, usuario.<span class="fn">getRoles</span>().<span class="fn">stream</span>().<span class="fn">map</span>(<span class="tp">Role</span>::<span class="fn">name</span>).<span class="fn">toList</span>())
+      .<span class="fn">withExpiresAt</span>(<span class="tp">Instant</span>.<span class="fn">now</span>().<span class="fn">plus</span>(expiracaoHoras, <span class="tp">ChronoUnit</span>.<span class="tp">HOURS</span>))
+      .<span class="fn">sign</span>(alg);
+  }
+
+  <span class="kw">public</span> <span class="tp">String</span> <span class="fn">verificarToken</span>(<span class="tp">String</span> token) {
+    <span class="kw">try</span> {
+      <span class="kw">return</span> <span class="tp">JWT</span>.<span class="fn">require</span>(<span class="tp">Algorithm</span>.<span class="fn">HMAC256</span>(secret))
+        .<span class="fn">withIssuer</span>(<span class="str">"loja-api"</span>)
+        .<span class="fn">build</span>()
+        .<span class="fn">verify</span>(token)
+        .<span class="fn">getSubject</span>();
+    } <span class="kw">catch</span> (<span class="tp">JWTVerificationException</span> e) {
+      <span class="kw">throw new</span> <span class="tp">TokenInvalidoException</span>(e);
+    }
+  }
+}
+
+<span class="com">// Filtro que intercepta cada requisicao</span>
+@<span class="at">Component</span>
+<span class="kw">public class</span> <span class="tp">JwtAuthFilter</span> <span class="kw">extends</span> <span class="tp">OncePerRequestFilter</span> {
+
+  <span class="kw">private final</span> <span class="tp">TokenService</span>      tokenService;
+  <span class="kw">private final</span> <span class="tp">UsuarioRepository</span> usuarioRepo;
+
+  @<span class="at">Override</span>
+  <span class="kw">protected void</span> <span class="fn">doFilterInternal</span>(<span class="tp">HttpServletRequest</span> req,
+      <span class="tp">HttpServletResponse</span> resp, <span class="tp">FilterChain</span> chain)
+      <span class="kw">throws</span> <span class="tp">ServletException</span>, <span class="tp">IOException</span> {
+
+    <span class="kw">var</span> token = <span class="fn">extrairBearerToken</span>(req);
+    <span class="kw">if</span> (token != <span class="kw">null</span>) {
+      <span class="kw">var</span> email   = tokenService.<span class="fn">verificarToken</span>(token);
+      <span class="kw">var</span> usuario = usuarioRepo.<span class="fn">findByEmail</span>(email).<span class="fn">orElseThrow</span>();
+      <span class="kw">var</span> auth    = <span class="kw">new</span> <span class="tp">UsernamePasswordAuthenticationToken</span>(
+        usuario, <span class="kw">null</span>, usuario.<span class="fn">getAuthorities</span>());
+      <span class="tp">SecurityContextHolder</span>.<span class="fn">getContext</span>().<span class="fn">setAuthentication</span>(auth);
+    }
+    chain.<span class="fn">doFilter</span>(req, resp);
+  }
+
+  <span class="kw">private</span> <span class="tp">String</span> <span class="fn">extrairBearerToken</span>(<span class="tp">HttpServletRequest</span> request) {
+    <span class="kw">var</span> header = request.<span class="fn">getHeader</span>(<span class="str">"Authorization"</span>);
+    <span class="kw">if</span> (header == <span class="kw">null</span> || !header.<span class="fn">startsWith</span>(<span class="str">"Bearer "</span>)) <span class="kw">return null</span>;
+    <span class="kw">return</span> header.<span class="fn">substring</span>(<span class="num">7</span>);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="openapi">Documentacao com OpenAPI / Swagger</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + springdoc-openapi &mdash; Documentacao automatica com anotacoes</div>
+          <pre class="example"><span class="com">// pom.xml — adicionar dependencia springdoc</span>
+<span class="com">&lt;dependency&gt;
+  &lt;groupId&gt;org.springdoc&lt;/groupId&gt;
+  &lt;artifactId&gt;springdoc-openapi-starter-webmvc-ui&lt;/artifactId&gt;
+  &lt;version&gt;2.5.0&lt;/version&gt;
+&lt;/dependency&gt;</span>
+
+<span class="com">// URL gerada: http://localhost:8080/swagger-ui.html</span>
+
+<span class="com">// Configuracao OpenAPI global</span>
+@<span class="at">Configuration</span>
+<span class="kw">public class</span> <span class="tp">OpenApiConfig</span> {
+  @<span class="at">Bean</span>
+  <span class="kw">public</span> <span class="tp">OpenAPI</span> <span class="fn">openAPI</span>() {
+    <span class="kw">return new</span> <span class="tp">OpenAPI</span>()
+      .<span class="fn">info</span>(<span class="kw">new</span> <span class="tp">Info</span>().<span class="fn">title</span>(<span class="str">"Loja API"</span>).<span class="fn">version</span>(<span class="str">"v1"</span>)
+        .<span class="fn">description</span>(<span class="str">"API REST da loja virtual"</span>)
+        .<span class="fn">license</span>(<span class="kw">new</span> <span class="tp">License</span>().<span class="fn">name</span>(<span class="str">"MIT"</span>)))
+      .<span class="fn">addSecurityItem</span>(<span class="kw">new</span> <span class="tp">SecurityRequirement</span>().<span class="fn">addList</span>(<span class="str">"bearerAuth"</span>))
+      .<span class="fn">components</span>(<span class="kw">new</span> <span class="tp">Components</span>()
+        .<span class="fn">addSecuritySchemes</span>(<span class="str">"bearerAuth"</span>, <span class="kw">new</span> <span class="tp">SecurityScheme</span>()
+          .<span class="fn">type</span>(<span class="tp">SecurityScheme</span>.<span class="tp">Type</span>.<span class="tp">HTTP</span>).<span class="fn">scheme</span>(<span class="str">"bearer"</span>).<span class="fn">bearerFormat</span>(<span class="str">"JWT"</span>)));
+  }
+}
+
+<span class="com">// Documentar endpoint com @Operation</span>
+@<span class="at">Operation</span>(summary = <span class="str">"Criar produto"</span>, description = <span class="str">"Cria produto e retorna 201 Created"</span>)
+@<span class="at">ApiResponses</span>({
+  @<span class="at">ApiResponse</span>(responseCode = <span class="str">"201"</span>, description = <span class="str">"Produto criado"</span>),
+  @<span class="at">ApiResponse</span>(responseCode = <span class="str">"422"</span>, description = <span class="str">"Dados invalidos"</span>),
+  @<span class="at">ApiResponse</span>(responseCode = <span class="str">"401"</span>, description = <span class="str">"Nao autenticado"</span>)
+})
+@<span class="at">PostMapping</span>
+<span class="kw">public</span> <span class="tp">ResponseEntity</span>&lt;<span class="tp">ProdutoModel</span>&gt; <span class="fn">criar</span>(@<span class="at">RequestBody</span> @<span class="at">Valid</span> <span class="tp">CriarProdutoRequest</span> req) { ... }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes-integracao">Testes de Integracao com Testcontainers</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Testcontainers + MockMvc &mdash; Teste de ponta a ponta</div>
+          <pre class="example"><span class="kw">import</span> org.testcontainers.containers.PostgreSQLContainer;
+<span class="kw">import</span> org.testcontainers.junit.jupiter.Container;
+<span class="kw">import</span> org.testcontainers.junit.jupiter.Testcontainers;
+
+@<span class="at">SpringBootTest</span>(webEnvironment = <span class="tp">SpringBootTest</span>.<span class="tp">WebEnvironment</span>.<span class="tp">RANDOM_PORT</span>)
+@<span class="at">AutoConfigureMockMvc</span>
+@<span class="at">Testcontainers</span>
+@<span class="at">Transactional</span>
+<span class="kw">class</span> <span class="tp">ProdutoApiIntegrationTest</span> {
+
+  @<span class="at">Container</span>
+  <span class="kw">static</span> <span class="tp">PostgreSQLContainer</span>&lt;?&gt; postgres =
+    <span class="kw">new</span> <span class="tp">PostgreSQLContainer</span>&lt;&gt;(<span class="str">"postgres:16-alpine"</span>)
+      .<span class="fn">withDatabaseName</span>(<span class="str">"loja_test"</span>)
+      .<span class="fn">withUsername</span>(<span class="str">"test"</span>)
+      .<span class="fn">withPassword</span>(<span class="str">"test"</span>);
+
+  @<span class="at">DynamicPropertySource</span>   <span class="com">// injeta URL do container no contexto Spring</span>
+  <span class="kw">static void</span> <span class="fn">configDB</span>(<span class="tp">DynamicPropertyRegistry</span> registry) {
+    registry.<span class="fn">add</span>(<span class="str">"spring.datasource.url"</span>,        postgres::<span class="fn">getJdbcUrl</span>);
+    registry.<span class="fn">add</span>(<span class="str">"spring.datasource.username"</span>,   postgres::<span class="fn">getUsername</span>);
+    registry.<span class="fn">add</span>(<span class="str">"spring.datasource.password"</span>,   postgres::<span class="fn">getPassword</span>);
+  }
+
+  @<span class="at">Autowired</span> <span class="tp">MockMvc</span>            mockMvc;
+  @<span class="at">Autowired</span> <span class="tp">ObjectMapper</span>       mapper;
+  @<span class="at">Autowired</span> <span class="tp">ProdutoRepository</span>  repo;
+
+  @<span class="at">Test</span>
+  @<span class="at">WithMockUser</span>(roles = <span class="str">"ADMIN"</span>)
+  <span class="kw">void</span> <span class="fn">criarProdutoRetorna201</span>() <span class="kw">throws</span> <span class="tp">Exception</span> {
+    <span class="kw">var</span> req = <span class="kw">new</span> <span class="tp">CriarProdutoRequest</span>(<span class="str">"Cafe 500g"</span>, <span class="tp">BigDecimal</span>.<span class="fn">valueOf</span>(<span class="num">25.90</span>), <span class="num">100</span>);
+
+    mockMvc.<span class="fn">perform</span>(<span class="fn">post</span>(<span class="str">"/api/v1/produtos"</span>)
+        .<span class="fn">contentType</span>(<span class="tp">MediaType</span>.<span class="tp">APPLICATION_JSON</span>)
+        .<span class="fn">content</span>(mapper.<span class="fn">writeValueAsString</span>(req)))
+      .<span class="fn">andExpect</span>(<span class="fn">status</span>().<span class="fn">isCreated</span>())
+      .<span class="fn">andExpect</span>(<span class="fn">jsonPath</span>(<span class="str">"$.nome"</span>).<span class="fn">value</span>(<span class="str">"Cafe 500g"</span>))
+      .<span class="fn">andExpect</span>(<span class="fn">jsonPath</span>(<span class="str">"$.preco"</span>).<span class="fn">value</span>(<span class="num">25.90</span>))
+      .<span class="fn">andExpect</span>(<span class="fn">header</span>().<span class="fn">exists</span>(<span class="str">"Location"</span>));
+
+    <span class="fn">assertThat</span>(repo.<span class="fn">count</span>()).<span class="fn">isEqualTo</span>(<span class="num">1</span>);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura-web-java">Arquitetura Web Java em Escala</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Camadas claras</h3>
+            <p>Controller valida e traduz protocolo HTTP; servico implementa regra de negocio; repositorio encapsula persistencia para manter coesao e testabilidade.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Observabilidade nativa</h3>
+            <p>Logs estruturados + metricas + tracing desde o inicio reduzem tempo de diagnostico e permitem evoluir arquitetura com dados reais de uso.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Trade-off principal</h3>
+            <p>Produtividade do Spring e alta, mas exige disciplina de limites entre modulos para evitar monolito acoplado por anotacoes e dependencias circulares.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SPRING. <strong>Spring Boot 3 Web Applications</strong>. Disponível em: &lt;https://docs.spring.io/spring-boot/docs/3.3.0/reference/htmlsingle/#web&gt;. Acesso em: 2025.</li>
+            <li>WALLS, Craig. <strong>Spring in Action</strong>. 6. ed. Manning, 2022.</li>
+            <li>TESTCONTAINERS. <strong>Testcontainers for Java</strong>. Disponível em: &lt;https://java.testcontainers.org/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Spring Data JPA e Hibernate</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas Praticas e Seguranca</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Testcontainers levanta um banco de dados real em Docker durante os testes — elimina o comportamento diferente entre H2 in-memory nos testes e PostgreSQL em producao.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

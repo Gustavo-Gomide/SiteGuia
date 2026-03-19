@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="VLANs (IEEE 802.1Q): tag de 4 bytes, portas access e trunk, native VLAN, roteamento inter-VLAN e comandos Cisco." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>VLANs (802.1Q) | Camada de Enlace | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Enlace</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">VLANs &mdash; IEEE 802.1Q</h1>
+          <p class="page-subtitle">Segmentação lógica da rede: múltiplas redes broadcast isoladas sobre a mesma infraestrutura física</p>
+        </div>
+        <p class="intro-highlight">
+          Uma <strong>VLAN</strong> (Virtual Local Area Network) cria domínios de broadcast independentes sobre o mesmo switch físico. Dispositivos em VLANs diferentes não se comunicam na Camada 2 &mdash; precisam de um roteador (ou switch L3) para interagir. Isso melhora segurança, performance e organização lógica da rede.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tag" class="section-title">Tag 802.1Q</h2>
+        <p>Um campo de <strong>4 bytes</strong> inserido no frame Ethernet após o MAC de origem para identificar a qual VLAN o frame pertence:</p>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Estrutura do Tag</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>802.1Q Tag &mdash; 32 bits</span></div>
+              <pre class="code-block">Bits 31-16: TPID = 0x8100   (Tag Protocol ID)
+Bits 15-13: PCP (3 bits)    (Priority Code Point, QoS 0-7)
+Bit  12:    DEI (1 bit)     (Drop Eligible Indicator)
+Bits 11-0:  VID (12 bits)   (VLAN ID: 1 a 4094)
+
+VLAN 0   = reservado (QoS sem VLAN)
+VLAN 1   = padrão Cisco (default/native)
+VLAN 1002-1005 = reservadas (Token Ring/FDDI)
+VLAN 1006-4094 = extended VLANs</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Portas Access vs Trunk</h3>
+            <ul>
+              <li><strong>Access port:</strong> pertence a uma única VLAN; frames chegam <em>sem tag</em> do dispositivo final (PC, impressora); o switch adiciona a tag internamente ao encaminhar</li>
+              <li><strong>Trunk port:</strong> transporta frames de múltiplas VLANs simultaneamente (tagged); usado em links switch&harr;switch e switch&harr;roteador</li>
+              <li><strong>Native VLAN:</strong> em trunks, frames <em>sem tag</em> são atribuídos à native VLAN (padrão VLAN 1); risco de <em>VLAN hopping</em> se mal configurado &mdash; sempre mudar a native VLAN da VLAN 1</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="config" class="section-title">Configuração Cisco IOS</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Criar VLANs e Portas Access</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; VLANs + Access</span></div>
+              <pre class="code-block">! Criar VLANs
+vlan 10
+ name FINANCEIRO
+vlan 20
+ name TI
+vlan 30
+ name VOIP
+!
+! Porta de acesso para PC de finanças
+interface GigabitEthernet0/1
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+!
+! Porta de acesso para telefone VoIP
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 30
+ switchport voice vlan 30</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Trunk e Native VLAN Segura</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; Trunk</span></div>
+              <pre class="code-block">interface GigabitEthernet0/24
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 999   ! muda de VLAN 1
+ switchport trunk allowed vlan 10,20,30
+!
+! Verificar
+show vlan brief
+show interfaces trunk
+show interfaces GigabitEthernet0/24 switchport</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="intervlan" class="section-title">Roteamento Inter-VLAN</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Router-on-a-Stick (ROAS)</h3>
+            <p>Uma única interface física do roteador dividida em subinterfaces &mdash; cada uma com um endereço IP e encapsulação 802.1Q para uma VLAN diferente. Simples para redes menores.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; ROAS</span></div>
+              <pre class="code-block">interface GigabitEthernet0/0.10
+ encapsulation dot1Q 10
+ ip address 192.168.10.1 255.255.255.0
+!
+interface GigabitEthernet0/0.20
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">SVI &mdash; Switch Virtual Interface (L3)</h3>
+            <p>Em switches L3 (com capacidade de roteamento), cria-se uma interface virtual por VLAN que serve como gateway padrão dos hosts dessa VLAN. Mais eficiente que ROAS para trunks de alta velocidade.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; SVI L3</span></div>
+              <pre class="code-block">ip routing   ! habilita roteamento no switch L3
+!
+interface Vlan10
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+!
+interface Vlan20
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando: <a href="switches.html"><strong>Switches e STP</strong></a>, <a href="../camada_rede/roteamento.html"><strong>Roteamento IP</strong></a> e <a href="../fundamentos/equipamentos.html"><strong>Equipamentos</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "VLANs são a fronteira de segurança básica de uma rede corporativa. Sem VLANs, um PC do estágio vê o tráfego do servidor de folha de pagamento."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

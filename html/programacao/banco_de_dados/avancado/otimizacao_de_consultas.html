@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Otimização de Consultas SQL: SELECT específico, SARGable queries, problema N+1 e uso eficiente de índices." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Otimização de Consultas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Otimizacao de Consultas SQL</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Otimizacao de Consultas SQL</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Otimizacao de Consultas</h1>
+          <p>Do SELECT* ao plano de execucao — escrevendo SQL que respeita o otimizador e o disco.</p>
+        </div>
+        <p class="intro-highlight">
+          Uma consulta mal escrita pode derrubar um servidor inteiro. Otimizacao nao e sobre "adicionar
+          mais memoria" — e sobre escrever SQL que <strong>le o minimo de dados possivel do disco</strong>.
+          Um Full Table Scan em uma tabela de 500 milhoes de linhas pode levar minutos; o mesmo dado
+          com um indice correto retorna em milissegundos. Entender o otimizador e deixar de adivinhar.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O OTIMIZADOR -->
+      <section>
+        <h2 id="otimizador" class="section-title">1. O Otimizador de Consultas</h2>
+        <p>
+          Quando voce escreve SQL, voce diz ao banco <em>O QUE</em> quer — nao <em>COMO</em> buscar.
+          O <strong>Otimizador baseado em custo</strong> e o cerebro que decide a melhor rota estimando
+          I/O de disco, uso de CPU e numero de linhas processadas para cada plano possivel.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ciclo-de-execucao.txt</div>
+          <pre class="example"><span class="com">Ciclo de vida de uma query SQL:</span>
+
+  Cliente envia SQL
+       |
+       v
+  [Parser]          <- verifica sintaxe, cria AST (arvore sintatica)
+       |
+       v
+  [Rewriter]        <- expande views, aplica regras
+       |
+       v
+  [Planner/Optimizer] <- gera N planos possiveis, estima custo de cada um
+       |                  usa estatisticas (pg_statistic / information_schema)
+       v
+  [Executor]        <- executa o plano de menor custo estimado
+       |
+       v
+  Resultado ao cliente</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Estatisticas do Otimizador</h3>
+            <p>
+              O otimizador usa estatisticas como contagem de linhas, distribuicao de valores (histograma)
+              e cardinalidade de colunas para estimar o custo de cada plano. No PostgreSQL,
+              <code class="code-inline">ANALYZE</code> atualiza essas estatisticas.
+              Estatisticas desatualizadas geram planos ruins — por isso o autovacuum as atualiza automaticamente.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Custo Baseado (CBO)</h3>
+            <p>
+              O otimizador compara planos por custo estimado (unidade arbitraria de CPU + I/O).
+              Ele pode errar quando as estatisticas estao desatualizadas, quando ha muitos JOINs com
+              correlacoes entre colunas ou quando a distribuicao de dados e muito nao uniforme.
+              <code class="code-inline">EXPLAIN ANALYZE</code> mostra o custo estimado vs real.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Cache de Planos</h3>
+            <p>
+              Bancos como PostgreSQL e MySQL cachear planos compilados para prepared statements.
+              Um plano gerado para uma distribuicao de dados pode ser subotimo para outra.
+              PostgreSQL 14+ usa planos genericos vs customizados automaticamente.
+              No SQL Server, plans sao cached por hash da query — parametros literais diferentes = planos diferentes.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- INDICES -->
+      <section>
+        <h2 id="indices" class="section-title">2. Tipos de Indice</h2>
+        <p>
+          O indice e a estrutura de dados auxiliar que permite ao banco encontrar linhas sem ler a tabela
+          inteira. Escolher o tipo errado de indice pode ser pior do que nao ter indice.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">indices-postgresql.sql</div>
+          <pre class="example"><span class="com">-- B-Tree (padrao): igualdade, range, ORDER BY</span>
+<span class="kw">CREATE INDEX</span> idx_pedidos_data <span class="kw">ON</span> pedidos (data_criacao);
+<span class="com">-- Suporta: =, <, >, BETWEEN, LIKE 'prefix%', IS NULL</span>
+
+<span class="com">-- Hash: APENAS igualdade — mais rapido que B-Tree para = exato</span>
+<span class="kw">CREATE INDEX</span> idx_sessao_token <span class="kw">ON</span> sessoes <span class="kw">USING HASH</span> (token);
+<span class="com">-- NAO suporta range queries nem ORDER BY</span>
+
+<span class="com">-- Partial: indexa apenas subconjunto das linhas</span>
+<span class="kw">CREATE INDEX</span> idx_pedidos_pendentes <span class="kw">ON</span> pedidos (cliente_id)
+  <span class="kw">WHERE</span> status = <span class="str">'pendente'</span>;
+<span class="com">-- Indice 100x menor, mais rapido, zero custo para linhas 'entregue'</span>
+
+<span class="com">-- Composito: colunas na ordem certa do WHERE/ORDER BY</span>
+<span class="kw">CREATE INDEX</span> idx_pedidos_comp <span class="kw">ON</span> pedidos (cliente_id, data_criacao DESC);
+<span class="com">-- Serve para: WHERE cliente_id = ? ORDER BY data_criacao DESC</span>
+<span class="com">-- NAO serve para: WHERE so data_criacao (leftmost prefix rule)</span>
+
+<span class="com">-- Covering Index: inclui colunas extras para evitar heap fetch</span>
+<span class="kw">CREATE INDEX</span> idx_cov <span class="kw">ON</span> pedidos (cliente_id) <span class="kw">INCLUDE</span> (status, total);
+<span class="com">-- Query retorna sem nem tocar na tabela principal (Index Only Scan)</span>
+
+<span class="com">-- GIN: full-text search e arrays</span>
+<span class="kw">CREATE INDEX</span> idx_descricao_fts <span class="kw">ON</span> produtos <span class="kw">USING GIN</span> (to_tsvector(<span class="str">'portuguese'</span>, descricao));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ESCREVER QUERIES EFICIENTES -->
+      <section>
+        <h2 id="queries-eficientes" class="section-title">3. Escrever Queries Eficientes</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>O Pecado do SELECT *</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- Lento: traz foto BLOB, historico e tudo</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> usuarios;
+
+<span class="com">-- Rapido: pode usar Covering Index</span>
+<span class="kw">SELECT</span> nome, email <span class="kw">FROM</span> usuarios;</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>SARGable (Index Friendly)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- NAO SARGable: funcao na coluna cega o indice</span>
+<span class="kw">WHERE YEAR</span>(data_venda) = <span class="num">2023</span>
+
+<span class="com">-- SARGable: range direto no indice</span>
+<span class="kw">WHERE</span> data_venda <span class="kw">BETWEEN</span>
+  <span class="str">'2023-01-01'</span> <span class="kw">AND</span> <span class="str">'2023-12-31'</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>LIKE com coringa no inicio</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- Sem indice: coringa no inicio</span>
+<span class="kw">WHERE</span> nome <span class="kw">LIKE</span> <span class="str">'%Silva'</span>
+
+<span class="com">-- Com indice: prefixo conhecido</span>
+<span class="kw">WHERE</span> nome <span class="kw">LIKE</span> <span class="str">'Silva%'</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Problema N+1</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql/pseudocodigo</div>
+              <pre class="example"><span class="com">-- N+1: 1 query de lista + N queries no loop</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> posts <span class="kw">LIMIT</span> <span class="num">100</span>; <span class="com">-- query 1</span>
+for each post: <span class="kw">SELECT</span> * <span class="kw">FROM</span> autores ... <span class="com">-- 100x!</span>
+
+<span class="com">-- Solucao: JOIN ou eager loading</span>
+<span class="kw">SELECT</span> p.titulo, a.nome
+<span class="kw">FROM</span> posts p <span class="kw">JOIN</span> autores a <span class="kw">ON</span> p.autor_id = a.id
+<span class="kw">LIMIT</span> <span class="num">100</span>;</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">4. Quando Otimizar e Quando Nao Otimizar</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Otimize quando...</h3>
+            <ul>
+              <li>Query aparece no <code class="code-inline">pg_stat_statements</code> / slow query log com tempo > 1s.</li>
+              <li>EXPLAIN mostra Full Table Scan / Seq Scan em tabelas grandes.</li>
+              <li>Numero de linhas estimado pelo planner difere muito do real (estatisticas desatualizadas).</li>
+              <li>Problema N+1 diagnosticado — ORM fazendo centenas de queries por request.</li>
+              <li>Query e executada milhares de vezes por minuto em producao.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Nao otimize quando...</h3>
+            <ul>
+              <li>Query roda 1x por dia em batch — custo/beneficio nao justifica.</li>
+              <li>Tabela tem menos de 10.000 linhas — Full Scan pode ser mais rapido que indice.</li>
+              <li>Indice seria em coluna de baixa cardinalidade (ex: booleano, status com 3 valores).</li>
+              <li>A query nao e o gargalo — o problema esta no codigo da aplicacao ou na rede.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">5. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>pg_stat_statements</h3>
+            <p>
+              Extensao do PostgreSQL que acumula estatisticas de todas as queries executadas: tempo total,
+              chamadas, linhas retornadas, I/O de buffer. Essencial para encontrar as queries mais custosas
+              em producao. <code class="code-inline">SELECT * FROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 20;</code>
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Autovacuum e Estatisticas</h3>
+            <p>
+              O PostgreSQL usa MVCC — linhas antigas (dead tuples) acumulam e degradam performance.
+              O autovacuum as limpa e atualiza estatisticas automaticamente. Sinais de problema:
+              table bloat (tabela muito maior que o esperado), planos ruins (estatisticas velhas),
+              sequencias longas de Index Scan virando Seq Scan.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Connection Pooling</h3>
+            <p>
+              Abrir/fechar conexoes com o banco e caro (fork de processo no PostgreSQL). PgBouncer e
+              ProxySQL mantem um pool de conexoes persistentes e dao ao cliente uma conexao do pool.
+              Reduz overhead de conexao e previne o banco de ficar sem conexoes disponiveis sob carga.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Parallel Query e JIT</h3>
+            <p>
+              PostgreSQL 9.6+ executa queries em multiplos workers paralelos para Seq Scans e Hash Joins
+              grandes. JIT (Just-In-Time compilation) compila expressoes de filtro em codigo nativo via LLVM —
+              beneficio em queries com muita aritmetica ou filtros complexos em grandes volumes de dados.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Excesso de Indices:</strong> cada indice adicional tem custo em toda operacao de
+            INSERT, UPDATE e DELETE — o banco deve atualizar todos os indices afetados.
+            Banco com 15 indices por tabela pode ter writes 5x mais lentos do que o necessario.
+            Use <code class="code-inline">pg_stat_user_indexes</code> para identificar indices nunca usados
+            e remova-os.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">6. Ferramentas de Performance</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>EXPLAIN / EXPLAIN ANALYZE</h3>
+            <p>Comando nativo de todos os principais SGBDs. EXPLAIN mostra o plano estimado; EXPLAIN ANALYZE executa e mostra tempos reais, linhas reais vs estimadas e buffers usados. Primeiro passo obrigatorio em qualquer investigacao de performance.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>pganalyze</h3>
+            <p>SaaS de monitoramento continuo de performance para PostgreSQL. Detecta queries lentas, sugere indices automaticamente, monitora bloat de tabelas, lock waits e replication lag. Tem tier gratuito para um servidor.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>pt-query-digest (Percona)</h3>
+            <p>Analisa o slow query log do MySQL e gera relatorio agregado das queries mais custosas: tempo total, percentis, fingerprint normalizada. Parte do Percona Toolkit — essencial para auditorias de performance em MySQL/MariaDB.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>explain.depesz.com</h3>
+            <p>Visualizador online de planos de execucao do PostgreSQL. Cole a saida do EXPLAIN ANALYZE e veja os nos mais custosos destacados em vermelho/amarelo. Facilita enormemente a leitura de planos complexos com muitos JOINs.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>PgBouncer</h3>
+            <p>Connection pooler leve para PostgreSQL. Tres modos: session (compatibilidade total), transaction (mais eficiente) e statement. Essencial para aplicacoes com muitas conexoes curtas — reduz connextion overhead e previne esgotamento de conexoes do banco.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>auto_explain</h3>
+            <p>Extensao do PostgreSQL que loga automaticamente o plano EXPLAIN ANALYZE de queries que excedem um threshold de tempo configuravel. Permite diagnosticar queries lentas em producao sem instrumentacao manual nas aplicacoes.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>SILBERSCHATZ, Abraham; KORTH, Henry F.; SUDARSHAN, S. <strong>Sistema de Banco de Dados</strong>. 6. ed. Rio de Janeiro: Elsevier, 2012.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+            <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Docs: Performance Tips</strong>. Disponivel em: https://www.postgresql.org/docs/current/performance-tips.html. Acesso em: 2026.</li>
+            <li>MYSQL. <strong>MySQL Reference Manual: Optimization</strong>. Disponivel em: https://dev.mysql.com/doc/refman/8.0/en/optimization.html. Acesso em: 2026.</li>
+            <li>RAMAKRISHNAN, Raghu; GEHRKE, Johannes. <strong>Database Management Systems</strong>. 3. ed. McGraw-Hill, 2003.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/avancado/plano_de_execucao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Plano de Execucao - Lendo o EXPLAIN</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/particionamento.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Particionamento - Tabelas Gigantes</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Sharding - Escala Horizontal</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Premature optimization is the root of all evil." - Donald Knuth
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,125 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Conceitos de shaders para materiais, iluminacao e estilo visual em tempo real." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Shaders | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Shaders para Jogos</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">Shaders para Jogos</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>Shaders: O Que Acontece Entre o Vertice e o Pixel</h1>
+        <p>Vertex shader, fragment shader, PBR, toon e otimizacao de material para runtime.</p>
+      </div>
+      <p class="intro-highlight">Shader e o programa que roda na GPU para cada vertice e cada pixel do objeto. Entender como ele funciona e o que custa e o que separa um material bonito que mata o framerate de um material bonito que roda bem.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">O que e um Shader</h2>
+      <p>Shader e um programa escrito em linguagem de sombreamento (HLSL, GLSL, MSL) que e compilado e executado diretamente na GPU. Enquanto o codigo do jogo roda na CPU frame a frame, o shader roda <strong>em paralelo para cada vertice e cada fragmento</strong> visivel na tela — potencialmente milhoes de execucoes por frame.</p>
+      <p>Em engines modernas, voce raramente escreve HLSL diretamente: Unity usa Shader Graph, Unreal usa Material Editor, Godot usa o VisualShader. Mas o grafo gera codigo HLSL/GLSL por baixo, e entender esse codigo e o que permite otimizar e depurar materiais com eficiencia.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">Pipeline de Renderizacao</h2>
+      <p>O pipeline de renderizacao transforma vertices 3D em pixels 2D em etapas fixas. O shader de vertice (<strong>vertex shader</strong>) recebe posicao, normal e UV de cada vertice e os transforma para espaco de clip. O shader de fragmento (<strong>fragment shader</strong> ou pixel shader) recebe o resultado interpolado e calcula a cor final do pixel — incluindo sample de texturas, calculo de iluminacao e efeitos.</p>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Vertex Shader</h3>
+          <ul>
+            <li>Transforma posicao do objeto para espaco de tela (<abbr title="Model-View-Projection">MVP matrix</abbr>).</li>
+            <li>Passa UV, normais e dados extras para o fragment shader via <em>varying/interpolators</em>.</li>
+            <li>Pode deslocar vertices para simulacao de onda, folhagem, etc.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Fragment Shader</h3>
+          <ul>
+            <li>Roda para cada pixel coberto pelo triangulo renderizado.</li>
+            <li>Faz sample de albedo, normal map, metallic, roughness.</li>
+            <li>Calcula contribuicao de luz, sombra e translucencia.</li>
+            <li>Retorna cor RGBA final do pixel.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tipos" class="section-title">Tipos de Shader em Jogos</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">PBR (Physically Based Rendering)</h3>
+          <p>Padrao atual. Usa modelo metalness/roughness: <code class="code-inline">Albedo</code> (cor base), <code class="code-inline">Metallic</code> (0 = dieletrico, 1 = metal), <code class="code-inline">Roughness</code> (0 = espelho, 1 = opaco) e <code class="code-inline">Normal</code>. Resultados fisicamente coerentes sob qualquer iluminacao.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Toon / NPR</h3>
+          <p>Non-Photorealistic Rendering. Usa posterizacao de luz (ceil/floor do dot product) e contorno (outline pass ou rim light invertido). Resultado depende de paleta controlada artisticamente, nao de simulacao fisica.</p>
+        </div>
+      </div>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Unlit</h3>
+          <p>Sem calculo de iluminacao: o pixel recebe a cor do albedo diretamente. Usado para emissivos, UI 3D e sprites em jogos 2D onde iluminacao dinamica nao faz sentido.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Custom / Especiais</h3>
+          <p>Agua (deslocamento de vertices + refraction), vidro (transmissao + refraction), subsurface scattering (pele/cera), dissolve (noise + clip threshold animado).</p>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">Custo de Shader e Otimizacao</h2>
+      <div class="panel">
+        <p>O custo de um shader e medido em <strong>instrucoes por pixel</strong> no fragment shader. Texturas extras e samples de cubemap, refraction e normal map em cascata acumulam instrucoess. Em mobile, o fragment shader e o gargalo mais critico: telas de alta resolucao com shader caro drenam bateria e causam thermal throttle.</p>
+        <p>Pratica recomendada: usar o <em>Frame Debugger</em> (Unity) ou <em>RenderDoc</em> para medir o custo real por draw call antes de polir o shader. Variacoes de shader (keywords) compilam permutacoes: cada keyword adicional dobra o numero de variantes compiladas.</p>
+      </div>
+      <ul>
+        <li>Evitar <code class="code-inline">discard</code> em fragment shader para objetos solidos — quebra otimizacoes de early-z.</li>
+        <li>Separar passes opaco, alpha-clip e transparente: cada um tem custo diferente no pipeline.</li>
+        <li>Usar texture arrays em vez de multiplos sample calls para conjuntos de texturas do mesmo tamanho.</li>
+      </ul>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>AKENINE-MOLLER, Tomas; HAINES, Eric; HOFFMAN, Naty. <strong>Real-Time Rendering</strong>. 4th ed. CRC Press, 2018.</li>
+        <li>UNITY TECHNOLOGIES. <strong>Shader Reference — URP Lit Shader</strong>. Unity Manual, 2024.</li>
+        <li>EPIC GAMES. <strong>Material Editor Reference</strong>. Unreal Engine Documentation, 2024.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>Shader bom e aquele que e correto na fisica, legivel no grafo e barato o suficiente para o target de hardware.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"Um shader elegante nao e o mais complexo, e o que faz o trabalho com o menor numero de instrucoes."</p>
+    </div>
+  </div></main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

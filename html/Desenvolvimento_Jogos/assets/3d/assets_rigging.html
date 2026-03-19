@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Rigging para personagens e props: esqueletos, controles e deformacao estavel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Rigging | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Rigging para Jogos</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">Rigging para Jogos</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>Rigging: Esqueleto que a Engine Consegue Animar</h1>
+        <p>Hierarquia de bones, peso de deformacao e convencoes que nao quebram ao importar.</p>
+      </div>
+      <p class="intro-highlight">Rig para jogo nao e rig para filme: a engine precisa de esqueleto previsivel, bones nomeados por convencao, sem controles auxiliares e com bind pose em T ou A. Complexidade desnecessaria no rig vira custo de CPU em runtime.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">O que e Rigging</h2>
+      <p>Rigging e o processo de criar uma estrutura de ossos (<strong>armature</strong>) e associa-la a uma malha 3D de forma que mover os ossos deforme a malha de modo convincente. O resultado — um <em>skinned mesh</em> — e o que permite que um personagem corra, ataque e reaja a fisica dentro da engine.</p>
+      <p>Em filmes de animacao, o rig pode ter centenas de controles auxiliares e drivers de expressao. Em jogos, o que vai para a engine e apenas o esqueleto de <strong>deformacao</strong> (deform bones), sem IK chains, sem pole targets e sem shapes de correcao — esses sao recursos da ferramenta de autoria, nao do runtime.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="hierarquia" class="section-title">Hierarquia e Nomenclatura de Bones</h2>
+      <p>Engines como Unity, Unreal e Godot mapeiam bones automaticamente para humanoid avatar ou animation retargeting usando nomes padrao. Usar nomes proprios exige mapeamento manual — retrabalho que se repete a cada import.</p>
+      <p>Convencao mais adotada no mercado: prefixo de lado + nome anatomico. Bones de deformacao sao os unicos que devem existir no FBX exportado; bones de controle (IK, pole target) ficam apenas no arquivo de autoria.</p>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">convencao_bones.txt</div>
+        <pre class="example">-- Coluna --
+root
+  pelvis
+    spine_01
+      spine_02
+        spine_03
+          neck_01
+            head
+
+-- Braco esquerdo --
+clavicle_l
+  upperarm_l
+    lowerarm_l
+      hand_l
+        index_01_l / middle_01_l / ...
+
+-- Perna direita --
+thigh_r
+  calf_r
+    foot_r
+      ball_r</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="deformacao" class="section-title">Deformacao e Weight Painting</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Regras de Peso</h3>
+          <ul>
+            <li>Soma dos pesos de todos os bones num vertice deve ser 1.0.</li>
+            <li>Articulacoes limpas: 2 a 3 bones maximo por regiao de dobra.</li>
+            <li>Nao deixar vertices sem peso (vertex group vazio = mesh caindo na origem).</li>
+            <li>Usar Normalize All para garantir soma 1.0 antes do export.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Problemas Classicos</h3>
+          <ul>
+            <li>Candy wrapper: torção no cotovelo por peso mal distribuido.</li>
+            <li>Volume collapse: joelho perdendo volume no dobramento extremo.</li>
+            <li>Corrective shapes: shape keys ativadas por driver de rotacao do bone para corrigir colapso.</li>
+            <li>Limite de 4 bones por vertice nas engines (skin4 constraint).</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="ik-fk" class="section-title">IK vs FK em Jogos</h2>
+      <div class="panel">
+        <p>Em producao de filme, IK (Inverse Kinematics) e indispensavel para fixar pe no chao e animar maos em superficie. Em jogos, esse trabalho e feito na engine em runtime via <strong>IK solver</strong> (Unity IK, Unreal Control Rig, Godot SkeletonIK). O FBX que vai para a engine deve conter apenas <strong>FK</strong> — animacao de rotacao forward kinematics — sem cadeia IK cozida nos dados de animacao.</p>
+        <p>Excecao: baked animations de cinematica podem conter o resultado do IK ja resolvido, desde que orientacoes de bone sejam coerentes com o esqueleto FK original.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="export" class="section-title">Export e Bind Pose</h2>
+      <div class="panel">
+        <p>Bind pose e a postura de referencia do esqueleto no momento do skinning. A convencao de mercado e <strong>T-Pose</strong> (mais comum em Unity/Unreal humanoid) ou <strong>A-Pose</strong> (menos stress nos ombros, preferida em alguns pipelines AAA).</p>
+        <p>No Blender: exportar via File > Export > FBX com opcao <em>Add Leaf Bones desligado</em> (Unreal adiciona bones fantasma que confundem o Skeleton Asset) e <em>Only Deform Bones ligado</em> para eliminar helpers, IK targets e outros ossos de controle do arquivo final.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>AUTODESK. <strong>FBX Best Practices for Game Engines</strong>. Autodesk Developer Network, 2023.</li>
+        <li>EPIC GAMES. <strong>Skeletal Mesh Animation System</strong>. Unreal Engine Documentation, 2024.</li>
+        <li>BEANE, Andy. <strong>3D Animation Essentials</strong>. Sybex, 2012.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>Um rig correto e invisivel: o jogador ve o personagem se mover, nao o esqueleto atras dele.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"O rig de jogo e infraestrutura: invisivel quando certo, catastrofico quando errado."</p>
+    </div>
+  </div></main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

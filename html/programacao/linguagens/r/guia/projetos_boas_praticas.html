@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas em R: estrutura de pacote, renv, tidyverse style guide, roxygen2, Quarto, GitHub Actions e publicação no CRAN." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>Projetos e Boas Práticas em R</h1>
+          <p>Estrutura de pacotes, reprodutibilidade com renv, estilo de código, documentação, relatórios com Quarto e CI/CD com GitHub Actions.</p>
+        </div>
+        <p class="intro-highlight">
+          Código R de produção — seja em análises reprodutíveis, pacotes publicados no CRAN ou pipelines de dados — exige disciplina de engenharia de software. Esta página cobre as convenções estabelecidas pela comunidade: da estrutura de diretórios ao processo de submissão ao CRAN, passando por CI/CD automatizado.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-pacote">Estrutura de Pacote R</h2>
+        <p>
+          Um pacote R é a unidade fundamental de compartilhamento de código. A estrutura de diretórios é padronizada; o <code>R CMD CHECK</code> valida cada componente antes da publicação.
+        </p>
+        <div class="panel">
+          <pre class="example"><span class="com"># Estrutura de um pacote R bem organizado</span>
+meupacote/
+├── DESCRIPTION        <span class="com"># metadados (nome, versão, dependências, licença)</span>
+├── NAMESPACE          <span class="com"># gerado pelo roxygen2 — exports e imports</span>
+├── README.md          <span class="com"># documentação principal (gerado por usethis::use_readme_md)</span>
+├── NEWS.md            <span class="com"># changelog de versões</span>
+├── LICENSE            <span class="com"># texto da licença (MIT, GPL, etc.)</span>
+├── .Rbuildignore      <span class="com"># arquivos excluídos do pacote final</span>
+├── R/                 <span class="com"># todo o código R do pacote</span>
+│   ├── utils.R        <span class="com"># funções auxiliares internas</span>
+│   ├── modelo.R       <span class="com"># funções exportadas</span>
+│   └── meupacote-package.R  <span class="com"># @docType package</span>
+├── man/               <span class="com"># gerado pelo roxygen2 — documentação .Rd</span>
+│   └── saudacao.Rd
+├── tests/
+│   ├── testthat.R     <span class="com"># runner de testes</span>
+│   └── testthat/
+│       └── test-saudacao.R
+├── vignettes/         <span class="com"># artigos de longa forma com exemplos</span>
+│   └── introducao.Rmd
+├── data/              <span class="com"># datasets incluídos no pacote (.rda)</span>
+├── data-raw/          <span class="com"># scripts que geraram os datasets</span>
+└── inst/              <span class="com"># arquivos extras (configs, templates, extdata/)</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">DESCRIPTION — arquivo de metadados</div>
+          <pre class="example">Package: meupacote
+Title: Título Descritivo do Pacote
+Version: 0.1.0
+Authors@R:
+    person("Nome", "Sobrenome", email = "email@exemplo.com",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0000-0000-0000"))
+Description: Descrição de um parágrafo que explica o que o pacote faz.
+    Pode ter múltiplas linhas com indentação de 4 espaços.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    dplyr (&gt;= 1.1.0),
+    ggplot2
+Suggests:
+    testthat (&gt;= 3.0.0),
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estilo-codigo">Estilo de Código — Tidyverse Style Guide</h2>
+        <p>
+          O <strong>Tidyverse Style Guide</strong> (style.tidyverse.org) é o padrão de facto para código R. Seguir um estilo consistente melhora a leitura e facilita revisão de código em equipe.
+        </p>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Regra</th><th>Correto</th><th>Incorreto</th></tr></thead>
+            <tbody>
+              <tr><td>Nomes de objetos</td><td><code>minha_variavel</code> (snake_case)</td><td><code>minhaVariavel</code>, <code>MnhVar</code></td></tr>
+              <tr><td>Nomes de funções</td><td><code>calcular_media()</code></td><td><code>CalcMedia()</code>, <code>calc.media()</code></td></tr>
+              <tr><td>Espaços em operadores</td><td><code>x &lt;- 1 + 2</code></td><td><code>x&lt;-1+2</code></td></tr>
+              <tr><td>Comprimento de linha</td><td>Máximo 80 caracteres</td><td>Linhas longas dificultem revisão</td></tr>
+              <tr><td>Vírgulas</td><td><code>c(1, 2, 3)</code></td><td><code>c(1,2,3)</code></td></tr>
+              <tr><td>Chaves</td><td><code>if (cond) {</code> na mesma linha</td><td><code>if (cond)</code><br><code>{</code> na linha seguinte</td></tr>
+              <tr><td>TRUE/FALSE</td><td><code>TRUE</code>, <code>FALSE</code></td><td><code>T</code>, <code>F</code> (perigoso — podem ser sobrescritos)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Nunca use <code>T</code> e <code>F</code></strong> como atalhos para <code>TRUE</code> e <code>FALSE</code> em código de produção. Eles são variáveis comuns que podem ser acidentalmente sobrescritas: <code>T &lt;- 42</code> é R válido e silenciosamente causará bugs.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="documentacao-roxygen2">Documentação com roxygen2</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">R/calcular_imc.R — documentação completa</div>
+          <pre class="example"><span class="com">#' Calcula o Índice de Massa Corporal (IMC)</span>
+<span class="com">#'</span>
+<span class="com">#' Calcula o IMC a partir de peso e altura, com classificação opcional</span>
+<span class="com">#' segundo os critérios da OMS.</span>
+<span class="com">#'</span>
+<span class="com">#' @param peso Peso em quilogramas (numérico, escalar ou vetor)</span>
+<span class="com">#' @param altura Altura em metros (numérico, escalar ou vetor)</span>
+<span class="com">#' @param classificar Lógico. Se `TRUE`, retorna data frame com IMC e</span>
+<span class="com">#'   classificação OMS. Padrão: `FALSE`.</span>
+<span class="com">#'</span>
+<span class="com">#' @return Se `classificar = FALSE`, vetor numérico com valores de IMC.</span>
+<span class="com">#'   Se `classificar = TRUE`, tibble com colunas `imc` e `categoria`.</span>
+<span class="com">#'</span>
+<span class="com">#' @export</span>
+<span class="com">#' @seealso [calcular_risco()] para avaliação de risco cardiovascular</span>
+<span class="com">#'</span>
+<span class="com">#' @examples</span>
+<span class="com">#' calcular_imc(70, 1.75)         # 22.86</span>
+<span class="com">#' calcular_imc(c(70, 90), c(1.75, 1.80))</span>
+<span class="com">#' calcular_imc(70, 1.75, classificar = TRUE)</span>
+<span class="fn">calcular_imc</span> &lt;- <span class="kw">function</span>(peso, altura, classificar = <span class="kw">FALSE</span>) {
+  <span class="fn">stopifnot</span>(<span class="fn">is.numeric</span>(peso), <span class="fn">is.numeric</span>(altura), <span class="fn">all</span>(altura &gt; <span class="num">0</span>))
+  imc &lt;- peso / altura^<span class="num">2</span>
+  <span class="kw">if</span> (!classificar) <span class="kw">return</span>(imc)
+  <span class="fn">tibble</span>::<span class="fn">tibble</span>(
+    imc      = imc,
+    categoria = <span class="fn">cut</span>(imc, breaks = <span class="fn">c</span>(-<span class="kw">Inf</span>, <span class="num">18.5</span>, <span class="num">25</span>, <span class="num">30</span>, <span class="kw">Inf</span>),
+                    labels = <span class="fn">c</span>(<span class="str">"Abaixo"</span>, <span class="str">"Normal"</span>, <span class="str">"Sobrepeso"</span>, <span class="str">"Obeso"</span>))
+  )
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="quarto-rmarkdown">Relatórios Reprodutíveis com Quarto</h2>
+        <p>
+          <strong>Quarto</strong> é a plataforma de publicação científica de nova geração da Posit, sucessor do R Markdown. Documentos <code>.qmd</code> intercalam código R (ou Python, Julia) com texto Markdown, gerando PDFs, HTMLs e apresentações reprodutíveis.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">relatorio.qmd — estrutura básica Quarto</div>
+          <pre class="example">---
+title: "Análise de Vendas 2024"
+author: "Equipe de Data Science"
+date: last-modified
+format:
+  html:
+    toc: true
+    code-fold: true
+    theme: flatly
+  pdf:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+## Carregamento de Dados
+
+```{r}
+#| label: load-data
+#| cache: true
+library(tidyverse)
+vendas &lt;- read_csv("vendas.csv")
+glimpse(vendas)
+```
+
+## Análise Descritiva
+
+```{r}
+#| label: fig-distribuicao
+#| fig-cap: "Distribuição de vendas por mês"
+vendas |&gt;
+  ggplot(aes(mes, total)) +
+  geom_col(fill = "steelblue") +
+  theme_minimal()
+```
+
+A @fig-distribuicao mostra pico de vendas no segundo semestre.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ci-cd">CI/CD com GitHub Actions</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">.github/workflows/R-CMD-check.yaml</div>
+          <pre class="example">on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+name: R-CMD-check
+
+jobs:
+  R-CMD-check:
+    runs-on: ${{ matrix.config.os }}
+    name: ${{ matrix.config.os }} (R ${{ matrix.config.r }})
+
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {os: ubuntu-latest, r: 'release'}
+          - {os: windows-latest, r: 'release'}
+          - {os: macOS-latest, r: 'release'}
+          - {os: ubuntu-latest, r: 'devel'}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.config.r }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::rcmdcheck
+          needs: check
+
+      - uses: r-lib/actions/check-r-package@v2
+        with:
+          upload-snapshots: true</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="publicacao-cran">Publicando no CRAN</h2>
+        <p>
+          O processo de submissão ao CRAN exige que o pacote passe no <code>R CMD CHECK</code> sem warnings nem erros em múltiplas plataformas. Use o <strong>rhub</strong> ou o <strong>win-builder</strong> para verificar em ambientes que você não tem localmente.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">publicacao.R — checklist pré-CRAN</div>
+          <pre class="example"><span class="com"># 1. Verificar localmente</span>
+<span class="fn">devtools</span>::<span class="fn">check</span>()             <span class="com"># zero ERRORs, zero WARNINGs</span>
+
+<span class="com"># 2. Verificar no win-builder (Windows + R-devel)</span>
+<span class="fn">devtools</span>::<span class="fn">check_win_devel</span>()   <span class="com"># envia para cran-win-builder.r-project.org</span>
+
+<span class="com"># 3. Verificar no r-hub (múltiplas plataformas)</span>
+<span class="fn">rhub</span>::<span class="fn">rc_submit</span>()   <span class="com"># submete para rhub v2 via GitHub Actions</span>
+
+<span class="com"># 4. Atualizar NEWS.md e DESCRIPTION (version bump)</span>
+<span class="fn">usethis</span>::<span class="fn">use_version</span>(<span class="str">"minor"</span>)   <span class="com"># 0.1.0 -&gt; 0.2.0</span>
+
+<span class="com"># 5. Gerar documentação e site</span>
+<span class="fn">devtools</span>::<span class="fn">document</span>()
+<span class="fn">pkgdown</span>::<span class="fn">build_site</span>()
+
+<span class="com"># 6. Submeter ao CRAN</span>
+<span class="fn">devtools</span>::<span class="fn">submit_cran</span>()
+<span class="com"># Redireciona para formulário web em https://cran.r-project.org/submit.html</span>
+<span class="com"># O mantenedor receberá email de confirmação</span>
+<span class="com"># Tempo de revisão: 2–5 dias úteis</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>WICKHAM, Hadley; BRYAN, Jenny. <strong>R Packages</strong>. 2. ed. O'Reilly Media, 2023. Disponível em: <a href="https://r-pkgs.org/" target="_blank" rel="noopener">r-pkgs.org</a></li>
+          <li>TIDYVERSE TEAM. <strong>The tidyverse style guide</strong>. 2024. Disponível em: <a href="https://style.tidyverse.org/" target="_blank" rel="noopener">style.tidyverse.org</a></li>
+          <li>ALLAIRE, J.J. et al. <strong>Quarto</strong>. Posit Software, 2024. Disponível em: <a href="https://quarto.org/" target="_blank" rel="noopener">quarto.org</a></li>
+          <li>R-LIB. <strong>r-lib/actions: GitHub Actions for the R community</strong>. GitHub, 2024. Disponível em: <a href="https://github.com/r-lib/actions" target="_blank" rel="noopener">github.com/r-lib/actions</a></li>
+          <li>CRAN TEAM. <strong>CRAN Repository Policy</strong>. The R Foundation, 2024. Disponível em: <a href="https://cran.r-project.org/web/packages/policies.html" target="_blank" rel="noopener">cran.r-project.org/web/packages/policies.html</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> R Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Code is read more often than it is written. Write code for humans first, computers second." — Tidyverse Style Guide</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

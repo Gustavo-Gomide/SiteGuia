@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do Clojure: sintaxe S-expression, tipos de dados, coleções imutáveis, funções, let, condicionais, loops com recur, namespaces, destructuring e interop Java." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Clojure — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Clojure — Fundamentos</h1>
+          <p>A sintaxe do Clojure é radicalmente simples: tudo são <strong>S-expressions</strong> — listas entre parênteses onde o primeiro elemento é o operador. Não há palavras reservadas para aritmetíca, não há precedência de operadores, não há sintaxe especial para chamada de função vs. operador — apenas listas aninhadas.</p>
+        </div>
+        <p class="intro-highlight">
+          Dominar os fundamentos do Clojure significa entender suas coleções imutáveis (vetor, mapa, set, lista), a diferença entre <code>def</code>/<code>defn</code>/<code>let</code>, como usar <code>if</code>/<code>cond</code>/<code>case</code>, e como a recursão com <code>recur</code> substitui loops imperativos.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos de Dados e Literais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Todos os tipos literais do Clojure</div>
+          <pre class="example"><span class="com">; ── Escalares ────────────────────────────────────────────────</span>
+<span class="num">42</span>          <span class="com">; Long (inteiro)</span>
+<span class="num">3.14</span>        <span class="com">; Double</span>
+<span class="num">22/7</span>        <span class="com">; Ratio — fração exata sem ponto flutuante!</span>
+<span class="num">1N</span>          <span class="com">; BigInteger</span>
+<span class="num">1.5M</span>        <span class="com">; BigDecimal</span>
+<span class="kw">true</span>        <span class="com">; Boolean</span>
+<span class="kw">nil</span>         <span class="com">; null (nil, não null)</span>
+<span class="str">"texto"</span>     <span class="com">; String Java (imutável)</span>
+\a          <span class="com">; Character \a \space \newline \tab</span>
+<span class="str">:palavra-chave</span>  <span class="com">; Keyword — identificador imutável interned</span>
+<span class="fn">simbolo</span>     <span class="com">; Symbol — referência a binding</span>
+
+<span class="com">; ── Coleções ─────────────────────────────────────────────────</span>
+[<span class="num">1</span> <span class="num">2</span> <span class="num">3</span>]           <span class="com">; Vector — acesso O(1) por índice</span>
+(<span class="num">1</span> <span class="num">2</span> <span class="num">3</span>)           <span class="com">; List — head/tail, fila persistente</span>
+{<span class="str">:a</span> <span class="num">1</span> <span class="str">:b</span> <span class="num">2</span>}      <span class="com">; HashMap — hash map persistente</span>
+#{<span class="num">1</span> <span class="num">2</span> <span class="num">3</span>}          <span class="com">; HashSet — conjunto sem duplicatas</span>
+
+<span class="com">; Keywords são funções que buscam a si mesmas em maps</span>
+(<span class="str">:nome</span> {<span class="str">:nome</span> <span class="str">"Maria"</span> <span class="str">:idade</span> <span class="num">30</span>})   <span class="com">; => "Maria"</span>
+(<span class="fn">get</span> {<span class="str">:nome</span> <span class="str">"João"</span>} <span class="str">:nome</span>)          <span class="com">; => "João"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções — defn, fn, #()</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Definição e chamada de funções</div>
+          <pre class="example"><span class="com">; ── defn — definição de função nomeada ───────────────────────</span>
+(<span class="kw">defn</span> <span class="fn">soma</span>
+  <span class="str">"Soma dois números. Docstring é o segundo argumento."</span>
+  [a b]
+  (+ a b))
+
+(<span class="fn">soma</span> <span class="num">3</span> <span class="num">4</span>)   <span class="com">; => 7</span>
+
+<span class="com">; ── Aridad múltipla ──────────────────────────────────────────</span>
+(<span class="kw">defn</span> <span class="fn">saudar</span>
+  ([nome]        (<span class="fn">saudar</span> nome <span class="str">"Olá"</span>))
+  ([nome msg]    (<span class="fn">str</span> msg <span class="str">", "</span> nome <span class="str">"!"</span>)))
+
+(<span class="fn">saudar</span> <span class="str">"Ana"</span>)            <span class="com">; => "Olá, Ana!"</span>
+(<span class="fn">saudar</span> <span class="str">"Ana"</span> <span class="str">"Oi"</span>)       <span class="com">; => "Oi, Ana!"</span>
+
+<span class="com">; ── Variadic com & ───────────────────────────────────────────</span>
+(<span class="kw">defn</span> <span class="fn">log</span> [nivel &amp; msgs]
+  (<span class="fn">apply</span> println (<span class="fn">str</span> <span class="str">"["</span> nivel <span class="str">"]"</span>) msgs))
+
+(<span class="fn">log</span> <span class="str">"INFO"</span> <span class="str">"servidor"</span> <span class="str">"iniciado"</span>)  <span class="com">; [INFO] servidor iniciado</span>
+
+<span class="com">; ── fn anônimo ───────────────────────────────────────────────</span>
+(<span class="kw">fn</span> [x] (* x x))
+#(* % %)   <span class="com">; shorthand — % é o primeiro arg; %2 o segundo</span>
+
+(<span class="fn">map</span> #(* % %) [<span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span>])  <span class="com">; => (1 4 9 16)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="let-bindings">let e Bindings Locais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">let, let*, if-let, when-let</div>
+          <pre class="example"><span class="com">; let — bindings locais em pares [nome valor]</span>
+(<span class="kw">let</span> [x <span class="num">10</span>
+      y <span class="num">20</span>
+      soma (+ x y)]
+  (<span class="fn">println</span> <span class="str">"soma ="</span> soma)
+  (* soma <span class="num">2</span>))   <span class="com">; => 60 (último expr é o retorno)</span>
+
+<span class="com">; if-let — bind e testa se truthy</span>
+(<span class="kw">if-let</span> [usuario (<span class="fn">buscar-usuario</span> <span class="num">42</span>)]
+  (<span class="fn">println</span> <span class="str">"Bem-vindo,"</span> (<span class="str">:nome</span> usuario))
+  (<span class="fn">println</span> <span class="str">"Usuário não encontrado"</span>))
+
+<span class="com">; when-let — bind e executa só se truthy</span>
+(<span class="kw">when-let</span> [resultado (<span class="fn">calcular</span>)]
+  (<span class="fn">salvar</span> resultado)
+  (<span class="fn">notificar</span> resultado))
+
+<span class="com">; destructuring em let — extrair de vetores e mapas</span>
+(<span class="kw">let</span> [[primeiro segundo &amp; resto] [<span class="num">1</span> <span class="num">2</span> <span class="num">3</span> <span class="num">4</span> <span class="num">5</span>]]
+  primeiro)   <span class="com">; => 1</span>
+
+(<span class="kw">let</span> [{<span class="str">:keys</span> [nome idade cidade]} {<span class="str">:nome</span> <span class="str">"Carlos"</span>
+                                    <span class="str">:idade</span> <span class="num">25</span>
+                                    <span class="str">:cidade</span> <span class="str">"SP"</span>}]
+  (<span class="fn">str</span> nome <span class="str">" tem "</span> idade <span class="str">" anos e mora em "</span> cidade))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="condicionais">Condicionais e Fluxo de Controle</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">if, cond, case, when</div>
+          <pre class="example"><span class="com">; if — ÚNICA expressão em cada branch</span>
+(<span class="kw">if</span> (&gt; x <span class="num">0</span>)
+  <span class="str">"positivo"</span>
+  <span class="str">"não positivo"</span>)
+
+<span class="com">; when — if sem else; múltiplos forms no body (retorna nil se falso)</span>
+(<span class="kw">when</span> (<span class="fn">valid?</span> dados)
+  (<span class="fn">processar</span> dados)
+  (<span class="fn">salvar</span> dados))
+
+<span class="com">; cond — múltiplos branches</span>
+(<span class="kw">cond</span>
+  (&lt; x <span class="num">0</span>)  <span class="str">"negativo"</span>
+  (= x <span class="num">0</span>)  <span class="str">"zero"</span>
+  (&gt; x <span class="num">0</span>)  <span class="str">"positivo"</span>
+  <span class="str">:else</span>      <span class="str">"impossível"</span>)    <span class="com">; :else é sempre truthy</span>
+
+<span class="com">; case — match por valor (mais eficiente que cond)</span>
+(<span class="kw">case</span> dia-semana
+  :seg <span class="str">"Segunda"</span>
+  :ter <span class="str">"Terça"</span>
+  :qua <span class="str">"Quarta"</span>
+  <span class="str">"Outro dia"</span>)   <span class="com">; default (sem test)</span>
+
+<span class="com">; and / or — curto-circuito, retornam o valor</span>
+(<span class="fn">and</span> <span class="kw">true</span> <span class="num">42</span>)     <span class="com">; => 42 (retorna último truthy)</span>
+(<span class="fn">or</span>  <span class="kw">nil</span> <span class="kw">false</span> <span class="num">7</span>) <span class="com">; => 7 (retorna primeiro truthy)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="colecoes">Coleções — Operações Essenciais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Vetor, mapa, set, lista — CRUD imutável</div>
+          <pre class="example"><span class="com">; ── Vetor ────────────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">v</span> [<span class="num">10</span> <span class="num">20</span> <span class="num">30</span>])
+(<span class="fn">conj</span> v <span class="num">40</span>)       <span class="com">; => [10 20 30 40] (append)</span>
+(<span class="fn">get</span> v <span class="num">1</span>)         <span class="com">; => 20</span>
+(v <span class="num">1</span>)             <span class="com">; => 20 (vetor é função de seu índice)</span>
+(<span class="fn">assoc</span> v <span class="num">1</span> <span class="num">99</span>)   <span class="com">; => [10 99 30]</span>
+(<span class="fn">count</span> v)         <span class="com">; => 3</span>
+(<span class="fn">subvec</span> v <span class="num">1</span> <span class="num">3</span>)   <span class="com">; => [20 30]</span>
+
+<span class="com">; ── Mapa ─────────────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">m</span> {<span class="str">:nome</span> <span class="str">"Ana"</span> <span class="str">:idade</span> <span class="num">25</span>})
+(<span class="fn">assoc</span> m <span class="str">:email</span> <span class="str">"ana@ex.com"</span>)   <span class="com">; adicionar chave</span>
+(<span class="fn">dissoc</span> m <span class="str">:idade</span>)               <span class="com">; remover chave</span>
+(<span class="fn">update</span> m <span class="str">:idade</span> inc)           <span class="com">; => {:nome "Ana" :idade 26}</span>
+(<span class="fn">merge</span> m {<span class="str">:cidade</span> <span class="str">"SP"</span>})        <span class="com">; unir mapas</span>
+(<span class="fn">keys</span> m)                         <span class="com">; => (:nome :idade)</span>
+(<span class="fn">vals</span> m)                         <span class="com">; => ("Ana" 25)</span>
+
+<span class="com">; ── Set ──────────────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">s</span> #{<span class="num">1</span> <span class="num">2</span> <span class="num">3</span>})
+(<span class="fn">conj</span> s <span class="num">4</span>)               <span class="com">; => #{1 2 3 4}</span>
+(<span class="fn">disj</span> s <span class="num">2</span>)               <span class="com">; => #{1 3}</span>
+(<span class="fn">contains?</span> s <span class="num">2</span>)          <span class="com">; => true</span>
+(<span class="fn">clojure.set/union</span> s #{<span class="num">3</span> <span class="num">4</span>})       <span class="com">; => #{1 2 3 4}</span>
+(<span class="fn">clojure.set/intersection</span> s #{<span class="num">2</span> <span class="num">3</span>}) <span class="com">; => #{2 3}</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="loops">Loop e Recur — Recursão Otimizada</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">loop/recur, doseq, dotimes, for</div>
+          <pre class="example"><span class="com">; recur — tail-call optimization (sem stack overflow)</span>
+(<span class="kw">defn</span> <span class="fn">fatorial</span> [n]
+  (<span class="kw">loop</span> [n n, acc <span class="num">1</span>]
+    (<span class="kw">if</span> (&lt;= n <span class="num">1</span>)
+      acc
+      (<span class="fn">recur</span> (dec n) (* acc n)))))
+
+(<span class="fn">fatorial</span> <span class="num">10</span>)   <span class="com">; => 3628800</span>
+
+<span class="com">; doseq — side effects em coleção</span>
+(<span class="kw">doseq</span> [item [<span class="str">"a"</span> <span class="str">"b"</span> <span class="str">"c"</span>]]
+  (<span class="fn">println</span> <span class="str">"Item:"</span> item))
+
+<span class="com">; dotimes — repetir N vezes</span>
+(<span class="kw">dotimes</span> [i <span class="num">5</span>]
+  (<span class="fn">println</span> <span class="str">"i ="</span> i))
+
+<span class="com">; for — list comprehension</span>
+(<span class="kw">for</span> [x [<span class="num">1</span> <span class="num">2</span> <span class="num">3</span>]
+      y [<span class="num">1</span> <span class="num">2</span>]
+      <span class="str">:when</span> (not= x y)]
+  [x y])
+<span class="com">; => ([1 2] [2 1] [3 1] [3 2])</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interop">Interoperabilidade Java</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Chamada de métodos e classes Java</div>
+          <pre class="example"><span class="com">; Criar instância</span>
+(<span class="fn">new</span> java.util.ArrayList)
+(<span class="fn">java.util.ArrayList.</span>)   <span class="com">; shorthand — ponto no final = construtor</span>
+
+<span class="com">; Chamar método de instância — (.metodo objeto args)</span>
+(<span class="kw">def</span> <span class="fn">lista-java</span> (<span class="fn">java.util.ArrayList.</span>))
+(.add lista-java <span class="str">"item1"</span>)
+(.add lista-java <span class="str">"item2"</span>)
+(.size lista-java)         <span class="com">; => 2</span>
+(.get lista-java <span class="num">0</span>)        <span class="com">; => "item1"</span>
+
+<span class="com">; Método estático — (Classe/metodo args)</span>
+(java.lang.Math/sqrt <span class="num">16.0</span>)   <span class="com">; => 4.0</span>
+(java.lang.Math/PI)          <span class="com">; => 3.141592...</span>
+(System/currentTimeMillis)   <span class="com">; timestamp</span>
+
+<span class="com">; String Java</span>
+(.toUpperCase <span class="str">"hello"</span>)          <span class="com">; => "HELLO"</span>
+(.contains <span class="str">"hello world"</span> <span class="str">"world"</span>) <span class="com">; => true</span>
+(<span class="fn">str</span> <span class="str">"a"</span> <span class="str">"b"</span> <span class="str">"c"</span>)             <span class="com">; => "abc" (Clojure native)</span>
+
+<span class="com">; Import de classes Java</span>
+(<span class="fn">import</span> <span class="str">'java.util.Date</span> <span class="str">'java.io.File</span>)
+(<span class="fn">Date.</span>)    <span class="com">; data atual</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Clojure.org. <strong>Clojure Cheatsheet</strong>. Disponível em: &lt;https://clojure.org/api/cheatsheet&gt;. Acesso em: 2025.</li>
+            <li>HALLOWAY, S.; BEDRA, A. <strong>Programming Clojure</strong>. 3. ed. Pragmatic Bookshelf, 2018.</li>
+            <li>ClojureDocs. <strong>Community-Powered Documentation</strong>. Disponível em: &lt;https://clojuredocs.org&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introdução ao Clojure</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Clojure Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Clojure, <code>nil</code> e <code>false</code> são os únicos valores falsy — todos os outros são truthy, incluindo <code>0</code>, <code>""</code> e <code>[]</code>. Isso difere do JavaScript e Python onde <code>0</code> e string vazia são falsy. Essa consistência simplifica predicados: <code>(when resultado ...)</code> executa se <code>resultado</code> não for nil nem false.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

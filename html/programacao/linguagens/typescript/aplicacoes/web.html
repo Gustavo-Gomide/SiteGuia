@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript para Web: Express com @types, Fastify com TypeBox, Hono edge e tipagem de Request/Response." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript para Web</h1>
+          <p>Express com generics de Request/Response, Fastify com TypeBox para validacao em runtime + tipos automaticos e Hono para edge computing com tipagem completa de rotas.</p>
+        </div>
+        <p class="intro-highlight">
+          TypeScript transforma APIs Node.js de contratos impliciticos em interfaces explicitas verificadas em compilacao. Com Fastify + TypeBox ou Hono, schema de validacao e tipo sao a mesma fonte de verdade.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="express">Express com @types/express</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Express &mdash; Request e Response tipados com generics</div>
+          <pre class="example"><span class="kw">import</span> express, { <span class="tp">Application</span> } <span class="kw">from</span> <span class="str">"express"</span>;
+<span class="kw">import</span> <span class="kw">type</span> {
+  <span class="tp">Request</span>, <span class="tp">Response</span>, <span class="tp">NextFunction</span>, <span class="tp">RequestHandler</span>,
+} <span class="kw">from</span> <span class="str">"express"</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="com">// Generics do Request: &lt;Params, ResBody, ReqBody, Query&gt;</span>
+<span class="kw">const</span> <span class="tp">ProdutoIdSchema</span> = z.<span class="fn">object</span>({ id: z.<span class="fn">string</span>().<span class="fn">uuid</span>() });
+<span class="kw">const</span> <span class="tp">CriarProdutoSchema</span> = z.<span class="fn">object</span>({
+  nome:  z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">2</span>),
+  preco: z.<span class="fn">number</span>().<span class="fn">positive</span>(),
+  sku:   z.<span class="fn">string</span>().<span class="fn">regex</span>(/^[A-Z]{3}-\d{4}$/),
+});
+
+<span class="kw">type</span> <span class="tp">ProdutoId</span>     = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">ProdutoIdSchema</span>&gt;;
+<span class="kw">type</span> <span class="tp">CriarProduto</span>  = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">CriarProdutoSchema</span>&gt;;
+<span class="kw">type</span> <span class="tp">Produto</span>       = <span class="tp">CriarProduto</span> &amp; { id: <span class="kw">string</span>; criadoEm: <span class="tp">Date</span> };
+
+<span class="com">// Handler com params e body tipados</span>
+<span class="kw">const</span> <span class="fn">buscarProduto</span>: <span class="tp">RequestHandler</span>&lt;<span class="tp">ProdutoId</span>, <span class="tp">Produto</span>&gt; = <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> { id } = <span class="tp">ProdutoIdSchema</span>.<span class="fn">parse</span>(req.params);
+  <span class="kw">const</span> produto = <span class="kw">await</span> <span class="fn">buscarNoBanco</span>(id);
+  res.<span class="fn">json</span>(produto);
+};
+
+<span class="kw">const</span> <span class="fn">criarProduto</span>: <span class="tp">RequestHandler</span>&lt;{}, <span class="tp">Produto</span>, <span class="tp">CriarProduto</span>&gt; = <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> dados = <span class="tp">CriarProdutoSchema</span>.<span class="fn">parse</span>(req.body);
+  <span class="kw">const</span> produto = <span class="kw">await</span> <span class="fn">inserirNoBanco</span>(dados);
+  res.<span class="fn">status</span>(<span class="num">201</span>).<span class="fn">json</span>(produto);
+};
+
+<span class="com">// Middleware tipado com augmentation de Request</span>
+<span class="kw">declare global</span> {
+  <span class="kw">namespace</span> <span class="tp">Express</span> {
+    <span class="kw">interface</span> <span class="tp">Request</span> {
+      usuarioId?: <span class="kw">string</span>;
+      papel?:     <span class="str">"admin"</span> | <span class="str">"usuario"</span>;
+    }
+  }
+}
+
+<span class="kw">const</span> <span class="fn">autenticar</span>: <span class="tp">RequestHandler</span> = (req, res, next) => {
+  <span class="kw">const</span> token = req.headers.authorization?.split(<span class="str">" "</span>)[<span class="num">1</span>];
+  <span class="kw">if</span> (!token) { res.<span class="fn">status</span>(<span class="num">401</span>).<span class="fn">json</span>({ erro: <span class="str">"Nao autorizado"</span> }); <span class="kw">return</span>; }
+  req.usuarioId = <span class="fn">verificarToken</span>(token);
+  <span class="fn">next</span>();
+};
+
+<span class="kw">const</span> app: <span class="tp">Application</span> = <span class="fn">express</span>();
+app.<span class="fn">use</span>(express.<span class="fn">json</span>());
+app.<span class="fn">get</span>(<span class="str">"/produtos/:id"</span>, <span class="fn">autenticar</span>, <span class="fn">buscarProduto</span>);
+app.<span class="fn">post</span>(<span class="str">"/produtos"</span>, <span class="fn">autenticar</span>, <span class="fn">criarProduto</span>);
+app.<span class="fn">listen</span>(<span class="num">3000</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fastify">Fastify com TypeBox</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Fastify &mdash; TypeBox schema como fonte de verdade</div>
+          <pre class="example"><span class="kw">import</span> <span class="tp">Fastify</span> <span class="kw">from</span> <span class="str">"fastify"</span>;
+<span class="kw">import</span> { <span class="tp">TypeBoxTypeProvider</span> } <span class="kw">from</span> <span class="str">"@fastify/type-provider-typebox"</span>;
+<span class="kw">import</span> { <span class="tp">Type</span>, <span class="kw">type</span> <span class="tp">Static</span> } <span class="kw">from</span> <span class="str">"@sinclair/typebox"</span>;
+
+<span class="com">// TypeBox: schema JSON Schema + tipo TypeScript na mesma declaracao</span>
+<span class="kw">const</span> <span class="tp">UsuarioParamsSchema</span> = <span class="tp">Type</span>.<span class="fn">Object</span>({
+  id: <span class="tp">Type</span>.<span class="fn">String</span>({ format: <span class="str">"uuid"</span> }),
+});
+
+<span class="kw">const</span> <span class="tp">CriarUsuarioBodySchema</span> = <span class="tp">Type</span>.<span class="fn">Object</span>({
+  nome:  <span class="tp">Type</span>.<span class="fn">String</span>({ minLength: <span class="num">2</span>, maxLength: <span class="num">100</span> }),
+  email: <span class="tp">Type</span>.<span class="fn">String</span>({ format: <span class="str">"email"</span> }),
+  idade: <span class="tp">Type</span>.<span class="fn">Optional</span>(<span class="tp">Type</span>.<span class="fn">Integer</span>({ minimum: <span class="num">0</span>, maximum: <span class="num">150</span> })),
+});
+
+<span class="kw">const</span> <span class="tp">UsuarioResponseSchema</span> = <span class="tp">Type</span>.<span class="fn">Object</span>({
+  id:       <span class="tp">Type</span>.<span class="fn">String</span>({ format: <span class="str">"uuid"</span> }),
+  nome:     <span class="tp">Type</span>.<span class="fn">String</span>(),
+  email:    <span class="tp">Type</span>.<span class="fn">String</span>({ format: <span class="str">"email"</span> }),
+  criadoEm: <span class="tp">Type</span>.<span class="fn">String</span>({ format: <span class="str">"date-time"</span> }),
+});
+
+<span class="kw">type</span> <span class="tp">CriarUsuarioBody</span>  = <span class="tp">Static</span>&lt;<span class="kw">typeof</span> <span class="tp">CriarUsuarioBodySchema</span>&gt;;
+<span class="kw">type</span> <span class="tp">UsuarioResponse</span>   = <span class="tp">Static</span>&lt;<span class="kw">typeof</span> <span class="tp">UsuarioResponseSchema</span>&gt;;
+
+<span class="kw">const</span> fastify = <span class="tp">Fastify</span>().<span class="fn">withTypeProvider</span>&lt;<span class="tp">TypeBoxTypeProvider</span>&gt;();
+
+fastify.<span class="fn">get</span>(<span class="str">"/usuarios/:id"</span>, {
+  schema: {
+    params:   <span class="tp">UsuarioParamsSchema</span>,
+    response: { <span class="num">200</span>: <span class="tp">UsuarioResponseSchema</span> },
+  },
+}, <span class="kw">async</span> (req, reply) => {
+  <span class="com">// req.params.id e string (tipado automaticamente)</span>
+  <span class="kw">const</span> usuario = <span class="kw">await</span> <span class="fn">buscarUsuario</span>(req.params.id);
+  <span class="kw">return</span> reply.<span class="fn">send</span>(usuario);
+});
+
+fastify.<span class="fn">post</span>&lt;{ Body: <span class="tp">CriarUsuarioBody</span>; Reply: <span class="tp">UsuarioResponse</span> }&gt;(<span class="str">"/usuarios"</span>, {
+  schema: {
+    body:     <span class="tp">CriarUsuarioBodySchema</span>,
+    response: { <span class="num">201</span>: <span class="tp">UsuarioResponseSchema</span> },
+  },
+}, <span class="kw">async</span> (req, reply) => {
+  <span class="kw">const</span> novoUsuario = <span class="kw">await</span> <span class="fn">criarUsuario</span>(req.body);
+  <span class="kw">return</span> reply.<span class="fn">status</span>(<span class="num">201</span>).<span class="fn">send</span>(novoUsuario);
+});
+
+<span class="kw">await</span> fastify.<span class="fn">listen</span>({ port: <span class="num">3000</span>, host: <span class="str">"0.0.0.0"</span> });</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hono">Hono Edge-Ready com Tipagem de Rotas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Hono &mdash; zValidator, RPC client e deploy edge</div>
+          <pre class="example"><span class="kw">import</span> { <span class="tp">Hono</span> } <span class="kw">from</span> <span class="str">"hono"</span>;
+<span class="kw">import</span> { <span class="fn">zValidator</span> } <span class="kw">from</span> <span class="str">"@hono/zod-validator"</span>;
+<span class="kw">import</span> { <span class="fn">jwt</span> } <span class="kw">from</span> <span class="str">"hono/jwt"</span>;
+<span class="kw">import</span> { <span class="fn">cors</span> } <span class="kw">from</span> <span class="str">"hono/cors"</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">type</span> <span class="tp">Env</span> = { <span class="tp">Variables</span>: { usuarioId: <span class="kw">string</span>; papel: <span class="str">"admin"</span> | <span class="str">"user"</span> } };
+
+<span class="kw">const</span> app = <span class="kw">new</span> <span class="tp">Hono</span>&lt;<span class="tp">Env</span>&gt;();
+
+app.<span class="fn">use</span>(<span class="str">"*"</span>, <span class="fn">cors</span>({ origin: [<span class="str">"https://meusite.com"</span>] }));
+app.<span class="fn">use</span>(<span class="str">"/api/*"</span>, <span class="fn">jwt</span>({ secret: process.env.JWT_SECRET! }));
+
+<span class="kw">const</span> <span class="tp">ProdutoSchema</span> = z.<span class="fn">object</span>({
+  nome:     z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">1</span>),
+  preco:    z.<span class="fn">number</span>().<span class="fn">positive</span>(),
+  estoque:  z.<span class="fn">number</span>().<span class="fn">int</span>().<span class="fn">nonnegative</span>(),
+  categoria: z.<span class="fn">enum</span>([<span class="str">"eletronico"</span>, <span class="str">"vestuario"</span>, <span class="str">"alimento"</span>]),
+});
+
+<span class="kw">const</span> produto = <span class="kw">new</span> <span class="tp">Hono</span>&lt;<span class="tp">Env</span>&gt;()
+  .<span class="fn">get</span>(<span class="str">"/"</span>, <span class="kw">async</span> (c) => {
+    <span class="kw">const</span> produtos = <span class="kw">await</span> <span class="fn">listarProdutos</span>();
+    <span class="kw">return</span> c.<span class="fn">json</span>(produtos);
+  })
+  .<span class="fn">post</span>(<span class="str">"/"</span>, <span class="fn">zValidator</span>(<span class="str">"json"</span>, <span class="tp">ProdutoSchema</span>), <span class="kw">async</span> (c) => {
+    <span class="kw">const</span> body = c.<span class="fn">req</span>.<span class="fn">valid</span>(<span class="str">"json"</span>); <span class="com">// tipado como z.infer&lt;ProdutoSchema&gt;</span>
+    <span class="kw">const</span> novo = <span class="kw">await</span> <span class="fn">criarProduto</span>(body);
+    <span class="kw">return</span> c.<span class="fn">json</span>(novo, <span class="num">201</span>);
+  })
+  .<span class="fn">get</span>(<span class="str">"/:id"</span>, <span class="kw">async</span> (c) => {
+    <span class="kw">const</span> id = c.req.param(<span class="str">"id"</span>);
+    <span class="kw">const</span> p = <span class="kw">await</span> <span class="fn">buscarProduto</span>(id);
+    <span class="kw">if</span> (!p) <span class="kw">return</span> c.<span class="fn">json</span>({ erro: <span class="str">"nao encontrado"</span> }, <span class="num">404</span>);
+    <span class="kw">return</span> c.<span class="fn">json</span>(p);
+  });
+
+app.<span class="fn">route</span>(<span class="str">"/api/produtos"</span>, produto);
+
+<span class="com">// Exportar tipo para RPC client (Hono RPC)</span>
+<span class="kw">export type</span> <span class="tp">AppType</span> = <span class="kw">typeof</span> app;
+
+<span class="com">// Deploy edge: Cloudflare Workers, Vercel Edge, Deno Deploy</span>
+<span class="kw">export default</span> app;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>EXPRESSJS. <strong>@types/express — TypeScript definitions</strong>. Disponível em: &lt;https://www.npmjs.com/package/@types/express&gt;. Acesso em: 2025.</li>
+            <li>FASTIFY. <strong>TypeScript — Fastify documentation</strong>. Disponível em: &lt;https://fastify.dev/docs/latest/Reference/TypeScript/&gt;. Acesso em: 2025.</li>
+            <li>HONO. <strong>Hono — Ultrafast web framework for the Edges</strong>. Disponível em: &lt;https://hono.dev/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript com Banco de Dados</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Hono RPC elimina a necessidade de OpenAPI para clientes internos — exporte o tipo do app e o cliente tem autocomplete completo</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

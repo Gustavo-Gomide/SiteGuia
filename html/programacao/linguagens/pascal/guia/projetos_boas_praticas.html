@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pascal — Projetos e Boas Práticas: estrutura de units, convenções de nomenclatura (prefixos T, F, I), PasDoc, FPCUnit, migração de Turbo Pascal para Free Pascal e organização de projetos Lazarus." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Pascal — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Pascal &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="pascal" aria-hidden="true"></span></div>
+          <h1>Pascal — Projetos e Boas Práticas</h1>
+          <p>Estrutura de units, convenções de nomenclatura, documentação com PasDoc, organização de projetos Lazarus e migração de código legado.</p>
+        </div>
+        <p class="intro-highlight">
+          Código Pascal de qualidade não é apenas código correto — é código que outros programadores conseguem ler, manter e estender. As convenções do ecossistema Object Pascal (especialmente as herdadas do Delphi) são maduras e amplamente adotadas. Segui-las é a diferença entre um projeto profissional e um projeto difícil de manter.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-unit">Estrutura de Units</h2>
+        <div class="panel">
+          <p>A <strong>unit</strong> é a unidade de modularização do Pascal. Ela tem duas partes: <code>interface</code> (declarações públicas, equivalente ao arquivo <code>.h</code> do C) e <code>implementation</code> (implementação privada). O código de inicialização fica na seção <code>initialization</code>.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GeometriaPlanar.pas — Unit bem estruturada</div>
+          <pre class="example"><span class="com">{
+  GeometriaPlanar.pas — Formas geométricas 2D
+  Autor: Alice Silva
+  Versão: 1.0.0
+  Licença: MIT
+}</span>
+<span class="kw">unit</span> GeometriaPlanar;
+
+<span class="com">{$mode objfpc}     // modo Object Pascal (FPC)</span>
+<span class="com">{$H+}              // usa AnsiString em vez de ShortString</span>
+<span class="com">{$interfaces corba} // interfaces no estilo CORBA (FPC/Delphi-compatível)</span>
+
+<span class="kw">interface</span>
+
+<span class="kw">uses</span>
+  SysUtils, Math;
+
+<span class="kw">type</span>
+  <span class="com">{ Interface pública — qualquer forma deve implementar }</span>
+  <span class="tp">IForma</span> = <span class="kw">interface</span>
+    <span class="kw">function</span> <span class="fn">Area</span>: <span class="tp">Double</span>;
+    <span class="kw">function</span> <span class="fn">Perimetro</span>: <span class="tp">Double</span>;
+    <span class="kw">function</span> <span class="fn">Descricao</span>: <span class="tp">String</span>;
+  <span class="kw">end</span>;
+
+  <span class="com">{ Classe base — não instanciar diretamente }</span>
+  <span class="tp">TFormaBase</span> = <span class="kw">class</span>(<span class="tp">TObject</span>, <span class="tp">IForma</span>)
+  <span class="kw">public</span>
+    <span class="kw">function</span> <span class="fn">Area</span>: <span class="tp">Double</span>; <span class="kw">virtual</span>; <span class="kw">abstract</span>;
+    <span class="kw">function</span> <span class="fn">Perimetro</span>: <span class="tp">Double</span>; <span class="kw">virtual</span>; <span class="kw">abstract</span>;
+    <span class="kw">function</span> <span class="fn">Descricao</span>: <span class="tp">String</span>; <span class="kw">virtual</span>;
+  <span class="kw">end</span>;
+
+  <span class="tp">TCirculo</span> = <span class="kw">class</span>(<span class="tp">TFormaBase</span>)
+  <span class="kw">private</span>
+    FRaio : <span class="tp">Double</span>;               <span class="com">{ F = campo privado (Field) }</span>
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(raio: <span class="tp">Double</span>);
+    <span class="kw">function</span>  <span class="fn">Area</span>: <span class="tp">Double</span>; <span class="kw">override</span>;
+    <span class="kw">function</span>  <span class="fn">Perimetro</span>: <span class="tp">Double</span>; <span class="kw">override</span>;
+    <span class="kw">function</span>  <span class="fn">Descricao</span>: <span class="tp">String</span>; <span class="kw">override</span>;
+    <span class="kw">property</span>  Raio: <span class="tp">Double</span> <span class="kw">read</span> FRaio;
+  <span class="kw">end</span>;
+
+  <span class="tp">TRetangulo</span> = <span class="kw">class</span>(<span class="tp">TFormaBase</span>)
+  <span class="kw">private</span>
+    FLargura, FAltura : <span class="tp">Double</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(largura, altura: <span class="tp">Double</span>);
+    <span class="kw">function</span>  <span class="fn">Area</span>: <span class="tp">Double</span>; <span class="kw">override</span>;
+    <span class="kw">function</span>  <span class="fn">Perimetro</span>: <span class="tp">Double</span>; <span class="kw">override</span>;
+    <span class="kw">function</span>  <span class="fn">Descricao</span>: <span class="tp">String</span>; <span class="kw">override</span>;
+  <span class="kw">end</span>;
+
+<span class="com">{ Função de fábrica — retorna a forma mais eficiente para uma área }</span>
+<span class="kw">function</span> <span class="fn">FormaComMaiorArea</span>(formas: <span class="kw">array of</span> <span class="tp">IForma</span>): <span class="tp">IForma</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">function</span> <span class="tp">TFormaBase</span>.<span class="fn">Descricao</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Format</span>(<span class="str">'%s: Área=%.2f Perímetro=%.2f'</span>,
+    [ClassName, <span class="fn">Area</span>, <span class="fn">Perimetro</span>]);
+<span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TCirculo</span>.<span class="fn">Create</span>(raio: <span class="tp">Double</span>);
+<span class="kw">begin</span>
+  <span class="kw">if</span> raio <= <span class="num">0</span> <span class="kw">then</span>
+    <span class="kw">raise</span> <span class="tp">EArgumentException</span>.<span class="fn">Create</span>(<span class="str">'Raio deve ser positivo'</span>);
+  FRaio := raio;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TCirculo</span>.<span class="fn">Area</span>: <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := Pi * FRaio * FRaio;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TCirculo</span>.<span class="fn">Perimetro</span>: <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := <span class="num">2</span> * Pi * FRaio;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TCirculo</span>.<span class="fn">Descricao</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Format</span>(<span class="str">'Círculo(r=%.2f): Área=%.4f'</span>, [FRaio, <span class="fn">Area</span>]);
+<span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TRetangulo</span>.<span class="fn">Create</span>(largura, altura: <span class="tp">Double</span>);
+<span class="kw">begin</span>
+  FLargura := largura;
+  FAltura  := altura;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TRetangulo</span>.<span class="fn">Area</span>: <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := FLargura * FAltura;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TRetangulo</span>.<span class="fn">Perimetro</span>: <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := <span class="num">2</span> * (FLargura + FAltura);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TRetangulo</span>.<span class="fn">Descricao</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Format</span>(<span class="str">'Retângulo(%gx%g): Área=%.4f'</span>, [FLargura, FAltura, <span class="fn">Area</span>]);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="fn">FormaComMaiorArea</span>(formas: <span class="kw">array of</span> <span class="tp">IForma</span>): <span class="tp">IForma</span>;
+<span class="kw">var</span>
+  i : <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  Result := formas[<span class="num">0</span>];
+  <span class="kw">for</span> i := <span class="num">1</span> <span class="kw">to</span> <span class="fn">High</span>(formas) <span class="kw">do</span>
+    <span class="kw">if</span> formas[i].<span class="fn">Area</span> > Result.<span class="fn">Area</span> <span class="kw">then</span>
+      Result := formas[i];
+<span class="kw">end</span>;
+
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="convencoes">Convenções de Nomenclatura</h2>
+        <div class="panel">
+          <p>O ecossistema Object Pascal/Delphi usa um conjunto de prefixos e sufixos padronizados. Segui-los torna o código instantaneamente reconhecível por qualquer desenvolvedor Pascal experiente.</p>
+        </div>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Elemento</th><th>Convenção</th><th>Exemplos</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Tipos (<code>type</code>)</td><td>Prefixo <code>T</code></td><td><code>TPessoa</code>, <code>TLista</code>, <code>TData</code></td></tr>
+              <tr><td>Ponteiros (<code>^Tipo</code>)</td><td>Prefixo <code>P</code></td><td><code>PPessoa</code>, <code>PInteger</code></td></tr>
+              <tr><td>Interfaces</td><td>Prefixo <code>I</code></td><td><code>IComparavel</code>, <code>ISerializable</code></td></tr>
+              <tr><td>Exceções</td><td>Prefixo <code>E</code></td><td><code>EValidacao</code>, <code>EArquivoNaoEncontrado</code></td></tr>
+              <tr><td>Campos privados</td><td>Prefixo <code>F</code></td><td><code>FNome</code>, <code>FIdade</code>, <code>FLista</code></td></tr>
+              <tr><td>Constantes</td><td>CamelCase ou <code>SNAKE_CASE</code></td><td><code>MaxTamanho</code> ou <code>MAX_TAMANHO</code></td></tr>
+              <tr><td>Variáveis locais</td><td>camelCase</td><td><code>nome</code>, <code>totalItens</code>, <code>i</code></td></tr>
+              <tr><td>Parâmetros</td><td>camelCase</td><td><code>const nomeArquivo: String</code></td></tr>
+              <tr><td>Métodos/Procedures</td><td>PascalCase (verbo + substantivo)</td><td><code>CarregarArquivo</code>, <code>ExibirInfo</code></td></tr>
+              <tr><td>Units</td><td>PascalCase (nome significativo)</td><td><code>GeometriaPlanar</code>, <code>RepositorioPessoas</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pasdoc">Documentação com PasDoc</h2>
+        <div class="panel">
+          <p>PasDoc gera documentação HTML, LaTeX ou CHM a partir de comentários especiais no código fonte. O formato usa <code>/** */</code> ou <code>{** }</code> com tags <code>@param</code>, <code>@returns</code>, <code>@raises</code>, <code>@seealso</code>.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">documented.pas — Comentários PasDoc</div>
+          <pre class="example"><span class="kw">unit</span> DocumentedUnit;
+
+<span class="kw">interface</span>
+
+<span class="kw">type</span>
+  <span class="com">{** Representa um ponto no espaço 2D.
+    @author Alice Silva
+    @created 2024-01-15
+  }</span>
+  <span class="tp">TPonto</span> = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FX, FY : <span class="tp">Double</span>;
+  <span class="kw">public</span>
+    <span class="com">{** Cria um ponto nas coordenadas especificadas.
+      @param x Coordenada horizontal
+      @param y Coordenada vertical
+    }</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(x, y: <span class="tp">Double</span>);
+
+    <span class="com">{** Calcula a distância euclidiana até outro ponto.
+      @param outro O ponto de destino
+      @returns Distância não-negativa em unidades do espaço
+      @seealso DistanciaManhattan
+    }</span>
+    <span class="kw">function</span> <span class="fn">DistanciaEuclidiana</span>(outro: <span class="tp">TPonto</span>): <span class="tp">Double</span>;
+
+    <span class="com">{** Distância de Manhattan (L1).
+      @seealso DistanciaEuclidiana
+    }</span>
+    <span class="kw">function</span> <span class="fn">DistanciaManhattan</span>(outro: <span class="tp">TPonto</span>): <span class="tp">Double</span>;
+
+    <span class="com">{** Coordenada X do ponto. }</span>
+    <span class="kw">property</span> X: <span class="tp">Double</span> <span class="kw">read</span> FX;
+    <span class="com">{** Coordenada Y do ponto. }</span>
+    <span class="kw">property</span> Y: <span class="tp">Double</span> <span class="kw">read</span> FY;
+  <span class="kw">end</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">uses</span> Math;
+
+<span class="kw">constructor</span> <span class="tp">TPonto</span>.<span class="fn">Create</span>(x, y: <span class="tp">Double</span>);
+<span class="kw">begin</span>
+  FX := x; FY := y;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TPonto</span>.<span class="fn">DistanciaEuclidiana</span>(outro: <span class="tp">TPonto</span>): <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Hypot</span>(outro.X - FX, outro.Y - FY);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TPonto</span>.<span class="fn">DistanciaManhattan</span>(outro: <span class="tp">TPonto</span>): <span class="tp">Double</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Abs</span>(outro.X - FX) + <span class="fn">Abs</span>(outro.Y - FY);
+<span class="kw">end</span>;
+
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Gerar documentação com PasDoc</div>
+          <pre class="example"><span class="com"># Instalar pasdoc</span>
+sudo apt install pasdoc
+
+<span class="com"># Gerar HTML</span>
+pasdoc --format=html --output=docs/ src/*.pas
+
+<span class="com"># Com CSS customizado e título</span>
+pasdoc --format=html \
+       --output=docs/ \
+       --title="Minha Biblioteca" \
+       --html-head=custom.css \
+       src/*.pas</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="migracao">Migração de Turbo Pascal para Free Pascal</h2>
+        <div class="panel">
+          <p>Muito código Turbo Pascal (MS-DOS) ainda existe em produção. FPC pode compilá-lo com alterações mínimas usando <code>{$mode turbo}</code>, mas é recomendável modernizar o código progressivamente.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">migracao.pas — Código Turbo Pascal e equivalente moderno</div>
+          <pre class="example"><span class="com">{ ── TURBO PASCAL (código antigo) ─────────────────────────────────── }</span>
+<span class="kw">program</span> Antigo;
+
+<span class="kw">uses</span> Crt;   <span class="com">{ unit DOS/CRT — não existe no FPC moderno }</span>
+
+<span class="kw">var</span>
+  ch : <span class="tp">Char</span>;
+
+<span class="kw">begin</span>
+  <span class="fn">ClrScr</span>;           <span class="com">{ limpar tela — Crt }</span>
+  <span class="fn">GotoXY</span>(<span class="num">10</span>, <span class="num">5</span>);    <span class="com">{ mover cursor — Crt }</span>
+  <span class="fn">TextColor</span>(Yellow); <span class="com">{ cor — Crt }</span>
+  <span class="fn">Write</span>(<span class="str">'Pressione tecla: '</span>);
+  ch := <span class="fn">ReadKey</span>;    <span class="com">{ leitura de tecla — Crt }</span>
+  <span class="fn">Sound</span>(<span class="num">440</span>);        <span class="com">{ beep — Crt/DOS }</span>
+  <span class="fn">Delay</span>(<span class="num">500</span>);        <span class="com">{ esperar ms — Crt/DOS }</span>
+  <span class="fn">NoSound</span>;          <span class="com">{ parar som — Crt/DOS }</span>
+<span class="kw">end</span>.
+
+<span class="com">{ ── EQUIVALENTE MODERNO (FPC + SysUtils) ─────────────────────────── }</span>
+<span class="kw">program</span> Moderno;
+
+<span class="kw">uses</span>
+  SysUtils,
+  <span class="com">{ Crt ainda existe no FPC — use apenas se necessário }</span>
+  Crt;    <span class="com">{ fpc -dUSECRT para habilitar }</span>
+
+<span class="kw">begin</span>
+  <span class="com">{ Alternativas modernas: }</span>
+  <span class="fn">WriteLn</span>(#<span class="num">27</span> + <span class="str">'[2J'</span>);         <span class="com">{ ANSI escape — limpar tela }</span>
+  <span class="fn">WriteLn</span>(#<span class="num">27</span> + <span class="str">'[5;10H'</span>);      <span class="com">{ ANSI — mover cursor (5,10) }</span>
+  <span class="fn">WriteLn</span>(#<span class="num">7</span>);                  <span class="com">{ BEL — beep }</span>
+  <span class="fn">Sleep</span>(<span class="num">500</span>);                   <span class="com">{ SysUtils: esperar 500ms }</span>
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr><th>Turbo Pascal (DOS)</th><th>Free Pascal Moderno</th><th>Observação</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code>uses Crt</code></td><td><code>uses Crt</code> ou ANSI escapes</td><td>Crt existe mas é legacy</td></tr>
+              <tr><td><code>GetMem/FreeMem</code></td><td><code>GetMem/FreeMem</code> ou <code>New/Dispose</code></td><td>Compatível mas prefira New/Dispose</td></tr>
+              <tr><td><code>integer</code> (16 bits)</td><td><code>SmallInt</code> (16 bits) ou <code>Integer</code> (32 bits)</td><td>Em FPC, <code>Integer</code> = 32 bits</td></tr>
+              <tr><td><code>string[255]</code></td><td><code>AnsiString</code> (dinâmica)</td><td>Melhor usar strings dinâmicas</td></tr>
+              <tr><td><code>boolean</code> (1 byte)</td><td><code>Boolean</code> (1 byte)</td><td>Compatível</td></tr>
+              <tr><td><code>BlockRead/BlockWrite</code></td><td><code>TFileStream.ReadBuffer</code></td><td>Migrar para streams OOP</td></tr>
+              <tr><td><code>Mem[segm:offs]</code></td><td>Não suportado</td><td>Usar <code>Move</code> e ponteiros</td></tr>
+              <tr><td><code>Port[n]</code></td><td>Não suportado na proteção</td><td>Linux: <code>fpInPort</code> com root</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="projeto-lazarus">Organização de Projetos Lazarus</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de projeto Lazarus recomendada</div>
+          <pre class="example">MeuSistema/
+├── MeuSistema.lpi          <span class="com">{ projeto Lazarus (XML) }</span>
+├── MeuSistema.lpr          <span class="com">{ programa principal (gerado) }</span>
+├── src/
+│   ├── forms/
+│   │   ├── MainForm.pas    <span class="com">{ unit da janela principal }</span>
+│   │   ├── MainForm.lfm    <span class="com">{ design da janela (XML) }</span>
+│   │   ├── ConfigForm.pas
+│   │   └── ConfigForm.lfm
+│   ├── data/
+│   │   ├── PessoaDAO.pas   <span class="com">{ acesso a dados }</span>
+│   │   └── ConexaoDB.pas
+│   ├── models/
+│   │   ├── Pessoa.pas      <span class="com">{ entidades/modelos }</span>
+│   │   └── Produto.pas
+│   └── utils/
+│       ├── Validacao.pas
+│       └── FormatUtils.pas
+├── tests/
+│   ├── TestRunner.pas
+│   ├── PessoaTest.pas
+│   └── ValidacaoTest.pas
+├── docs/                   <span class="com">{ PasDoc output }</span>
+└── resources/
+    ├── icons/
+    └── strings/</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">MeuSistema.lpr — Arquivo de projeto gerado pelo Lazarus</div>
+          <pre class="example"><span class="kw">program</span> MeuSistema;
+
+<span class="com">{$mode objfpc}{$H+}</span>
+
+<span class="kw">uses</span>
+  <span class="com">{ Qt5 no Linux, Win32 no Windows, Cocoa no macOS }</span>
+  <span class="com">{ o Lazarus seleciona automaticamente conforme a plataforma }</span>
+  Interfaces,
+  Forms,
+  MainForm,
+  PessoaDAO,
+  ConexaoDB;
+
+<span class="kw">begin</span>
+  <span class="fn">RequireDerivedFormResource</span> := <span class="kw">True</span>;
+  <span class="tp">Application</span>.<span class="fn">Initialize</span>;
+  <span class="tp">Application</span>.Title := <span class="str">'Meu Sistema'</span>;
+  <span class="tp">Application</span>.<span class="fn">CreateForm</span>(<span class="tp">TMainForm</span>, MainFormInstance);
+  <span class="tp">Application</span>.<span class="fn">Run</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LAZARUS/FPC WIKI. <strong>Coding Style Guidelines</strong>. 2024. Disponível em: <a href="https://wiki.lazarus.freepascal.org/Coding_Style" target="_blank" rel="noopener">https://wiki.lazarus.freepascal.org/Coding_Style</a></li>
+            <li>PASDOC PROJECT. <strong>PasDoc User Guide</strong>. 2024. Disponível em: <a href="https://pasdoc.github.io" target="_blank" rel="noopener">https://pasdoc.github.io</a></li>
+            <li>EMBARCADERO. <strong>Delphi and Object Pascal Naming Conventions</strong>. 2023. Disponível em: <a href="https://docwiki.embarcadero.com/RADStudio/en/Coding_Conventions" target="_blank" rel="noopener">https://docwiki.embarcadero.com</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/guia/ecossistema_tooling.html">Pascal — Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/gui_desktop.html">Pascal — GUI Desktop com Lazarus</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/terminal_cli.html">Pascal — Aplicações CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Convenções não são opcionais em projetos que duram anos. O prefixo <code>T</code> para tipos não é uma preferência — é a língua franca de qualquer código Object Pascal profissional.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

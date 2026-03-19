@@ -1,0 +1,431 @@
+﻿<!DOCTYPE html>
+
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description"
+        content="Autômatos de Pilha (PDA): definição formal, operações push/pop, modos de aceitação, não-determinismo, relação com gramáticas livres de contexto e a ponte para Máquinas de Turing." />
+    <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+    <link rel="preload" href="/js/main.js" as="script">
+    <script src="/js/main.js" defer></script>
+    <title>Autômatos de Pilha | Computação Teórica | Site Guia</title>
+</head>
+
+<body>
+    <div class="nav-overlay"></div>
+    <div class="nav-interno-overlay"></div>
+    <button class="menu-toggle" title="Abrir/fechar navegação">
+        <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+    </button>
+    <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+        <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+    </button>
+    <div data-include="/html/Site/partials/header.html"></div>
+
+    <main class="main-content">
+        <div class="content-area">
+            <div class="Colored_border_anim_card_box">
+                <p><strong>Teoria da Computação &rsaquo; Autômatos de Pilha</strong></p>
+            </div>
+
+            <section>
+                <h2 id="intro" class="section-title">Introdução</h2>
+                <div class="page-header">
+                    <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+                    <h1>Autômatos de Pilha</h1>
+                    <p>O elo entre autômatos finitos e Máquinas de Turing &mdash; com memória suficiente para analisar
+                        linguagens de programação reais.</p>
+                </div>
+                <p class="intro-highlight">
+                    Um <strong>Autômato de Pilha</strong> (<abbr
+                        title="Pushdown Automaton — autômato com pilha; em inglês, 'pushdown' refere-se à pilha de memória">PDA</abbr>)
+                    é um autômato finito acrescido de uma <strong>pilha</strong> — uma memória do tipo
+                    <abbr
+                        title="Last In, First Out — o último elemento colocado é o primeiro a ser retirado; como uma pilha de pratos">LIFO</abbr>
+                    de capacidade ilimitada. Essa extensão permite reconhecer as
+                    <strong>Linguagens Livres de Contexto</strong>
+                    (<abbr
+                        title="Linguagem Livre de Contexto — classe de linguagens geradas por Gramáticas Livres de Contexto; inclui a maioria da sintaxe de linguagens de programação">LLC</abbr>),
+                    que abrangem expressões aritméticas aninhadas, parênteses balanceados e a gramática de linguagens
+                    como C, Java e Python.
+                    Sem os autômatos de pilha, não existiriam compiladores modernos.
+                </p>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="intuicao" class="section-title">A Intuição: Por Que a Pilha é Necessária?</h2>
+                <div class="card">
+                    <p>Considere a linguagem <code>L = { aⁿbⁿ | n &ge; 1 }</code> — ou seja, qualquer número de letras
+                        <code>a</code>
+                        seguidas do mesmo número de letras <code>b</code>:</p>
+                    <pre class="example">ab     ✓   (1 a, 1 b)
+aabb   ✓   (2 a's, 2 b's)
+aaabbb ✓   (3 a's, 3 b's)
+aab    ✗   (2 a's, mas só 1 b)
+abb    ✗   (1 a, mas 2 b's)</pre>
+                    <p>Um <abbr
+                            title="Autômato Finito Determinístico — reconhece linguagens regulares; possui número finito de estados e nenhuma memória adicional">AFD</abbr>
+                        <em>não consegue</em> reconhecer esta linguagem: para verificar se os b's "emparelham" com os
+                        a's, seria necessário
+                        "contar" n — mas n pode ser qualquer valor, e um AFD tem apenas um número finito de estados.
+                        A <strong>pilha</strong> resolve isso: empilha um símbolo para cada <em>a</em>, e desempilha um
+                        para cada <em>b</em>.
+                        Se a pilha esvaziar exatamente ao consumir toda a entrada, a palavra é aceita.
+                    </p>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="definicao" class="section-title">Definição Formal</h2>
+                <div class="card">
+                    <div class="message-block">
+                        <h3 class="panel-title">Séptupla: P = (Q, &Sigma;, &Gamma;, &delta;, q&sub0;, Z, F)</h3>
+                        <ul>
+                            <li><strong>Q</strong> — conjunto finito de <em>estados</em> do controle</li>
+                            <li><strong>&Sigma;</strong> (sigma) — <em>alfabeto de entrada</em>: os símbolos que o
+                                autômato lê da fita de entrada</li>
+                            <li><strong>&Gamma;</strong> (gama) — <em>alfabeto de pilha</em>: os símbolos que podem ser
+                                empilhados (&Sigma; &sube; &Gamma;)</li>
+                            <li><strong>&delta;</strong> (delta): Q &times; (&Sigma; &cup; {&epsilon;}) &times; &Gamma;
+                                &rarr; <em>conjunto de pares</em> (Q &times; &Gamma;*) — <em>função de transição</em>
+                                (pode ser não-determinística)</li>
+                            <li><strong>q&sub0; &isin; Q</strong> — <em>estado inicial</em></li>
+                            <li><strong>Z &isin; &Gamma;</strong> — <em>símbolo inicial da pilha</em> (marcador de
+                                fundo; indica pilha "vazia")</li>
+                            <li><strong>F &sube; Q</strong> — conjunto de <em>estados de aceitação</em></li>
+                        </ul>
+                    </div>
+                    <p>A notação de transição <code>&delta;(q, a, A) &ni; (p, &gamma;)</code> significa:
+                        estando no estado <code>q</code>, lendo o símbolo <code>a</code> da entrada (ou
+                        <code>&epsilon;</code> sem consumir nada),
+                        com <code>A</code> no <em>topo da pilha</em>, o autômato pode ir para o estado <code>p</code>
+                        e <em>substituir</em> <code>A</code> pela string <code>&gamma;</code> na pilha.</p>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="pilha-ops" class="section-title">Operações de Pilha via &delta;</h2>
+                <div class="card">
+                    <p>Todas as manipulações da pilha são expressas através do parâmetro <code>&gamma;</code>
+                        (a string que substitui o topo) na função de transição:</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Operação</th>
+                                <th>&gamma; (substituição)</th>
+                                <th>Efeito</th>
+                                <th>Exemplo de transição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Push</strong> (empilhar B sobre A)</td>
+                                <td>&gamma; = BA</td>
+                                <td>B fica no topo; A permanece abaixo</td>
+                                <td>&delta;(q, a, A) &ni; (q, BA)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Pop</strong> (desempilhar A)</td>
+                                <td>&gamma; = &epsilon;</td>
+                                <td>A é removido; o que estava abaixo sobe</td>
+                                <td>&delta;(q, b, A) &ni; (q, &epsilon;)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Substituir</strong> A por B</td>
+                                <td>&gamma; = B</td>
+                                <td>Troca o topo sem alterar o resto</td>
+                                <td>&delta;(q, c, A) &ni; (q, B)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Não mexer</strong> na pilha</td>
+                                <td>&gamma; = A</td>
+                                <td>Pilha inalterada; apenas muda estado</td>
+                                <td>&delta;(q, d, A) &ni; (p, A)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="diagrama" class="section-title">Diagrama: PDA para L = {aⁿbⁿ | n &ge; 1}</h2>
+                <div class="card">
+                    <p>O <abbr title="Pushdown Automaton">PDA</abbr> para <code>{aⁿbⁿ}</code> tem três estados:</p>
+                    <ul>
+                        <li><strong>q&sub0;</strong> — empilha <code>A</code> para cada <code>a</code> lido</li>
+                        <li><strong>q&sub1;</strong> — desempilha <code>A</code> para cada <code>b</code> lido</li>
+                        <li><strong>qₐ</strong> — estado de aceitação; alcançado ao encontrar apenas <code>Z</code> na
+                            pilha</li>
+                    </ul>
+
+                    <div class="card" style="--anim-delay:0ms" data-reveal="fade">
+                        <!-- Diagrama PDA -->
+                        <svg viewBox="0 0 520 165" width="100%" role="img" aria-label="Diagrama do PDA para a^n b^n" style="max-width:1024px;display:block;margin:0 auto">
+                          <defs>
+                            <marker id="pda-ac" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="6" markerHeight="5" orient="auto">
+                              <polygon points="0,0 10,3.5 0,7" style="fill:var(--accent)"/>
+                            </marker>
+                          </defs>
+                          <!-- seta inicial -->
+                          <line x1="10" y1="80" x2="59" y2="80" style="stroke:var(--accent);stroke-width:2" marker-end="url(#pda-ac)"/>
+                          <!-- q0 → q1 -->
+                          <line x1="118" y1="80" x2="219" y2="80" style="stroke:var(--accent);stroke-width:1.6" marker-end="url(#pda-ac)"/>
+                          <text x="168" y="68" text-anchor="middle" style="fill:var(--text-secondary);font:10px monospace">b, A → ε</text>
+                          <!-- q1 → qa -->
+                          <line x1="278" y1="80" x2="379" y2="80" style="stroke:var(--accent);stroke-width:1.6" marker-end="url(#pda-ac)"/>
+                          <text x="328" y="68" text-anchor="middle" style="fill:var(--text-secondary);font:10px monospace">ε, Z → Z</text>
+                          <!-- self-loop q0: a,A→AA / a,Z→AZ -->
+                          <path d="M 104,64 C 122,28 58,28 76,64" fill="none" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pda-ac)"/>
+                          <text x="90" y="20" text-anchor="middle" style="fill:var(--text-secondary);font:9px monospace">a, A→AA</text>
+                          <text x="90" y="31" text-anchor="middle" style="fill:var(--text-secondary);font:9px monospace">a, Z→AZ</text>
+                          <!-- self-loop q1: b,A→ε -->
+                          <path d="M 264,64 C 282,28 218,28 236,64" fill="none" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#pda-ac)"/>
+                          <text x="250" y="22" text-anchor="middle" style="fill:var(--text-secondary);font:9px monospace">b, A → ε</text>
+                          <!-- estados -->
+                          <circle cx="90" cy="80" r="28" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+                          <text x="90" y="80" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:bold 12px monospace">q₀</text>
+                          <circle cx="250" cy="80" r="28" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+                          <text x="250" y="80" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:bold 12px monospace">q₁</text>
+                          <circle cx="410" cy="80" r="28" style="fill:rgba(34,197,94,0.15);stroke:var(--accent);stroke-width:2.5"/>
+                          <circle cx="410" cy="80" r="22" style="fill:none;stroke:var(--accent);stroke-width:1.2"/>
+                          <text x="410" y="80" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:bold 12px monospace">qₐ</text>
+                          <!-- labels abaixo -->
+                          <text x="90" y="117" text-anchor="middle" style="fill:var(--text-secondary);font:10px sans-serif">empilha A</text>
+                          <text x="250" y="117" text-anchor="middle" style="fill:var(--text-secondary);font:10px sans-serif">desempilha A</text>
+                          <text x="410" y="117" text-anchor="middle" style="fill:var(--text-secondary);font:10px sans-serif">aceita</text>
+                        </svg>
+                    </div>
+                    <p>A tabela de transições completa do <abbr title="Pushdown Automaton">PDA</abbr> acima:</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Estado</th>
+                                <th>Entrada</th>
+                                <th>Topo da pilha</th>
+                                <th>Próximo estado</th>
+                                <th>Nova pilha</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>q<sub>0</sub></td>
+                                <td>a</td>
+                                <td>Z</td>
+                                <td>q<sub>0</sub></td>
+                                <td>AZ (empilha A)</td>
+                            </tr>
+                            <tr>
+                                <td>q<sub>0</sub></td>
+                                <td>a</td>
+                                <td>A</td>
+                                <td>q<sub>0</sub></td>
+                                <td>AA (empilha mais A)</td>
+                            </tr>
+                            <tr>
+                                <td>q<sub>0</sub></td>
+                                <td>b</td>
+                                <td>A</td>
+                                <td>q<sub>1</sub></td>
+                                <td>&epsilon; (desempilha A)</td>
+                            </tr>
+                            <tr>
+                                <td>q<sub>1</sub></td>
+                                <td>b</td>
+                                <td>A</td>
+                                <td>q<sub>1</sub></td>
+                                <td>&epsilon; (desempilha A)</td>
+                            </tr>
+                            <tr>
+                                <td>q<sub>1</sub></td>
+                                <td>&epsilon;</td>
+                                <td>Z</td>
+                                <td>qₐ</td>
+                                <td>Z (aceita; pilha só tem Z)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="aceitacao" class="section-title">Modos de Aceitação</h2>
+                <div class="card">
+                    <p>Existem dois critérios de aceitação em <abbr title="Pushdown Automaton">PDA</abbr>s — e eles são
+                        <em>equivalentes</em> (reconhecem a mesma classe de linguagens):</p>
+                    <ul>
+                        <li><strong>Por estado final (F)</strong>: aceita se, ao consumir toda a entrada, o autômato
+                            está em um estado <code>q &isin; F</code>.
+                            O conteúdo da pilha é irrelevante. Modo mais próximo dos <abbr
+                                title="Autômato Finito Determinístico">AFD</abbr>s.</li>
+                        <li><strong>Por pilha vazia</strong>: aceita se a pilha esvazia exatamente ao consumir toda a
+                            entrada (restando apenas o marcador Z — ou nenhum símbolo, dependendo da formalização).
+                            Modo mais natural para linguagens como <code>{aⁿbⁿ}</code>.</li>
+                    </ul>
+                    <p>Como os dois modos são equivalentes, podemos usar o mais conveniente para cada problema.</p>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="nao-determinismo" class="section-title">Não-Determinismo e PDAs Determinísticos</h2>
+                <div class="card">
+                    <p>Ao contrário dos <abbr title="Autômato Finito Determinístico">AFD</abbr>s, os <abbr
+                            title="Pushdown Automaton">PDA</abbr>s são
+                        inerentemente <strong>não-determinísticos</strong>: dada a mesma configuração (estado + símbolo
+                        da entrada + topo da pilha),
+                        pode existir mais de uma transição válida. O autômato "aceita" se <em>algum</em> dos caminhos
+                        possíveis leva à aceitação.</p>
+                    <p>PDAs determinísticos (<abbr
+                            title="Deterministic Pushdown Automaton — autômato de pilha sem não-determinismo; cada configuração tem no máximo uma transição">DPDA</abbr>s)
+                        reconhecem um subconjunto mais restrito das <abbr
+                            title="Linguagem Livre de Contexto">LLC</abbr>s,
+                        chamadas de <strong>linguagens livres de contexto determinísticas</strong>. Essa distinção é
+                        muito importante na prática:</p>
+                    <ul>
+                        <li>Linguagens de programação reais (<em>C, Java, Python&hellip;</em>) são projetadas para serem
+                            determinísticas,
+                            permitindo parsers eficientes como
+                            <abbr
+                                title="Look-Ahead Left-to-Right Rightmost derivation — parser bottom-up usado em ferramentas como Bison/Yacc; consome a entrada da esquerda para a direita e constrói a derivação mais à direita">LALR</abbr>(1)
+                            e <abbr
+                                title="Left-to-Right Leftmost derivation — parser top-down de descida recursiva; muito legível e fácil de depurar">LL</abbr>(1).
+                        </li>
+                        <li>Para isso, gramáticas de linguagens são cuidadosamente escritas para evitar ambiguidade.
+                        </li>
+                    </ul>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="llc" class="section-title">Relação com Gramáticas Livres de Contexto</h2>
+                <div class="card">
+                    <p>O teorema fundamental da área estabelece:</p>
+                    <blockquote>Uma linguagem é uma <abbr title="Linguagem Livre de Contexto">LLC</abbr> se e somente se
+                        existe um <abbr title="Pushdown Automaton">PDA</abbr> que a aceita.</blockquote>
+                    <p>Isso significa que <abbr
+                            title="Gramática Livre de Contexto — conjunto de regras de produção com estrutura de árvore; base formal da sintaxe de linguagens de programação">GLC</abbr>s
+                        e <abbr title="Pushdown Automaton">PDA</abbr>s são dois lados da mesma moeda: uma <abbr
+                            title="Gramática Livre de Contexto">GLC</abbr>
+                        descreve <em>como gerar</em> palavras da linguagem, e um <abbr
+                            title="Pushdown Automaton">PDA</abbr> descreve <em>como reconhecê-las</em>.
+                        A tabela abaixo situa os <abbr title="Pushdown Automaton">PDA</abbr>s na Hierarquia de Chomsky:
+                    </p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tipo de Chomsky</th>
+                                <th>Gramática</th>
+                                <th>Autômato equivalente</th>
+                                <th>Exemplos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Tipo 3 &mdash; Regular</td>
+                                <td>Gramática Regular</td>
+                                <td><abbr title="Autômato Finito">AF</abbr> / <abbr
+                                        title="Autômato Finito Determinístico">AFD</abbr></td>
+                                <td>emails, URLs, tokens de código</td>
+                            </tr>
+                            <tr>
+                                <td>Tipo 2 &mdash; <abbr title="Livre de Contexto">LC</abbr></td>
+                                <td><abbr title="Gramática Livre de Contexto">GLC</abbr></td>
+                                <td><abbr title="Pushdown Automaton">PDA</abbr></td>
+                                <td>aⁿbⁿ, parênteses balanceados, sintaxe de linguagens</td>
+                            </tr>
+                            <tr>
+                                <td>Tipo 1 &mdash; Sensível ao contexto</td>
+                                <td><abbr title="Gramática Sensível ao Contexto">GSC</abbr></td>
+                                <td><abbr
+                                        title="Autômato Linearmente Limitado — MT com fita restrita ao tamanho da entrada">ALL</abbr>
+                                </td>
+                                <td>aⁿbⁿcⁿ</td>
+                            </tr>
+                            <tr>
+                                <td>Tipo 0 &mdash; Irrestrita</td>
+                                <td>Gramática Irrestrita</td>
+                                <td><abbr
+                                        title="Máquina de Turing — modelo universal de computação; fita infinita de leitura e escrita">MT</abbr>
+                                </td>
+                                <td>Qualquer problema computável</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <section>
+                <h2 id="compiladores" class="section-title">Do PDA ao Compilador</h2>
+                <div class="card">
+                    <p>A conexão entre <abbr title="Pushdown Automaton">PDA</abbr>s e compiladores é direta:</p>
+                    <ul>
+                        <li>A <strong>análise sintática</strong> (ou <em>parsing</em>) de um compilador reconhece
+                            exatamente a
+                            <abbr title="Linguagem Livre de Contexto">LLC</abbr> definida pela gramática da linguagem de
+                            programação.
+                        </li>
+                        <li>Parsers <abbr
+                                title="Look-Ahead Left-to-Right Rightmost — usado no Bison/Yacc; eficiente e amplamente adotado">LALR</abbr>(1)
+                            e de descida recursiva (<abbr title="Left-to-Right Leftmost derivation">LL</abbr>) são
+                            implementações práticas de
+                            <abbr title="Deterministic Pushdown Automaton">DPDA</abbr>s otimizados.
+                        </li>
+                        <li>A <strong>pilha de chamadas</strong> em parsers de descida recursiva e a <strong>pilha de
+                                estados</strong>
+                            em parsers <em>shift-reduce</em> são, literalmente, a pilha do <abbr
+                                title="Pushdown Automaton">PDA</abbr>.</li>
+                        <li>A linguagem foi formalizada para ser
+                            <abbr
+                                title="Livre de contexto determinística — subconjunto das LLC reconhecíveis por um DPDA; toda linguagem de programação prática pertence a esta classe">LLC
+                                determinística</abbr>,
+                            o que garante que o parser termine em tempo linear O(n) na entrada.
+                        </li>
+                    </ul>
+                    <p>O próximo passo na hierarquia &mdash; as
+                        <abbr title="Máquina de Turing">MT</abbr>s &mdash; generaliza o <abbr
+                            title="Pushdown Automaton">PDA</abbr>
+                        substituindo a pilha por uma <em>fita infinita</em> com leitura e escrita em posição arbitrária.
+                        Isso permite resolver problemas muito mais difíceis: decidir se um programa compila, verificar
+                        tipos em linguagens dependentes, entre outros.
+                    </p>
+                </div>
+                <div class="section-divider"></div>
+            </section>
+
+            <div class="callout">
+                <p>
+                    Próximas seções:
+                    <a href="/html/computacao_teorica/teoria_computacao/maquinas_turing.html">Máquinas de Turing</a>
+                    &mdash;
+                    <a href="/html/computacao_teorica/teoria_computacao/gramaticas.html">Gramáticas Livres de
+                        Contexto</a> &mdash;
+                    <a href="/html/computacao_teorica/teoria_computacao/automatos_finitos.html">Voltar: Autômatos
+                        Finitos</a>
+                </p>
+                <p class="frase-destaque">
+                    <span data-svg="estrela" aria-hidden="true"></span>
+                    "O autômato de pilha é o modelo formal que fundamenta todo parser já escrito &mdash; toda vez que
+                    seu compilador rejeita um parêntese faltando, é um PDA que detectou o erro."
+                </p>
+            </div>
+
+        </div>
+    </main>
+
+    <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

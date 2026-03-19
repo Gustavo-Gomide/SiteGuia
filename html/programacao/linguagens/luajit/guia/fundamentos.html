@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos de LuaJIT: tracing JIT, bytecode, FFI, modelagem de dados e padroes para desempenho previsivel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT - Fundamentos | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>LuaJIT - Fundamentos</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">LuaJIT - Fundamentos</h2>
+        <div class="page-header">
+          <span data-svg="lua" aria-hidden="true"></span>
+          <h1>Como o LuaJIT transforma scripts em codigo nativo rapido</h1>
+          <p>Aprenda os conceitos que explicam por que LuaJIT pode ser muito rapido e quais escolhas de codigo preservam esse ganho.</p>
+        </div>
+        <p class="intro-highlight">
+          Em LuaJIT, desempenho nao vem de magia: vem de caminhos de execucao estaveis, tipos previsiveis e uso disciplinado de FFI.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos-base" class="section-title">Conceitos fundamentais e contexto historico</h2>
+        <p>
+          LuaJIT e uma implementacao de Lua 5.1 com compilacao JIT baseada em tracing. Em vez de compilar o programa inteiro,
+          ele observa a execucao real e otimiza os caminhos mais frequentes. A analogia classica e um professor que nao corrige
+          todas as folhas com o mesmo cuidado: ele investe mais tempo exatamente nos erros que se repetem.
+        </p>
+        <p>
+          A partir do trabalho de Mike Pall, LuaJIT consolidou uma combinacao rara: sintaxe simples de Lua com desempenho que,
+          em cenarios especificos, se aproxima de C para partes quentes do sistema.
+        </p>
+        <div class="panel">
+          <svg viewBox="0 0 820 220" role="img" aria-label="Fluxo de interpretacao e compilacao tracing no LuaJIT" class="w-full">
+            <rect x="20" y="78" width="170" height="62" rx="12" fill="currentColor" opacity="0.08"></rect>
+            <text x="46" y="114" fill="currentColor">Bytecode Lua</text>
+            <rect x="230" y="78" width="180" height="62" rx="12" fill="currentColor" opacity="0.08"></rect>
+            <text x="248" y="114" fill="currentColor">Interpretador</text>
+            <rect x="450" y="78" width="170" height="62" rx="12" fill="currentColor" opacity="0.08"></rect>
+            <text x="468" y="114" fill="currentColor">Trace recorder</text>
+            <rect x="660" y="78" width="140" height="62" rx="12" fill="currentColor" opacity="0.08"></rect>
+            <text x="676" y="114" fill="currentColor">Codigo nativo</text>
+            <line x1="190" y1="109" x2="230" y2="109" stroke="currentColor"></line>
+            <line x1="410" y1="109" x2="450" y2="109" stroke="currentColor"></line>
+            <line x1="620" y1="109" x2="660" y2="109" stroke="currentColor"></line>
+            <line x1="540" y1="78" x2="540" y2="36" stroke="currentColor"></line>
+            <rect x="475" y="12" width="130" height="26" rx="8" fill="currentColor" opacity="0.08"></rect>
+            <text x="488" y="30" fill="currentColor">hot loop detectado</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="mecanismo-tracing" class="section-title">Como funciona o tracing JIT na pratica</h2>
+        <p>
+          O runtime inicia interpretando bytecode. Quando um loop atinge limiar de execucoes, ele vira candidato a trace.
+          O recorder registra operacoes, tipos observados e guardas. Se as premissas continuam verdadeiras, o trace vira codigo nativo.
+          Se falham, ocorre side exit e o fluxo retorna ao interpretador.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - observando o comportamento de compilacao</div>
+          <pre class="example"><span class="kw">local</span> jit = <span class="kw">require</span>(<span class="str">"jit"</span>)
+<span class="kw">local</span> dump = <span class="kw">require</span>(<span class="str">"jit.dump"</span>)
+
+dump.<span class="fn">start</span>(<span class="str">"tib"</span>) <span class="com">-- trace, IR e bytecode</span>
+jit.<span class="fn">on</span>()
+
+<span class="kw">local</span> s = 0
+<span class="kw">for</span> i = 1, 1000000 <span class="kw">do</span>
+  s = s + i
+<span class="kw">end</span>
+
+print(s)</pre>
+        </div>
+        <p>
+          O objetivo nao e "forcar JIT", e sim remover instabilidade estrutural para que o JIT consiga manter traces longos e reutilizaveis.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos-dados" class="section-title">Tipos, tabelas e impacto no desempenho</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>number</strong>
+            <p>Fluxos numericos consistentes ajudam a gerar traces estaveis com menos guardas.</p>
+          </div>
+          <div class="card">
+            <strong>string</strong>
+            <p>Strings sao imutaveis. Concatenacao em loop pode elevar custo de alocacao e GC.</p>
+          </div>
+          <div class="card">
+            <strong>table</strong>
+            <p>Estrutura central de Lua. Misturar formatos demais no mesmo caminho aumenta side exits.</p>
+          </div>
+          <div class="card">
+            <strong>cdata</strong>
+            <p>Via FFI, representa tipos C de forma eficiente para buffers e vetores densos.</p>
+          </div>
+        </div>
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> Regra de ouro para iniciantes: dados previsiveis quase sempre geram performance previsivel.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ffi-basico" class="section-title">Sintaxe e uso: FFI inicial com seguranca</h2>
+        <p>
+          O FFI permite declarar funcoes C diretamente em LuaJIT. Isso reduz overhead de bindings tradicionais,
+          mas exige cuidado com tipos e ownership de memoria.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - exemplo inicial de chamada C via FFI</div>
+          <pre class="example"><span class="kw">local</span> ffi = <span class="kw">require</span>(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+  <span class="kw">double</span> sqrt(<span class="kw">double</span> x);
+  <span class="kw">int</span> puts(<span class="kw">const</span> <span class="kw">char</span> *s);
+]]
+
+<span class="kw">local</span> C = ffi.C
+C.<span class="fn">puts</span>(<span class="str">"FFI em funcionamento"</span>)
+<span class="kw">local</span> r = C.<span class="fn">sqrt</span>(225.0)
+print(<span class="str">"raiz="</span>, r)</pre>
+        </div>
+        <p>
+          Neste exemplo, <code class="code-inline">ffi.cdef</code> declara assinaturas C e <code class="code-inline">ffi.C</code> resolve simbolos da biblioteca padrao do processo.
+          Em producao, prefira encapsular chamadas C em um modulo dedicado para isolamento de risco.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Casos de uso: quando usar e quando evitar</h2>
+        <div class="panel">
+          <ul>
+            <li>Use LuaJIT para pipelines com loops repetitivos e regras de dados estaveis.</li>
+            <li>Use FFI para hotspots computacionais, parsing binario e integracao C de baixo overhead.</li>
+            <li>Evite FFI em APIs C instaveis sem camada de adaptacao e testes de contrato.</li>
+            <li>Evite otimizar sem benchmark; gargalos de I/O nao melhoram com tuning de trace.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="passo-seguinte" class="section-title">Proximo nivel: o que estudar depois dos fundamentos</h2>
+        <div class="panel">
+          <p class="panel-title">Trilha recomendada</p>
+          <ul>
+            <li>Leitura de dumps e side exits frequentes.</li>
+            <li>Estrategias de pool de objetos para reduzir pressao de GC.</li>
+            <li>Uso avancado de callbacks FFI sem riscos de coleta indevida.</li>
+            <li>Comparacao entre LuaJIT puro e OpenResty em workloads reais.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fontes" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li><a href="https://luajit.org/" target="_blank" rel="noopener">PALL, Mike. LuaJIT Official Site. 2026.</a></li>
+            <li><a href="https://luajit.org/ext_ffi.html" target="_blank" rel="noopener">PALL, Mike. The LuaJIT FFI Library. 2026.</a></li>
+            <li><a href="https://www.lua.org/manual/5.1/manual.html" target="_blank" rel="noopener">IERUSALIMSCHY, Roberto et al. Lua 5.1 Reference Manual. 2006.</a></li>
+            <li><a href="https://www.lua.org/pil/" target="_blank" rel="noopener">IERUSALIMSCHY, Roberto. Programming in Lua. 4. ed. 2016.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Quando a base esta correta, LuaJIT deixa de ser apenas uma linguagem rapida e vira uma plataforma de engenharia de desempenho.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/avancado.html">LuaJIT - Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/ecossistema_tooling.html">LuaJIT - Ecossistema e Tooling</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

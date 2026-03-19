@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para IA e Dados: ML.NET para classificação, regressão e recomendação; Microsoft.SemanticKernel para agentes e LLMs; ONNX Runtime para inferência; Pandas equivalente com DataFrames e TensorFlow.NET." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para IA e Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; IA e Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para IA e Dados</h1>
+          <p>C# e .NET oferecem um ecossistema robusto para machine learning e inteligenca artificial: ML.NET para treinamento on-premise de modelos de classificacao, regressao e clustering; Semantic Kernel para orquestrar agentes com LLMs como GPT-4 e Mistral; ONNX Runtime para inferencia ultra-rapida de modelos exportados de PyTorch/scikit-learn; e Microsoft.Data.Analysis (DataFrame) para manipulacao tabular estilo Pandas.</p>
+        </div>
+        <p class="intro-highlight">
+          O diferencial do .NET em IA e a integracao nativa com producao: voce treina ou carrega um modelo e ja expoe como endpoint ASP.NET Core com todo o ecossistema de observabilidade, autenticacao e escalabilidade do Azure — sem precisar de um microservico Python separado.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mlnet">ML.NET — Machine Learning Nativo em C#</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + ML.NET &mdash; classificacao binaria de sentimento com pipeline completo</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">ML</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">ML</span>.<span class="tp">Data</span>;
+
+<span class="com">// Esquemas de entrada/saida</span>
+<span class="kw">class</span> <span class="tp">ReviewInput</span>
+{
+  <span class="at">[LoadColumn(0)]</span> <span class="kw">public string</span> Texto  { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="str">""</span>;
+  <span class="at">[LoadColumn(1), ColumnName("Label")]</span> <span class="kw">public bool</span> Positivo { <span class="kw">get</span>; <span class="kw">set</span>; }
+}
+<span class="kw">class</span> <span class="tp">ReviewOutput</span>
+{
+  <span class="at">[ColumnName("PredictedLabel")]</span> <span class="kw">public bool</span>   Positivo { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public float</span>  Score       { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public float</span>  Probability { <span class="kw">get</span>; <span class="kw">set</span>; }
+}
+
+<span class="kw">var</span> ctx = <span class="kw">new</span> <span class="tp">MLContext</span>(seed: <span class="num">42</span>);
+
+<span class="com">// Carregar dados de CSV</span>
+<span class="kw">var</span> dados     = ctx.Data.<span class="fn">LoadFromTextFile</span>&lt;<span class="tp">ReviewInput</span>&gt;(<span class="str">"reviews.tsv"</span>, separatorChar: <span class="str">'\t'</span>, hasHeader: <span class="kw">true</span>);
+<span class="kw">var</span> splits    = ctx.Data.<span class="fn">TrainTestSplit</span>(dados, testFraction: <span class="num">0.2</span>);
+
+<span class="com">// Pipeline: tokenizacao → TF-IDF → classificador SdcaLogisticRegression</span>
+<span class="kw">var</span> pipeline  = ctx.Transforms.Text
+  .<span class="fn">FeaturizeText</span>(<span class="str">"Features"</span>, outputColumnName: <span class="str">"Features"</span>,
+    inputColumnName: <span class="kw">nameof</span>(<span class="tp">ReviewInput</span>.Texto),
+    options: <span class="kw">new</span> <span class="tp">TextFeaturizingEstimator</span>.<span class="tp">Options</span> {
+      WordFeatureExtractor = <span class="kw">new</span> <span class="tp">WordBagEstimator</span>.<span class="tp">Options</span> { NgramLength = <span class="num">2</span>, UseAllLengths = <span class="kw">true</span> }
+    })
+  .<span class="fn">Append</span>(ctx.BinaryClassification.Trainers
+    .<span class="fn">SdcaLogisticRegression</span>(labelColumnName: <span class="str">"Label"</span>, featureColumnName: <span class="str">"Features"</span>));
+
+<span class="com">// Treinar</span>
+<span class="kw">var</span> modelo = pipeline.<span class="fn">Fit</span>(splits.TrainSet);
+
+<span class="com">// Avaliar metricas</span>
+<span class="kw">var</span> predicoes = modelo.<span class="fn">Transform</span>(splits.TestSet);
+<span class="kw">var</span> metricas  = ctx.BinaryClassification.<span class="fn">Evaluate</span>(predicoes, <span class="str">"Label"</span>);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Accuracy={metricas.Accuracy:P2}  AUC={metricas.AreaUnderRocCurve:P2}  F1={metricas.F1Score:P2}"</span>);
+
+<span class="com">// Salvar e carregar modelo</span>
+ctx.Model.<span class="fn">Save</span>(modelo, dados.Schema, <span class="str">"sentimento.zip"</span>);
+<span class="kw">var</span> modeloLoaded = ctx.Model.<span class="fn">Load</span>(<span class="str">"sentimento.zip"</span>, <span class="kw">out</span> _);
+
+<span class="com">// PredictionEngine thread-safe via pool</span>
+<span class="kw">var</span> engPool = ctx.Model.<span class="fn">CreatePredictionEnginePool</span>&lt;<span class="tp">ReviewInput</span>, <span class="tp">ReviewOutput</span>&gt;(
+  serviceProvider: <span class="kw">null</span>,
+  modelLoader: ctx.Model.<span class="fn">Load</span>(<span class="str">"sentimento.zip"</span>, <span class="kw">out</span> _));
+
+<span class="com">// Predicao em runtime</span>
+<span class="kw">var</span> resultado = <span class="kw">new</span> <span class="tp">PredictionEngine</span>&lt;<span class="tp">ReviewInput</span>, <span class="tp">ReviewOutput</span>&gt;(ctx, modeloLoaded, <span class="kw">true</span>)
+  .<span class="fn">Predict</span>(<span class="kw">new</span> <span class="tp">ReviewInput</span> { Texto = <span class="str">"Produto incrivel, superou expectativas!"</span> });
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Positivo={resultado.Positivo}  Prob={resultado.Probability:P1}"</span>);</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + ML.NET &mdash; regressao de preco com features numericas e validacao cruzada</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">ImovelInput</span>
+{
+  <span class="kw">public float</span> Area        { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public float</span> Quartos     { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public float</span> DistanciaMetro { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="at">[ColumnName("Label")]</span>
+  <span class="kw">public float</span> Preco       { <span class="kw">get</span>; <span class="kw">set</span>; }
+}
+
+<span class="kw">var</span> featureCols = <span class="kw">new</span>[] { <span class="kw">nameof</span>(<span class="tp">ImovelInput</span>.Area), <span class="kw">nameof</span>(<span class="tp">ImovelInput</span>.Quartos), <span class="kw">nameof</span>(<span class="tp">ImovelInput</span>.DistanciaMetro) };
+
+<span class="kw">var</span> pipeline = ctx.Transforms
+  .<span class="fn">Concatenate</span>(<span class="str">"Features"</span>, featureCols)
+  .<span class="fn">Append</span>(ctx.Transforms.<span class="fn">NormalizeMinMax</span>(<span class="str">"Features"</span>))
+  .<span class="fn">Append</span>(ctx.Regression.Trainers
+    .<span class="fn">FastForest</span>(numberOfTrees: <span class="num">200</span>, minimumExampleCountPerLeaf: <span class="num">5</span>));
+
+<span class="com">// Validacao cruzada k-fold</span>
+<span class="kw">var</span> cv = ctx.Regression.<span class="fn">CrossValidate</span>(dados, pipeline, numberOfFolds: <span class="num">5</span>);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"R² medio = {cv.Average(r => r.Metrics.RSquared):F4}"</span>);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"RMSE medio = {cv.Average(r => r.Metrics.RootMeanSquaredError):F2}"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="semantic-kernel">Semantic Kernel — Agentes e LLMs</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Semantic Kernel &mdash; agente com plugins, memoria e RAG</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">SemanticKernel</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">SemanticKernel</span>.<span class="tp">Connectors</span>.<span class="tp">OpenAI</span>;
+
+<span class="com">// Configurar kernel com OpenAI</span>
+<span class="kw">var</span> kernel = <span class="tp">Kernel</span>.<span class="fn">CreateBuilder</span>()
+  .<span class="fn">AddOpenAIChatCompletion</span>(<span class="str">"gpt-4o-mini"</span>, apiKey: <span class="tp">Environment</span>.<span class="fn">GetEnvironmentVariable</span>(<span class="str">"OPENAI_KEY"</span>)!)
+  .<span class="fn">Build</span>();
+
+<span class="com">// Plugin nativo — funcoes C# chamadas pelo LLM via function calling</span>
+<span class="kw">class</span> <span class="tp">ClimaPlugin</span>
+{
+  <span class="at">[KernelFunction, Description("Retorna temperatura atual de uma cidade")]</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">string</span>&gt; <span class="fn">GetTemperaturaAsync</span>(
+    <span class="at">[Description("Nome da cidade")]</span> <span class="kw">string</span> cidade) =&gt;
+    $<span class="str">"A temperatura em {cidade} e 22°C com sol"</span>;   <span class="com">// exemplo simplificado</span>
+}
+
+<span class="kw">class</span> <span class="tp">ProdutosPlugin</span>(<span class="tp">IProdutoRepository</span> repo)
+{
+  <span class="at">[KernelFunction, Description("Busca produto pelo nome")]</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">string</span>&gt; <span class="fn">BuscarProdutoAsync</span>(<span class="kw">string</span> nome)
+  {
+    <span class="kw">var</span> p = <span class="kw">await</span> repo.<span class="fn">BuscarPorNomeAsync</span>(nome);
+    <span class="kw">return</span> p <span class="kw">is null</span> ? <span class="str">"Produto nao encontrado"</span> : $<span class="str">"{p.Nome}: R$ {p.Preco:N2} — {p.Estoque} em estoque"</span>;
+  }
+}
+
+kernel.Plugins.<span class="fn">AddFromType</span>&lt;<span class="tp">ClimaPlugin</span>&gt;();
+kernel.Plugins.<span class="fn">AddFromObject</span>(<span class="kw">new</span> <span class="tp">ProdutosPlugin</span>(repo), <span class="str">"Produtos"</span>);
+
+<span class="com">// Chat loop com historico e function calling automatico</span>
+<span class="kw">var</span> config   = <span class="kw">new</span> <span class="tp">OpenAIPromptExecutionSettings</span> {
+  ToolCallBehavior = <span class="tp">ToolCallBehavior</span>.AutoInvokeKernelFunctions
+};
+<span class="kw">var</span> chat     = kernel.<span class="fn">GetRequiredService</span>&lt;<span class="tp">IChatCompletionService</span>&gt;();
+<span class="kw">var</span> historico = <span class="kw">new</span> <span class="tp">ChatHistory</span>(<span class="str">"Voce e um assistente de loja. Responda em portugues."</span>);
+historico.<span class="fn">AddUserMessage</span>(<span class="str">"Tem notebook disponivel? Qual o preco?"</span>);
+
+<span class="kw">var</span> resposta = <span class="kw">await</span> chat.<span class="fn">GetChatMessageContentAsync</span>(historico, config, kernel);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(resposta.Content);
+
+<span class="com">// Prompt template com variaveis</span>
+<span class="kw">var</span> fn = kernel.<span class="fn">CreateFunctionFromPrompt</span>(<span class="str">"""
+  Resuma em {{$idioma}} o seguinte texto em ate {{$palavras}} palavras:
+  {{$texto}}
+"""</span>, executionSettings: <span class="kw">new</span> <span class="tp">OpenAIPromptExecutionSettings</span> { MaxTokens = <span class="num">500</span> });
+
+<span class="kw">var</span> resumo = <span class="kw">await</span> kernel.<span class="fn">InvokeAsync</span>(fn, <span class="kw">new</span> <span class="tp">KernelArguments</span> {
+  [<span class="str">"idioma"</span>] = <span class="str">"portugues"</span>,
+  [<span class="str">"palavras"</span>] = <span class="str">"50"</span>,
+  [<span class="str">"texto"</span>] = textoLongo
+});
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(resumo);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="onnx">ONNX Runtime — Inferencia de Modelos PyTorch/scikit-learn</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Microsoft.ML.OnnxRuntime &mdash; inferencia com tensor tipado e batch</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">ML</span>.<span class="tp">OnnxRuntime</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">ML</span>.<span class="tp">OnnxRuntime</span>.<span class="tp">Tensors</span>;
+
+<span class="com">// Carregar modelo ONNX exportado do PyTorch ou scikit-learn</span>
+<span class="kw">using var</span> session = <span class="kw">new</span> <span class="tp">InferenceSession</span>(<span class="str">"modelo.onnx"</span>,
+  <span class="tp">SessionOptions</span>.<span class="fn">MakeSessionOptionWithCudaProvider</span>());  <span class="com">// GPU opcional</span>
+
+<span class="com">// Inspecionar entradas esperadas</span>
+<span class="kw">foreach</span> (<span class="kw">var</span> node <span class="kw">in</span> session.InputMetadata)
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Input: {node.Key}  Dims: [{string.Join(",", node.Value.Dimensions)}]"</span>);
+
+<span class="com">// Preprocessar imagem 28x28 (MNIST)</span>
+<span class="kw">float</span>[] pixels = <span class="fn">CarregarImagem</span>(<span class="str">"digito.png"</span>);  <span class="com">// normalizado [0,1]</span>
+<span class="kw">var</span> tensor = <span class="kw">new</span> <span class="tp">DenseTensor</span>&lt;<span class="kw">float</span>&gt;(pixels, <span class="kw">new</span>[] { <span class="num">1</span>, <span class="num">1</span>, <span class="num">28</span>, <span class="num">28</span> });
+
+<span class="com">// Inferencia</span>
+<span class="kw">var</span> inputs  = <span class="kw">new</span>[] { <span class="tp">NamedOnnxValue</span>.<span class="fn">CreateFromTensor</span>(<span class="str">"input"</span>, tensor) };
+<span class="kw">using var</span> results  = session.<span class="fn">Run</span>(inputs);
+<span class="kw">var</span> output  = results.<span class="fn">First</span>().<span class="fn">AsTensor</span>&lt;<span class="kw">float</span>&gt;();
+<span class="kw">int</span> predicao = <span class="tp">Enumerable</span>.<span class="fn">Range</span>(<span class="num">0</span>, <span class="num">10</span>).<span class="fn">MaxBy</span>(i =&gt; output[<span class="num">0</span>, i]);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Digito reconhecido: {predicao}"</span>);
+
+<span class="com">// Batch inference — processar varios inputs de uma vez</span>
+<span class="kw">float</span>[] batchPixels = <span class="fn">CarregarImagensBatch</span>(caminhos); <span class="com">// [N x C x H x W]</span>
+<span class="kw">var</span> batchTensor = <span class="kw">new</span> <span class="tp">DenseTensor</span>&lt;<span class="kw">float</span>&gt;(batchPixels, <span class="kw">new</span>[] { caminhos.Length, <span class="num">1</span>, <span class="num">28</span>, <span class="num">28</span> });
+<span class="kw">using var</span> batchResults = session.<span class="fn">Run</span>(<span class="kw">new</span>[] { <span class="tp">NamedOnnxValue</span>.<span class="fn">CreateFromTensor</span>(<span class="str">"input"</span>, batchTensor) });
+<span class="kw">var</span> batchOutput = batchResults.<span class="fn">First</span>().<span class="fn">AsTensor</span>&lt;<span class="kw">float</span>&gt;();
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; caminhos.Length; i++)
+{
+  <span class="kw">int</span> pred = <span class="tp">Enumerable</span>.<span class="fn">Range</span>(<span class="num">0</span>, <span class="num">10</span>).<span class="fn">MaxBy</span>(j =&gt; batchOutput[i, j]);
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"[{i}] = {pred}"</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dataframe">Microsoft.Data.Analysis — DataFrame em C#</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Microsoft.Data.Analysis &mdash; analise tabular, filtros e estatisticas</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Data</span>.<span class="tp">Analysis</span>;
+
+<span class="com">// Criar DataFrame a partir de CSV</span>
+<span class="kw">var</span> df = <span class="tp">DataFrame</span>.<span class="fn">LoadCsv</span>(<span class="str">"vendas.csv"</span>);
+
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Linhas: {df.Rows.Count}  Colunas: {df.Columns.Count}"</span>);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(df.<span class="fn">Description</span>());  <span class="com">// min, max, media, desvio padrao, etc.</span>
+
+<span class="com">// Filtrar e selecionar colunas</span>
+<span class="kw">var</span> filtro  = (<span class="tp">PrimitiveDataFrameColumn</span>&lt;<span class="kw">float</span>&gt;) df[<span class="str">"Valor"</span>];
+<span class="kw">var</span> mascara = filtro.<span class="fn">ElementwiseGreaterThan</span>(<span class="num">1000f</span>);
+<span class="kw">var</span> grandes = df[mascara];
+
+<span class="com">// Adicionar coluna calculada</span>
+<span class="kw">var</span> colValor = (<span class="tp">PrimitiveDataFrameColumn</span>&lt;<span class="kw">float</span>&gt;) df[<span class="str">"Valor"</span>];
+<span class="kw">var</span> colQtd   = (<span class="tp">PrimitiveDataFrameColumn</span>&lt;<span class="kw">int</span>&gt;) df[<span class="str">"Quantidade"</span>];
+df.<span class="fn">Columns</span>.<span class="fn">Add</span>(<span class="kw">new</span> <span class="tp">SingleDataFrameColumn</span>(<span class="str">"Total"</span>, colValor * colQtd.<span class="fn">Apply</span>(x =&gt; (<span class="kw">float</span>)x)));
+
+<span class="com">// GroupBy e agregacao</span>
+<span class="kw">var</span> porCategoria = df.<span class="fn">GroupBy</span>(<span class="str">"Categoria"</span>).<span class="fn">Sum</span>(<span class="str">"Total"</span>);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(porCategoria);
+
+<span class="com">// Ordenar e exportar</span>
+<span class="kw">var</span> ordenado = df.<span class="fn">OrderByDescending</span>(<span class="str">"Total"</span>);
+<span class="tp">DataFrame</span>.<span class="fn">SaveCsv</span>(ordenado, <span class="str">"vendas_ordenado.csv"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>ML.NET documentation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/machine-learning/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Semantic Kernel — AI SDK for .NET</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/semantic-kernel/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>ONNX Runtime documentation</strong>. Disponível em: &lt;https://onnxruntime.ai/docs/get-started/with-csharp.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Embedded e IoT</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# com Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <code>PredictionEngine</code> do ML.NET nao e thread-safe — use sempre <code>PredictionEnginePool&lt;TIn,TOut&gt;</code> registrado como Singleton via DI para producao com multiplas requisicoes concorrentes.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

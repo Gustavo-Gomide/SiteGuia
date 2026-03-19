@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir Embedded e IoT: Nerves para embedded Linux, GPIO e I2C com Circuits, UART serial, firmware OTA com NervesHub e supervisão de hardware." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir para Embedded e IoT</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Embedded e IoT</h1>
+          <p>Nerves transforma Elixir em uma stack completa para dispositivos embarcados: você escreve código Elixir, o Nerves compila para uma imagem Linux minimalista (sem systemd, sem apt, sem bash) que roda diretamente em Raspberry Pi, Beaglebone, ou placas personalizadas. O supervisor da BEAM substitui o init do sistema operacional.</p>
+        </div>
+        <p class="intro-highlight">
+          Um dispositivo Nerves reinicia em <strong>less than 5 segundos</strong>, consome menos de 64 MB de RAM e usa atualizações atômicas via A/B partition — se a nova firmware falhar, o dispositivo reverte automaticamente para a versão anterior.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nerves-setup">Nerves — Setup e Estrutura de Projeto</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Instalação, targets e flashing em Raspberry Pi</div>
+          <pre class="example"><span class="com"># Instalar toolchains e bootstrapper</span>
+$ mix archive.install hex nerves_bootstrap
+$ mix nerves.new meu_device --target rpi4
+
+<span class="com"># Estrutura gerada:</span>
+<span class="com"># meu_device/</span>
+<span class="com">#   config/target.exs    — config específica do target</span>
+<span class="com">#   lib/meu_device/      — sua aplicação</span>
+<span class="com">#   rootfs_overlay/      — arquivos extras na imagem</span>
+<span class="com">#   mix.exs</span>
+
+<span class="com"># mix.exs — dependências</span>
+<span class="kw">def</span> <span class="fn">deps</span>(_target) <span class="kw">do</span>
+  [
+    {:nerves, <span class="str">"~> 1.11"</span>, runtime: false},
+    {:nerves_system_rpi4, <span class="str">"~> 1.25"</span>, runtime: false, targets: <span class="at">:rpi4</span>},
+    {:nerves_runtime, <span class="str">"~> 0.13"</span>},
+    {:nerves_pack, <span class="str">"~> 0.7"</span>},      <span class="com"># Wi-Fi, SSH, mDNS</span>
+    {:circuits_gpio, <span class="str">"~> 2.0"</span>},
+    {:circuits_i2c, <span class="str">"~> 2.0"</span>},
+    {:circuits_uart, <span class="str">"~> 1.5"</span>}
+  ]
+<span class="kw">end</span>
+
+<span class="com"># Compilar e flashear</span>
+$ export MIX_TARGET=rpi4
+$ mix deps.get
+$ mix firmware          <span class="com"># gera meu_device.fw</span>
+$ mix firmware.burn     <span class="com"># grava no cartão SD</span>
+$ mix upload            <span class="com"># atualiza via rede (OTA)</span>
+$ mix ssh               <span class="com"># acesso IEx remoto</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gpio-i2c">Circuits — GPIO, I2C e UART</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Controle de hardware com Circuits.GPIO e Circuits.I2C</div>
+          <pre class="example"><span class="com"># GPIO — ler botão e acionfar LED</span>
+<span class="kw">alias</span> <span class="tp">Circuits.GPIO</span>
+
+{<span class="at">:ok</span>, led}  = <span class="tp">GPIO</span>.<span class="fn">open</span>(<span class="num">17</span>, <span class="at">:output</span>)
+{<span class="at">:ok</span>, btn}  = <span class="tp">GPIO</span>.<span class="fn">open</span>(<span class="num">27</span>, <span class="at">:input</span>, pull_mode: <span class="at">:pullup</span>)
+
+<span class="tp">GPIO</span>.<span class="fn">write</span>(led, <span class="num">1</span>)              <span class="com"># ligar LED</span>
+<span class="tp">GPIO</span>.<span class="fn">read</span>(btn)                  <span class="com"># 0 = pressionado (pullup)</span>
+
+<span class="com"># Interrupcão via mensagem ao processo</span>
+<span class="tp">GPIO</span>.<span class="fn">set_interrupts</span>(btn, <span class="at">:both</span>)
+receive <span class="kw">do</span>
+  {<span class="at">:circuits_gpio</span>, <span class="num">27</span>, _ts, valor} ->
+    <span class="tp">IO</span>.<span class="fn">puts</span>(<span class="str">"GPIO 27 mudou para #{valor}"</span>)
+<span class="kw">end</span>
+
+<span class="com"># I2C — ler sensor de temperatura BME280</span>
+<span class="kw">alias</span> <span class="tp">Circuits.I2C</span>
+
+{<span class="at">:ok</span>, bus} = <span class="tp">I2C</span>.<span class="fn">open</span>(<span class="str">"i2c-1"</span>)
+<span class="com"># Endereço do BME280 = 0x76</span>
+{<span class="at">:ok</span>, <<chip_id>>} = <span class="tp">I2C</span>.<span class="fn">write_read</span>(bus, <span class="num">0x76</span>, &lt;&lt;<span class="num">0xD0</span>&gt;&gt;, <span class="num">1</span>)
+<span class="com"># chip_id deve ser 0x60 (BME280)</span>
+
+<span class="com"># UART — comunicação serial com sensor</span>
+<span class="kw">alias</span> <span class="tp">Circuits.UART</span>
+
+{<span class="at">:ok</span>, pid} = <span class="tp">UART</span>.<span class="fn">start_link</span>()
+<span class="tp">UART</span>.<span class="fn">open</span>(pid, <span class="str">"/dev/ttyAMA0"</span>,
+  speed: <span class="num">115200</span>, data_bits: <span class="num">8</span>, stop_bits: <span class="num">1</span>, parity: <span class="at">:none</span>,
+  active: true)  <span class="com"># ativa modo evento → mensagens ao processo</span>
+
+<span class="tp">UART</span>.<span class="fn">write</span>(pid, <span class="str">"AT\r\n"</span>)  <span class="com"># enviar comando AT para modem</span>
+receive <span class="kw">do</span>
+  {<span class="at">:circuits_uart</span>, <span class="str">"/dev/ttyAMA0"</span>, dados} -> <span class="tp">IO</span>.<span class="fn">inspect</span>(dados)
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="genserver-device">GenServer para Gerenciar Hardware</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Sensor supervisionado com leitura periódica</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MeuDevice.SensorTemperatura</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">GenServer</span>
+  <span class="kw">alias</span> <span class="tp">Circuits.I2C</span>
+  <span class="at">@intervalo_ms</span> <span class="num">5_000</span>
+  <span class="at">@endereco</span> <span class="num">0x76</span>
+
+  <span class="kw">def</span> <span class="fn">start_link</span>(_), <span class="kw">do</span>: <span class="tp">GenServer</span>.<span class="fn">start_link</span>(__MODULE__, [], name: __MODULE__)
+  <span class="kw">def</span> <span class="fn">leitura</span>, <span class="kw">do</span>: <span class="tp">GenServer</span>.<span class="fn">call</span>(__MODULE__, <span class="at">:leitura</span>)
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">init</span>(_) <span class="kw">do</span>
+    {<span class="at">:ok</span>, bus} = <span class="tp">I2C</span>.<span class="fn">open</span>(<span class="str">"i2c-1"</span>)
+    <span class="fn">schedule_leitura</span>()
+    {<span class="at">:ok</span>, %{bus: bus, ultima_leitura: nil}}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">handle_call</span>(<span class="at">:leitura</span>, _from, state) <span class="kw">do</span>
+    {<span class="at">:reply</span>, state.ultima_leitura, state}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">handle_info</span>(<span class="at">:ler_sensor</span>, %{bus: bus} = state) <span class="kw">do</span>
+    leitura = <span class="fn">ler_bme280</span>(bus)
+    <span class="fn">schedule_leitura</span>()
+    {<span class="at">:noreply</span>, %{state | ultima_leitura: leitura}}
+  <span class="kw">end</span>
+
+  defp <span class="fn">schedule_leitura</span>(), <span class="kw">do</span>: <span class="tp">Process</span>.<span class="fn">send_after</span>(self(), <span class="at">:ler_sensor</span>, <span class="at">@intervalo_ms</span>)
+
+  defp <span class="fn">ler_bme280</span>(bus) <span class="kw">do</span>
+    <span class="com"># leitura simplificada — implementação real lê registradores de compensação</span>
+    {<span class="at">:ok</span>, dados} = <span class="tp">I2C</span>.<span class="fn">write_read</span>(bus, <span class="at">@endereco</span>, &lt;&lt;<span class="num">0xF7</span>&gt;&gt;, <span class="num">8</span>)
+    %{temperatura: <span class="fn">decodificar_temp</span>(dados), ts: <span class="tp">DateTime</span>.<span class="fn">utc_now</span>()}
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nerveshub">NervesHub — OTA e Gestão de Frota</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Deploy de firmware via NervesHub Cloud</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:nerves_hub_link, <span class="str">"~> 2.4"</span>}
+
+<span class="com"># config/target.exs — credenciais do dispositivo</span>
+config <span class="at">:nerves_hub_link</span>,
+  org: <span class="str">"minha-empresa"</span>,
+  product: <span class="str">"meu-device"</span>
+
+<span class="com"># Assinar firmware antes de publicar (chave RSA)</span>
+$ mix nerves.artifact          <span class="com"># empacotar</span>
+$ nerves_hub product create meu-device
+$ nerves_hub firmware publish  <span class="com"># enviar para a nuvem</span>
+$ nerves_hub deployment create --name v1.2 \
+    --firmware meu_device.fw --version &gt;=1.2.0
+
+<span class="com"># No dispositivo — verificar atualizações automaticamente</span>
+<span class="com"># NervesHubLink gerencia o upgrade A/B partition:</span>
+<span class="com"># 1. Baixa nova firmware em /dev/mmcblk0p3 (partição inativa)</span>
+<span class="com"># 2. Verifica hash SHA256</span>
+<span class="com"># 3. Marca nova partição como "next boot"</span>
+<span class="com"># 4. Reinicia — se boot falhar 3x → volta para partição anterior</span>
+
+<span class="com"># Rollback manual</span>
+<span class="tp">Nerves.Runtime</span>.<span class="fn">revert</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Nerves Project. <strong>Nerves Documentation</strong>. Disponível em: &lt;https://hexdocs.pm/nerves&gt;. Acesso em: 2026.</li>
+            <li>Circuits Project. <strong>Circuits.GPIO, I2C, UART</strong>. Disponível em: &lt;https://github.com/elixir-circuits&gt;. Acesso em: 2026.</li>
+            <li>NervesHub. <strong>NervesHub Documentation</strong>. Disponível em: &lt;https://docs.nerves-hub.org&gt;. Acesso em: 2026.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/nerves/readme.html" target="_blank" rel="noopener">HEXDOCS. Nerves.</a></li>
+            <li><a href="https://hexdocs.pm/circuits_gpio/readme.html" target="_blank" rel="noopener">HEXDOCS. Circuits.GPIO.</a></li>
+            <li><a href="https://docs.nerves-hub.org/" target="_blank" rel="noopener">NERVESHUB. Documentacao oficial.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Processos e OTP — base do Nerves</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir para CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Diferente de MicroPython ou Arduino C++, o Nerves roda o <strong>BEAM completo</strong>: hot code reload, supervisor tree, e acesso remoto via IEx em produção. Se um driver de sensor crasha, o Supervisor reinicia apenas aquele processo — o resto do dispositivo continua operando normalmente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

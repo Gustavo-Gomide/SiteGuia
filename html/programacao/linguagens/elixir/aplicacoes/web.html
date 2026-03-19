@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir para Web: Phoenix Framework completo, REST API com JSON, autenticação JWT, WebSockets com Channels, LiveView em tempo real, deploy com releases e Docker." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Web</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir para Web</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Web</h1>
+          <p>Phoenix é o framework web mais performático baseado em linguagem de alto nível, capaz de suportar <strong>2 milhões de conexões WebSocket simultâneas</strong> em uma única máquina — demonstrado pelo time do Discord. Para APIs REST, suporta centenas de milhares de requisições por segundo. Para UIs em tempo real, o Phoenix Channels e LiveView eliminam a necessidade de servidores de websocket separados.</p>
+        </div>
+        <p class="intro-highlight">
+          O benchmark de <strong>2 milhões de conexões</strong> do Phoenix Channels não é marketing — é resultado direto de processos leves da BEAM (não threads): cada conexão WebSocket é um processo Elixir consumindo ~2-4 KB de RAM.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rest-api">REST API com Phoenix</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">API JSON completa — controller, params e resposta</div>
+          <pre class="example"><span class="com"># router.ex — definir API</span>
+scope <span class="str">"/api/v1"</span>, <span class="tp">MeuAppWeb</span> <span class="kw">do</span>
+  pipe_through [<span class="at">:api</span>, <span class="at">:authenticate</span>]  <span class="com"># pipeline com autenticação</span>
+
+  resources <span class="str">"/produtos"</span>, <span class="tp">ProdutoController</span>,
+    only: [<span class="at">:index</span>, <span class="at">:show</span>, <span class="at">:create</span>, <span class="at">:update</span>, <span class="at">:delete</span>]
+  get <span class="str">"/produtos/:id/estoque"</span>, <span class="tp">ProdutoController</span>, <span class="at">:estoque</span>
+<span class="kw">end</span>
+
+<span class="com"># produto_controller.ex</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.ProdutoController</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuAppWeb</span>, <span class="at">:controller</span>
+  <span class="kw">alias</span> <span class="tp">MeuApp.Loja</span>
+
+  <span class="kw">def</span> <span class="fn">index</span>(conn, params) <span class="kw">do</span>
+    produtos = <span class="tp">Loja</span>.<span class="fn">listar_produtos</span>(params)
+    render(conn, <span class="at">:index</span>, produtos: produtos)
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">create</span>(conn, %{<span class="str">"produto"</span> => produto_params}) <span class="kw">do</span>
+    <span class="kw">case</span> <span class="tp">Loja</span>.<span class="fn">criar_produto</span>(produto_params) <span class="kw">do</span>
+      {<span class="at">:ok</span>, produto} ->
+        conn
+        |&gt; put_status(<span class="at">:created</span>)
+        |&gt; put_resp_header(<span class="str">"location"</span>, ~p"/api/v1/produtos/#{produto.id}")
+        |&gt; render(<span class="at">:show</span>, produto: produto)
+      {<span class="at">:error</span>, %<span class="tp">Ecto.Changeset</span>{} = cs} ->
+        conn
+        |&gt; put_status(<span class="at">:unprocessable_entity</span>)
+        |&gt; render(<span class="at">:error</span>, changeset: cs)
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">delete</span>(conn, %{<span class="str">"id"</span> => id}) <span class="kw">do</span>
+    produto = <span class="tp">Loja</span>.<span class="fn">get_produto!</span>(id)
+    <span class="kw">with</span> {<span class="at">:ok</span>, _} &lt;- <span class="tp">Loja</span>.<span class="fn">deletar_produto</span>(produto) <span class="kw">do</span>
+      send_resp(conn, <span class="at">:no_content</span>, <span class="str">""</span>)
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># produto_json.ex — serialização (Phoenix 1.7+)</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.ProdutoJSON</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">index</span>(%{produtos: produtos}), <span class="kw">do</span>: %{data: <span class="kw">Enum</span>.<span class="fn">map</span>(produtos, &amp;<span class="fn">data</span>/1)}
+  <span class="kw">def</span> <span class="fn">show</span>(%{produto: produto}), <span class="kw">do</span>: %{data: <span class="fn">data</span>(produto)}
+
+  defp <span class="fn">data</span>(produto) <span class="kw">do</span>
+    %{id: produto.id, nome: produto.nome,
+      preco: produto.preco, estoque: produto.estoque}
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="auth">Autenticação — Guardian JWT</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Guardian — token-based auth</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:guardian, <span class="str">"~> 2.0"</span>},
+{:bcrypt_elixir, <span class="str">"~> 3.0"</span>}
+
+<span class="com"># lib/meu_app_web/auth/guardian.ex</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.Auth.Guardian</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Guardian</span>, otp_app: <span class="at">:meu_app</span>
+
+  <span class="kw">def</span> <span class="fn">subject_for_token</span>(%<span class="tp">Usuario</span>{id: id}, _claims), <span class="kw">do</span>: {<span class="at">:ok</span>, to_string(id)}
+  <span class="kw">def</span> <span class="fn">resource_from_claims</span>(%{<span class="str">"sub"</span> => id}) <span class="kw">do</span>
+    usuario = <span class="tp">Repo</span>.<span class="fn">get</span>(<span class="tp">Usuario</span>, id)
+    {<span class="at">:ok</span>, usuario}
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Plug de autenticação</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.Auth.Pipeline</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Guardian.Plug.Pipeline</span>,
+    otp_app: <span class="at">:meu_app</span>,
+    module: <span class="tp">MeuAppWeb.Auth.Guardian</span>,
+    error_handler: <span class="tp">MeuAppWeb.Auth.ErrorHandler</span>
+
+  plug <span class="tp">Guardian.Plug.VerifyHeader</span>, scheme: <span class="str">"Bearer"</span>
+  plug <span class="tp">Guardian.Plug.EnsureAuthenticated</span>
+  plug <span class="tp">Guardian.Plug.LoadResource</span>
+<span class="kw">end</span>
+
+<span class="com"># Login — gerar token</span>
+<span class="kw">def</span> <span class="fn">login</span>(conn, %{<span class="str">"email"</span> => email, <span class="str">"senha"</span> => senha}) <span class="kw">do</span>
+  <span class="kw">with</span> {<span class="at">:ok</span>, usuario} &lt;- <span class="tp">Contas</span>.<span class="fn">autenticar</span>(email, senha),
+       {<span class="at">:ok</span>, token, _claims} &lt;- <span class="tp">Guardian</span>.<span class="fn">encode_and_sign</span>(usuario) <span class="kw">do</span>
+    render(conn, <span class="at">:token</span>, token: token, usuario: usuario)
+  <span class="kw">else</span>
+    {<span class="at">:error</span>, <span class="at">:invalido</span>} ->
+      conn |&gt; put_status(<span class="at">:unauthorized</span>) |&gt; render(<span class="at">:error</span>, msg: <span class="str">"Credenciais inválidas"</span>)
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="channels">Phoenix Channels — WebSockets</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Channel para chat em tempo real</div>
+          <pre class="example"><span class="com"># user_socket.ex</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.UserSocket</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Phoenix.Socket</span>
+  channel <span class="str">"sala:*"</span>, <span class="tp">MeuAppWeb.SalaChannel</span>
+
+  <span class="kw">def</span> <span class="fn">connect</span>(%{<span class="str">"token"</span> => token}, socket, _info) <span class="kw">do</span>
+    <span class="kw">case</span> <span class="tp">Guardian</span>.<span class="fn">decode_and_verify</span>(token) <span class="kw">do</span>
+      {<span class="at">:ok</span>, claims} -> {<span class="at">:ok</span>, assign(socket, <span class="at">:user_id</span>, claims[<span class="str">"sub"</span>])}
+      _ -> <span class="at">:error</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+  <span class="kw">def</span> <span class="fn">id</span>(socket), <span class="kw">do</span>: <span class="str">"users_socket:#{socket.assigns.user_id}"</span>
+<span class="kw">end</span>
+
+<span class="com"># sala_channel.ex</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.SalaChannel</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuAppWeb</span>, <span class="at">:channel</span>
+
+  <span class="kw">def</span> <span class="fn">join</span>(<span class="str">"sala:"</span> &lt;&gt; sala_id, _payload, socket) <span class="kw">do</span>
+    mensagens = <span class="tp">Chat</span>.<span class="fn">listar_mensagens_recentes</span>(sala_id)
+    {<span class="at">:ok</span>, %{mensagens: mensagens}, assign(socket, <span class="at">:sala_id</span>, sala_id)}
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">handle_in</span>(<span class="str">"nova_mensagem"</span>, %{<span class="str">"corpo"</span> => corpo}, socket) <span class="kw">do</span>
+    user_id = socket.assigns.user_id
+    sala_id = socket.assigns.sala_id
+
+    <span class="kw">case</span> <span class="tp">Chat</span>.<span class="fn">criar_mensagem</span>(sala_id, user_id, corpo) <span class="kw">do</span>
+      {<span class="at">:ok</span>, msg} ->
+        <span class="fn">broadcast!</span>(socket, <span class="str">"nova_mensagem"</span>, <span class="tp">MensagemJSON</span>.<span class="fn">serialize</span>(msg))
+        {<span class="at">:reply</span>, <span class="at">:ok</span>, socket}
+      {<span class="at">:error</span>, _} ->
+        {<span class="at">:reply</span>, {<span class="at">:error</span>, %{msg: <span class="str">"falha ao enviar"</span>}}, socket}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deploy">Deploy — Mix Release e Docker</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Build release e Dockerfile multi-stage</div>
+          <pre class="example"><span class="com"># Dockerfile multi-stage para produção</span>
+FROM elixir:1.17-otp-27-alpine AS build
+
+RUN apk add --no-cache build-base git nodejs npm
+
+WORKDIR /app
+ENV MIX_ENV=prod
+
+COPY mix.exs mix.lock ./
+RUN mix deps.get --only $MIX_ENV
+RUN mix deps.compile
+
+COPY assets assets
+RUN mix assets.deploy
+
+COPY lib lib
+COPY config config
+COPY priv priv
+
+RUN mix compile
+RUN mix release
+
+<span class="com"># Imagem de runtime minimal</span>
+FROM alpine:3.19 AS app
+
+RUN apk add --no-cache libstdc++ openssl ncurses-libs
+
+WORKDIR /app
+ENV HOME=/app MIX_ENV=prod
+
+COPY --from=build /app/_build/prod/rel/meu_app ./
+
+EXPOSE 4000
+CMD ["bin/meu_app", "start"]
+
+<span class="com"># runtime.exs — configuração em runtime (env vars)</span>
+<span class="com"># config/runtime.exs</span>
+import Config
+
+if config_env() == :prod do
+  config <span class="at">:meu_app</span>, <span class="tp">MeuApp.Repo</span>,
+    url: <span class="tp">System</span>.<span class="fn">fetch_env!</span>(<span class="str">"DATABASE_URL"</span>),
+    pool_size: <span class="tp">String</span>.<span class="fn">to_integer</span>(<span class="tp">System</span>.<span class="fn">get_env</span>(<span class="str">"POOL_SIZE"</span>, <span class="str">"10"</span>))
+
+  config <span class="at">:meu_app_web</span>, <span class="tp">MeuAppWeb.Endpoint</span>,
+    url: [host: <span class="tp">System</span>.<span class="fn">fetch_env!</span>(<span class="str">"HOST"</span>)],
+    secret_key_base: <span class="tp">System</span>.<span class="fn">fetch_env!</span>(<span class="str">"SECRET_KEY_BASE"</span>)
+end</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Phoenix Framework. <strong>Channels — Real-time Communication</strong>. Disponível em: &lt;https://hexdocs.pm/phoenix/channels.html&gt;. Acesso em: 2026.</li>
+            <li>WLASCHIN, S. <strong>Functional Design Patterns</strong>. NDC London, 2014. (Pipeline pattern aplicável ao Elixir).</li>
+            <li>MCCORD, C. <strong>Programming Phoenix 1.4</strong>. The Pragmatic Bookshelf, 2019. Cap. 8 — Channels.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/phoenix/overview.html" target="_blank" rel="noopener">HEXDOCS. Phoenix Overview.</a></li>
+            <li><a href="https://hexdocs.pm/phoenix/channels.html" target="_blank" rel="noopener">HEXDOCS. Phoenix Channels.</a></li>
+            <li><a href="https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html" target="_blank" rel="noopener">HEXDOCS. Phoenix LiveView.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir e Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O Discord usou Phoenix Channels para atingir <strong>5 milhões de usuários online simultâneos</strong> antes de migrar partes para Rust por razões de latência de GC. Mas durante anos, um único cluster Elixir sustentou esse tráfego — porque na BEAM, cada conexão WebSocket não é uma thread do sistema operacional (cara), mas um processo leve com near-zero overhead de alocação e GC por-processo.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

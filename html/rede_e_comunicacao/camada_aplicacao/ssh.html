@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="SSH: autenticação por chave pública, arquitetura de canais, port forwarding, SCP, SFTP e hardening." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>SSH | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">SSH &mdash; Secure Shell</h1>
+          <p class="page-subtitle">Terminal remoto seguro com criptografia forte, autenticação por chave e tunelamento</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>SSH</strong> (RFC 4251&ndash;4254) substitui o Telnet, rsh e rlogin com criptografia end-to-end. Corre em TCP/22. Além do acesso à shell, SSH suporta transferência de arquivos (SCP/SFTP), tunelamento de portas (<em>local, remoto, dinâmico</em>) e multiplexamento de canais num único TCP.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="auth" class="section-title">Autenticação por Chave Pública</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Gerar e distribuir chave</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Gerando par de chaves SSH</span></div>
+              <pre class="code-block"># Gerar chave Ed25519 (recomendado)
+ssh-keygen -t ed25519 -C "user@machine" -f ~/.ssh/id_ed25519
+
+# Ou RSA 4096 (compatível com sistemas legados)
+ssh-keygen -t rsa -b 4096 -C "user@machine"
+
+# Copiar chave pública ao servidor
+ssh-copy-id -i ~/.ssh/id_ed25519.pub user@server
+# Equivalente: cat ~/.ssh/id_ed25519.pub >> ~/.ssh/authorized_keys (no server)
+
+# Conectar usando a chave
+ssh -i ~/.ssh/id_ed25519 user@server</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Como funciona a autenticação</h3>
+            <ol>
+              <li>Servidor verifica se a chave pública está em <code class="code-inline">~/.ssh/authorized_keys</code></li>
+              <li>Servidor gera um desafio aleatório criptografado com a chave pública do cliente</li>
+              <li>Cliente decifra o desafio com sua <em>chave privada</em> e envia o resultado</li>
+              <li>Servidor verifica &mdash; autenticado sem a senha nunca ter trafegado pela rede</li>
+            </ol>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tunnels" class="section-title">Port Forwarding (Tunelamento)</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Local Forward (-L)</h3>
+            <p>Encaminha uma porta local para um destino via servidor SSH. Acesse serviços internos da rede remota:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Local forward</span></div>
+              <pre class="code-block"># Acessar banco na rede remota localmente
+ssh -L 5432:db-interno:5432 user@jump-server
+# Agora: psql -h localhost -p 5432 ...</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Remote Forward (-R)</h3>
+            <p>Expõe uma porta local no servidor remoto. Permite acesso reverso:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Remote forward (reverse tunnel)</span></div>
+              <pre class="code-block"># Expor serviço local na porta 8080 no servidor
+ssh -R 8080:localhost:3000 user@public-server
+# No servidor: acessa localhost:8080 e chega ao client:3000</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Dynamic (SOCKS proxy) (-D)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>SOCKS5 proxy via SSH</span></div>
+              <pre class="code-block"># Cria proxy SOCKS5 local na porta 1080
+ssh -D 1080 user@server
+# Configurar navegador para usar SOCKS5 127.0.0.1:1080
+# Todo o tráfego passa pelo SSH (VPN pobre)</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="hardening" class="section-title">Hardening do Servidor SSH</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>/etc/ssh/sshd_config &mdash; configurações recomendadas</span></div>
+          <pre class="code-block"># Desabilitar login root
+PermitRootLogin no
+
+# Desabilitar senha (apenas chave pública)
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+
+# Apenas IPv4/IPv6 específico
+AddressFamily inet
+
+# Porta não padrão (dificulta bots)
+Port 2222
+
+# Limite de tentativas de autenticação
+MaxAuthTries 3
+
+# Tempo máximo para autenticar
+LoginGraceTime 30s
+
+# Permitir só alguns usuários
+AllowUsers deployer sysadmin
+
+# Algoritmos modernos apenas
+KexAlgorithms curve25519-sha256,diffie-hellman-group16-sha512
+HostKeyAlgorithms ssh-ed25519,rsa-sha2-512
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com</pre>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="ftp.html"><strong>SFTP (FTP via SSH)</strong></a>, <a href="https.html"><strong>TLS</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "SSH com autenticação por chave é tão seguro que o ataque mais eficaz não é quebrar a criptografia &mdash; é roubar a chave privada."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

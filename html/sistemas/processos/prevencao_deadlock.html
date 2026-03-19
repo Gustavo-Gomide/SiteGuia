@@ -1,0 +1,241 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Técnicas práticas de prevenção e recuperação de deadlocks: lock ordering, timeouts, wait-die / wound-wait, detecção com ferramentas e como projetar sistemas livres de deadlock." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Prevenção de Deadlocks | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Prevenção de Deadlocks</h1>
+            <p class="page-subtitle">Técnicas práticas: lock ordering, try-lock com timeout, wait-die / wound-wait e ferramentas de detecção como TSan.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Na prática, a prevenção de deadlocks é mais pragmática que o modelo teórico do Algoritmo do Banqueiro. As duas técnicas que resolvem 99% dos casos em código real são <strong>lock ordering</strong> (adquirir mutexes sempre na mesma ordem global) e <strong>timeouts</strong> (desistir se o lock não for obtido em tempo razoável). O restante cobre cenários distribuídos e ferramentas de diagnóstico.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — LOCK ORDERING ═══════════════════ -->
+      <section id="lock-ordering">
+        <h2>Lock Ordering</h2>
+        <p>Adquirir mutexes sempre na mesma ordem global elimina a condição de <em>Circular Wait</em> — a mais fácil das condições de Coffman de quebrar na prática:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — versão ERRADA (deadlock) vs versão CORRETA (lock ordering)</div>
+          <pre class="code-block">#include &lt;pthread.h&gt;
+#include &lt;stdint.h&gt;
+
+pthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m2 = PTHREAD_MUTEX_INITIALIZER;
+
+/* ---- VERSÃO ERRADA: ordens diferentes → deadlock ---- */
+void *thread_a_errada(void *arg) {
+    pthread_mutex_lock(&amp;m1);   /* adquire m1 primeiro */
+    pthread_mutex_lock(&amp;m2);   /* depois m2           */
+    /* ... */
+    pthread_mutex_unlock(&amp;m2);
+    pthread_mutex_unlock(&amp;m1);
+    return NULL;
+}
+
+void *thread_b_errada(void *arg) {
+    pthread_mutex_lock(&amp;m2);   /* adquire m2 primeiro ← PROBLEMA */
+    pthread_mutex_lock(&amp;m1);   /* depois m1           */
+    /* ... */
+    pthread_mutex_unlock(&amp;m1);
+    pthread_mutex_unlock(&amp;m2);
+    return NULL;
+}
+
+/* ---- VERSÃO CORRETA: ordem por endereço de memória ---- */
+void lock_ordered(pthread_mutex_t *a, pthread_mutex_t *b) {
+    /* Sempre travar o mutex de endereço menor primeiro */
+    if ((uintptr_t)a &lt; (uintptr_t)b) {
+        pthread_mutex_lock(a);
+        pthread_mutex_lock(b);
+    } else {
+        pthread_mutex_lock(b);
+        pthread_mutex_lock(a);
+    }
+}
+
+void *thread_a_correta(void *arg) {
+    lock_ordered(&amp;m1, &amp;m2);
+    /* ... seção crítica ... */
+    pthread_mutex_unlock(&amp;m1);
+    pthread_mutex_unlock(&amp;m2);
+    return NULL;
+}
+
+void *thread_b_correta(void *arg) {
+    lock_ordered(&amp;m2, &amp;m1);   /* mesma função — ordem será m1 depois m2 */
+    /* ... seção crítica ... */
+    pthread_mutex_unlock(&amp;m1);
+    pthread_mutex_unlock(&amp;m2);
+    return NULL;
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — TRY-LOCK ═══════════════════ -->
+      <section id="trylock">
+        <h2>Timeouts e Try-Lock</h2>
+        <p>Quando lock ordering não é viável (ex.: locks de terceiros, ordem dinâmica), try-lock com backoff exponencial evita espera infinita:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — pthread_mutex_trylock com backoff exponencial</div>
+          <pre class="code-block">#include &lt;pthread.h&gt;
+#include &lt;time.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;stdio.h&gt;
+
+/* Tenta adquirir m1 e m2 sem deadlock usando backoff exponencial */
+int lock_com_backoff(pthread_mutex_t *m1, pthread_mutex_t *m2) {
+    struct timespec intervalo = { .tv_sec = 0, .tv_nsec = 1000 }; /* 1 µs */
+    int tentativas = 0;
+
+    while (tentativas &lt; 20) {
+        if (pthread_mutex_trylock(m1) == 0) {
+            if (pthread_mutex_trylock(m2) == 0) {
+                return 0;  /* ambos adquiridos com sucesso */
+            }
+            pthread_mutex_unlock(m1);  /* não conseguiu m2; libera m1 */
+        }
+
+        /* Backoff exponencial: 1µs, 2µs, 4µs, 8µs, ... */
+        nanosleep(&amp;intervalo, NULL);
+        intervalo.tv_nsec *= 2;
+        tentativas++;
+    }
+    return EDEADLK;  /* desistiu após 20 tentativas */
+}
+
+/* Quando usar try-lock:
+   - Sistemas onde starvation é preferível ao deadlock
+   - Locks de diferentes subsistemas sem acesso ao código-fonte
+   - Threads de tempo real com deadline strict
+   CUIDADO: backoff puro sem aleatoriedade pode causar livelock  */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — WAIT-DIE / WOUND-WAIT ═══════════════════ -->
+      <section id="wait-die">
+        <h2>Wait-Die e Wound-Wait</h2>
+        <p>Algoritmos baseados em timestamp lógico para bancos de dados distribuídos — evitam deadlock sem ordenação global de locks:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Algoritmo</th><th>Transação mais antiga</th><th>Transação mais nova</th><th>Comportamento</th><th>Rollbacks</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Wait-Die</strong></td>
+                <td>Aguarda (wait)</td>
+                <td>Aborta e reinicia (die)</td>
+                <td>Antiga &gt; Nova: antiga espera; Nova &gt; Antiga: nova morre. Não-preemptivo no titular do lock</td>
+                <td>Somente mais novas</td>
+              </tr>
+              <tr>
+                <td><strong>Wound-Wait</strong></td>
+                <td>Preempta (wound) a mais nova</td>
+                <td>Aguarda (wait)</td>
+                <td>Antiga &gt; Nova: antiga preempta a nova; Nova &gt; Antiga: nova espera. Preemptivo no titular</td>
+                <td>Somente mais novas (preemptadas)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Ambos garantem ausência de deadlock pois a relação de espera segue a ordem de timestamp — nunca circular. <strong>Wait-Die</strong> tem menos preempções mas mais rollbacks de novas transações; <strong>Wound-Wait</strong> tem mais preempções imediatas mas menos espera redundante.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — FERRAMENTAS ═══════════════════ -->
+      <section id="ferramentas">
+        <h2>Ferramentas de Detecção</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">ThreadSanitizer (TSan)</h3>
+            <p>Instrumentação em tempo de compilação que detecta data races, deadlocks potenciais e uso incorreto de mutex. Overhead de 5–15x de tempo e 5–10x de memória — use apenas em testes e CI. Ative com <code class="code-inline">-fsanitize=thread</code> no GCC/Clang.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Valgrind Helgrind</h3>
+            <p>Detector de erros de threading baseado em Valgrind. Rastreia a ordem de aquisição de locks e detecta violações. Mais lento que TSan (~20x), mas não requer recompilação — pode analisar binários existentes.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">/proc e wchan</h3>
+            <p>No Linux, <code class="code-inline">cat /proc/PID/wchan</code> mostra em qual função do kernel uma thread está dormindo. Threads em estado D ou S esperando por mutex aparecem em funções como <code class="code-inline">futex_wait</code>, revelando contenção de lock.</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell — saída do ThreadSanitizer detectando potencial deadlock</div>
+          <pre class="code-block">$ gcc -fsanitize=thread -g -o demo demo.c -lpthread &amp;&amp; ./demo
+
+WARNING: ThreadSanitizer: lock-order-inversion (potential deadlock)
+  Cycle in lock order graph: M1 (0x56...) => M2 (0x56...) => M1
+
+  Mutex M1 acquired here while holding mutex M2:
+    Thread T2:
+      #0 pthread_mutex_lock   (demo.c:28)
+      #1 thread_b             (demo.c:35)
+
+  Mutex M2 acquired here while holding mutex M1:
+    Thread T1:
+      #0 pthread_mutex_lock   (demo.c:15)
+      #1 thread_a             (demo.c:21)
+
+  Hint: use TSAN_OPTIONS=second_deadlock_stack=1 for more info.
+
+SUMMARY: ThreadSanitizer: lock-order-inversion
+
+# Verificar wchan de processo suspeito (substituir PID):
+cat /proc/12345/task/*/wchan
+# Saída típica em deadlock: futex_wait_queue_me (esperando por futex = mutex)</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Entenda a teoria por trás dos impasses em
+          <a href="/html/sistemas/processos/deadlocks.html">Deadlocks</a> e
+          <a href="/html/sistemas/processos/sincronizacao.html">Sincronização de Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Lock ordering é a lei de trânsito da concorrência — simples, eficaz e a maioria dos acidentes acontece quando é ignorada."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

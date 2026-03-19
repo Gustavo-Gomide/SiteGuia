@@ -1,0 +1,154 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Métodos de alocação de arquivos em disco: alocação contígua, encadeada (FAT), indexada (inode), extents e impacto na fragmentação e desempenho." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Alocação de Arquivos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Alocação de Arquivos</h1>
+            <p class="page-subtitle">Como sistemas de arquivos mapeiam dados para blocos físicos em disco</p>
+          </div>
+        </div>
+        <p class="intro-highlight">A forma como o sistema de arquivos mapeia um arquivo para blocos físicos no disco determina diretamente a performance de leitura e escrita, o grau de fragmentação ao longo do tempo e a complexidade do acesso aleatório. Cada método — contíguo, encadeado e indexado — apresenta compromissos distintos de desempenho e confiabilidade.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — ALOCAÇÃO CONTÍGUA ═══════════════════ -->
+      <section id="contigua">
+        <h2>Alocação Contígua</h2>
+        <p>Na alocação contígua, um arquivo ocupa um conjunto sequencial de blocos consecutivos no disco. A entrada de diretório armazena apenas o bloco inicial e o tamanho do arquivo.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Vantagens</h3>
+            <p>Acesso sequencial muito rápido — um único seek de cabeça em HDDs. Implementação simples sem estruturas extras. Acesso aleatório direto: bloco de offset X = bloco_inicial + X/bloco_size.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Desvantagens</h3>
+            <p>Fragmentação externa: ao deletar e recriar arquivos, surgem buracos no disco que podem não comportar novos arquivos. O tamanho deve ser conhecido na criação. Impossível crescer um arquivo sem realocar.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Onde é usado</h3>
+            <p>CD-ROM e ISO 9660: o tamanho de todos os arquivos é conhecido antes da gravação, tornando alocação contígua perfeita. Também usado em sistemas embarcados com armazenamento estático.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — ALOCAÇÃO ENCADEADA ═══════════════════ -->
+      <section id="encadeada">
+        <h2>Alocação Encadeada e FAT</h2>
+        <p>Na alocação encadeada, cada bloco contém um ponteiro para o próximo bloco do arquivo. Não há fragmentação externa — qualquer bloco livre pode ser usado. O problema é o acesso aleatório: para ler o bloco N, é preciso percorrer todos os N-1 ponteiros anteriores.</p>
+        <p>O FAT centraliza todos os ponteiros em uma tabela separada (File Allocation Table), evitando o overhead de um ponteiro por bloco no disco de dados. A tabela inteira pode ficar em cache na RAM, acelerando a travessia.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pseudocódigo — travessia de cadeia FAT para arquivo fragmentado</div>
+          <pre class="code-block">// FAT (simplificada):
+// índice:  0    1    2    3    4    5    6    7    8
+// valor:  FREE FREE EOF  FREE FREE  8   FREE FREE  3
+
+// Arquivo "doc.txt" começa no cluster 5
+cluster = 5
+while (FAT[cluster] != EOF):
+    ler_cluster(cluster)   // cluster 5: dados bytes 0-511
+    cluster = FAT[cluster] // FAT[5] = 8 → FAT[8] = 3 → FAT[3] = EOF
+// Acesso aleatório ao byte 1024: deve percorrer clusters 5 → 8 antes de chegar ao 3</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ALOCAÇÃO INDEXADA (INODE) ═══════════════════ -->
+      <section id="indexada">
+        <h2>Alocação Indexada — Inode</h2>
+        <p>O inode Unix contém um array de ponteiros para blocos de dados. Para suportar arquivos grandes com overhead mínimo em arquivos pequenos, usa-se uma estrutura multinível:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Tipo de ponteiro</th>
+                <th>Quantidade (ext2)</th>
+                <th>Blocos endereçados</th>
+                <th>Tamanho (blocos 4 KB)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Diretos</td><td>12</td><td>12</td><td>48 KB</td></tr>
+              <tr><td>Indireto simples</td><td>1</td><td>1024 (256 em 1 KB de bloco de ponteiros)</td><td>4 MB (com blocos 4KB: 1024 ponteiros × 4KB)</td></tr>
+              <tr><td>Indireto duplo</td><td>1</td><td>1024 × 1024 = 1.048.576</td><td>4 GB</td></tr>
+              <tr><td>Indireto triplo</td><td>1</td><td>1024^3 = ~1 bilhao</td><td>4 TB</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Para arquivos pequenos (a maioria), o acesso é O(1): basta ler os 12 ponteiros diretos do inode. Para arquivos grandes, até 3 leituras extras de blocos de ponteiro são necessárias — ainda constante.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — EXTENTS E FRAGMENTAÇÃO ═══════════════════ -->
+      <section id="extents">
+        <h2>Extents e Fragmentação</h2>
+        <p>Extents (ext4, NTFS, btrfs, XFS) superam o modelo de ponteiro-por-bloco: descrevem faixas contíguas com (bloco inicial, comprimento). Um arquivo de 1 GB perfeitamente contíguo usa 1 extent, vs 262.144 entradas de bloco no modelo clássico.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — filefrag para ver fragmentação</div>
+          <pre class="code-block"># Verificar fragmentação de um arquivo
+filefrag -v /home/usuario/video.mkv
+
+# Saída típica sem fragmentação (SSD novo):
+# ext:     0  logical:        0-   262143  physical: 1048576- 1310719  length: 262144  flags: last
+# Total: 1 extent
+# Não fragmentado!
+
+# Saída típica com fragmentação (HDD velho):
+# ext:     0  logical:        0-     4095  physical:  524288-  528383  length:   4096
+# ext:     1  logical:     4096-     8191  physical: 1048576- 1052671  length:   4096
+# ext:     2  logical:     8192-    12287  physical:  786432-  790527  length:   4096
+# Total: 3 extents (fragmentado)</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fragmentação em HDDs</h3>
+            <p>Fragmentação causa seeks adicionais de cabeça de leitura, aumentando latência de sequencial de 10x ou mais. Desfragmentação periódica (e4defrag, xfs_fsr) restaura a localidade.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fragmentação em SSDs</h3>
+            <p>Em SSDs, fragmentação tem impacto desprezível na leitura sequencial (sem seek mecânico). Desfragmentar SSDs é desnecessário e prejudicial ao desgaste das células NAND. O kernel usa TRIM/discard para gestão de espaço livre.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/sistema_arquivos.html">Sistema de Arquivos</a> e <a href="/html/sistemas/arquivos/ext4.html">ext4</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Como os dados ficam dispostos no disco impacta performance tanto quanto o algoritmo que os processa."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

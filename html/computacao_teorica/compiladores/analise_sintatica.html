@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Análise sintática em compiladores: parsers LL e LR, AST, gramáticas livres de contexto, BNF, descida recursiva e recuperação de erros." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Análise Sintática | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores &rsaquo; Análise Sintática</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Análise Sintática</h1>
+        <p>De tokens para árvore &mdash; validando estrutura e construindo a AST.</p>
+      </div>
+      <p class="intro-highlight">
+        A <strong>análise sintática</strong> (ou <em>parsing</em>) recebe a sequência de tokens produzida pelo scanner
+        e verifica se eles formam construções válidas segundo a gramática da linguagem. O produto é uma
+        <strong>árvore sintática abstrata (AST)</strong> usada pelas fases seguintes.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="cfg" class="section-title">Gramáticas Livres de Contexto (CFG)</h2>
+      <div class="card">
+        <p>A sintaxe de linguagens de programação é especificada por <strong>gramáticas livres de contexto (CFG)</strong>,
+        escritas em BNF ou EBNF:</p>
+        <pre class="example">expr   ::= expr '+' term | term
+term   ::= term '*' factor | factor
+factor ::= '(' expr ')' | ID | NUM</pre>
+        <p>A CFG define as <strong>derivações</strong> possíveis. O parser encontra a derivação que corresponde ao programa.</p>
+        <h3>Parse Tree vs AST</h3>
+        <ul>
+          <li><strong>Parse tree</strong>: reflete cada derivação exata (inclui nós de gramática internos).</li>
+          <li><strong>AST</strong>: versão compacta que omite nós redundantes etérminos de sintaxe pura.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="ast-canvas" class="section-title">AST Visual: a + b &times; c</h2>
+      <div class="card">
+        <p>A expressão <code>a + b * c</code> produz a AST abaixo, refletindo a precedence correta
+        (multiplicação antes de adição mesmo sem parênteses):</p>
+        <div>
+            <!-- AST para a + b * c -->
+            <svg viewBox="0 0 360 200" width="100%" role="img" aria-label="AST para a + b * c" style="max-width:600px;display:block;margin: auto">
+              <!-- arestas -->
+              <line x1="180" y1="50" x2="90" y2="80" style="stroke:var(--accent);stroke-width:1.5"/>
+              <line x1="180" y1="50" x2="270" y2="80" style="stroke:var(--accent);stroke-width:1.5"/>
+              <line x1="270" y1="120" x2="210" y2="150" style="stroke:var(--accent);stroke-width:1.5"/>
+              <line x1="270" y1="120" x2="330" y2="150" style="stroke:var(--accent);stroke-width:1.5"/>
+              <!-- nós -->
+              <circle cx="180" cy="30" r="20" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <text x="180" y="30" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">+</text>
+              <circle cx="90" cy="100" r="20" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <text x="90" y="100" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">a</text>
+              <circle cx="270" cy="100" r="20" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <text x="270" y="100" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">*</text>
+              <circle cx="210" cy="170" r="20" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <text x="210" y="170" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">b</text>
+              <circle cx="330" cy="170" r="20" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <text x="330" y="170" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">c</text>
+            </svg>
+        </div>
+        <p>O nó <code>*</code> fica abaixo do <code>+</code> porque tem maior precedência &mdash; será avaliado primeiro.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="ll-lr" class="section-title">Estratégias de Parsing: LL vs LR</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Técnica</th><th>Direção</th><th>Look-ahead</th><th>Exemplos</th><th>Usos</th></tr></thead>
+          <tbody>
+            <tr><td><strong>LL(k)</strong></td><td>Topo-baixo</td><td>k tokens à frente</td><td>Descida recursiva, ANTLR</td><td>Compiladores escritos à mão, transpiladores</td></tr>
+            <tr><td><strong>LR(0)</strong></td><td>Baixo-topo</td><td>0</td><td>Subconjunto do LR(1)</td><td>Gramáticas muito simples</td></tr>
+            <tr><td><strong>SLR(1)</strong></td><td>Baixo-topo</td><td>1 com FOLLOW</td><td>Yacc (modo simples)</td><td>Gramáticas médias</td></tr>
+            <tr><td><strong>LALR(1)</strong></td><td>Baixo-topo</td><td>1 com lookahead</td><td>Bison/Yacc, GCC 3.x</td><td>A maioria das linguagens</td></tr>
+            <tr><td><strong>LR(1) canônico</strong></td><td>Baixo-topo</td><td>1 completo</td><td>Menhir (OCaml)</td><td>Gramáticas ambíguas mais ricas</td></tr>
+            <tr><td><strong>PEG/Packrat</strong></td><td>Topo-baixo</td><td>Ilimitado</td><td>ANTLR4 (LL(*)), pest</td><td>Linguagens modernas, DSLs</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="descida-recursiva" class="section-title">Descida Recursiva</h2>
+      <div class="card">
+        <p>A técnica mais intuitiva de parser LL: cada não-terminal vira uma função recursiva.</p>
+        <pre class="example">// Parser de descida recursiva para expr = term ('+' term)*
+fn parse_expr(tokens) {
+    let left = parse_term(tokens);
+    while tokens.peek() == '+' {
+        tokens.consume();
+        let right = parse_term(tokens);
+        left = ASTNode::Add(left, right);
+    }
+    left
+}</pre>
+        <p>Simples de escrever, mas gramáticas com <strong>recursão à esquerda</strong> precisam de transformação prévia.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="erros" class="section-title">Erros Sintáticos e Recuperação</h2>
+      <div class="card">
+        <ul>
+          <li><strong>Modo pânico</strong>: descarta tokens até encontrar um ponto de sincronização (ex.: <code>;</code> ou <code>}</code>).</li>
+          <li><strong>Produções de erro</strong>: gramática inclui regras especiais para construções incorretas conhecidas.</li>
+          <li><strong>Reparação global</strong>: encontra a menor sequência de inserções/deleções que corrije o programa (custoso).</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/analise_semantica.html">Análise Semântica</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/analise_lexica.html">Voltar: Análise Léxica</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "O parser não apenas verifica se o programa é válido &mdash; ele constrói a árvore que representa o significado."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

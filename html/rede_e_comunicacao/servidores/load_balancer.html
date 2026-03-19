@@ -1,0 +1,280 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Load Balancer: algoritmos de distribuição, L4 vs L7, health checks, HAProxy, Nginx upstream e soluções cloud." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Load Balancer | Servidores | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Servidores</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="server"></span>
+          <div>
+            <h1 class="page-title">Load Balancer</h1>
+            <p class="page-subtitle">Algoritmos de distribuição, L4 vs L7, health checks, HAProxy, Nginx upstream e soluções cloud</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>load balancer</strong> distribui o tráfego entre múltiplos servidores de backend
+          para maximizar throughput, minimizar latência e garantir alta disponibilidade.
+          É a peça-chave na escalabilidade horizontal de aplicações web.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — L4 VS L7 ═══════════════════ -->
+      <section id="l4-vs-l7">
+        <h2 id="l4-vs-l7" class="section-title">L4 vs L7 Load Balancing</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Característica</th><th>L4 (Transport Layer)</th><th>L7 (Application Layer)</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Nível <abbr title="Open Systems Interconnection">OSI</abbr></td><td>Camada 4 (<abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr>)</td><td>Camada 7 (<abbr title="HyperText Transfer Protocol">HTTP</abbr>/<abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr>)</td></tr>
+              <tr><td>Decisão baseada em</td><td><abbr title="Internet Protocol">IP</abbr> + porta</td><td><abbr title="Uniform Resource Locator">URL</abbr>, Host header, cookies, conteúdo</td></tr>
+              <tr><td>Inspeção de payload</td><td>Não</td><td>Sim</td></tr>
+              <tr><td><abbr title="Transport Layer Security">TLS</abbr></td><td>Passthrough (não decifra)</td><td>Termination (decifra e re-cifra)</td></tr>
+              <tr><td>Performance</td><td>Muito alta</td><td>Menor (overhead de parsing <abbr title="HyperText Transfer Protocol">HTTP</abbr>)</td></tr>
+              <tr><td>Roteamento inteligente</td><td>Limitado</td><td>Por <abbr title="Uniform Resource Identifier">URI</abbr>, header, cookie, método <abbr title="HyperText Transfer Protocol">HTTP</abbr></td></tr>
+              <tr><td>Exemplos</td><td><abbr title="Amazon Web Services">AWS</abbr> <abbr title="Network Load Balancer">NLB</abbr>, HAProxy (<abbr title="Transmission Control Protocol">TCP</abbr> mode), <abbr title="Linux Virtual Server">LVS</abbr></td><td>Nginx, HAProxy (<abbr title="HyperText Transfer Protocol">HTTP</abbr> mode), <abbr title="Amazon Web Services">AWS</abbr> <abbr title="Application Load Balancer">ALB</abbr>, Traefik</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — ALGORITMOS ═══════════════════ -->
+      <section id="algoritmos">
+        <h2 id="algoritmos" class="section-title">Algoritmos de Balanceamento</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Round Robin</h3>
+            <p>Distribuição em sequência circular. Melhor para backends homogêneos.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    server 10.0.0.1:8000;
+    server 10.0.0.2:8000;
+    # padrão no Nginx
+}</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Weighted Round Robin</h3>
+            <p>Servidores com maior peso recebem mais requisições. Melhor para backends com capacidades diferentes.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    server 10.0.0.1:8000 weight=3;
+    server 10.0.0.2:8000 weight=1;
+}</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Least Connections</h3>
+            <p>Envia para o servidor com menos conexões ativas. Melhor para backends com tempo de resposta variável.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    least_conn;
+    server 10.0.0.1:8000;
+    server 10.0.0.2:8000;
+}</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title"><abbr title="Internet Protocol">IP</abbr> Hash</h3>
+            <p>A mesma origem <abbr title="Internet Protocol">IP</abbr> sempre vai para o mesmo backend (sticky sem cookie). Melhor para apps com sessão em memória local.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    ip_hash;
+    server 10.0.0.1:8000;
+    server 10.0.0.2:8000;
+}</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Random Two Choices</h3>
+            <p>Seleciona dois servidores aleatórios e encaminha para o de menor carga. Melhor para grandes clusters.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    random two least_conn;
+    server 10.0.0.1:8000;
+    server 10.0.0.2:8000;
+}</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Backup / Failover</h3>
+            <p>Servidor backup só recebe tráfego se todos os primários estiverem offline.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    server 10.0.0.1:8000;
+    server 10.0.0.2:8000;
+    server 10.0.0.3:8000 backup;
+}</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — HEALTH CHECKS ═══════════════════ -->
+      <section id="health-checks">
+        <h2 id="health-checks" class="section-title">Health Checks</h2>
+        <div class="section-divider"></div>
+        <div class="logic-grid">
+          <div class="card">
+            <h3 class="panel-title">Nginx — Passivo (<abbr title="Open Source Software">OSS</abbr>)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">upstream backend {
+    server 10.0.0.1:8000
+        max_fails=3 fail_timeout=30s;
+    server 10.0.0.2:8000
+        max_fails=3 fail_timeout=30s;
+}
+# 3 falhas em 30s → marca como down
+# Tenta novamente após 30s</pre>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="panel-title">HAProxy — Health Check Ativo</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">backend web_servers
+    balance roundrobin
+    option httpchk GET /health HTTP/1.1\r\nHost:\ localhost
+    http-check expect status 200
+    server web1 10.0.0.1:8000 check inter 5s rise 2 fall 3
+    server web2 10.0.0.2:8000 check inter 5s rise 2 fall 3
+# inter 5s = checar a cada 5s
+# rise 2   = 2 OK → up
+# fall 3   = 3 falhos → down</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — HAPROXY CONFIG ═══════════════════ -->
+      <section id="haproxy-config">
+        <h2 id="haproxy-config" class="section-title">HAProxy — Configuração Completa</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/haproxy/haproxy.cfg</div>
+          <pre class="code-block">global
+    log /dev/log local0
+    maxconn 50000
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    mode    http
+    log     global
+    option  httplog
+    option  forwardfor
+    timeout connect 5s
+    timeout client  30s
+    timeout server  30s
+
+frontend http_in
+    bind *:80
+    redirect scheme https code 301 if !{ ssl_fc }
+
+frontend https_in
+    bind *:443 ssl crt /etc/ssl/haproxy.pem
+    default_backend web_servers
+    acl is_api   path_beg /api/
+    use_backend  api_servers if is_api
+
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    server web1 10.0.0.1:8000 check
+    server web2 10.0.0.2:8000 check
+    server web3 10.0.0.3:8000 check backup
+
+backend api_servers
+    balance leastconn
+    server api1 10.0.1.1:9000 check
+    server api2 10.0.1.2:9000 check
+
+listen stats
+    bind *:8080
+    stats enable
+    stats uri /haproxy_stats
+    stats auth admin:senha_secreta</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 6 — COMPARATIVO DE SOLUÇÕES ═══════════════════ -->
+      <section id="comparativo">
+        <h2 id="comparativo" class="section-title">Comparativo de Soluções</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Solução</th><th>Tipo</th><th>L4</th><th>L7</th><th>Health Check Ativo</th><th>Melhor para</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Nginx <abbr title="Open Source Software">OSS</abbr></td><td>Software</td><td><code class="code-inline">stream{}</code></td><td>Sim</td><td>Não (passivo)</td><td>Web/proxy, uso geral</td></tr>
+              <tr><td>HAProxy</td><td>Software</td><td>Sim</td><td>Sim</td><td>Sim</td><td>Alta performance, controle fino</td></tr>
+              <tr><td>Traefik</td><td>Software</td><td>Sim</td><td>Sim</td><td>Sim</td><td>Docker/Kubernetes, auto-discovery</td></tr>
+              <tr><td><abbr title="Amazon Web Services">AWS</abbr> <abbr title="Application Load Balancer">ALB</abbr></td><td>Cloud (L7)</td><td>—</td><td>Sim</td><td>Sim</td><td>Workloads <abbr title="Amazon Web Services">AWS</abbr>, <abbr title="Elastic Container Service">ECS</abbr>/<abbr title="Elastic Kubernetes Service">EKS</abbr></td></tr>
+              <tr><td><abbr title="Amazon Web Services">AWS</abbr> <abbr title="Network Load Balancer">NLB</abbr></td><td>Cloud (L4)</td><td>Sim</td><td>—</td><td>Sim</td><td><abbr title="Transmission Control Protocol">TCP</abbr>/<abbr title="User Datagram Protocol">UDP</abbr>, latência ultra-baixa</td></tr>
+              <tr><td>Cloudflare LB</td><td><abbr title="Content Delivery Network">CDN</abbr>/Cloud</td><td>—</td><td>Sim</td><td>Sim</td><td>Multi-cloud, geo steering</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 7 — STICKY SESSIONS ═══════════════════ -->
+      <section id="sticky-sessions">
+        <h2 id="sticky-sessions" class="section-title">Sticky Sessions</h2>
+        <div class="section-divider"></div>
+        <p class="note">
+          <strong>Sticky Sessions</strong> garantem que o mesmo cliente sempre seja roteado para o mesmo backend.
+          A solução recomendada é usar sessões centralizadas (Redis) para evitar a necessidade de sticky sessions —
+          pois se um servidor falha, todos os usuários "stickados" perdem a sessão.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja as ferramentas que atuam como load balancer na prática:
+          <a href="/html/rede_e_comunicacao/servidores/nginx.html">Nginx</a> e
+          <a href="/html/rede_e_comunicacao/servidores/proxy_reverso.html">Proxy Reverso</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Alta disponibilidade não é um recurso — é uma arquitetura."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

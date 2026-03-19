@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java para desenvolvimento de jogos: LibGDX 2D/3D, game loop, SpriteBatch, Box2D fisica, LWJGL3, OpenGL e publicacao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java para Desenvolvimento de Jogos</h1>
+          <p>LibGDX com architetura ApplicationListener, SpriteBatch, camera orto/perspectiva, fisica com Box2D, cenas com Scene2D UI, udio com Sound/Music, e grafico de baixo nivel com LWJGL3 e OpenGL moderno via shaders GLSL.</p>
+        </div>
+        <p class="intro-highlight">
+          LibGDX e o framework Java mais usado para jogos 2D e permite deploy em Desktop (Windows/Linux/macOS), Android, iOS (via RoboVM) e HTML5 (via GWT) com o mesmo codigo-base.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="libgdx-setup">Estrutura e Game Loop</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + LibGDX &mdash; ApplicationListener e game loop principal</div>
+          <pre class="example"><span class="kw">import</span> com.badlogic.gdx.*;
+<span class="kw">import</span> com.badlogic.gdx.graphics.*;
+<span class="kw">import</span> com.badlogic.gdx.graphics.g2d.*;
+<span class="kw">import</span> com.badlogic.gdx.utils.ScreenUtils;
+
+<span class="kw">public class</span> <span class="tp">MeuJogo</span> <span class="kw">implements</span> <span class="tp">ApplicationListener</span> {
+
+  <span class="kw">private</span> <span class="tp">SpriteBatch</span>        batch;
+  <span class="kw">private</span> <span class="tp">OrthographicCamera</span> camera;
+  <span class="kw">private</span> <span class="tp">Texture</span>            texNave;
+  <span class="kw">private</span> <span class="tp">Sprite</span>             spriteNave;
+  <span class="kw">private float</span>              x = <span class="num">400</span>, y = <span class="num">300</span>;
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">create</span>() {
+    <span class="com">// Chamado uma vez ao iniciar</span>
+    batch  = <span class="kw">new</span> <span class="tp">SpriteBatch</span>();
+    camera = <span class="kw">new</span> <span class="tp">OrthographicCamera</span>();
+    camera.<span class="fn">setToOrtho</span>(<span class="kw">false</span>, <span class="num">800</span>, <span class="num">600</span>);   <span class="com">// viewport 800x600 unidades logicas</span>
+
+    texNave     = <span class="kw">new</span> <span class="tp">Texture</span>(<span class="str">"nave.png"</span>);
+    spriteNave  = <span class="kw">new</span> <span class="tp">Sprite</span>(texNave);
+    spriteNave.<span class="fn">setSize</span>(<span class="num">64</span>, <span class="num">64</span>);
+    spriteNave.<span class="fn">setOriginCenter</span>();
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">render</span>() {
+    <span class="com">// Chamado ~60 vezes por segundo</span>
+    <span class="kw">float</span> delta = <span class="tp">Gdx</span>.graphics.<span class="fn">getDeltaTime</span>();   <span class="com">// tempo desde o ultimo frame</span>
+
+    <span class="fn">processarEntrada</span>(delta);
+
+    <span class="tp">ScreenUtils</span>.<span class="fn">clear</span>(<span class="num">0</span>, <span class="num">0</span>, <span class="num">0.1f</span>, <span class="num">1</span>);   <span class="com">// limpa buffer com azul escuro</span>
+    camera.<span class="fn">update</span>();
+    batch.<span class="fn">setProjectionMatrix</span>(camera.combined);
+
+    batch.<span class="fn">begin</span>();
+    spriteNave.<span class="fn">setPosition</span>(x - spriteNave.<span class="fn">getWidth</span>()  / <span class="num">2</span>,
+                             y - spriteNave.<span class="fn">getHeight</span>() / <span class="num">2</span>);
+    spriteNave.<span class="fn">draw</span>(batch);
+    batch.<span class="fn">end</span>();
+  }
+
+  <span class="kw">private void</span> <span class="fn">processarEntrada</span>(<span class="kw">float</span> delta) {
+    <span class="kw">float</span> vel = <span class="num">200</span> * delta;  <span class="com">// 200 unidades/segundo independente de FPS</span>
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">LEFT</span>)  || <span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">A</span>)) x -= vel;
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">RIGHT</span>) || <span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">D</span>)) x += vel;
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">UP</span>)   || <span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">W</span>)) y += vel;
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">DOWN</span>)  || <span class="tp">Gdx</span>.input.<span class="fn">isKeyPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">S</span>)) y -= vel;
+    <span class="com">// Toque em dispositivos moveis</span>
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isTouched</span>()) {
+      <span class="kw">var</span> touch = camera.<span class="fn">unproject</span>(<span class="kw">new</span> <span class="tp">Vector3</span>(
+        <span class="tp">Gdx</span>.input.<span class="fn">getX</span>(), <span class="tp">Gdx</span>.input.<span class="fn">getY</span>(), <span class="num">0</span>));
+      x = touch.x; y = touch.y;
+    }
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">resize</span>(<span class="kw">int</span> w, <span class="kw">int</span> h) {
+    camera.<span class="fn">setToOrtho</span>(<span class="kw">false</span>, w, h);
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">dispose</span>() {
+    <span class="com">// OBRIGATORIO — libera recursos de GPU/disco</span>
+    batch.<span class="fn">dispose</span>();
+    texNave.<span class="fn">dispose</span>();
+  }
+
+  @<span class="at">Override</span> <span class="kw">public void</span> <span class="fn">pause</span>()  {}
+  @<span class="at">Override</span> <span class="kw">public void</span> <span class="fn">resume</span>() {}
+}
+
+<span class="com">// Launcher Desktop</span>
+<span class="kw">public class</span> <span class="tp">DesktopLauncher</span> {
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="tp">String</span>[] args) {
+    <span class="kw">new</span> <span class="tp">Lwjgl3Application</span>(<span class="kw">new</span> <span class="tp">MeuJogo</span>(), <span class="kw">new</span> <span class="tp">Lwjgl3ApplicationConfiguration</span>() {{
+      <span class="fn">setTitle</span>(<span class="str">"Meu Jogo"</span>);
+      <span class="fn">setWindowedMode</span>(<span class="num">800</span>, <span class="num">600</span>);
+      <span class="fn">setForegroundFPS</span>(<span class="num">60</span>);
+      <span class="fn">useVsync</span>(<span class="kw">true</span>);
+    }});
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="box2d">Fisica com Box2D</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + LibGDX Box2D &mdash; corpos fisicos, colisao e debug</div>
+          <pre class="example"><span class="kw">import</span> com.badlogic.gdx.physics.box2d.*;
+
+<span class="kw">public class</span> <span class="tp">FisicaJogo</span> {
+
+  <span class="kw">private static final float</span> PPM = <span class="num">32f</span>;   <span class="com">// pixels por metro</span>
+  <span class="kw">private</span> <span class="tp">World</span>            world;
+  <span class="kw">private</span> <span class="tp">Box2DDebugRenderer</span> debugRenderer;
+  <span class="kw">private</span> <span class="tp">Body</span>             jogador, chao;
+
+  <span class="kw">public void</span> <span class="fn">inicializar</span>() {
+    <span class="com">// Gravidade 9.8 m/s² para baixo</span>
+    world = <span class="kw">new</span> <span class="tp">World</span>(<span class="kw">new</span> <span class="tp">Vector2</span>(<span class="num">0</span>, -<span class="num">9.8f</span>), <span class="kw">true</span>);
+    debugRenderer = <span class="kw">new</span> <span class="tp">Box2DDebugRenderer</span>();
+
+    <span class="com">// Corpo estatico — chao</span>
+    <span class="kw">var</span> defChao = <span class="kw">new</span> <span class="tp">BodyDef</span>();
+    defChao.type = <span class="tp">BodyDef</span>.<span class="tp">BodyType</span>.<span class="tp">StaticBody</span>;
+    defChao.position.<span class="fn">set</span>(<span class="num">400</span> / PPM, <span class="num">16</span> / PPM);
+    chao = world.<span class="fn">createBody</span>(defChao);
+    <span class="kw">var</span> formaChao = <span class="kw">new</span> <span class="tp">PolygonShape</span>();
+    formaChao.<span class="fn">setAsBox</span>(<span class="num">400</span> / PPM, <span class="num">16</span> / PPM);
+    chao.<span class="fn">createFixture</span>(formaChao, <span class="num">0f</span>);
+    formaChao.<span class="fn">dispose</span>();
+
+    <span class="com">// Corpo dinamico — jogador</span>
+    <span class="kw">var</span> defJog = <span class="kw">new</span> <span class="tp">BodyDef</span>();
+    defJog.type = <span class="tp">BodyDef</span>.<span class="tp">BodyType</span>.<span class="tp">DynamicBody</span>;
+    defJog.position.<span class="fn">set</span>(<span class="num">400</span> / PPM, <span class="num">200</span> / PPM);
+    defJog.fixedRotation = <span class="kw">true</span>;   <span class="com">// personagem nao gira ao colidir</span>
+    jogador = world.<span class="fn">createBody</span>(defJog);
+    <span class="kw">var</span> circulo = <span class="kw">new</span> <span class="tp">CircleShape</span>();
+    circulo.<span class="fn">setRadius</span>(<span class="num">16</span> / PPM);
+    <span class="kw">var</span> fd = <span class="kw">new</span> <span class="tp">FixtureDef</span>();
+    fd.shape       = circulo;
+    fd.density     = <span class="num">1f</span>;
+    fd.friction    = <span class="num">0.5f</span>;
+    fd.restitution = <span class="num">0</span>;   <span class="com">// sem quique</span>
+    jogador.<span class="fn">createFixture</span>(fd);
+    circulo.<span class="fn">dispose</span>();
+
+    <span class="com">// Deteccao de colisao com listener</span>
+    world.<span class="fn">setContactListener</span>(<span class="kw">new</span> <span class="tp">ContactListener</span>() {
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">beginContact</span>(<span class="tp">Contact</span> c) {
+        <span class="com">// Identifica os fixtures que colidiram</span>
+        <span class="kw">var</span> a = c.<span class="fn">getFixtureA</span>().<span class="fn">getBody</span>().<span class="fn">getUserData</span>();
+        <span class="kw">var</span> b = c.<span class="fn">getFixtureB</span>().<span class="fn">getBody</span>().<span class="fn">getUserData</span>();
+        <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Colisao: "</span> + a + <span class="str">" x "</span> + b);
+      }
+      @<span class="at">Override</span> <span class="kw">public void</span> <span class="fn">endContact</span>(<span class="tp">Contact</span> c)                             {}
+      @<span class="at">Override</span> <span class="kw">public void</span> <span class="fn">preSolve</span>(<span class="tp">Contact</span> c, <span class="tp">Manifold</span> m)                  {}
+      @<span class="at">Override</span> <span class="kw">public void</span> <span class="fn">postSolve</span>(<span class="tp">Contact</span> c, <span class="tp">ContactImpulse</span> impulso)      {}
+    });
+  }
+
+  <span class="kw">public void</span> <span class="fn">atualizar</span>(<span class="kw">float</span> delta) {
+    <span class="com">// Passo de simulacao (8 iteracoes de velocidade, 3 de posicao = boa precisao)</span>
+    world.<span class="fn">step</span>(delta, <span class="num">8</span>, <span class="num">3</span>);
+
+    <span class="com">// Pulo — so se estiver no chao</span>
+    <span class="kw">if</span> (<span class="tp">Gdx</span>.input.<span class="fn">isKeyJustPressed</span>(<span class="tp">Input</span>.<span class="tp">Keys</span>.<span class="tp">SPACE</span>)
+        && <span class="tp">Math</span>.<span class="fn">abs</span>(jogador.<span class="fn">getLinearVelocity</span>().y) &lt; <span class="num">0.1f</span>) {
+      jogador.<span class="fn">applyLinearImpulse</span>(
+        <span class="kw">new</span> <span class="tp">Vector2</span>(<span class="num">0</span>, <span class="num">500</span> / PPM), jogador.<span class="fn">getWorldCenter</span>(), <span class="kw">true</span>);
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="scene2d">Scene2D — UI e Gerenciamento de Cenas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + LibGDX Scene2D &mdash; menu com Stage, botoes e transicoes</div>
+          <pre class="example"><span class="kw">import</span> com.badlogic.gdx.scenes.scene2d.*;
+<span class="kw">import</span> com.badlogic.gdx.scenes.scene2d.ui.*;
+
+<span class="kw">public class</span> <span class="tp">MenuPrincipal</span> <span class="kw">extends</span> <span class="tp">ScreenAdapter</span> {
+
+  <span class="kw">private</span> <span class="tp">Stage</span>  stage;
+  <span class="kw">private</span> <span class="tp">Skin</span>   skin;
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">show</span>() {
+    stage = <span class="kw">new</span> <span class="tp">Stage</span>(<span class="kw">new</span> <span class="tp">FitViewport</span>(<span class="num">800</span>, <span class="num">600</span>));
+    skin  = <span class="kw">new</span> <span class="tp">Skin</span>(<span class="tp">Gdx</span>.files.<span class="fn">internal</span>(<span class="str">"ui/skin.json"</span>));
+    <span class="tp">Gdx</span>.input.<span class="fn">setInputProcessor</span>(stage);
+
+    <span class="kw">var</span> tabela = <span class="kw">new</span> <span class="tp">Table</span>(skin);
+    tabela.<span class="fn">setFillParent</span>(<span class="kw">true</span>);
+    tabela.<span class="fn">center</span>();
+
+    <span class="kw">var</span> titulo = <span class="kw">new</span> <span class="tp">Label</span>(<span class="str">"Nave Espacial"</span>, skin, <span class="str">"title"</span>);
+    <span class="kw">var</span> btnJogar  = <span class="kw">new</span> <span class="tp">TextButton</span>(<span class="str">"Jogar"</span>,     skin);
+    <span class="kw">var</span> btnOpcoes = <span class="kw">new</span> <span class="tp">TextButton</span>(<span class="str">"Opcoes"</span>,    skin);
+    <span class="kw">var</span> btnSair   = <span class="kw">new</span> <span class="tp">TextButton</span>(<span class="str">"Sair"</span>,      skin);
+
+    btnJogar.<span class="fn">addListener</span>(<span class="kw">new</span> <span class="tp">ChangeListener</span>() {
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">changed</span>(<span class="tp">ChangeEvent</span> e, <span class="tp">Actor</span> a) {
+        <span class="tp">MeuJogo</span>.<span class="fn">instancia</span>().<span class="fn">setScreen</span>(<span class="kw">new</span> <span class="tp">TelaJogo</span>());
+      }
+    });
+    btnSair.<span class="fn">addListener</span>(<span class="kw">new</span> <span class="tp">ChangeListener</span>() {
+      @<span class="at">Override</span>
+      <span class="kw">public void</span> <span class="fn">changed</span>(<span class="tp">ChangeEvent</span> e, <span class="tp">Actor</span> a) {
+        <span class="tp">Gdx</span>.app.<span class="fn">exit</span>();
+      }
+    });
+
+    tabela.<span class="fn">add</span>(titulo).<span class="fn">padBottom</span>(<span class="num">40</span>).<span class="fn">row</span>();
+    tabela.<span class="fn">add</span>(btnJogar).<span class="fn">width</span>(<span class="num">200</span>).<span class="fn">padBottom</span>(<span class="num">10</span>).<span class="fn">row</span>();
+    tabela.<span class="fn">add</span>(btnOpcoes).<span class="fn">width</span>(<span class="num">200</span>).<span class="fn">padBottom</span>(<span class="num">10</span>).<span class="fn">row</span>();
+    tabela.<span class="fn">add</span>(btnSair).<span class="fn">width</span>(<span class="num">200</span>);
+    stage.<span class="fn">addActor</span>(tabela);
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">render</span>(<span class="kw">float</span> delta) {
+    <span class="tp">ScreenUtils</span>.<span class="fn">clear</span>(<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>, <span class="num">1</span>);
+    stage.<span class="fn">act</span>(delta);
+    stage.<span class="fn">draw</span>();
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">dispose</span>() {
+    stage.<span class="fn">dispose</span>();
+    skin.<span class="fn">dispose</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="assets-audio">Assets, Audio e Gerenciamento de Recursos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + LibGDX &mdash; AssetManager, atlas de sprites e audio</div>
+          <pre class="example"><span class="kw">public class</span> <span class="tp">GerenciadorAssets</span> {
+
+  <span class="kw">private static final</span> <span class="tp">AssetManager</span> manager = <span class="kw">new</span> <span class="tp">AssetManager</span>();
+
+  <span class="kw">public static void</span> <span class="fn">carregarTodos</span>() {
+    <span class="com">// Texturas</span>
+    manager.<span class="fn">load</span>(<span class="str">"texturas/personagens.atlas"</span>, <span class="tp">TextureAtlas</span>.<span class="kw">class</span>);
+    manager.<span class="fn">load</span>(<span class="str">"texturas/tiles.atlas"</span>,         <span class="tp">TextureAtlas</span>.<span class="kw">class</span>);
+    <span class="com">// Audio</span>
+    manager.<span class="fn">load</span>(<span class="str">"audio/trilha.mp3"</span>, <span class="tp">Music</span>.<span class="kw">class</span>);
+    manager.<span class="fn">load</span>(<span class="str">"audio/tiro.wav"</span>,    <span class="tp">Sound</span>.<span class="kw">class</span>);
+    <span class="com">// Bitmap font</span>
+    manager.<span class="fn">load</span>(<span class="str">"fontes/ui.fnt"</span>, <span class="tp">BitmapFont</span>.<span class="kw">class</span>);
+  }
+
+  <span class="com">// Retorna progresso (0..1) p/ tela de carregamento</span>
+  <span class="kw">public static float</span> <span class="fn">progresso</span>() { <span class="kw">return</span> manager.<span class="fn">getProgress</span>(); }
+  <span class="kw">public static boolean</span> <span class="fn">atualizar</span>() { <span class="kw">return</span> manager.<span class="fn">update</span>(); }
+
+  <span class="kw">public static</span> &lt;T&gt; T <span class="fn">get</span>(<span class="tp">String</span> nome, <span class="tp">Class</span>&lt;T&gt; tipo) {
+    <span class="kw">return</span> manager.<span class="fn">get</span>(nome, tipo);
+  }
+}
+
+<span class="com">// Animacao a partir de TextureAtlas</span>
+<span class="kw">var</span> atlas  = <span class="tp">GerenciadorAssets</span>.<span class="fn">get</span>(<span class="str">"texturas/personagens.atlas"</span>, <span class="tp">TextureAtlas</span>.<span class="kw">class</span>);
+<span class="kw">var</span> frames = atlas.<span class="fn">findRegions</span>(<span class="str">"correndo"</span>);  <span class="com">// correndo_00, correndo_01 ...</span>
+<span class="kw">var</span> animCorrer = <span class="kw">new</span> <span class="tp">Animation</span>&lt;<span class="tp">TextureRegion</span>&gt;(<span class="num">1f</span>/<span class="num">12f</span>, frames, <span class="tp">Animation</span>.<span class="tp">PlayMode</span>.<span class="tp">LOOP</span>);
+
+<span class="com">// No render: acumula tempo e consulta o frame atual</span>
+<span class="kw">private float</span> tempoAnim = <span class="num">0</span>;
+<span class="com">// dentro de render():</span>
+tempoAnim += delta;
+<span class="tp">TextureRegion</span> frame = animCorrer.<span class="fn">getKeyFrame</span>(tempoAnim);
+batch.<span class="fn">draw</span>(frame, x, y, <span class="num">64</span>, <span class="num">64</span>);
+
+<span class="com">// Musica em loop</span>
+<span class="kw">var</span> musica = <span class="tp">GerenciadorAssets</span>.<span class="fn">get</span>(<span class="str">"audio/trilha.mp3"</span>, <span class="tp">Music</span>.<span class="kw">class</span>);
+musica.<span class="fn">setLooping</span>(<span class="kw">true</span>);
+musica.<span class="fn">setVolume</span>(<span class="num">0.7f</span>);
+musica.<span class="fn">play</span>();
+
+<span class="com">// Efeito sonoro (polux — pode tocar varios simultaneamente)</span>
+<span class="kw">var</span> sfxTiro = <span class="tp">GerenciadorAssets</span>.<span class="fn">get</span>(<span class="str">"audio/tiro.wav"</span>, <span class="tp">Sound</span>.<span class="kw">class</span>);
+sfxTiro.<span class="fn">play</span>(<span class="num">1f</span>);   <span class="com">// volume 100%</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LIBGDX. <strong>LibGDX Documentation</strong>. Disponível em: &lt;https://libgdx.com/wiki/&gt;. Acesso em: 2025.</li>
+            <li>BOX2D. <strong>Box2D — A 2D Physics Engine for Games</strong>. Disponível em: &lt;https://box2d.org/documentation/&gt;. Acesso em: 2025.</li>
+            <li>LEE, Mario. <strong>Mastering LibGDX Game Development</strong>. Packt Publishing, 2015.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para GUI Desktop</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Terminal e CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Sempre multiplique velocidades pelo <code>delta</code> de tempo — isso garante que o jogo rode a mesma velocidade independente do FPS da maquina do jogador.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

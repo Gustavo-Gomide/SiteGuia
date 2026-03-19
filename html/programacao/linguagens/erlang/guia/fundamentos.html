@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do Erlang: tipos, atoms, tuples, listas, pattern matching, funções, guards, recursão e list comprehensions — base de toda programação Erlang." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Fundamentos</h1>
+          <p>Erlang é uma linguagem de tipagem dinâmica, funcional e puramente expressional — não há statements, apenas expressões que retornam valores. Variáveis começam com maiúscula e são vinculadas uma única vez (single assignment). Atoms são identificadores globais sem conteúdo. Tudo é imutável, recursão substitui loops, e pattern matching é onipresente.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Erlang, <strong>a variável X não pode mudar de valor</strong>. Se X = 5, X sempre será 5 naquele escopo. Esta restrição elimina uma classe inteira de bugs e torna raciocinar sobre código concorrente drasticamente mais simples.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos de Dados Fundamentais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Todos os tipos básicos de Erlang</div>
+          <pre class="example"><span class="com">% Inteiros e floats</span>
+X = 42.
+Y = 3.14.
+Hex = 16#FF.       <span class="com">% 255 em hexadecimal</span>
+Bin = 2#1010.      <span class="com">% 10 em binário</span>
+Big = 999999999999999999999999.  <span class="com">% bignum nativo — sem overflow</span>
+
+<span class="com">% Atoms — identificadores globais imutáveis</span>
+ok.
+error.
+nome_composto.
+'Com espaços'.
+true.              <span class="com">% atom (não keyword)</span>
+false.             <span class="com">% atom</span>
+undefined.
+
+<span class="com">% Strings — listas de inteiros (codepoints)</span>
+S1 = <span class="str">"hello"</span>.         <span class="com">% equivale a [104,101,108,108,111]</span>
+S2 = &lt;&lt;<span class="str">"hello"</span>&gt;&gt;.     <span class="com">% binary string (mais eficiente)</span>
+B1 = &lt;&lt;1,2,3&gt;&gt;.       <span class="com">% binary literal</span>
+B2 = &lt;&lt;X:16,Y:8&gt;&gt;.    <span class="com">% binary com tamanho de bit especificado</span>
+
+<span class="com">% Tuples — tamanho fixo, elementos heterogêneos</span>
+Ponto = {3, 7}.
+Resultado = {ok, 42}.
+Erro = {error, not_found}.
+{Tag, Valor} = Resultado.   <span class="com">% pattern matching — Tag=ok, Valor=42</span>
+
+<span class="com">% Listas — singly-linked, cabeça+cauda</span>
+L1 = [1, 2, 3, 4, 5].
+[H|T] = L1.         <span class="com">% H=1, T=[2,3,4,5]  — head|tail</span>
+L2 = [0|L1].        <span class="com">% prepend: [0,1,2,3,4,5]</span>
+L3 = L1 ++ [6,7].   <span class="com">% concatenar: O(length(L1)) — caro!</span>
+L4 = L1 -- [2,4].   <span class="com">% diferença: [1,3,5]</span>
+
+<span class="com">% Maps (dict moderno, desde OTP 17)</span>
+M = #{nome =&gt; <span class="str">"João"</span>, idade =&gt; 30, ativo =&gt; true}.
+Nome = maps:get(nome, M).
+M2 = M#{idade =&gt; 31}.  <span class="com">% update imutável</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pattern-matching">Pattern Matching — O Coração do Erlang</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Matching em funções, case e receive</div>
+          <pre class="example"><span class="com">% Pattern matching em atribuição</span>
+{ok, Resultado} = {ok, 42}.    <span class="com">% Resultado = 42</span>
+{ok, _} = {ok, ignorado}.      <span class="com">% _ ignora o valor</span>
+[A, B | _] = [1, 2, 3, 4].    <span class="com">% A=1, B=2</span>
+&lt;&lt;H:8, Resto/binary&gt;&gt; = &lt;&lt;<span class="str">"hello"</span>&gt;&gt;.  <span class="com">% H=104 (h), Resto=&lt;&lt;"ello"&gt;&gt;</span>
+
+<span class="com">% Múltiplas cláusulas de função (pattern matching)</span>
+-module(fib).
+-export([fib/1]).
+
+fib(0) -&gt; 0;                   <span class="com">% cláusula 1: quando N=0</span>
+fib(1) -&gt; 1;                   <span class="com">% cláusula 2: quando N=1</span>
+fib(N) when N &gt; 1 -&gt;           <span class="com">% cláusula 3: com guard</span>
+    fib(N-1) + fib(N-2).
+
+<span class="com">% case — matching com múltiplos padrões</span>
+classificar(N) -&gt;
+    case N of
+        0          -&gt; zero;
+        X when X &lt; 0  -&gt; negativo;
+        X when X =:= 42 -&gt; resposta;
+        _          -&gt; positivo
+    end.
+
+<span class="com">% Tupla de resultado — idioma Erlang fundamental</span>
+abrir_arquivo(Nome) -&gt;
+    case file:read_file(Nome) of
+        {ok, Conteudo} -&gt;
+            {ok, byte_size(Conteudo)};
+        {error, enoent} -&gt;
+            {error, arquivo_nao_encontrado};
+        {error, Motivo} -&gt;
+            {error, Motivo}
+    end.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções — Guards e Funções Anônimas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Guards, funções de alta ordem e list comprehensions</div>
+          <pre class="example"><span class="com">% Guards — condições adicionais após when</span>
+max(X, Y) when X &gt;= Y -&gt; X;
+max(_, Y) -&gt; Y.
+
+<span class="com">% Guards permitidos: comparações, is_*, arithmetic, abs, length, etc.</span>
+valido(X) when is_integer(X), X &gt; 0, X &lt; 100 -&gt; true;
+valido(_) -&gt; false.
+
+<span class="com">% Funções anônimas (fun)</span>
+Dobro = fun(X) -&gt; X * 2 end.
+Dobro(5).  <span class="com">% 10</span>
+
+Soma = fun(A, B) -&gt; A + B end.
+lists:foldl(Soma, 0, [1,2,3,4,5]).  <span class="com">% 15</span>
+
+<span class="com">% Capture de função (referência)</span>
+F = fun lists:map/2.
+F(fun(X) -&gt; X * 2 end, [1,2,3]).  <span class="com">% [2,4,6]</span>
+
+<span class="com">% Funções de alta ordem</span>
+lists:map(fun(X) -&gt; X * X end, [1,2,3,4]).   <span class="com">% [1,4,9,16]</span>
+lists:filter(fun(X) -&gt; X rem 2 =:= 0 end, [1,2,3,4,5]).  <span class="com">% [2,4]</span>
+lists:foldl(fun(X, Acc) -&gt; Acc + X end, 0, [1,2,3]).     <span class="com">% 6</span>
+
+<span class="com">% List comprehensions</span>
+Quadrados = [X*X || X &lt;- lists:seq(1,5)].        <span class="com">% [1,4,9,16,25]</span>
+Pares   = [X || X &lt;- lists:seq(1,10), X rem 2 =:= 0].  <span class="com">% [2,4,6,8,10]</span>
+Pares_Produtos = [X*Y || X &lt;- [1,2,3], Y &lt;- [10,20]].  <span class="com">% produto cartesiano</span>
+
+<span class="com">% Binary comprehensions</span>
+&lt;&lt;(X*2) || &lt;&lt;X&gt;&gt; &lt;= &lt;&lt;1,2,3,4&gt;&gt;&gt;&gt;.  <span class="com">% &lt;&lt;2,4,6,8&gt;&gt;</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="recursao">Recursão — O Loop do Erlang</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Recursão de cauda, acumuladores e listas</div>
+          <pre class="example"><span class="com">% Recursão simples — NÃO tail-recursive (stack cresce)</span>
+soma_lista([]) -&gt; 0;
+soma_lista([H|T]) -&gt; H + soma_lista(T).
+
+<span class="com">% Tail-recursive com acumulador — CORRETO (não usa stack)</span>
+soma_lista_tr(Lista) -&gt; soma_lista_tr(Lista, 0).
+soma_lista_tr([], Acc) -&gt; Acc;
+soma_lista_tr([H|T], Acc) -&gt; soma_lista_tr(T, Acc + H).
+
+<span class="com">% Inverter lista — clássico com acumulador</span>
+inverter(L) -&gt; inverter(L, []).
+inverter([], Acc) -&gt; Acc;
+inverter([H|T], Acc) -&gt; inverter(T, [H|Acc]).
+
+<span class="com">% Flatten de lista aninhada</span>
+flatten([]) -&gt; [];
+flatten([H|T]) when is_list(H) -&gt; flatten(H) ++ flatten(T);
+flatten([H|T]) -&gt; [H|flatten(T)].
+
+<span class="com">% Quicksort funcional</span>
+qsort([]) -&gt; [];
+qsort([H|T]) -&gt;
+    Menor  = [X || X &lt;- T, X =&lt; H],
+    Maior  = [X || X &lt;- T, X &gt; H],
+    qsort(Menor) ++ [H] ++ qsort(Maior).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CESARINI, F.; THOMPSON, S. <strong>Erlang Programming</strong>. O'Reilly Media, 2009.</li>
+            <li>Erlang/OTP. <strong>Reference Manual — Data Types</strong>. Disponível em: &lt;https://www.erlang.org/doc/reference_manual/data_types.html&gt;. Acesso em: 2026.</li>
+            <li>HEBERT, F. <strong>Learn You Some Erlang for Great Good!</strong>. No Starch Press, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="atores_concorrencia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Atores e Concorrência</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Tópicos Avançados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A <strong>single assignment</strong> (vinculação única de variáveis) em Erlang não é uma limitação — é uma garantia de segurança. Se X foi vinculado a 5, qualquer tentativa de <code>X = 6</code> lança um erro imediato em vez de silenciosamente sobrescrever — catching um bug que em linguagens mutáveis causaria um comportamento imprevisível horas depois.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

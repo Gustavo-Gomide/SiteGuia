@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="GUI desktop com Julia: Gtk.jl, QML.jl, Tk.jl, visualização e integração com dados." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Julia — GUI Desktop | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; GUI Desktop</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+					<h1>Julia — Interfaces Desktop</h1>
+					<p>Embora Julia seja associada a ciência de dados, ela também suporta aplicações desktop para ferramentas internas, painéis operacionais e utilitários técnicos, principalmente com <code>Gtk.jl</code>, <code>QML.jl</code> e <code>Tk.jl</code>.</p>
+				</div>
+				<p class="intro-highlight">Desktop em Julia funciona muito bem quando a interface é a camada de operação de um núcleo analítico. Você mantém UI, cálculo e visualização no mesmo stack.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="gtk">Gtk.jl — GUI Tradicional e Robusta</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Janela, botão e eventos</div>
+					<pre class="example">using Gtk
+
+win = GtkWindow("Calculadora Julia", 420, 240)
+box = GtkBox(:v)
+entrada = GtkEntry()
+saida = GtkLabel("Resultado: -")
+botao = GtkButton("Calcular dobro")
+
+push!(box, entrada)
+push!(box, botao)
+push!(box, saida)
+push!(win, box)
+
+signal_connect(botao, "clicked") do _
+		txt = Gtk.bytestring(entrada)
+		valor = tryparse(Float64, txt)
+		if isnothing(valor)
+				set_gtk_property!(saida, :label, "Entrada inválida")
+		else
+				set_gtk_property!(saida, :label, "Resultado: $(2 * valor)")
+		end
+end
+
+showall(win)
+
+<span class="com"># main() implícito ao executar no REPL/event loop GTK.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="qml">QML.jl — Interface Moderna com Qt</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Camada visual em QML e lógica em Julia</div>
+					<pre class="example">using QML
+
+mutable struct Estado
+		contador::Int
+end
+
+estado = Estado(0)
+
+function incrementar()
+		estado.contador += 1
+		return estado.contador
+end
+
+qml = """
+import QtQuick 2.15
+import QtQuick.Controls 2.15
+
+ApplicationWindow {
+		visible: true
+		width: 320
+		height: 200
+		title: "QML + Julia"
+
+		Column {
+				anchors.centerIn: parent
+				spacing: 12
+				Text { id: lbl; text: "Contador: 0" }
+				Button {
+						text: "Incrementar"
+						onClicked: lbl.text = "Contador: " + julia_incrementar()
+				}
+		}
+}
+"""
+
+loadqml(qml)
+setcontextproperty("julia_incrementar", incrementar)
+exec()
+
+<span class="com"># QML separa design visual da lógica computacional.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="dashboards">Dashboards Locais e Visualização</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Integração GUI + gráficos científicos</div>
+					<pre class="example">using CairoMakie
+using Statistics
+
+dados = cumsum(randn(300))
+
+fig = Figure(size = (800, 500))
+ax = Axis(fig[1, 1], title = "Sinal de Processo")
+lines!(ax, dados, color = :blue)
+hline!(ax, [mean(dados)], color = :red, linestyle = :dash)
+
+save("dashboard_local.png", fig)
+
+<span class="com"># Em apps desktop técnicos, esse gráfico costuma aparecer embutido na UI.</span>
+<span class="com"># Fluxo comum:</span>
+<span class="com"># 1. UI recebe parâmetros</span>
+<span class="com"># 2. Julia executa cálculo pesado</span>
+<span class="com"># 3. resultado é plotado e exportado</span></pre>
+				</div>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Biblioteca</th><th>Perfil</th><th>Uso ideal</th></tr></thead>
+						<tbody>
+							<tr><td>Gtk.jl</td><td>Madura e pragmática</td><td>Ferramentas internas, utilitários de engenharia</td></tr>
+							<tr><td>QML.jl</td><td>Visual moderno com Qt</td><td>Apps com design mais rico</td></tr>
+							<tr><td>Tk.jl</td><td>Leve e simples</td><td>Interfaces pequenas e protótipos rápidos</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>GTK.JL. <strong>Gtk.jl Documentation</strong>. Disponível em: &lt;https://juliagraphics.github.io/Gtk.jl/latest/&gt;. Acesso em: 2026.</li>
+						<li>QML.JL. <strong>QML.jl</strong>. Disponível em: &lt;https://github.com/JuliaGraphics/QML.jl&gt;. Acesso em: 2026.</li>
+						<li>MAKIE.JL. <strong>Makie Documentation</strong>. Disponível em: &lt;https://docs.makie.org/&gt;. Acesso em: 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Julia</a></li>
+					<li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Julia</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> GUI desktop em Julia é especialmente valiosa quando a interface é só a ponta visível de um motor matemático robusto. Em vez de integrar duas linguagens, você entrega uma ferramenta única e coerente.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

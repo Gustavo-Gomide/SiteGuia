@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OCaml em jogos: arquitetura ECS, loop de jogo, bibliotecas como raylib-ocaml e Tsdl para prototipos e ferramentas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml - Aplicacoes em Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml - Aplicacoes em Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>Desenvolvimento de jogos com OCaml</h1>
+          <p>Uso de OCaml para prototipos, ferramentas de pipeline e jogos 2D/3D com foco em arquitetura limpa.</p>
+        </div>
+        <p class="intro-highlight">OCaml e especialmente forte em tooling de jogo (editor, importadores, validadores) e em gameplay logic onde invariantes de estado importam mais que rendering de ponta.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Motores, bibliotecas e posicionamento</h2>
+        <div class="grid grid--2">
+          <div class="card"><h3>raylib-ocaml</h3><p>Rapido para prototipos de gameplay e ferramentas visuais.</p></div>
+          <div class="card"><h3>Tsdl</h3><p>Binding de SDL para controle fino de janela, input e audio.</p></div>
+          <div class="card"><h3>Bogue/GUI</h3><p>Uteis para construir editores e interfaces auxiliares de game dev.</p></div>
+          <div class="card"><h3>Hibrido</h3><p>Core de regras em OCaml e renderer em C++/Rust quando necessario.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Loop de jogo e ECS simplificado</h2>
+        <svg viewBox="0 0 940 220" role="img" aria-label="Game loop em OCaml" class="w-full rounded-md border p-sm">
+          <circle cx="160" cy="110" r="60" fill="currentColor" opacity="0.08"></circle>
+          <text x="130" y="115" fill="currentColor">Input</text>
+          <circle cx="390" cy="110" r="60" fill="currentColor" opacity="0.12"></circle>
+          <text x="355" y="115" fill="currentColor">Update</text>
+          <circle cx="620" cy="110" r="60" fill="currentColor" opacity="0.08"></circle>
+          <text x="592" y="115" fill="currentColor">Physics</text>
+          <circle cx="850" cy="110" r="60" fill="currentColor" opacity="0.12"></circle>
+          <text x="825" y="115" fill="currentColor">Render</text>
+          <line x1="220" y1="110" x2="330" y2="110" stroke="currentColor"></line>
+          <line x1="450" y1="110" x2="560" y2="110" stroke="currentColor"></line>
+          <line x1="680" y1="110" x2="790" y2="110" stroke="currentColor"></line>
+        </svg>
+        <p>Separar componentes por dados (ECS) facilita paralelismo e reduz acoplamento acidental entre sistemas de jogo.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso-pratico">Exemplo: estado de jogo tipado</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">game_state.ml</div>
+          <pre class="example"><span class="kw">type</span> <span class="tp">vec2</span> = { x : <span class="tp">float</span>; y : <span class="tp">float</span> }
+
+<span class="kw">type</span> <span class="tp">entidade</span> = {
+  id : <span class="tp">int</span>;
+  pos : <span class="tp">vec2</span>;
+  vel : <span class="tp">vec2</span>;
+  vida : <span class="tp">int</span>;
+}
+
+<span class="kw">type</span> <span class="tp">estado</span> = {
+  tempo : <span class="tp">float</span>;
+  entidades : <span class="tp">entidade</span> <span class="tp">list</span>;
+}
+
+<span class="kw">let</span> <span class="fn">step</span> dt e =
+  { e <span class="kw">with</span>
+    pos = { x = e.pos.x +. e.vel.x *. dt; y = e.pos.y +. e.vel.y *. dt } }
+
+<span class="kw">let</span> <span class="fn">update</span> estado dt =
+  { estado <span class="kw">with</span>
+    tempo = estado.tempo +. dt;
+    entidades = <span class="tp">List</span>.<span class="fn">map</span> (<span class="fn">step</span> dt) estado.entidades }</pre>
+        </div>
+        <p>O ganho principal e que transformacoes de estado ficam puras e testaveis sem depender de renderer ou input real.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Padroes avancados em jogos com OCaml</h2>
+        <div class="panel">
+          <ul>
+            <li>Snapshot deterministico para replay e depuracao de bugs intermitentes.</li>
+            <li>Serializacao de estado para save/load com versao de formato.</li>
+            <li>Sistema de eventos tipado em vez de strings de evento dispersas.</li>
+            <li>Uso de profiling para localizar gargalos antes de otimizar prematuramente.</li>
+          </ul>
+        </div>
+        <div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Otimizacao sem medicao tende a piorar arquitetura. Em jogos, estabilidade de frame e clareza de sistema valem mais que micro-otimizacoes cegas.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>RAYLIB. <strong>raylib</strong>. Disponivel em: <a href="https://www.raylib.com/" target="_blank" rel="noopener">https://www.raylib.com/</a>.</li>
+            <li>TSdl CONTRIBUTORS. <strong>Tsdl</strong>. Disponivel em: <a href="https://erratique.ch/software/tsdl" target="_blank" rel="noopener">https://erratique.ch/software/tsdl</a>.</li>
+            <li>NYSTROM, Robert. <strong>Game Programming Patterns</strong>. Disponivel em: <a href="https://gameprogrammingpatterns.com/" target="_blank" rel="noopener">https://gameprogrammingpatterns.com/</a>.</li>
+            <li>REAL WORLD OCAML. <strong>Performance and Profiling</strong>. Disponivel em: <a href="https://dev.realworldocaml.org/" target="_blank" rel="noopener">https://dev.realworldocaml.org/</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/gui_desktop.html">OCaml - GUI Desktop</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/embedded_iot.html">OCaml - Embedded e IoT</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/avancado.html">OCaml - Avancado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em game dev, OCaml ajuda a manter a complexidade sob controle quando o projeto cresce e o estado do jogo vira o verdadeiro desafio.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

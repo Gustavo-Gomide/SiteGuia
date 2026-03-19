@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Troubleshooting de redes: metodologia OSI de baixo para cima, checklist por camada, ferramentas e casos comuns." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Troubleshooting | Administração | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Administração de Redes</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="debug"></span>
+          <div>
+            <h1 class="page-title">Troubleshooting de Redes</h1>
+            <p class="page-subtitle">Metodologia <abbr title="Open Systems Interconnection">OSI</abbr> de baixo para cima, checklist por camada, ferramentas e casos comuns</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um bom troubleshooting de redes segue uma metodologia sistemática, eliminando camadas
+          de baixo para cima (física → enlace → rede → transporte → aplicação).
+          Diagnosticar a camada errada desperdicia tempo — confirme cada camada antes de avançar.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — METODOLOGIA OSI ═══════════════════ -->
+      <section id="metodologia-osi">
+        <h2 id="metodologia-osi" class="section-title">Metodologia <abbr title="Open Systems Interconnection">OSI</abbr> — Bottom-Up</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Camada</th><th>O que verificar</th><th>Ferramentas</th><th>Sintomas típicos</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>L1 — Física</strong></td>
+                <td>Cabos, conectors, LEDs de link, módulos SFP, potência óptica</td>
+                <td>Inspeção visual, cable tester, OTDR</td>
+                <td>Interface down, sem link, erros CRC, alta BER</td>
+              </tr>
+              <tr>
+                <td><strong>L2 — Enlace</strong></td>
+                <td>Status de interface, VLAN correta, duplex/speed, STP, MAC table</td>
+                <td><code class="code-inline">ip link</code>, <code class="code-inline">ethtool</code>, <code class="code-inline">show interfaces</code>, <code class="code-inline">show mac address-table</code></td>
+                <td>Interface up mas sem tráfego, loop, broadcast storm</td>
+              </tr>
+              <tr>
+                <td><strong>L3 — Rede</strong></td>
+                <td>IP correto, máscara, gateway, rotas, ARP</td>
+                <td><code class="code-inline">ip addr</code>, <code class="code-inline">ip route</code>, <code class="code-inline">ping</code>, <code class="code-inline">traceroute</code>, <code class="code-inline">arp</code></td>
+                <td>Não alcance gateway, TTL exceeded, ICMP unreachable</td>
+              </tr>
+              <tr>
+                <td><strong>L4 — Transporte</strong></td>
+                <td>Portas abertas, firewall, nat, timeout de conexão</td>
+                <td><code class="code-inline">ss -tulpn</code>, <code class="code-inline">nc</code>, <code class="code-inline">telnet host port</code>, <code class="code-inline">nmap</code></td>
+                <td>Conexão recusada, timeout, RST</td>
+              </tr>
+              <tr>
+                <td><strong>L7 — Aplicação</strong></td>
+                <td>DNS resolve, serviço rodando, certificado TLS, proxy, autenticação</td>
+                <td><code class="code-inline">dig</code>, <code class="code-inline">curl -v</code>, <code class="code-inline">openssl s_client</code>, logs</td>
+                <td>DNS NXDOMAIN, 404/500, TLS handshake fail, auth error</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — CHECKLIST ═══════════════════ -->
+      <section id="checklist">
+        <h2 id="checklist" class="section-title">Checklist Passo a Passo</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">1. Físico</h3>
+            <ul>
+              <li>Cabo conectado? LED aceso?</li>
+              <li>Interface no switch não está desativada?</li>
+              <li>Velocidade/duplex não há mismatch?</li>
+            </ul>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">ip link show eth0
+ethtool eth0
+# procurar: Speed, Duplex, Link detected: yes</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">2. Enlace / VLAN</h3>
+            <ul>
+              <li>Interface em VLAN correta?</li>
+              <li>IP obtido via DHCP?</li>
+            </ul>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">ip addr show eth0
+# deve ter inet com IP
+# se vazio: IP não configurado</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">3. Rede / Gateway</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Ver gateway
+ip route show default
+
+# Testar gateway
+ping -c 4 &lt;GATEWAY_IP&gt;
+
+# Ver tabela ARP (gateway resolvido?)
+ip neigh show</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">4. DNS</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Resolver DNS
+dig google.com
+nslookup google.com
+
+# DNS configurado?
+cat /etc/resolv.conf
+
+# Testar resolver alternativo
+dig @8.8.8.8 google.com</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">5. Conectividade IP</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Ping para IP (sem DNS)
+ping -c 4 8.8.8.8
+
+# Rastrear rota
+traceroute 8.8.8.8
+
+# Se sem ping mas com DNS → ICMP bloqueado no caminho</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">6. Porta / Serviço</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Porta aberta localmente?
+ss -tulpn | grep :443
+
+# Alcançar porta remota
+telnet host 443
+nc -zv host 443
+nmap -p 443 host</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">7. Aplicação HTTP/TLS</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">curl -v https://example.com
+# procurar: SSL handshake, HTTP status
+
+openssl s_client -connect example.com:443
+# procurar: certificado válido, TLS version
+
+curl -I http://example.com
+# Location header?</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">8. Logs</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># System / kernel
+journalctl -f
+dmesg | tail -20
+
+# Nginx / Apache
+tail -f /var/log/nginx/error.log
+tail -f /var/log/apache2/error.log
+
+# Firewall
+iptables -L -v -n
+journalctl -k | grep "IN=" | tail -20</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — CASOS COMUNS ═══════════════════ -->
+      <section id="casos-comuns">
+        <h2 id="casos-comuns" class="section-title">Casos Comuns e Diagnósticos</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Sintoma</th><th>Causa provável</th><th>Verificar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>ping falha para 8.8.8.8</td><td>Rota, gateway ou firewall bloqueando ICMP</td><td><code class="code-inline">ip route</code>, ping gateway, iptables</td></tr>
+              <tr><td>ping OK para IP, falha para nome</td><td>DNS não configurado ou quebrado</td><td><code class="code-inline">dig</code>, <code class="code-inline">cat /etc/resolv.conf</code></td></tr>
+              <tr><td>Connection refused (porta TCP)</td><td>Serviço não está rodando ou firewall bloqueando</td><td><code class="code-inline">ss -tulpn</code>, <code class="code-inline">systemctl status</code>, <code class="code-inline">iptables -L</code></td></tr>
+              <tr><td>Connection timeout (sem resposta)</td><td>Firewall silencioso (DROP), rota inexistente, host offline</td><td><code class="code-inline">traceroute</code>, verificar regras DROP vs REJECT</td></tr>
+              <tr><td>TLS handshake failure</td><td>Certificado expirado, SNI errado, TLS version mismatch</td><td><code class="code-inline">openssl s_client</code>, <code class="code-inline">curl -v</code>, verificar data do sistema</td></tr>
+              <tr><td>Alta latência / packet loss</td><td>Congestionamento, cabo com problema, QoS mal configurado</td><td><code class="code-inline">mtr</code>, stats de interface (<code class="code-inline">ip -s link</code>), iperf3</td></tr>
+              <tr><td>DHCP sem IP (169.254.x.x / APIPA)</td><td>DHCP server inalcançável ou esgotado</td><td>Log do dhclient, verificar relay agent, reach servidor</td></tr>
+              <tr><td>Duplicidade de IP / ARP conflict</td><td>IP configurado em dois hosts</td><td><code class="code-inline">arping -I eth0 &lt;IP&gt;</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — DIAGNÓSTICO RÁPIDO ═══════════════════ -->
+      <section id="diagnostico-rapido">
+        <h2 id="diagnostico-rapido" class="section-title">Comandos de Diagnóstico Rápido</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Bash — one-liners úteis</div>
+          <pre class="code-block"># IP atual de todas interfaces
+ip -brief addr
+# eth0  UP  192.168.1.100/24
+
+# Gateway padrão
+ip route show default
+# default via 192.168.1.1 dev eth0
+
+# DNS configurado
+resolvectl status | grep -i dns
+
+# Qual processo está na porta 80?
+ss -tulpn | grep :80
+# ou
+fuser 80/tcp
+
+# Testar porta de forma rápida
+nc -zv host 443 2>&amp;1
+
+# Capturar tráfego para arquivo
+tcpdump -i eth0 -w /tmp/cap.pcap &amp;
+curl https://target
+kill %1
+
+# Ver erros de interface (CRC, drops)
+ip -s link show eth0 | grep -A2 RX
+
+# MTU path discovery
+ping -M do -s 1472 8.8.8.8
+# Se falhar: MTU do caminho &lt; 1500</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde com as ferramentas certas:
+          <a href="/html/rede_e_comunicacao/administracao/ferramentas_rede.html">Ferramentas de Rede</a> e
+          <a href="/html/rede_e_comunicacao/administracao/configuracao_redes.html">Configuração de Redes</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Troubleshooting sistemático por camada economiza horas; chutes aleatórios consomem dias."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

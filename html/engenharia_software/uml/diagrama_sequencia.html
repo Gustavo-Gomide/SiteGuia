@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Diagrama de Sequência UML: como modelar interações, mensagens, retornos e decisões; exemplo de fluxo de login.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Diagrama de Sequência (UML) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Mostre quem fala com quem — e em que ordem.</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Diagrama de Sequência</h1>
+          <p class="page-subtitle">Interações entre objetos ao longo do tempo: chamadas, retornos e fluxos condicionais.</p>
+        </div>
+        <p class="intro-highlight">Quando alguém não entende um fluxo de API ou uma orquestração entre serviços, um diagrama de sequência comunica em minutos o que parágrafos de texto não conseguem.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="elementos" class="section-title">Elementos essenciais</h2>
+        <div class="section-divider"></div>
+        <p>Poucos elementos compõem o diagrama; a maioria dos fluxos reais usa apenas os quatro primeiros.</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Elemento</th>
+                <th>Notação</th>
+                <th>Propósito</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Lifeline</td>
+                <td>Caixa + linha vertical tracejada</td>
+                <td>Participante da interação</td>
+                <td>:Controller, :Service, :DB</td>
+              </tr>
+              <tr>
+                <td>Mensagem síncrona</td>
+                <td>→ (seta fechada)</td>
+                <td>Chamada que aguarda retorno</td>
+                <td>authenticate(email, senha)</td>
+              </tr>
+              <tr>
+                <td>Mensagem de retorno</td>
+                <td>- - → (seta tracejada)</td>
+                <td>Resposta a uma chamada anterior</td>
+                <td>return token | return erro</td>
+              </tr>
+              <tr>
+                <td>Mensagem assíncrona</td>
+                <td>→ (seta aberta)</td>
+                <td>Disparo sem aguardar resposta</td>
+                <td>publicarEvento(OrderPlaced)</td>
+              </tr>
+              <tr>
+                <td>Bloco alt</td>
+                <td>[alt] com guardas</td>
+                <td>Fluxo condicional (if/else)</td>
+                <td>[credenciais válidas] / [inválidas]</td>
+              </tr>
+              <tr>
+                <td>Bloco loop</td>
+                <td>[loop]</td>
+                <td>Repetição com condição de parada</td>
+                <td>[loop] tentar pagamento (max 3x)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo: fluxo de autenticação</h2>
+        <div class="section-divider"></div>
+        <p>Um caso real com fluxo principal e caminho de erro: o nível certo de detalhe para guiar código, logs e métricas.</p>
+        <div class="code-container">
+          <pre class="example">Usuário -> UI: submete email + senha
+UI -> AuthController: POST /auth/login {email, senha}
+AuthController -> AuthService: authenticate(email, senha)
+AuthService -> UserRepo: findByEmail(email)
+UserRepo -> DB: SELECT * FROM users WHERE email = ?
+DB --> UserRepo: linha do usuário (ou vazio)
+
+alt usuário não encontrado
+  AuthService --> AuthController: UserNotFoundException
+  AuthController --> UI: 401 Unauthorized
+  UI --> Usuário: "Credenciais inválidas"
+else usuário encontrado
+  AuthService -> PasswordHasher: verify(senhaPlain, hash)
+  PasswordHasher --> AuthService: ok | falhou
+
+  alt senha incorreta
+    AuthService --> AuthController: InvalidCredentialsException
+    AuthController --> UI: 401 Unauthorized
+  else senha correta
+    AuthService -> TokenService: gerarJWT(userId, roles)
+    TokenService --> AuthService: token (exp 1h)
+    AuthService --> AuthController: token
+    AuthController --> UI: 200 OK {token}
+    UI --> Usuário: redireciona para /dashboard
+  end
+end</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>O diagrama de sequência é fácil de criar errado: ou mostra o óbvio ou tenta modelar o sistema inteiro em um só diagrama.</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Um diagrama por cenário</h3>
+            <p>Misturar sucesso e todos os erros em um único diagrama gera ilegibilidade. Crie um para cada fluxo relevante.</p>
+          </div>
+          <div class="card">
+            <h3>Modelar o framework</h3>
+            <p>Mostrar middleware, ORM e lifecycle de framework não traz valor. Foque nas mensagens do domínio.</p>
+          </div>
+          <div class="card">
+            <h3>Mensagens sem nome</h3>
+            <p>Setas sem rótulo ("chama", "retorna") são inúteis. Nomeie com a intenção: <code>authenticate</code>, <code>createOrder</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Não mostrar erros</h3>
+            <p>Modelar só o happy path omite exatamente o que o time precisa discutir: como tratar falhas e timeouts.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Veja também: <a href="/html/engenharia_software/uml/diagrama_atividades.html">Diagrama de Atividades</a> para fluxos de negócio, e <a href="/html/engenharia_software/uml/diagrama_classes.html">Diagrama de Classes</a> para a estrutura.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Nomear as mensagens com intenção revela responsabilidades que o código ainda não tem."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

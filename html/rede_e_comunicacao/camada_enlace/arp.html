@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="ARP: mapeamento IP para MAC, cache ARP, Gratuitous ARP, Proxy ARP e proteção contra ARP Spoofing com DAI." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>ARP | Camada de Enlace | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Enlace</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">ARP &mdash; Address Resolution Protocol</h1>
+          <p class="page-subtitle">A ponte entre IP (Camada 3) e MAC (Camada 2): "Quem tem esse IP? Me dê seu MAC."</p>
+        </div>
+        <p class="intro-highlight">
+          Para enviar um frame Ethernet a um dispositivo na mesma rede, o remetente precisa do <strong>endereço MAC</strong> do destino &mdash; mas só conhece o <strong>IP</strong>. O <strong>ARP</strong> (RFC 826) resolve esse mapeamento: envia um broadcast perguntando "quem tem o IP X?" e o dono responde com seu MAC.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="processo" class="section-title">Processo ARP Request / Reply</h2>
+        <div class="card">
+          <svg viewBox="0 0 620 140" width="100%" role="img" aria-label="Fluxo ARP: PC-A envia broadcast ARP Request; PC-B responde com unicast ARP Reply contendo seu MAC">
+            <defs><marker id="arr2" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--accent)"/></marker>
+            <marker id="arr3" markerWidth="7" markerHeight="7" refX="6" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 z" fill="var(--border-neon)"/></marker></defs>
+            <!-- PC A -->
+            <rect x="20" y="50" width="100" height="40" rx="6" style="fill:var(--accent);fill-opacity:.15;stroke:var(--accent);stroke-width:2"/>
+            <text x="70" y="68" style="fill:var(--accent);font:bold 10px monospace;text-anchor:middle">PC-A</text>
+            <text x="70" y="82" style="fill:var(--text-muted);font:8px monospace;text-anchor:middle">192.168.1.10</text>
+            <!-- PC B -->
+            <rect x="500" y="50" width="100" height="40" rx="6" style="fill:var(--border-neon);fill-opacity:.13;stroke:var(--border-neon);stroke-width:2"/>
+            <text x="550" y="68" style="fill:var(--border-neon);font:bold 10px monospace;text-anchor:middle">PC-B</text>
+            <text x="550" y="82" style="fill:var(--text-muted);font:8px monospace;text-anchor:middle">192.168.1.20</text>
+            <!-- Switch -->
+            <rect x="270" y="55" width="80" height="30" rx="4" style="fill:var(--text-muted);fill-opacity:.1;stroke:var(--text-muted);stroke-width:1.5"/>
+            <text x="310" y="74" style="fill:var(--text-secondary);font:9px monospace;text-anchor:middle">Switch</text>
+            <!-- ARP Request arrow (broadcast) -->
+            <line x1="120" y1="65" x2="268" y2="65" style="stroke:var(--accent);stroke-width:2" marker-end="url(#arr2)"/>
+            <text x="194" y="58" style="fill:var(--accent);font:8px monospace;text-anchor:middle">ARP Request</text>
+            <text x="194" y="48" style="fill:var(--text-muted);font:7px monospace;text-anchor:middle">dst: ff:ff:ff:ff:ff:ff (broadcast)</text>
+            <line x1="350" y1="65" x2="498" y2="65" style="stroke:var(--accent);stroke-width:2;stroke-dasharray:4,2" marker-end="url(#arr2)"/>
+            <text x="424" y="58" style="fill:var(--text-muted);font:7px monospace;text-anchor:middle">flood para todos</text>
+            <!-- ARP Reply arrow (unicast) -->
+            <line x1="498" y1="80" x2="352" y2="80" style="stroke:var(--border-neon);stroke-width:2" marker-end="url(#arr3)"/>
+            <text x="425" y="97" style="fill:var(--border-neon);font:8px monospace;text-anchor:middle">ARP Reply (unicast)</text>
+            <text x="425" y="108" style="fill:var(--text-muted);font:7px monospace;text-anchor:middle">"Eu sou 192.168.1.20, meu MAC é BB:BB"</text>
+            <line x1="268" y1="80" x2="122" y2="80" style="stroke:var(--border-neon);stroke-width:2" marker-end="url(#arr3)"/>
+          </svg>
+        </div>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Cache ARP</h3>
+            <p>Após receber o reply, o solicitante armazena o mapeamento em seu <strong>cache ARP</strong> por um período configurável:</p>
+            <ul>
+              <li><strong>Linux:</strong> invalido após ~60s sem uso, removido em &lt;60s adicionais; <code class="code-inline">ip neigh show</code></li>
+              <li><strong>Windows:</strong> 15s&ndash;45s dinâmico; <code class="code-inline">arp -a</code></li>
+              <li><strong>Cisco:</strong> 4 horas padrão; <code class="code-inline">show arp</code>, <code class="code-inline">clear arp-cache</code></li>
+              <li>Entradas estáticas não expiram; usadas para servidores críticos</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Gratuitous ARP (GARP)</h3>
+            <p>Um host envia um ARP Request com seu <em>próprio</em> IP no campo de destino &mdash; sem esperar resposta. Usos:</p>
+            <ul>
+              <li><strong>Detecção de IP duplicado:</strong> se alguém responder, há conflito</li>
+              <li><strong>Atualização de cache:</strong> após mudarna de interface (failover, HSRP/VRRP), o novo gateway anuncia seu MAC para atualizar todos os caches da rede imediatamente</li>
+              <li><strong>Live migration (VM):</strong> VM migrada envia GARP para anunciar novo MAC ou mesmo MAC em porta diferente do switch</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Proxy ARP e ARP Spoofing</h3>
+            <ul>
+              <li><strong>Proxy ARP:</strong> roteador responde a ARPs em nome de hosts em outras redes; permite que hosts sem rota padrão alcancem endereços remotos através do roteador (perigoso: pode esconder erros de configuração; desabilitar com <code class="code-inline">no ip proxy-arp</code>)</li>
+              <li><strong>ARP Spoofing / Poisoning:</strong> atacante envia GARP falso associando IP da vítima (ou gateway) ao seu próprio MAC &rarr; MITM (Man-in-the-Middle); todo o tráfego passa pelo atacante antes de chegar ao destino</li>
+              <li><strong>Mitigação &mdash; DAI:</strong> Dynamic ARP Inspection no switch valida ARPs contra a tabela DHCP Snooping; descarta ARPs inválidos em portas untrusted</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ipv6" class="section-title">ARP no IPv6: NDP</h2>
+        <p>No IPv6, o ARP foi substituído pelo <strong>NDP (Neighbor Discovery Protocol)</strong>, parte do ICMPv6. Em vez de broadcasts, usa <strong>multicast de solicitação</strong> (Solicited-Node Multicast Address: <code class="code-inline">ff02::1:ffxx:xxxx</code>):</p>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Mensagens NDP</h3>
+            <ul>
+              <li><strong>NS (Neighbor Solicitation, ICMPv6 tipo 135):</strong> equivalente ao ARP Request; enviado para o multicast de solicitação do alvo</li>
+              <li><strong>NA (Neighbor Advertisement, tipo 136):</strong> equivalente ao ARP Reply; responde com o endereço de camada 2</li>
+              <li><strong>RS (Router Solicitation, tipo 133):</strong> host pergunta quais roteadores existem na rede</li>
+              <li><strong>RA (Router Advertisement, tipo 134):</strong> roteador anuncia prefixo de rede, gateway, flags SLAAC/DHCPv6, MTU</li>
+              <li><strong>DAD (Duplicate Address Detection):</strong> NS enviado para próprio endereço antes de usá-lo; substitui o GARP</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando: <a href="mac_address.html"><strong>Endereço MAC</strong></a>, <a href="../camada_rede/ip_v4.html"><strong>IPv4</strong></a> e <a href="../fundamentos/conceitos_basicos.html"><strong>Conceitos Básicos (ARP e NAT)</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "ARP é o protocolo que nunca aparece nos livros de redes até o dia em que um ataque de MITM para toda a produção."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Principais bibliotecas e frameworks do ecossistema Kotlin: Ktor, Spring Boot, Arrow, Exposed e kotlinx." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Bibliotecas e Frameworks</h1>
+					<p>O ecossistema Kotlin oferece ferramentas modernas para cada camada de uma aplicação: Ktor para servidores web idiomáticos, Spring Boot para aplicações enterprise, Arrow para programação funcional robusta e Exposed como ORM DSL nativo.</p>
+				</div>
+				<p class="intro-highlight">Kotlin herda todo o ecossistema JVM (Maven Central, Gradle) e adiciona bibliotecas projetadas especialmente para seu modelo de coroutines, null safety e DSLs expressivas.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="ktor-server">Ktor — Framework Web Idiomático</h2>
+				<p>Ktor é o framework web oficial da JetBrains, construído sobre coroutines Kotlin. Segue o modelo de plugins compostos, sem reflexão nem anotações — tudo é configurado em código Kotlin puro.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Ktor servidor básico</div>
+					<pre class="example"><span class="kw">import</span> io.ktor.server.application.*
+<span class="kw">import</span> io.ktor.server.engine.*
+<span class="kw">import</span> io.ktor.server.netty.*
+<span class="kw">import</span> io.ktor.server.routing.*
+<span class="kw">import</span> io.ktor.server.response.*
+<span class="kw">import</span> io.ktor.server.request.*
+<span class="kw">import</span> io.ktor.server.plugins.contentnegotiation.*
+<span class="kw">import</span> io.ktor.serialization.kotlinx.json.*
+
+<span class="kw">fun</span> <span class="fn">main</span>() {
+    <span class="fn">embeddedServer</span>(Netty, port = <span class="str">8080</span>) {
+        <span class="fn">install</span>(ContentNegotiation) { <span class="fn">json</span>() }
+        <span class="fn">routing</span> {
+            <span class="fn">get</span>(<span class="str">"/hello"</span>) {
+                call.<span class="fn">respondText</span>(<span class="str">"Olá, Ktor!"</span>)
+            }
+            <span class="fn">get</span>(<span class="str">"/users/{id}"</span>) {
+                <span class="kw">val</span> id = call.parameters[<span class="str">"id"</span>]
+                call.<span class="fn">respond</span>(mapOf(<span class="str">"id"</span> to id, <span class="str">"nome"</span> to <span class="str">"Ana"</span>))
+            }
+            <span class="fn">post</span>(<span class="str">"/users"</span>) {
+                <span class="kw">val</span> body = call.<span class="fn">receive</span>&lt;Map&lt;String, String&gt;&gt;()
+                call.<span class="fn">respond</span>(body)
+            }
+        }
+    }.<span class="fn">start</span>(wait = <span class="kw">true</span>)
+}</pre>
+				</div>
+				<div class="panel panel--positive">
+					<p><strong>HttpClient Ktor:</strong> o mesmo framework serve como cliente HTTP. Reutilize a engine CIO e os plugins de serialização tanto no servidor quanto no cliente.</p>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Ktor HttpClient</div>
+					<pre class="example"><span class="kw">val</span> client = <span class="fn">HttpClient</span>(CIO) {
+    <span class="fn">install</span>(ContentNegotiation) { <span class="fn">json</span>() }
+    <span class="fn">install</span>(HttpTimeout) { requestTimeoutMillis = <span class="str">5_000</span> }
+}
+
+<span class="kw">val</span> users: List&lt;User&gt; = client.<span class="fn">get</span>(<span class="str">"https://api.exemplo.com/users"</span>).<span class="fn">body</span>()
+client.<span class="fn">close</span>()</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="spring-kotlin">Spring Boot com Kotlin</h2>
+				<p>Spring Boot funciona muito bem com Kotlin. Data classes substituem POJOs verbosos, extension functions aprimoram a API e coroutines têm suporte nativo no Spring WebFlux e Spring MVC desde Spring 5.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Spring Boot REST</div>
+					<pre class="example"><span class="kw">import</span> org.springframework.web.bind.annotation.*
+<span class="kw">import</span> org.springframework.stereotype.Service
+
+<span class="kw">data class</span> <span class="fn">User</span>(<span class="kw">val</span> id: Long, <span class="kw">val</span> nome: String, <span class="kw">val</span> email: String)
+
+<span class="com">// DTO sem construtores extras ou getters/setters</span>
+<span class="kw">data class</span> <span class="fn">CriarUserDto</span>(<span class="kw">val</span> nome: String, <span class="kw">val</span> email: String)
+
+<span class="kw">@Service</span>
+<span class="kw">class</span> <span class="fn">UserService</span> {
+    <span class="kw">private val</span> users = <span class="fn">mutableListOf</span>&lt;User&gt;()
+    <span class="kw">fun</span> <span class="fn">criar</span>(dto: CriarUserDto): User {
+        <span class="kw">val</span> u = User(users.size + <span class="str">1L</span>, dto.nome, dto.email)
+        users.<span class="fn">add</span>(u)
+        <span class="kw">return</span> u
+    }
+    <span class="kw">fun</span> <span class="fn">listar</span>() = users.<span class="fn">toList</span>()
+}
+
+<span class="kw">@RestController</span>
+<span class="kw">@RequestMapping</span>(<span class="str">"/users"</span>)
+<span class="kw">class</span> <span class="fn">UserController</span>(<span class="kw">private val</span> service: UserService) {
+    <span class="kw">@GetMapping</span> <span class="kw">fun</span> <span class="fn">listar</span>() = service.<span class="fn">listar</span>()
+    <span class="kw">@PostMapping</span> <span class="kw">fun</span> <span class="fn">criar</span>(<span class="kw">@RequestBody</span> dto: CriarUserDto) = service.<span class="fn">criar</span>(dto)
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="arrow-fp">Arrow — Programação Funcional</h2>
+				<p>Arrow é a biblioteca de programação funcional de referência para Kotlin. Traz tipos como <code>Either</code>, <code>Option</code>, <code>Raise</code> e extensões para modelar erros sem exceções, tornando falhas explícitas no tipo de retorno.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Arrow Either</div>
+					<pre class="example"><span class="kw">import</span> arrow.core.*
+
+<span class="com">// Either&lt;Erro, Sucesso&gt;</span>
+<span class="kw">sealed class</span> <span class="fn">AppError</span>
+<span class="kw">data class</span> <span class="fn">UsuarioNaoEncontrado</span>(<span class="kw">val</span> id: Long) : AppError()
+<span class="kw">data class</span> <span class="fn">EmailInvalido</span>(<span class="kw">val</span> email: String) : AppError()
+
+<span class="kw">fun</span> <span class="fn">validarEmail</span>(email: String): Either&lt;AppError, String&gt; =
+    <span class="kw">if</span> (<span class="str">"@"</span> <span class="kw">in</span> email) email.<span class="fn">right</span>()
+    <span class="kw">else</span> <span class="fn">EmailInvalido</span>(email).<span class="fn">left</span>()
+
+<span class="kw">fun</span> <span class="fn">processarEmail</span>(email: String): String =
+    <span class="fn">validarEmail</span>(email)
+        .<span class="fn">map</span> { it.<span class="fn">lowercase</span>() }
+        .<span class="fn">getOrElse</span> { err -&gt; <span class="str">"Erro: $err"</span> }
+
+<span class="com">// Composição com flatMap / bindEither (Arrow DSL)</span>
+<span class="kw">fun</span> <span class="fn">pipeline</span>(email: String): Either&lt;AppError, String&gt; = <span class="fn">either</span> {
+    <span class="kw">val</span> validado = <span class="fn">validarEmail</span>(email).<span class="fn">bind</span>()
+    validado.<span class="fn">trim</span>().<span class="fn">lowercase</span>()
+}</pre>
+				</div>
+				<div class="panel panel--positive">
+					<p><strong>Raise DSL (Arrow 1.2+):</strong> substitui <code>Either.bind()</code> por um escopo de contexto mais limpo com <code>raise(erro)</code> e <code>recover { }</code>. Integra-se bem com coroutines.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="exposed-orm">Exposed — ORM DSL Kotlin</h2>
+				<p>Exposed é o ORM da JetBrains para Kotlin. Oferece duas APIs: DSL (SQL type-safe via objetos Kotlin) e DAO (mapeamento por entidades). Ambas operam dentro de blocos <code>transaction { }</code>.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Exposed DSL</div>
+					<pre class="example"><span class="kw">import</span> org.jetbrains.exposed.sql.*
+<span class="kw">import</span> org.jetbrains.exposed.sql.transactions.transaction
+
+<span class="com">// Definição da tabela</span>
+<span class="kw">object</span> <span class="fn">Users</span> : Table(<span class="str">"users"</span>) {
+    <span class="kw">val</span> id = <span class="fn">integer</span>(<span class="str">"id"</span>).<span class="fn">autoIncrement</span>()
+    <span class="kw">val</span> nome = <span class="fn">varchar</span>(<span class="str">"nome"</span>, <span class="str">128</span>)
+    <span class="kw">val</span> email = <span class="fn">varchar</span>(<span class="str">"email"</span>, <span class="str">256</span>).<span class="fn">uniqueIndex</span>()
+    <span class="kw">override val</span> primaryKey = <span class="fn">PrimaryKey</span>(id)
+}
+
+Database.<span class="fn">connect</span>(<span class="str">"jdbc:h2:mem:test"</span>, driver = <span class="str">"org.h2.Driver"</span>)
+
+<span class="fn">transaction</span> {
+    SchemaUtils.<span class="fn">create</span>(Users)
+
+    Users.<span class="fn">insert</span> { row -&gt;
+        row[nome] = <span class="str">"Ana"</span>
+        row[email] = <span class="str">"ana@exemplo.com"</span>
+    }
+
+    <span class="kw">val</span> todos = Users.<span class="fn">selectAll</span>().<span class="fn">map</span> {
+        it[Users.nome] to it[Users.email]
+    }
+    println(todos)
+
+    Users.<span class="fn">update</span>({ Users.email <span class="fn">eq</span> <span class="str">"ana@exemplo.com"</span> }) {
+        it[nome] = <span class="str">"Ana Silva"</span>
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="kotlinx">kotlinx.serialization e Demais kotlinx</h2>
+				<p>As bibliotecas <code>kotlinx.*</code> são a família oficial de extensões Kotlin-first: serialização multiplataforma, coroutines, datetime e IO — todas projetadas para funcionar em JVM, JS e Native.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — kotlinx.serialization</div>
+					<pre class="example"><span class="kw">import</span> kotlinx.serialization.*
+<span class="kw">import</span> kotlinx.serialization.json.*
+
+<span class="kw">@Serializable</span>
+<span class="kw">data class</span> <span class="fn">Produto</span>(
+    <span class="kw">val</span> id: Int,
+    <span class="kw">val</span> nome: String,
+    <span class="kw">val</span> preco: Double,
+    <span class="kw">@SerialName</span>(<span class="str">"em_estoque"</span>) <span class="kw">val</span> emEstoque: Boolean = <span class="kw">true</span>
+)
+
+<span class="kw">val</span> json = <span class="fn">Json</span> { prettyPrint = <span class="kw">true</span>; ignoreUnknownKeys = <span class="kw">true</span> }
+
+<span class="kw">val</span> produto = <span class="fn">Produto</span>(<span class="str">1</span>, <span class="str">"Teclado"</span>, 159.90)
+<span class="kw">val</span> texto = json.<span class="fn">encodeToString</span>(produto)
+<span class="com">// {"id":1,"nome":"Teclado","preco":159.9,"em_estoque":true}</span>
+
+<span class="kw">val</span> p2: Produto = json.<span class="fn">decodeFromString</span>(texto)
+
+<span class="com">// Lista serializada</span>
+<span class="kw">val</span> lista = <span class="fn">listOf</span>(produto, produto.<span class="fn">copy</span>(id = <span class="str">2</span>, nome = <span class="str">"Mouse"</span>))
+<span class="kw">val</span> jsonLista = json.<span class="fn">encodeToString</span>(lista)</pre>
+				</div>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Biblioteca</th><th>Propósito</th><th>Multiplataforma</th></tr></thead>
+						<tbody>
+							<tr><td>kotlinx.serialization</td><td>JSON / CBOR / Protobuf</td><td>Sim</td></tr>
+							<tr><td>kotlinx.coroutines</td><td>Concorrência assíncrona</td><td>Sim</td></tr>
+							<tr><td>kotlinx.datetime</td><td>datas e fusos horários</td><td>Sim</td></tr>
+							<tr><td>kotlinx-io</td><td>I/O de baixo nível</td><td>Sim</td></tr>
+							<tr><td>Ktor</td><td>HTTP client/server</td><td>Sim (KMP)</td></tr>
+							<tr><td>Exposed</td><td>ORM/SQL DSL</td><td>Apenas JVM</td></tr>
+							<tr><td>Arrow</td><td>Programação funcional</td><td>Sim (KMP)</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>JETBRAINS. <strong>Ktor documentation</strong>. Disponível em: <a href="https://ktor.io/docs/" target="_blank" rel="noopener">ktor.io/docs</a>. Acesso em: mar. 2026.</li>
+						<li>JETBRAINS. <strong>Exposed — Kotlin SQL Framework</strong>. Disponível em: <a href="https://github.com/JetBrains/Exposed" target="_blank" rel="noopener">github.com/JetBrains/Exposed</a>. Acesso em: mar. 2026.</li>
+						<li>ARROW-KT. <strong>Arrow: Functional companion to Kotlin's Standard Library</strong>. Disponível em: <a href="https://arrow-kt.io/" target="_blank" rel="noopener">arrow-kt.io</a>. Acesso em: mar. 2026.</li>
+						<li>JETBRAINS. <strong>kotlinx.serialization guide</strong>. Disponível em: <a href="https://kotlinlang.org/docs/serialization.html" target="_blank" rel="noopener">kotlinlang.org/docs/serialization</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="introducao.html">Introdução ao Kotlin</a></li>
+					<li><a href="fundamentos.html">Fundamentos</a></li>
+					<li><a href="avancado.html">Avançado</a></li>
+					<li><a href="ecossistema_tooling.html">Ecossistema e Tooling</a></li>
+					<li><a href="projetos_boas_praticas.html">Projetos e Boas Práticas</a></li>
+					<li><a href="../aplicacoes/web.html">Web com Kotlin</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O ecossistema Kotlin une o melhor do mundo JVM com APIs idiomáticas projetadas para coroutines e null safety.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

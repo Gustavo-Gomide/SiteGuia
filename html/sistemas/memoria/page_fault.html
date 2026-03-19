@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Page fault: o que é, tipos (minor e major), o fluxo de tratamento pelo kernel, causas de page faults frequentes e como monitorar com perf e /proc." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Page Fault | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Page Fault</h1>
+            <p class="page-subtitle">A interrupção que viabiliza a memória virtual — o mecanismo central por trás de toda paginação</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Page fault é uma interrupção de hardware gerada pela MMU quando a CPU tenta acessar uma página que não está presente na RAM. Longe de ser apenas um erro, é o mecanismo central que viabiliza toda a memória virtual — é por causa dos page faults que processos podem usar mais memória do que existe fisicamente e que o Copy-on-Write do <code>fork()</code> funciona.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="tipos">
+        <h2>Tipos de Page Fault</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Causa</th>
+                <th>I/O de Disco</th>
+                <th>Custo Típico</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Minor Fault (Soft)</td>
+                <td>Página no page cache ou alocada mas não mapeada (lazy alloc, CoW, mmap)</td>
+                <td>Nenhum</td>
+                <td>~100-500 ns</td>
+                <td>Kernel atualiza PTE e retoma execução</td>
+              </tr>
+              <tr>
+                <td>Major Fault (Hard)</td>
+                <td>Página no swap ou em arquivo não carregado — requer leitura de disco</td>
+                <td>Sim — bloqueia processo</td>
+                <td>~5-15 ms (HDD), ~100-500 µs (NVMe)</td>
+                <td>Kernel carrega página, atualiza PTE, retoma</td>
+              </tr>
+              <tr>
+                <td>Invalid Fault (Segfault)</td>
+                <td>Acesso a endereço fora de qualquer VMA válida, ou violação de proteção (escrita em R/O)</td>
+                <td>Nenhum</td>
+                <td>Instantâneo</td>
+                <td>Kernel envia SIGSEGV — processo termina com core dump</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="fluxo">
+        <h2>Fluxo de Tratamento do Page Fault</h2>
+        <p>O tratamento de um page fault envolve cooperação entre hardware (MMU, CPU) e software (kernel). O processo ocorre em microssegundos para minor faults, mas pode levar milissegundos para major faults:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Page Fault Handler — Fluxo Detalhado (x86-64 Linux)</div>
+          <pre class="code-block">
+Passo 1 — Detecção pelo Hardware:
+  CPU acessa endereço virtual → MMU verifica TLB → TLB miss
+  MMU verifica page table → bit Present = 0 (ou violação de proteção)
+  CPU salva registradores, escreve endereço faltante em CR2
+  CPU chama interrupt vector 14 (page fault exception)
+
+Passo 2 — Entrada no Kernel:
+  CPU entra em modo kernel (ring 0)
+  Handler: exc_page_fault() → do_user_addr_fault()
+  Lê endereço de CR2 e error_code (read/write, user/kernel, present)
+
+Passo 3 — Verificação da VMA:
+  mm = current->mm                      // Estrutura de memória do processo
+  vma = find_vma(mm, fault_address)     // Busca VMA que contém o endereço
+  Se não existe VMA → SIGSEGV (acesso inválido)
+  Se escrita em VMA somente leitura → SIGSEGV (proteção)
+
+Passo 4 — Resolução (caso válido):
+  Se CoW (write em página shared R/O):
+    page = alloc_page()                  // Aloca nova página
+    copy_page(page, old_page)            // Copia conteúdo
+    atualiza PTE com nova página R/W
+  Se página no swap:
+    swap_readpage()                      // Lê do disco (major fault — bloqueia)
+    atualiza PTE com frame carregado
+  Se lazy alloc (primeira vez):
+    page = alloc_zeroed_page()           // Página zerada (segurança — nunca lixo)
+    atualiza PTE
+
+Passo 5 — Retorno:
+  CPU re-executa a instrução que causou o fault
+  Desta vez a página está presente → sucesso transparente</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="causas-diagnostico">
+        <h2>Causas Comuns e Diagnóstico</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Lazy Allocation</h3>
+            <p><code>malloc()</code> retorna um ponteiro sem alocar memória real. A primeira escrita em cada página gera um minor fault. Razão pela qual <code>malloc(1 GB)</code> retorna instantaneamente mas o uso gradual leva tempo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">fork() e CoW</h3>
+            <p>Após <code>fork()</code>, cada write em qualquer página compartilhada gera um minor fault de CoW. Aplicações que escrevem em muitas páginas logo após fork (ex: Redis com muitas keys) têm alto <code>minflt</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">mmap() de Arquivo</h3>
+            <p>Arquivos mapeados em memória geram major faults na primeira leitura de cada página (carregamento do disco). Leituras subsequentes são minor faults (página no page cache).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Stack Crescimento</h3>
+            <p>A stack cresce automaticamente. O kernel mapeia somente a região inicial; cada página nova de stack gera um minor fault. O limite de crescimento é controlado por <code>ulimit -s</code> (default 8 MB no Linux).</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Medir Page Faults com perf e /proc</div>
+          <pre class="code-block">
+# Contar page faults durante execução de um programa
+$ perf stat -e page-faults,minor-faults,major-faults ./meu_programa
+
+ Performance counter stats for './meu_programa':
+
+        145,823      page-faults               # 89.32 K/sec
+        145,671      minor-faults
+            152      major-faults
+
+       1.633073978 seconds time elapsed
+
+# Ver faults acumulados de um processo rodando
+$ cat /proc/$(pidof nginx)/stat | awk '{print "minor:", $10, "major:", $12}'
+minor: 8432 major: 0
+
+# Ver em tempo real com pidstat
+$ pidstat -f 1 -p $(pidof redis-server)
+Average:      UID      PID   minflt/s   majflt/s   Command
+Average:      999    12345    1250.32       0.00   redis-server</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="otimizacao">
+        <h2>Otimização para Reduzir Page Faults</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Huge Pages (2 MB)</h3>
+            <p>Reduz o número de page faults em até 512× para alocações grandes (1 huge page cobre o que 512 páginas normais cobriam). Fundamental para bancos de dados e aplicações com grandes buffer pools.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">mlock() e mlockall()</h3>
+            <p>Trava páginas na RAM impedindo que sejam enviadas ao swap. Gera todos os page faults imediatamente ao chamar (prefault). Essencial para aplicações de tempo real e baixa latência.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">madvise(MADV_WILLNEED)</h3>
+            <p>Dica ao kernel de que certas páginas serão usadas em breve. O kernel faz prefetch assíncrono, reduzindo major faults quando a aplicação realmente acessar as páginas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Transparent Huge Pages (THP)</h3>
+            <p>O kernel automaticamente promove regiões de memória anonima a huge pages quando possível. Habilitado por padrão no Linux. Pode ser configurado por processo via <code>madvise(MADV_HUGEPAGE)</code>.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Prefault e mlock em C</div>
+          <pre class="code-block">
+#include &lt;sys/mman.h&gt;
+#include &lt;string.h&gt;
+#include &lt;stdlib.h&gt;
+
+// Alocar e travar 256 MB na RAM (sem page faults futuros)
+void* buf = malloc(256 * 1024 * 1024);
+
+// Prefault: toca cada página para forçar alocação agora
+memset(buf, 0, 256 * 1024 * 1024);
+
+// Trava na RAM — impossível ser swapado
+mlock(buf, 256 * 1024 * 1024);
+
+// Alternativa: travar TODA memória do processo (aplicações RTOS)
+mlockall(MCL_CURRENT | MCL_FUTURE);
+
+// Dica ao kernel: páginas serão necessárias em breve
+madvise(arquivo_mapeado, tamanho, MADV_WILLNEED);</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Entenda o contexto completo da memória virtual em <a href="/html/sistemas/memoria/memoria_virtual.html">Memória Virtual</a> e como o kernel escolhe quais páginas despejar em <a href="/html/sistemas/memoria/algoritmos_substituicao.html">Algoritmos de Substituição</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O page fault é o preço da abstração — cada miss custa uns microssegundos, mas o que se ganha é a ilusão de memória infinita para todos os processos."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

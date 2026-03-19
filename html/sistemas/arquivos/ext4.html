@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="ext4: o sistema de arquivos padrão do Linux — extents, journaling, delayed allocation, fsck, tune2fs e comparação com btrfs e xfs." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>ext4 | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">ext4</h1>
+            <p class="page-subtitle">O sistema de arquivos padrão do Linux: extents, journaling e confiabilidade comprovada</p>
+          </div>
+        </div>
+        <p class="intro-highlight">ext4 é a quarta evolução da família ext, dominante em servidores Linux e desktops Ubuntu/Debian. Introduziu extents (blocos contíguos), delayed allocation, journaling aprimorado e suporte a volumes de até 1 exabyte, combinando simplicidade operacional com confiabilidade testada por décadas em sistemas de produção.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — EXTENTS ═══════════════════ -->
+      <section id="extents">
+        <h2>Extents — O Fim dos Blocos Espalhados</h2>
+        <p>ext2 e ext3 mapeavam arquivos com arrays de ponteiros de bloco individual: blocos diretos, indireto simples, indireto duplo e triplo. Para um arquivo de 1 GB com blocos de 4 KB, isso significava 262.144 entradas de ponteiro. ext4 introduziu <strong>extents</strong>: uma run contígua de blocos descrita por (bloco inicial, comprimento). Um arquivo de 1 GB sem fragmentação usa apenas 1 extent.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — debugfs para inspecionar extents</div>
+          <pre class="code-block"># Montar filesystem read-only para inspeção
+debugfs /dev/sda1
+
+# Dentro do debugfs — ver extents de um arquivo
+debugfs: stat /var/log/syslog
+# ...
+# EXTENTS:
+# (0-1023):  524288-525311    <- 1 extent cobrindo 1024 blocos de 4KB = 4 MB
+
+# Verificar fragmentação de um arquivo
+filefrag -v /var/log/syslog
+# ext: 0  logical: 0-1023  physical: 524288-525311  length: 1024  flags: last
+# Total: 1 extent</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — JOURNALING ═══════════════════ -->
+      <section id="journaling">
+        <h2>Journaling em ext4</h2>
+        <p>O journal ext4 opera em um dos três modos configuráveis. O modo <code>ordered</code> é o padrão e equilibra performance com segurança de dados.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Modo</th>
+                <th>O que e journalado</th>
+                <th>Performance</th>
+                <th>Segurança de dados</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>writeback</td><td>Somente metadados</td><td>Mais rapido</td><td>Dados podem aparecer fora de ordem apos crash</td></tr>
+              <tr><td>ordered (padrao)</td><td>Metadados; dados flushed antes do commit</td><td>Balanceado</td><td>Dados consistentes com metadados</td></tr>
+              <tr><td>journal</td><td>Metadados E dados</td><td>Mais lento (dobra escritas)</td><td>Maximo: dados e metadados sempre consistentes</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — tune2fs e parâmetros do ext4</div>
+          <pre class="code-block"># Ver todos os parâmetros do filesystem
+tune2fs -l /dev/sda1 | grep -E "Journal|Features|Last"
+
+# Alterar modo de journaling (requer umount)
+tune2fs -o journal_data_writeback /dev/sda1  # modo writeback
+tune2fs -o journal_data /dev/sda1            # modo data journal
+
+# Verificar e reparar filesystem (somente com FS desmontado)
+fsck.ext4 -f /dev/sda1
+
+# Após crash: replay do journal (automático no mount)
+# dmesg mostra:
+# EXT4-fs (sda1): recovery complete
+# EXT4-fs (sda1): mounted filesystem with ordered data mode</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — RECURSOS ═══════════════════ -->
+      <section id="recursos">
+        <h2>Recursos do ext4</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Recurso</th>
+                <th>Descrição</th>
+                <th>Benefício</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Delayed Allocation</td><td>Adia alocacao de blocos ate o flush; permite escolher melhor posicao no disco</td><td>Menos fragmentacao, melhor throughput</td></tr>
+              <tr><td>Extents</td><td>Faixas contíguas de blocos em vez de ponteiros individuais</td><td>Menos overhead de metadados, menos fragmentacao</td></tr>
+              <tr><td>64-bit block addressing</td><td>Enderecos de bloco de 64 bits</td><td>Suporte a volumes de ate 1 EB</td></tr>
+              <tr><td>dir_index (HTree)</td><td>Diretórios grandes usam B-tree hash em vez de lista linear</td><td>lookup O(log n) vs O(n) para diretorios com milhares de arquivos</td></tr>
+              <tr><td>Journal checksums</td><td>CRC32 nas transacoes do journal</td><td>Detecta corrupção no journal antes do replay</td></tr>
+              <tr><td>online defrag (e4defrag)</td><td>Desfragmentação sem desmontar o FS</td><td>Mantem performance em HDDs ao longo do tempo</td></tr>
+              <tr><td>barriers</td><td>Garante ordem de escrita entre journal e dados no storage</td><td>Integridade mesmo com cache de escrita do disco</td></tr>
+              <tr><td>huge_file</td><td>Suporte a arquivos maiores que 2 TB</td><td>Necessario para VMs e backups grandes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — ext4 vs btrfs vs xfs ═══════════════════ -->
+      <section id="comparacao">
+        <h2>ext4 vs btrfs vs xfs</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Aspecto</th>
+                <th>ext4</th>
+                <th>btrfs</th>
+                <th>xfs</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Maturidade</td><td>Muito alta (2008+)</td><td>Media (estavel desde ~2015)</td><td>Alta (1994, Linux desde 2001)</td></tr>
+              <tr><td>Snapshots</td><td>Nao nativo</td><td>Sim (CoW, subvolumes)</td><td>Nao nativo</td></tr>
+              <tr><td>RAID embutido</td><td>Nao</td><td>Sim (RAID 0/1/5/6/10)</td><td>Nao</td></tr>
+              <tr><td>Checksums de dados</td><td>Nao</td><td>Sim (CRC32/xxHash)</td><td>Nao (metadados apenas)</td></tr>
+              <tr><td>Online resize</td><td>Crescer (sim), shrink (nao)</td><td>Crescer e shrink</td><td>Crescer apenas</td></tr>
+              <tr><td>Desfragmentacao online</td><td>Sim (e4defrag)</td><td>Sim (btrfs defrag)</td><td>Sim (xfs_fsr)</td></tr>
+              <tr><td>SO padrao</td><td>Ubuntu, Debian, RHEL (legado)</td><td>openSUSE, Fedora (novas installs)</td><td>RHEL 8+, CentOS Stream</td></tr>
+              <tr><td>Caso de uso ideal</td><td>Servidor generico, maxima estabilidade</td><td>Home server, NAS, snapshots automaticos</td><td>Alta performance, arquivos muito grandes</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/sistema_arquivos.html">Sistema de Arquivos</a> e <a href="/html/sistemas/arquivos/alocacao_arquivos.html">Alocação de Arquivos</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"ext4 não é o mais moderno, mas é o mais confiável — e confiabilidade tem valor imenso em sistemas de produção."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

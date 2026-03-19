@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="HTTPS, SSL e TLS: handshake TLS 1.3, cipher suites, certificados, certificate pinning, vulnerabilidades e configuração segura." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>HTTPS, SSL e TLS | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>HTTPS, SSL e TLS</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">HTTPS e a Pilha TLS</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>HTTPS, SSL e TLS</h1>
+          <p>HTTP sobre TLS — confidencialidade, integridade e autenticidade na camada de transporte.</p>
+        </div>
+
+        <p class="intro-highlight">HTTPS = HTTP sobre TLS (Transport Layer Security). TLS é o sucessor do SSL (que foi depreciado com SSLv3 em 2015). Fornece confidencialidade (criptografia), integridade (HMAC) e autenticidade (certificados X.509) na camada de transporte. TLS 1.3 é o padrão atual — mais rápido, mais seguro e com menos etapas de handshake.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Protocolo</th><th>Status</th><th>Handshake RTT</th><th>Forward Secrecy</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>SSLv2 / SSLv3</td><td><span class="text--danger">Depreciado (inseguro)</span></td><td>2-RTT</td><td><span data-svg="errado" aria-hidden="true"></span></td></tr>
+              <tr><td>TLS 1.0 / 1.1</td><td><span class="text--danger">Depreciado (PCI DSS 2022)</span></td><td>2-RTT</td><td>Opcional</td></tr>
+              <tr><td>TLS 1.2</td><td>Aceitável</td><td>2-RTT</td><td>Com DHE/ECDHE</td></tr>
+              <tr><td>TLS 1.3</td><td><span data-svg="correto" aria-hidden="true"></span> Recomendado</td><td>1-RTT (0-RTT para resumption)</td><td><span data-svg="correto" aria-hidden="true"></span> Obrigatório</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="handshake" class="section-title">TLS 1.3 Handshake</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# TLS 1.3 — Handshake simplificado (1 RTT):
+
+Client → Server: ClientHello
+  - supported versions: TLS 1.3
+  - cipher suites: AES-128-GCM-SHA256, ChaCha20-Poly1305
+  - key_share: parâmetros Diffie-Hellman (ECDHE public key)
+
+Server → Client: ServerHello + EncryptedExtensions + Certificate + CertificateVerify + Finished
+  - escolhe cipher suite
+  - envia key_share (ECDHE public key)
+  - deriva chaves de sessão via HKDF
+  - envia certificado X.509 (identidade do servidor)
+  - CertificateVerify: assina o handshake com chave privada
+  - Finished: MAC sobre o handshake completo
+
+Client → Server: Finished
+  - verifica assinatura e certificado
+  - deriva mesmas chaves de sessão
+
+# A partir daqui: dados criptografados com symmetric keys derivadas ECDHE
+# Cada sessão usa chaves diferentes → Perfect Forward Secrecy garantida</pre>
+      </section>
+
+      <section>
+        <h2 id="cipher" class="section-title">Cipher Suites</h2>
+        <div class="section-divider"></div>
+
+        <p>Uma cipher suite é uma combinação de algoritmos para troca de chave, autenticação, cifra e MAC.</p>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Cipher Suite (TLS 1.3)</th><th>Cifra</th><th>Hash / AEAD</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>TLS_AES_256_GCM_SHA384</td><td>AES-256-GCM</td><td>SHA-384</td><td><span data-svg="correto" aria-hidden="true"></span> Excelente</td></tr>
+              <tr><td>TLS_AES_128_GCM_SHA256</td><td>AES-128-GCM</td><td>SHA-256</td><td><span data-svg="correto" aria-hidden="true"></span> Boa</td></tr>
+              <tr><td>TLS_CHACHA20_POLY1305_SHA256</td><td>ChaCha20</td><td>Poly1305</td><td><span data-svg="correto" aria-hidden="true"></span> Boa (mobile/embedded)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="message-block">
+          <p>Em TLS 1.3, cipher suites não incluem mais componentes de troca de chave (são sempre ECDHE) ou autenticação (separados do cipher). Isso eliminou centenas de combinações inseguras legadas presentes no TLS 1.2.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="certificados" class="section-title">Certificados X.509 e PKI</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Cadeia de Confiança</h3>
+            <p>Certificados formam uma cadeia: <strong>Root CA → Intermediate CA → Leaf certificate</strong>. Browsers e OSes têm listas de Root CAs confiáveis. A validação percorre a cadeia até um Root CA confiável.</p>
+          </div>
+          <div class="card">
+            <h3>Tipos de Validação</h3>
+            <ul>
+              <li><strong>DV (Domain Validation)</strong> — verifica controle do domínio; emissão automática (Let's Encrypt)</li>
+              <li><strong>OV (Organization Validation)</strong> — verifica organização; processo manual</li>
+              <li><strong>EV (Extended Validation)</strong> — verificação rigorosa; barra verde (legado)</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Certificate Transparency (CT)</h3>
+            <p>Todos os certificados emitidos publicamente devem ser registrados em CT logs públicos. Permite detectar emissões fraudulentas. Verificável em crt.sh.</p>
+          </div>
+          <div class="card">
+            <h3>Revogação</h3>
+            <p><strong>CRL</strong> (Certificate Revocation List) — lista baixada periodicamente. <strong>OCSP</strong> — verificação online em tempo real. <strong>OCSP Stapling</strong> — servidor inclui resposta OCSP no handshake (mais eficiente).</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="vulnerabilidades" class="section-title">Vulnerabilidades Históricas e Ataques</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Vulnerabilidade</th><th>Protocolo Afetado</th><th>Tipo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>BEAST</strong></td><td>TLS 1.0</td><td>Ataque CBC em bloco</td></tr>
+              <tr><td><strong>CRIME / BREACH</strong></td><td>TLS (qualquer) com compressão</td><td>Side-channel via compressão</td></tr>
+              <tr><td><strong>POODLE</strong></td><td>SSLv3</td><td>Padding oracle</td></tr>
+              <tr><td><strong>Heartbleed</strong></td><td>OpenSSL (implementação)</td><td>Buffer over-read — vaza memória com chave privada</td></tr>
+              <tr><td><strong>FREAK / Logjam</strong></td><td>TLS 1.2 (export ciphers)</td><td>Downgrade para cifras fracas de 40/512 bits</td></tr>
+              <tr><td><strong>DROWN</strong></td><td>TLS + SSLv2 habilitado</td><td>Decripta TLS via SSLv2 no mesmo servidor</td></tr>
+              <tr><td><strong>Lucky13</strong></td><td>TLS 1.2 (CBC)</td><td>Timing side-channel no padding</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="config-segura" class="section-title">Configuração Segura</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Nginx — TLS 1.3 + configuração segura:
+ssl_protocols TLSv1.2 TLSv1.3;              # desabilita 1.0 e 1.1
+ssl_ciphers 'TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256:ECDHE-RSA-AES256-GCM-SHA384';
+ssl_prefer_server_ciphers off;               # TLS 1.3 ignora; TLS 1.2 usa cipher do server
+ssl_session_cache shared:SSL:10m;
+ssl_session_timeout 1d;
+ssl_session_tickets off;                     # desabilita session tickets (PFS)
+ssl_stapling on;                             # OCSP Stapling
+ssl_stapling_verify on;
+add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+
+# OpenSSL — verificar cipher suite de um servidor:
+openssl s_client -connect site.com:443 -tls1_3
+openssl s_client -connect site.com:443 | openssl x509 -noout -text
+
+# testssl.sh — auditoria completa:
+./testssl.sh --full site.com</pre>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Certificate Pinning</p>
+            <p>Aplicações mobile/desktop podem fixar o certificado ou chave pública esperada do servidor. Impede ataques MitM mesmo com CA comprometida. Risco: pin expirado = app quebra sem update.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Mixed Content</p>
+            <p>Recursos HTTP carregados em página HTTPS — browsers bloqueiam conteúdo ativo misto (scripts, iframes). Use <span class="code-inline">upgrade-insecure-requests</span> no CSP como rede de segurança.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>TLS 1.3 eliminou décadas de problemas de design: sem RSA key exchange, sem ciphers não-AEAD, handshake mais rápido. Se você está começando hoje, configure apenas TLS 1.2 + 1.3 com ECDHE e AEAD ciphers. Use Let's Encrypt para certificados gratuitos e automatizados. Teste com ssllabs.com/ssltest para obter nota A+.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "TLS 1.3 representa décadas de aprendizado com falhas criptográficas — use-o como padrão, sem exceções."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

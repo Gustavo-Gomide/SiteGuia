@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Python para embedded e IoT: MicroPython no ESP32, CircuitPython, RPi.GPIO, gpiozero, MQTT com paho e automação de hardware." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Python para Embedded e IoT</h1>
+          <p>MicroPython no ESP32/RP2040, CircuitPython da Adafruit, RPi.GPIO e gpiozero no Raspberry Pi, MQTT com paho e automação de hardware com Python.</p>
+        </div>
+        <p class="intro-highlight">
+          Python chegou ao hardware embarcado via MicroPython e CircuitPython, rodando em microcontroladores com apenas 256 KB de RAM. No Raspberry Pi, Python controla GPIOs, I2C, SPI e UART com bibliotecas maduras usadas em projetos industriais e hobbystas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="micropython">MicroPython: Python em Microcontroladores</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>ESP32</h3>
+            <p>Dual-core Xtensa 240 MHz, 520 KB RAM, Wi-Fi + BT. Suporte nativo MicroPython com módulo <code>network</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 60ms">
+            <h3>RP2040 (Pico)</h3>
+            <p>Dual-core ARM Cortex-M0+ 133 MHz, 264 KB SRAM. MicroPython oficial da Raspberry Pi Foundation.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 120ms">
+            <h3>ESP8266</h3>
+            <p>80 MHz, 80 KB RAM, Wi-Fi. Ideal para sensores IoT simples. Menor subconjunto do MicroPython.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 180ms">
+            <h3>STM32 / pyboard</h3>
+            <p>Plataforma original do MicroPython. STM32F4 com USB nativo, SD card, acelerômetro.</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">MicroPython (ESP32) &mdash; Wi-Fi, MQTT, DHT22, NeoPixel</div>
+          <pre class="example"><span class="com"># main.py — roda ao inicializar o ESP32</span>
+<span class="kw">import</span> network, time, ujson
+<span class="kw">from</span> machine <span class="kw">import</span> Pin, I2C
+<span class="kw">import</span> dht
+<span class="kw">from</span> umqtt.simple <span class="kw">import</span> MQTTClient
+<span class="kw">import</span> neopixel
+
+<span class="com"># ----- Wi-Fi -----</span>
+wlan = network.<span class="fn">WLAN</span>(network.STA_IF)
+wlan.<span class="fn">active</span>(<span class="kw">True</span>)
+wlan.<span class="fn">connect</span>(<span class="str">"MinhaRede"</span>, <span class="str">"MinhaSenh@"</span>)
+<span class="kw">while not</span> wlan.<span class="fn">isconnected</span>():
+    time.<span class="fn">sleep_ms</span>(<span class="num">100</span>)
+<span class="fn">print</span>(<span class="str">"IP:"</span>, wlan.<span class="fn">ifconfig</span>()[<span class="num">0</span>])
+
+<span class="com"># ----- Sensores -----</span>
+sensor = dht.<span class="fn">DHT22</span>(<span class="fn">Pin</span>(<span class="num">4</span>))
+pixel  = neopixel.<span class="fn">NeoPixel</span>(<span class="fn">Pin</span>(<span class="num">48</span>), <span class="num">1</span>)   <span class="com"># RGB LED embutido</span>
+
+<span class="com"># ----- MQTT -----</span>
+client = <span class="fn">MQTTClient</span>(
+    client_id=<span class="str">b"esp32-01"</span>,
+    server=<span class="str">b"192.168.1.10"</span>,
+    user=<span class="str">b"iot"</span>, password=<span class="str">b"senha_mqtt"</span>
+)
+client.<span class="fn">connect</span>()
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    <span class="kw">try</span>:
+        sensor.<span class="fn">measure</span>()
+        payload = ujson.<span class="fn">dumps</span>({
+            <span class="str">"temp"</span>: sensor.<span class="fn">temperature</span>(),
+            <span class="str">"umid"</span>: sensor.<span class="fn">humidity</span>(),
+        })
+        client.<span class="fn">publish</span>(<span class="str">b"sensores/esp32-01"</span>, payload.encode())
+        <span class="com"># LED verde: OK</span>
+        pixel[<span class="num">0</span>] = (<span class="num">0</span>, <span class="num">20</span>, <span class="num">0</span>)
+        pixel.<span class="fn">write</span>()
+    <span class="kw">except</span> <span class="tp">OSError</span>:
+        <span class="com"># LED vermelho: erro</span>
+        pixel[<span class="num">0</span>] = (<span class="num">20</span>, <span class="num">0</span>, <span class="num">0</span>)
+        pixel.<span class="fn">write</span>()
+    time.<span class="fn">sleep</span>(<span class="num">5</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rpi">Raspberry Pi: gpiozero e RPi.GPIO</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python (Raspberry Pi) &mdash; gpiozero: LED, Button, PWM, distância HC-SR04</div>
+          <pre class="example"><span class="kw">from</span> gpiozero <span class="kw">import</span> LED, Button, PWMLED, DistanceSensor, Device
+<span class="kw">from</span> gpiozero.pins.pigpio <span class="kw">import</span> PiGPIOFactory
+<span class="kw">from</span> signal <span class="kw">import</span> pause
+<span class="kw">import</span> time
+
+<span class="com"># Usar pigpio para PWM de hardware preciso (sudo pigpiod para iniciar)</span>
+Device.pin_factory = <span class="fn">PiGPIOFactory</span>()
+
+led    = <span class="fn">LED</span>(<span class="num">17</span>)
+botao  = <span class="fn">Button</span>(<span class="num">27</span>, pull_up=<span class="kw">True</span>, bounce_time=<span class="num">0.05</span>)
+led_pw = <span class="fn">PWMLED</span>(<span class="num">18</span>)    <span class="com"># PWM no pino 18 (hardware)</span>
+
+<span class="com"># Callbacks de evento</span>
+<span class="kw">def</span> <span class="fn">ao_pressionar</span>():
+    led.<span class="fn">on</span>()
+    <span class="fn">print</span>(<span class="str">"Botão pressionado"</span>)
+
+<span class="kw">def</span> <span class="fn">ao_soltar</span>():
+    led.<span class="fn">off</span>()
+
+botao.when_pressed  = ao_pressionar
+botao.when_released = ao_soltar
+
+<span class="com"># Sensor ultrassônico HC-SR04</span>
+sensor = <span class="fn">DistanceSensor</span>(echo=<span class="num">24</span>, trigger=<span class="num">23</span>, max_distance=<span class="num">2</span>)
+
+<span class="kw">def</span> <span class="fn">monitorar</span>():
+    <span class="kw">while</span> <span class="kw">True</span>:
+        dist = sensor.distance * <span class="num">100</span>    <span class="com"># metros → cm</span>
+        <span class="fn">print</span>(<span class="str">f"Distância: {dist:.1f} cm"</span>)
+        <span class="com"># LED mais brilhante conforme mais perto</span>
+        led_pw.value = <span class="fn">max</span>(<span class="num">0</span>, <span class="num">1</span> - dist / <span class="num">50</span>)
+        time.<span class="fn">sleep</span>(<span class="num">0.1</span>)
+
+<span class="kw">try</span>:
+    <span class="fn">monitorar</span>()
+<span class="kw">except</span> <span class="tp">KeyboardInterrupt</span>:
+    led.<span class="fn">off</span>();  led_pw.<span class="fn">off</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="circuitpython">CircuitPython: Adafruit e USB Drive</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CircuitPython (RP2040 / Feather) &mdash; I2C + Display OLED + BME280</div>
+          <pre class="example"><span class="com"># code.py — CircuitPython: salve no CIRCUITPY drive via USB</span>
+<span class="kw">import</span> board, busio, time
+<span class="kw">import</span> adafruit_bme280.basic <span class="kw">as</span> adafruit_bme280
+<span class="kw">import</span> adafruit_displayio_ssd1306
+<span class="kw">import</span> displayio, terminalio
+<span class="kw">from</span> adafruit_display_text <span class="kw">import</span> label
+
+displayio.<span class="fn">release_displays</span>()
+
+<span class="com"># --- I2C e sensores ---</span>
+i2c = busio.<span class="fn">I2C</span>(board.SCL, board.SDA)
+bme = adafruit_bme280.<span class="fn">Adafruit_BME280_I2C</span>(i2c, address=<span class="str">0x76</span>)
+bme.sea_level_pressure = <span class="num">1013.25</span>
+
+<span class="com"># --- Display OLED 128×64 ---</span>
+display_bus = busio.<span class="fn">I2C</span>(board.SCL, board.SDA)
+disp = adafruit_displayio_ssd1306.<span class="fn">SSD1306</span>(display_bus, width=<span class="num">128</span>, height=<span class="num">64</span>)
+splash = displayio.<span class="fn">Group</span>()
+disp.root_group = splash
+
+txt = label.<span class="fn">Label</span>(terminalio.FONT, color=<span class="num">0xFFFFFF</span>, x=<span class="num">0</span>, y=<span class="num">8</span>)
+splash.<span class="fn">append</span>(txt)
+
+<span class="kw">while</span> <span class="kw">True</span>:
+    T = bme.temperature
+    H = bme.humidity
+    P = bme.pressure
+    txt.text = <span class="str">f"T:{T:.1f}C H:{H:.0f}%\nP:{P:.0f}hPa"</span>
+    time.<span class="fn">sleep</span>(<span class="num">2</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT com paho: IoT na Nuvem</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python (host) &mdash; paho-mqtt: publicar e subscrever com TLS</div>
+          <pre class="example"><span class="kw">import</span> paho.mqtt.client <span class="kw">as</span> mqtt
+<span class="kw">import</span> json, ssl, threading
+
+BROKER = <span class="str">"broker.hivemq.com"</span>
+PORT   = <span class="num">8883</span>   <span class="com"># TLS</span>
+TOPIC  = <span class="str">"sensores/#"</span>
+
+
+<span class="kw">def</span> <span class="fn">on_connect</span>(client, userdata, flags, rc, props):
+    <span class="fn">print</span>(<span class="str">f"Conectado: {rc}"</span>)
+    client.<span class="fn">subscribe</span>(TOPIC, qos=<span class="num">1</span>)
+
+<span class="kw">def</span> <span class="fn">on_message</span>(client, userdata, msg):
+    dados = json.<span class="fn">loads</span>(msg.payload)
+    <span class="fn">print</span>(<span class="str">f"[{msg.topic}] T={dados['temp']:.1f}°C U={dados['umid']:.0f}%"</span>)
+
+client = mqtt.<span class="fn">Client</span>(mqtt.CallbackAPIVersion.VERSION2)
+client.<span class="fn">tls_set</span>(cert_reqs=ssl.CERT_REQUIRED)    <span class="com"># TLS obrigatório</span>
+client.on_connect = on_connect
+client.on_message = on_message
+client.<span class="fn">connect</span>(BROKER, PORT, keepalive=<span class="num">60</span>)
+
+<span class="com"># Publicar de outro thread</span>
+<span class="kw">def</span> <span class="fn">publicar_periodicamente</span>():
+    <span class="kw">import</span> time, random
+    <span class="kw">while</span> <span class="kw">True</span>:
+        dados = {<span class="str">"temp"</span>: <span class="num">20</span> + random.<span class="fn">uniform</span>(-<span class="num">2</span>, <span class="num">2</span>), <span class="str">"umid"</span>: <span class="num">55.0</span>}
+        client.<span class="fn">publish</span>(<span class="str">"sensores/simulado/01"</span>, json.<span class="fn">dumps</span>(dados), qos=<span class="num">1</span>)
+        time.<span class="fn">sleep</span>(<span class="num">5</span>)
+
+threading.<span class="fn">Thread</span>(target=publicar_periodicamente, daemon=<span class="kw">True</span>).<span class="fn">start</span>()
+client.<span class="fn">loop_forever</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROPYTHON DOCS. <strong>MicroPython Documentation</strong>. Disponível em: &lt;https://docs.micropython.org/&gt;. Acesso em: 2025.</li>
+            <li>GPIOZERO DOCS. <strong>gpiozero Documentation</strong>. Disponível em: &lt;https://gpiozero.readthedocs.io/&gt;. Acesso em: 2025.</li>
+            <li>ADAFRUIT. <strong>CircuitPython — Code + Learn</strong>. Disponível em: &lt;https://learn.adafruit.com/welcome-to-circuitpython&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Dados e IA</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Mobile</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> MicroPython cabe em chips com apenas 256 KB de RAM e 512 KB de flash</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Segurança em banco de dados: autenticação, autorização, menor privilégio, SQL Injection e criptografia TLS/TDE." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Segurança em Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Segurança em Banco de Dados</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Segurança em Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Segurança &mdash; Defesa em Profundidade</h1>
+          <p>Protegendo o bem mais valioso da sua empresa: os dados dos seus usuários.</p>
+        </div>
+        <p class="intro-highlight">
+          Em 2021, um vazamento atingiu 530 milhões de contas do Facebook. Em 2017, a Equifax expôs
+          dados financeiros de 147 milhões de americanos. Em ambos os casos, a falha nao foi tecnologia
+          insuficiente &mdash; foi <strong>configuracao negligente</strong>. Seguranca em banco de dados
+          e uma mentalidade de <strong>Defesa em Profundidade</strong>: camadas sobrepostas onde a falha
+          de uma nao compromete o sistema inteiro.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 1. DEFESA EM PROFUNDIDADE -->
+      <section>
+        <h2 id="defesa-profundidade" class="section-title">1. Defesa em Profundidade</h2>
+        <p>
+          O modelo de seguranca em camadas garante que um atacante precise superar multiplos obstaculos
+          independentes para chegar aos dados. Cada camada assume que a anterior pode falhar.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>O modelo das camadas:</strong> Rede (firewall, VPC privada) &rarr; Sistema Operacional
+            (hardening, patches) &rarr; Banco de Dados (autenticacao, autorizacao) &rarr; Aplicacao
+            (Prepared Statements, validacao) &rarr; Dados (criptografia em repouso e transito).
+          </p>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Camada de Rede</h3>
+            <p>
+              O banco de dados <strong>nunca deve ser acessivel diretamente pela internet</strong>.
+              Coloque-o em uma VPC privada ou rede interna. Aceite conexoes apenas da aplicacao
+              (IP especifico ou security group).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Camada de Autenticacao</h3>
+            <p>
+              Cada usuario deve ter credenciais proprias. Proibido compartilhar o usuario
+              <code class="code-inline">root</code> entre times. Use senhas longas e rotacione-as
+              regularmente com ferramentas como HashiCorp Vault.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Camada de Autorizacao</h3>
+            <p>
+              Principio do Menor Privilégio: cada usuario tem acesso apenas ao que precisa.
+              O usuario da API web nao pode fazer <code class="code-inline">DROP TABLE</code>.
+              O usuario de relatorios nao pode fazer <code class="code-inline">INSERT</code>.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 2. AUTENTICACAO E AUTORIZACAO -->
+      <section>
+        <h2 id="autenticacao-autorizacao" class="section-title">2. Autenticacao e Autorizacao</h2>
+        <p>
+          Autenticacao responde "quem voce e?" e Autorizacao responde "o que voce pode fazer?".
+          Sao camadas distintas e independentes &mdash; passar pela autenticacao nao garante acesso a tudo.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">postgresql &mdash; criar roles e conceder permissoes minimas</div>
+          <pre class="example"><span class="com">-- Criar role de aplicacao (sem login direto)</span>
+<span class="kw">CREATE ROLE</span> app_role;
+<span class="kw">GRANT SELECT, INSERT, UPDATE ON</span> <span class="kw">ALL TABLES IN SCHEMA</span> public <span class="kw">TO</span> app_role;
+
+<span class="com">-- Criar usuario de aplicacao vinculado a role</span>
+<span class="kw">CREATE USER</span> app_api <span class="kw">WITH PASSWORD</span> <span class="str">'s3nh@_F0rt3_R0t4c1on4da'</span>;
+<span class="kw">GRANT</span> app_role <span class="kw">TO</span> app_api;
+
+<span class="com">-- Criar usuario de relatorios (somente leitura)</span>
+<span class="kw">CREATE USER</span> app_reports <span class="kw">WITH PASSWORD</span> <span class="str">'outr4_S3nh4'</span>;
+<span class="kw">GRANT SELECT ON ALL TABLES IN SCHEMA</span> public <span class="kw">TO</span> app_reports;
+
+<span class="com">-- REVOGAR o que nao deve ser permitido</span>
+<span class="kw">REVOKE DELETE ON</span> pedidos <span class="kw">FROM</span> app_api;
+<span class="kw">REVOKE INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA</span> public <span class="kw">FROM</span> app_reports;</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">postgresql &mdash; Row-Level Security (RLS): vendedor ve apenas seus pedidos</div>
+          <pre class="example"><span class="com">-- Habilitar RLS na tabela</span>
+<span class="kw">ALTER TABLE</span> pedidos <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="com">-- Criar politica: cada vendedor ve apenas os proprios pedidos</span>
+<span class="kw">CREATE POLICY</span> ver_proprios_pedidos <span class="kw">ON</span> pedidos
+  <span class="kw">FOR SELECT</span>
+  <span class="kw">USING</span> (vendedor_id = current_setting(<span class="str">'myapp.current_user_id'</span>)::<span class="kw">int</span>);
+
+<span class="com">-- A aplicacao define o contexto antes da query</span>
+<span class="kw">SET LOCAL</span> myapp.current_user_id = <span class="str">'42'</span>;
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> pedidos;  <span class="com">-- retorna apenas pedidos do vendedor 42</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 3. SQL INJECTION -->
+      <section>
+        <h2 id="sql-injection" class="section-title">3. SQL Injection &mdash; A Ameaca #1</h2>
+        <p>
+          SQL Injection ocorre quando input do usuario e concatenado diretamente em uma query SQL.
+          E a vulnerabilidade mais comum e mais devastadora contra bancos de dados &mdash; presente
+          no OWASP Top 10 desde sua criacao. A defesa e simples e absoluta: <strong>Prepared Statements</strong>.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Vulneravel &mdash; Concatenacao Direta</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">java &mdash; codigo vulneravel</div>
+              <pre class="example"><span class="com">// Input do atacante: ' OR '1'='1' --</span>
+String query = <span class="str">"SELECT * FROM users"</span>
+  + <span class="str">" WHERE login = '"</span> + userInput + <span class="str">"'"</span>;
+
+<span class="com">// Query resultante no banco:</span>
+<span class="com">// SELECT * FROM users</span>
+<span class="com">// WHERE login = '' OR '1'='1' --'</span>
+<span class="com">// Retorna TODOS os usuarios. Login ignorado.</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Seguro &mdash; Prepared Statements</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">java &mdash; codigo seguro com JDBC</div>
+              <pre class="example"><span class="com">// O placeholder ? e compilado ANTES do input</span>
+String sql = <span class="str">"SELECT * FROM users WHERE login = ?"</span>;
+PreparedStatement ps = conn.prepareStatement(sql);
+ps.setString(<span class="num">1</span>, userInput);
+
+<span class="com">// Se o atacante passar: ' OR '1'='1' --</span>
+<span class="com">// O banco busca literalmente esse texto como login.</span>
+<span class="com">// Nao e interpretado como SQL. Ataque neutralizado.</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Regra absoluta:</strong> Nunca concatene strings para montar queries com input do
+            usuario. ORMs modernos (Hibernate, SQLAlchemy, ActiveRecord, Prisma) usam Prepared Statements
+            por padrao &mdash; mas atencao a queries nativas (<code class="code-inline">raw()</code>,
+            <code class="code-inline">execute()</code>) que podem contornar essa protecao.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 4. CRIPTOGRAFIA -->
+      <section>
+        <h2 id="criptografia" class="section-title">4. Criptografia &mdash; Em Transito e Em Repouso</h2>
+        <p>
+          Se o atacante bypassar todas as camadas anteriores e roubar o hardware fisico ou interceptar
+          a rede &mdash; o que ele consegue ler? Com criptografia correta: <strong>nada util</strong>.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Em Transito &mdash; TLS/SSL</h3>
+            <p>
+              Toda comunicacao entre aplicacao e banco deve usar <strong>TLS 1.2+</strong>.
+              Protege contra ataques man-in-the-middle em redes corporativas ou interceptacao
+              de trafego.
+            </p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">pg_hba.conf &mdash; exigir TLS para conexoes externas</div>
+              <pre class="example"><span class="com"># Conexoes locais: sem TLS (loopback seguro)</span>
+local   all  all               peer
+host    all  all  127.0.0.1/32  md5
+
+<span class="com"># Conexoes externas: TLS obrigatorio</span>
+hostssl all  all  0.0.0.0/0     scram-sha-256</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Em Repouso &mdash; TDE (Transparent Data Encryption)</h3>
+            <p>
+              O arquivo fisico do banco em disco fica criptografado com uma chave mestre. Um HD roubado
+              e inutil sem a chave. Disponivel de forma nativa no SQL Server, Oracle e em cloud providers.
+            </p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql-server &mdash; habilitar TDE</div>
+              <pre class="example"><span class="com">-- Criar chave master e certificado</span>
+<span class="kw">CREATE MASTER KEY ENCRYPTION BY PASSWORD</span> = <span class="str">'S3nh4_D0_Cofre!'</span>;
+<span class="kw">CREATE CERTIFICATE</span> TDE_Cert <span class="kw">WITH SUBJECT</span> = <span class="str">'TDE Certificate'</span>;
+
+<span class="com">-- Criar chave de criptografia do banco vinculada ao certificado</span>
+<span class="kw">CREATE DATABASE ENCRYPTION KEY</span>
+  <span class="kw">WITH ALGORITHM</span> = AES_256
+  <span class="kw">ENCRYPTION BY SERVER CERTIFICATE</span> TDE_Cert;
+
+<span class="com">-- Ativar criptografia</span>
+<span class="kw">ALTER DATABASE</span> loja <span class="kw">SET ENCRYPTION ON</span>;</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Colunas Sensiveis &mdash; Criptografia a Nivel de Campo</h3>
+            <p>
+              Para dados ultra-sensiveis (CPF, cartao, senha), criptografe a nivel de coluna na aplicacao.
+              Mesmo um DBA com acesso total ao banco nao consegue ler o valor sem a chave da aplicacao.
+            </p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">postgresql &mdash; criptografia de coluna com pgcrypto</div>
+              <pre class="example"><span class="com">-- Extensao de criptografia do PostgreSQL</span>
+<span class="kw">CREATE EXTENSION</span> pgcrypto;
+
+<span class="com">-- Inserir dado criptografado</span>
+<span class="kw">INSERT INTO</span> clientes (nome, cpf_enc) <span class="kw">VALUES</span> (
+  <span class="str">'Maria Silva'</span>,
+  pgp_sym_encrypt(<span class="str">'123.456.789-00'</span>, <span class="str">'chave_secreta_app'</span>)
+);
+
+<span class="com">-- Descriptografar na leitura</span>
+<span class="kw">SELECT</span> nome, pgp_sym_decrypt(cpf_enc, <span class="str">'chave_secreta_app'</span>) <span class="kw">AS</span> cpf
+<span class="kw">FROM</span> clientes;</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 5. AUDITORIA -->
+      <section>
+        <h2 id="auditoria" class="section-title">5. Auditoria &mdash; Quem Fez o Que e Quando</h2>
+        <p>
+          Seguranca nao e apenas prevencao &mdash; e tambem deteccao e rastreabilidade. Auditoria registra
+          todas as acoes criticas para que breaches sejam detectados rapidamente e investigacoes sejam
+          possiveis. Regulamentacoes como LGPD e GDPR <strong>exigem</strong> logs de acesso a dados pessoais.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">postgresql.conf &mdash; ativar logging de seguranca</div>
+          <pre class="example"><span class="com"># Logar todas as conexoes e desconexoes</span>
+log_connections    = on
+log_disconnections = on
+
+<span class="com"># Logar todos os comandos DDL (CREATE/DROP/ALTER)</span>
+log_statement = <span class="str">'ddl'</span>
+
+<span class="com"># Logar queries que demoram mais de 1 segundo (possivel exfiltration scan)</span>
+log_min_duration_statement = <span class="num">1000</span>
+
+<span class="com"># Logar o usuario e host de cada query</span>
+log_line_prefix = <span class="str">'%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pgaudit &mdash; auditoria granular por objeto</div>
+          <pre class="example"><span class="com">-- pgAudit: auditoria detalhada para conformidade (PCI-DSS, LGPD)</span>
+<span class="com">-- postgresql.conf:</span>
+<span class="com">-- shared_preload_libraries = 'pgaudit'</span>
+<span class="com">-- pgaudit.log = 'write, ddl'</span>
+
+<span class="com">-- Auditar acoes especificas em tabela sensivelm</span>
+<span class="kw">SELECT</span> pgaudit.set_config(<span class="str">'write'</span>, <span class="kw">TRUE</span>, <span class="kw">FALSE</span>);
+
+<span class="com">-- O log vai registrar: usuario, timestamp, query, objeto acessado, resultado</span>
+<span class="com">-- Formato: AUDIT: SESSION,1,1,WRITE,INSERT,TABLE,public.clientes,INSERT INTO...</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 6. QUANDO APLICAR CADA CONTROLE -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">6. Quando Aplicar Cada Controle</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Prepared Statements
+            </h3>
+            <ul>
+              <li>Toda query que recebe input do usuario</li>
+              <li>APIs REST e GraphQL com parametros</li>
+              <li>Forms de busca, login e cadastro</li>
+              <li>Queries nativas em ORMs</li>
+              <li><strong>Sempre. Sem excecao.</strong></li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              TLS na Conexao
+            </h3>
+            <ul>
+              <li>Aplicacao em servidor separado do banco</li>
+              <li>Banco em cloud (AWS RDS, Azure, GCP)</li>
+              <li>Equipes acessando banco remotamente</li>
+              <li>Qualquer dado pessoal ou financeiro (LGPD/PCI)</li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Row-Level Security
+            </h3>
+            <ul>
+              <li>Aplicacoes multi-tenant (varios clientes no mesmo banco)</li>
+              <li>Sistemas onde vendedores/agentes so veem seus proprios dados</li>
+              <li>Portais de clientes com isolamento por usuario</li>
+              <li>Relatorios com restricao por departamento</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Criptografia de Coluna e Desnecessaria Quando
+            </h3>
+            <ul>
+              <li>Os dados nao sao pessoais nem sensiveis</li>
+              <li>O banco ja esta em rede totalmente isolada sem acesso externo</li>
+              <li>TDE (disco) ja cobre o requisito regulatorio</li>
+              <li>A performance e critica e o campo e indexado e buscado constantemente</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Usuario Root na Aplicacao
+            </h3>
+            <ul>
+              <li>Nunca em producao</li>
+              <li>Nunca em staging com dados reais</li>
+              <li>Nunca em containers sem segredo gerenciado</li>
+              <li>Nunca hardcoded em codigo-fonte ou .env no repositorio</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Auditoria Pode Ser Reduzida Quando
+            </h3>
+            <ul>
+              <li>Ambiente de desenvolvimento local sem dados reais</li>
+              <li>Bancos de teste com dados sinteticos anonimizados</li>
+              <li>Performance e critica e logs de query aumentam latencia</li>
+              <li>Mas: mantenha sempre log de DDL e de conexoes em todo ambiente</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 7. TOPICOS AVANCADOS -->
+      <section>
+        <h2 id="avancado" class="section-title">7. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>pgAudit &mdash; Auditoria para Conformidade</h3>
+            <p>
+              Extensao oficial do PostgreSQL para auditoria granular. Gera logs estruturados compatíveis
+              com PCI-DSS, HIPAA e LGPD. Registra objeto acessado, usuario, timestamp e resultado de cada
+              operacao &mdash; diferente do log padrao que e orientado a sessao.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>HashiCorp Vault &mdash; Gerenciamento de Segredos</h3>
+            <p>
+              Elimina credenciais de banco hardcoded em aplicacoes. O Vault gera credenciais temporarias
+              (dynamic secrets) com TTL de minutos. A aplicacao solicita credenciais ao Vault a cada
+              conexao &mdash; se o credencial vazar, ele ja expirou.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>DAM &mdash; Database Activity Monitoring</h3>
+            <p>
+              Ferramentas como IBM Guardium e Imperva monitoram em tempo real todo o trafego SQL,
+              detectam anomalias (exfiltracao em massa, acesso fora do horario) e geram alertas automaticos.
+              Essencial em ambientes regulados com dados de saude ou financeiros.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>LGPD e GDPR &mdash; Implicacoes para DBA</h3>
+            <p>
+              Ambas as leis exigem: pseudonimizacao de dados pessoais, direito ao esquecimento (DELETE
+              auditavel), logs de acesso retidos por no minimo 5 anos, e criptografia para dados sensiveis.
+              O DBA e co-responsavel pela conformidade.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Segredos nunca em codigo-fonte.</strong> Credenciais de banco em repositorios Git sao
+            a causa #1 de breaches em startups. Use variaveis de ambiente com gestao externa (Vault, AWS
+            Secrets Manager, Azure Key Vault) e nunca faca commit de arquivos <code class="code-inline">.env</code>
+            de producao. Ferramentas como <code class="code-inline">git-secrets</code> e
+            <code class="code-inline">truffleHog</code> escaneiam historico de commits em busca de segredos expostos.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 8. ECOSSISTEMA E FERRAMENTAS -->
+      <section>
+        <h2 id="ecossistema" class="section-title">8. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>pgAudit</h3>
+            <p>
+              Extensao para PostgreSQL que implementa auditoria de sessao e objeto conforme padroes
+              PCI-DSS e HIPAA. Integra com sistemas de SIEM via syslog. Amplamente usado em producao
+              em ambientes financeiros e de saude.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>HashiCorp Vault</h3>
+            <p>
+              Gerenciador de segredos open-source lider de mercado. Suporta dynamic secrets para
+              PostgreSQL, MySQL, MongoDB e outros. Rotacionamento automatico de senha, PKI integrada
+              e politicas de acesso baseadas em identidade (RBAC/ABAC).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>IBM Guardium / Imperva</h3>
+            <p>
+              Plataformas enterprise de Database Activity Monitoring (DAM). Monitoram trafego SQL em
+              nivel de rede (sem agente no banco). Detectam exfiltracao, escalonamento de privilegio e
+              acesso fora do baseline comportamental.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>OWASP &mdash; Recursos de Seguranca</h3>
+            <p>
+              A OWASP publica o <em>SQL Injection Prevention Cheat Sheet</em>, o
+              <em>Database Security Cheat Sheet</em> e o <em>OWASP Top 10</em>.
+              Sao referencias gratuitas e atualizadas sobre as ameacas mais criticas e como mitiga-las.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>fail2ban</h3>
+            <p>
+              Monitora logs do sistema e do banco de dados. Apos N tentativas de autenticacao falhas
+              em X segundos, bloqueia automaticamente o IP do atacante via firewall. Eficaz contra
+              ataques de forca bruta e credential stuffing.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>AWS Secrets Manager / Azure Key Vault</h3>
+            <p>
+              Servicos gerenciados de cloud para armazenar e rotacionar credenciais de banco automaticamente.
+              Integram-se com IAM roles para acesso sem senha hardcoded. Rotacionam a senha do banco
+              sem downtime via Lambda trigger.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>
+              SILBERSCHATZ, Abraham; KORTH, Henry F.; SUDARSHAN, S.
+              <strong>Sistema de Banco de Dados</strong>. 6. ed. Rio de Janeiro: Elsevier, 2012.
+              Cap. 9: Seguranca em Banco de Dados.
+            </li>
+            <li>
+              OWASP FOUNDATION. <strong>SQL Injection Prevention Cheat Sheet</strong>.
+              Disponivel em:
+              <a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank" rel="noopener">cheatsheetseries.owasp.org</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>Row Security Policies</strong>.
+              PostgreSQL 16 Documentation.
+              Disponivel em:
+              <a href="https://www.postgresql.org/docs/current/ddl-rowsecurity.html" target="_blank" rel="noopener">postgresql.org/docs/current/ddl-rowsecurity.html</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              MICROSOFT. <strong>Transparent Data Encryption (TDE)</strong>.
+              SQL Server Technical Documentation.
+              Disponivel em:
+              <a href="https://learn.microsoft.com/sql/relational-databases/security/encryption/transparent-data-encryption" target="_blank" rel="noopener">learn.microsoft.com</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>.
+              Sebastopol: O&rsquo;Reilly Media, 2017.
+              Cap. 12: The Future of Data Systems &mdash; seguranca e privacidade.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando os topicos avancados de banco de dados:</p>
+        <ul class="link-list">
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/backup_e_recuperacao.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Backup e Recuperacao &mdash; RPO, RTO e estrategias de restauracao
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/replicacao.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Replicacao &mdash; alta disponibilidade e failover automatico
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/otimizacao_de_consultas.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Otimizacao de Consultas &mdash; indices, EXPLAIN e tuning de performance
+            </a>
+          </li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Security is not a product, but a process." &mdash; Bruce Schneier, <em>Secrets and Lies</em>
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

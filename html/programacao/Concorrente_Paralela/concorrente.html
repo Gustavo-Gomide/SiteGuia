@@ -1,0 +1,561 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Programacao Concorrente: threads, processos, corrotinas, race condition, deadlock, mutex, Actor Model e CSP." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Programacao Concorrente | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Programacao Concorrente</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Programacao Concorrente</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Concorrencia &mdash; Multiplas Tarefas, Uma Vez</h1>
+          <p>Gerenciando complexidade quando varias coisas precisam acontecer ao mesmo tempo.</p>
+        </div>
+        <p class="intro-highlight">
+          Em 2009, Ryan Dahl mostrou que o Node.js conseguia lidar com 10.000 conexoes simultaneas
+          em uma unica thread &mdash; algo que servidores Java com uma thread por conexao custavam centenas
+          de MB para fazer. No mesmo ano, o Google lancou Go com goroutines, tornando concorrencia
+          acessivel a qualquer programador. O problema da concorrencia nunca foi velocidade:
+          foi <strong>domar o caos do estado compartilhado</strong>.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 1. O QUE E CONCORRENCIA -->
+      <section>
+        <h2 id="o-que-e" class="section-title">1. O Que E Concorrencia</h2>
+        <p>
+          Concorrencia e a capacidade de um sistema <strong>lidar com multiplas tarefas</strong> em
+          sobreposicao de tempo &mdash; nao necessariamente executando-as simultaneamente. A distincao
+          e fundamental: concorrencia e sobre <em>estrutura</em>, paralelismo e sobre <em>execucao</em>.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Rob Pike (criador do Go):</strong> "Concurrency is about <em>dealing</em> with lots
+            of things at once. Parallelism is about <em>doing</em> lots of things at once. Concurrency
+            is about structure, parallelism is about execution." Um sistema pode ser concorrente sem
+            ser paralelo &mdash; como um servidor Node.js em uma unica CPU que atende centenas de
+            conexoes ao mesmo tempo via event loop.
+          </p>
+        </div>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Modelo</th>
+                  <th>Sequencial</th>
+                  <th>Concorrente</th>
+                  <th>Paralelo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Definicao</strong></td>
+                  <td>Uma tarefa de cada vez, em ordem</td>
+                  <td>Multiplas tarefas em andamento, intercaladas</td>
+                  <td>Multiplas tarefas executando simultaneamente</td>
+                </tr>
+                <tr>
+                  <td><strong>Requer multi-core?</strong></td>
+                  <td>Nao</td>
+                  <td>Nao (pode ser single-core)</td>
+                  <td>Sim (multiplos CPUs/cores)</td>
+                </tr>
+                <tr>
+                  <td><strong>Objetivo</strong></td>
+                  <td>Simplicidade</td>
+                  <td>Responsividade, throughput de I/O</td>
+                  <td>Velocidade (menor tempo de execucao)</td>
+                </tr>
+                <tr>
+                  <td><strong>Quando usar</strong></td>
+                  <td>Scripts simples, ETL batch</td>
+                  <td>Servidores web, GUIs, I/O-bound tasks</td>
+                  <td>Processamento de imagem, ML, simulacoes numericas</td>
+                </tr>
+                <tr>
+                  <td><strong>Exemplos</strong></td>
+                  <td>Script bash, transformacao de arquivo</td>
+                  <td>Node.js, Nginx, Go HTTP servers</td>
+                  <td>OpenMP, CUDA, Apache Spark</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 2. OS TRES MODELOS FUNDAMENTAIS -->
+      <section>
+        <h2 id="modelos-execucao" class="section-title">2. Os Tres Modelos de Execucao</h2>
+        <p>
+          Todo sistema concorrente e construido sobre um de tres primitivos fundamentais. Entender
+          o custo e o isolamento de cada um e essencial para escolher o modelo certo.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">diagrama &mdash; hierarquia de custo e isolamento</div>
+          <pre class="example"><span class="com">-- Processo: isolamento maximo, custo maximo</span>
+Process A  [memoria propria ~50 MB]  PID 1001
+Process B  [memoria propria ~50 MB]  PID 1002
+<span class="com">-- Comunicacao via IPC (pipes, sockets, shared memory)</span>
+<span class="com">-- Uma falha nao corrompe outros processos</span>
+
+<span class="com">-- Thread: memoria compartilhada, custo medio</span>
+Process A  [heap compartilhado: 50 MB]
+  ├─ Thread 1  [stack: ~2 MB]
+  ├─ Thread 2  [stack: ~2 MB]
+  └─ Thread 3  [stack: ~2 MB]
+<span class="com">-- Comunicacao via variaveis compartilhadas (cuidado: race conditions!)</span>
+
+<span class="com">-- Corrotina/Goroutine: custo minimo, eschedula em nivel de usuario</span>
+OS Thread 1  [heap compartilhado]
+  goroutine 1  (~2 KB stack)
+  goroutine 2  (~2 KB stack)
+  ...
+  goroutine 10000  (~2 KB stack)
+<span class="com">-- Comunicacao via channels (Go) ou await (Python/JS)</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Processo</h3>
+            <p>
+              Unidade de isolamento maxima do SO. Cada processo tem seu proprio espaco de memoria,
+              descritores de arquivo e estado &mdash; uma falha nao corrompe outros processos.
+              Comunicacao via IPC (pipes, sockets, shared memory). Custo de criacao alto (~ms).
+            </p>
+            <p><strong>Exemplos:</strong> Nginx (multi-process), Chrome (processo por aba), Python multiprocessing.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Thread</h3>
+            <p>
+              Unidade de execucao dentro de um processo. Threads compartilham heap &mdash; isso e
+              tanto vantagem (sem custo de copia de dados) quanto perigo (race conditions). O kernel
+              as escalona nos cores disponíveis. Custo de criacao medio (~microsegundos, ~2 MB de stack).
+            </p>
+            <p><strong>Exemplos:</strong> Java threads, pthreads (C/C++), Python threading.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Corrotina / Goroutine / Task</h3>
+            <p>
+              Concorrencia cooperativa em nivel de usuario &mdash; o scheduler e parte da linguagem,
+              nao do SO. Custo minimo (~2 KB de stack vs ~2 MB de OS thread). Uma unica OS thread
+              roda milhares de corrotinas via event loop ou M:N scheduling.
+            </p>
+            <p><strong>Exemplos:</strong> Go goroutines, Python asyncio Tasks, JavaScript async/await, Erlang processes.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 3. RACE CONDITION E DEADLOCK -->
+      <section>
+        <h2 id="problemas-classicos" class="section-title">3. Race Condition e Deadlock</h2>
+        <p>
+          Compartilhar estado entre threads e a fonte de dois dos bugs mais dificeis de reproduzir
+          e depurar na computacao: race conditions e deadlocks.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Race Condition &mdash; O Resultado Depende do Timing</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">python &mdash; race condition classica em contador</div>
+              <pre class="example"><span class="kw">import</span> threading
+
+counter = <span class="num">0</span>
+
+<span class="kw">def</span> <span class="fn">incrementar</span>():
+    <span class="kw">global</span> counter
+    <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="num">100_000</span>):
+        counter += <span class="num">1</span>  <span class="com"># NAO e atomico!</span>
+        <span class="com"># CPU faz: LOAD counter, ADD 1, STORE counter</span>
+        <span class="com"># Outra thread pode STORE entre LOAD e ADD</span>
+
+threads = [threading.Thread(target=incrementar) <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="num">5</span>)]
+<span class="kw">for</span> t <span class="kw">in</span> threads: t.start()
+<span class="kw">for</span> t <span class="kw">in</span> threads: t.join()
+
+<span class="kw">print</span>(counter)  <span class="com"># Esperado: 500000. Real: ~283471 (varia!)</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Deadlock &mdash; Espera Circular</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">python &mdash; deadlock: thread 1 e 2 esperam uma pela outra</div>
+              <pre class="example">lock_a = threading.Lock()
+lock_b = threading.Lock()
+
+<span class="kw">def</span> <span class="fn">thread_1</span>():
+    <span class="kw">with</span> lock_a:          <span class="com"># Thread 1 adquire lock_a</span>
+        time.sleep(<span class="num">0.1</span>)
+        <span class="kw">with</span> lock_b:      <span class="com"># Thread 1 espera por lock_b</span>
+            pass          <span class="com"># mas Thread 2 ja segura lock_b!</span>
+
+<span class="kw">def</span> <span class="fn">thread_2</span>():
+    <span class="kw">with</span> lock_b:          <span class="com"># Thread 2 adquire lock_b</span>
+        time.sleep(<span class="num">0.1</span>)
+        <span class="kw">with</span> lock_a:      <span class="com"># Thread 2 espera por lock_a</span>
+            pass          <span class="com"># DEADLOCK: espera circular infinita</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Race conditions</strong> sao corrigidas com sincronizacao (Mutex, operacoes atomicas).
+            <strong>Deadlocks</strong> sao evitados com ordenacao consistente de locks (sempre adquira
+            na mesma ordem) ou com modelos sem lock compartilhado (Actor Model, channels do Go).
+            Ambos desaparecem com <em>imutabilidade</em> &mdash; se ninguem pode alterar o estado,
+            nao ha o que proteger.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 4. MECANISMOS DE SINCRONIZACAO -->
+      <section>
+        <h2 id="sincronizacao" class="section-title">4. Mecanismos de Sincronizacao</h2>
+        <p>
+          Quando threads precisam acessar estado compartilhado, sincronizacao garante exclusividade.
+          Cada primitivo tem seu caso de uso e suas armadilhas.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">python &mdash; Mutex (Lock) corrigindo a race condition</div>
+          <pre class="example">lock = threading.Lock()
+counter = <span class="num">0</span>
+
+<span class="kw">def</span> <span class="fn">incrementar_seguro</span>():
+    <span class="kw">global</span> counter
+    <span class="kw">for</span> _ <span class="kw">in</span> range(<span class="num">100_000</span>):
+        <span class="kw">with</span> lock:      <span class="com"># adquire lock, entra na secao critica</span>
+            counter += <span class="num">1</span>
+        <span class="com"># lock liberado automaticamente ao sair do bloco with</span>
+
+<span class="com"># Agora counter sera sempre 500000 &mdash; race condition eliminada</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">go &mdash; channels como alternativa ao mutex (modelo CSP)</div>
+          <pre class="example"><span class="com">// comunicar via channel, nao via variavel compartilhada</span>
+ch   := make(<span class="kw">chan int</span>, <span class="num">100</span>)
+done := make(<span class="kw">chan bool</span>)
+counter := <span class="num">0</span>
+
+<span class="com">// Goroutine "dona" do estado &mdash; a unica que toca counter</span>
+<span class="kw">go func</span>() {
+    <span class="kw">for</span> v := <span class="kw">range</span> ch { counter += v }
+    done <- <span class="kw">true</span>
+}()
+
+<span class="com">// Outros workers enviam incrementos via channel, nao modificam counter</span>
+<span class="kw">for</span> i := <span class="num">0</span>; i < <span class="num">100_000</span>; i++ { ch <- <span class="num">1</span> }
+close(ch)
+<-done
+
+<span class="com">// "Do not communicate by sharing memory;</span>
+<span class="com">// share memory by communicating." &mdash; Go Proverbs</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">java &mdash; AtomicInteger: lock-free com instrucao CAS da CPU</div>
+          <pre class="example"><span class="kw">import</span> java.util.concurrent.atomic.AtomicInteger;
+
+AtomicInteger counter = <span class="kw">new</span> AtomicInteger(<span class="num">0</span>);
+
+<span class="com">// compare-and-swap (CAS): atomico em nivel de hardware</span>
+<span class="com">// Instrucao x86: LOCK XADD &mdash; nao usa lock do SO</span>
+<span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i < <span class="num">100_000</span>; i++) {
+    counter.incrementAndGet();  <span class="com">// atomico, sem mutex</span>
+}
+
+<span class="com">// Sem mutex = sem risco de deadlock</span>
+<span class="com">// Sem context switch = menor overhead</span>
+<span class="com">// Ver tambem: AtomicLong, AtomicReference, LongAdder</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 5. QUANDO USAR CONCORRENCIA -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Usar Concorrencia</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Ideal Para
+            </h3>
+            <ul>
+              <li>Servidores web e APIs: cada requisicao em goroutine/thread/task independente</li>
+              <li>I/O-bound tasks: leitura de arquivos, chamadas de rede, queries ao banco</li>
+              <li>Interfaces graficas: thread separada para nao travar a UI durante processamento</li>
+              <li>Consumidores de filas: multiplas workers processando Kafka ou RabbitMQ em paralelo</li>
+              <li>Web scrapers: paginas baixadas simultaneamente sem esperar uma de cada vez</li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Modelos Que Simplificam
+            </h3>
+            <ul>
+              <li>Actor Model (Erlang/Elixir/Akka): sem estado compartilhado &mdash; mensagens sao copiadas</li>
+              <li>Event Loop (Node.js, asyncio): single-thread, sem race conditions por definicao</li>
+              <li>Channels (Go): comunicacao segura entre goroutines sem mutex explicito</li>
+              <li>Imutabilidade (Haskell, Clojure, Rust &amp;T): sem estado mutavel, Zero sincronizacao necessaria</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Evitar Quando
+            </h3>
+            <ul>
+              <li>A tarefa e puramente CPU-bound e sequencial &mdash; concorrencia adiciona overhead sem ganho</li>
+              <li>O codigo precisa de estado compartilhado mutavel complexo entre muitas threads</li>
+              <li>A equipe nao tem experiencia com sincronizacao e debugging de race conditions</li>
+              <li>O algoritmo nao e naturalmente decomponivel em tarefas independentes</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Armadilhas Comuns
+            </h3>
+            <ul>
+              <li>Python GIL: threads nao paralelizam CPU-bound (use multiprocessing para isso)</li>
+              <li>Thread-per-request em alta escala: 10 mil conexoes = 10 GB so em stacks de threads</li>
+              <li>Locks aninhados sem ordem definida: receita garantida de deadlock eventual</li>
+              <li>Erros em goroutines/threads filhas sem tratamento: falhas silenciosas sao as piores</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 6. TOPICOS AVANCADOS -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Actor Model &mdash; Erlang, Elixir e Akka</h3>
+            <p>
+              Cada actor e uma unidade independente com seu proprio estado, mailbox e comportamento.
+              Atores comunicam-se exclusivamente por mensagens assíncronas &mdash;
+              nunca compartilham memoria. Elimina race conditions por design. Erlang usa o modelo
+              desde 1986 para sistemas de telecom com 99.9999999% de uptime (nove noves). O WhatsApp
+              chegou a 2 milhoes de conexoes simultaneas por servidor com Erlang.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>STM &mdash; Software Transactional Memory</h3>
+            <p>
+              Aplica o conceito de transacoes de banco de dados para memoria compartilhada. Operacoes
+              sao enquadradas em transacoes que comutam atomicamente ou fazem rollback em conflito &mdash;
+              sem locks explicitos. Disponivel nativamente em Haskell (STM) e Clojure (refs + dosync).
+              Elimina deadlocks e simplifica drasticamente o codigo de sincronizacao.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Lock-Free e Wait-Free Algorithms</h3>
+            <p>
+              Usam instrucoes atomicas da CPU (CAS &mdash; Compare-And-Swap) em vez de locks de SO.
+              <em>Lock-free</em>: pelo menos uma thread progride a cada ciclo.
+              <em>Wait-free</em>: toda thread progride em tempo finito. Essenciais em
+              high-frequency trading, sistemas de tempo real e estruturas como
+              <code class="code-inline">ConcurrentHashMap</code> (Java) e canais do Go.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Reactive Programming &mdash; Streams Assincronos</h3>
+            <p>
+              Modela computacao como fluxos de eventos assincronos. Em vez de callbacks ou locks,
+              operadores como <code class="code-inline">map</code>, <code class="code-inline">filter</code>
+              e <code class="code-inline">flatMap</code> compoem pipelines. RxJava, Project Reactor
+              (Spring WebFlux), RxJS e Kotlin Flow sao as implementacoes principais.
+              Base dos sistemas de streaming moderno (backpressure, error propagation).
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>A lei dos Heisenbugs:</strong> bugs de concorrencia desaparecem quando voce
+            adiciona print statements para depura-los &mdash; porque o print altera o timing exato.
+            Use ferramentas especializadas: <code class="code-inline">ThreadSanitizer</code>
+            (Go, C++, Rust), <code class="code-inline">Helgrind</code> (Valgrind para C/C++),
+            <code class="code-inline">asyncio debug mode</code> (Python).
+            Em producao, metricas de contencao de lock e histogramas de latencia revelam gargalos
+            de sincronizacao antes que virem incidentes.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 7. ECOSSISTEMA E FERRAMENTAS -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Java &mdash; ExecutorService e Virtual Threads</h3>
+            <p>
+              <code class="code-inline">ExecutorService</code> gerencia pools de threads com
+              <code class="code-inline">Executors.newFixedThreadPool()</code>.
+              Java 21 introduziu <em>Virtual Threads</em> (Project Loom): threads ultra-leves M:N,
+              permitindo milhoes de threads concorrentes sem overhead de OS threads.
+              <code class="code-inline">CompletableFuture</code> e <code class="code-inline">ForkJoinPool</code>
+              completam o ecossistema.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Python &mdash; asyncio e concurrent.futures</h3>
+            <p>
+              <code class="code-inline">asyncio</code> implementa event loop single-thread para
+              I/O-bound tasks com <code class="code-inline">async/await</code>. Para CPU-bound,
+              use <code class="code-inline">ProcessPoolExecutor</code> (contorna o GIL).
+              <code class="code-inline">concurrent.futures</code> oferece interface
+              unificada para threads e processos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Go &mdash; Goroutines e Channels</h3>
+            <p>
+              O modelo concorrente mais elegante da atualidade. Goroutines custam ~2 KB de stack
+              (vs ~2 MB de OS thread). O runtime Go usa M:N scheduling distribuindo goroutines
+              entre os cores. Channels implementam CSP (Communicating Sequential Processes).
+              <code class="code-inline">select</code>, <code class="code-inline">sync.WaitGroup</code>
+              e <code class="code-inline">context</code> completam o modelo.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Rust &mdash; Fearless Concurrency</h3>
+            <p>
+              O sistema de tipos do Rust garante que race conditions sejam <em>erros de compilacao</em>,
+              nao bugs de runtime. Os traits <code class="code-inline">Send</code> e
+              <code class="code-inline">Sync</code> marcam quais tipos podem traversar threads.
+              O borrow checker impede aliasing mutavel. Tokio e o runtime async principal
+              para servidores de alta performance.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Erlang / Elixir &mdash; OTP e Supervisores</h3>
+            <p>
+              A BEAM roda milhoes de processos leves com isolamento total. O framework OTP
+              fornece <em>supervisores</em> que reiniciam processos falhos automaticamente &mdash;
+              a base da filosofia "let it crash". Phoenix (Elixir) lida com 2 milhoes de conexoes
+              WebSocket em hardware modesto. WhatsApp usou Erlang para 900 milhoes de usuarios
+              com apenas 50 engenheiros.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Node.js &mdash; Event Loop Single-Threaded</h3>
+            <p>
+              Modelo I/O nao-bloqueante via event loop: uma unica thread processa eventos de uma
+              fila enquanto operacoes I/O sao delegadas ao libuv (C). Sem race conditions em estado
+              de aplicacao por definicao. <em>Worker threads</em> (desde Node 12) permitem CPU-bound
+              em threads separadas. Streams e o modelo nativo para I/O de grande volume.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>
+              GOETZ, Brian et al. <strong>Java Concurrency in Practice</strong>.
+              Upper Saddle River: Addison-Wesley, 2006.
+              A referencia definitiva para concorrencia em Java &mdash; principios aplicaveis a qualquer linguagem.
+            </li>
+            <li>
+              PIKE, Rob; COX, Russ. <strong>Go Concurrency Patterns</strong>.
+              Google I/O, 2012.
+              Disponivel em:
+              <a href="https://go.dev/talks/2012/concurrency.slide" target="_blank" rel="noopener">go.dev/talks/2012/concurrency</a>.
+              Acesso em: 2026.
+            </li>
+            <li>
+              ARMSTRONG, Joe. <strong>Programming Erlang: Software for a Concurrent World</strong>.
+              2. ed. Dallas: Pragmatic Bookshelf, 2013.
+              O criador do Erlang explica o Actor Model e a filosofia "let it crash".
+            </li>
+            <li>
+              HERLIHY, Maurice; SHAVIT, Nir. <strong>The Art of Multiprocessor Programming</strong>.
+              Burlington: Morgan Kaufmann, 2012.
+              Fundamentos de algoritmos concorrentes, lock-free e wait-free.
+            </li>
+            <li>
+              KLABNIK, Steve; NICHOLS, Carol. <strong>The Rust Programming Language</strong>.
+              Cap. 16: Fearless Concurrency.
+              Disponivel em:
+              <a href="https://doc.rust-lang.org/book/ch16-00-concurrency.html" target="_blank" rel="noopener">doc.rust-lang.org/book</a>.
+              Acesso em: 2026.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando paradigmas de programacao:</p>
+        <ul class="link-list">
+          <li>
+            <a href="/html/programacao/Concorrente_Paralela/paralela.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Programacao Paralela &mdash; Lei de Amdahl, OpenMP e GPU computing
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/replicacao.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Replicacao em BD &mdash; concorrencia no nivel de dados distribuidos
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Sharding &mdash; escala horizontal e distribuicao de dados
+            </a>
+          </li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Do not communicate by sharing memory; share memory by communicating." &mdash; Rob Pike
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

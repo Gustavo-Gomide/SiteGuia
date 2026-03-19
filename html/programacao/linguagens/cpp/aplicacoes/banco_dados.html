@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ e Banco de Dados: SQLite com sqlite3, PostgreSQL com libpqxx, ORM com ODB, connection pool, transacoes e prepared statements." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ e Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ e Banco de Dados</h1>
+          <p>Acesso a banco de dados em C++ com a biblioteca nativa do SQLite (C API + RAII wrapper), PostgreSQL via libpqxx, ORM com ODB, e integracoes nativas do framework Drogon para conexao com pool automatico e transacoes assincronas.</p>
+        </div>
+        <p class="intro-highlight">
+          Em C++, o padrao e usar prepared statements para prevenir SQL injection — nunca concatenar strings de usuario em queries SQL. A biblioteca libpqxx e a soluicao moderna para PostgreSQL com suporte a C++17/20.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite">SQLite — RAII Wrapper</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + sqlite3 &mdash; wrapper RAII, prepared statements e transacoes</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;sqlite3.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;memory&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdexcept&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// RAII wrapper para sqlite3*</span>
+<span class="kw">class</span> <span class="tp">Database</span> {
+  <span class="kw">struct</span> <span class="tp">Closer</span> {
+    <span class="kw">void</span> <span class="kw">operator</span>()(<span class="tp">sqlite3</span>* p) <span class="kw">const noexcept</span> { <span class="fn">sqlite3_close</span>(p); }
+  };
+  std::<span class="tp">unique_ptr</span>&lt;<span class="tp">sqlite3</span>, <span class="tp">Closer</span>&gt; db_;
+
+<span class="kw">public</span>:
+  <span class="kw">explicit</span> <span class="tp">Database</span>(<span class="kw">const</span> std::<span class="tp">string</span>&amp; path) {
+    <span class="tp">sqlite3</span>* raw;
+    <span class="kw">if</span> (<span class="fn">sqlite3_open</span>(path.<span class="fn">c_str</span>(), &amp;raw) != <span class="tp">SQLITE_OK</span>) {
+      <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="fn">sqlite3_errmsg</span>(raw));
+    }
+    db_.<span class="fn">reset</span>(raw);
+    <span class="com">// WAL mode — mais performance para leituras concorrentes</span>
+    <span class="fn">executar</span>(<span class="str">"PRAGMA journal_mode = WAL"</span>);
+    <span class="fn">executar</span>(<span class="str">"PRAGMA foreign_keys = ON"</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">executar</span>(<span class="kw">const</span> std::<span class="tp">string</span>&amp; sql) {
+    <span class="kw">char</span>* errMsg = <span class="kw">nullptr</span>;
+    <span class="kw">if</span> (<span class="fn">sqlite3_exec</span>(db_.<span class="fn">get</span>(), sql.<span class="fn">c_str</span>(), <span class="kw">nullptr</span>, <span class="kw">nullptr</span>, &amp;errMsg) != <span class="tp">SQLITE_OK</span>) {
+      std::<span class="tp">string</span> err{ errMsg };
+      <span class="fn">sqlite3_free</span>(errMsg);
+      <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(err);
+    }
+  }
+
+  <span class="tp">sqlite3</span>* <span class="fn">get</span>() <span class="kw">const noexcept</span> { <span class="kw">return</span> db_.<span class="fn">get</span>(); }
+};
+
+<span class="com">// RAII para sqlite3_stmt*</span>
+<span class="kw">class</span> <span class="tp">Statement</span> {
+  <span class="kw">struct</span> <span class="tp">Finalizer</span> {
+    <span class="kw">void</span> <span class="kw">operator</span>()(<span class="tp">sqlite3_stmt</span>* p) <span class="kw">const noexcept</span> { <span class="fn">sqlite3_finalize</span>(p); }
+  };
+  std::<span class="tp">unique_ptr</span>&lt;<span class="tp">sqlite3_stmt</span>, <span class="tp">Finalizer</span>&gt; stmt_;
+
+<span class="kw">public</span>:
+  <span class="tp">Statement</span>(<span class="tp">Database</span>&amp; db, std::<span class="tp">string_view</span> sql) {
+    <span class="tp">sqlite3_stmt</span>* raw;
+    <span class="kw">if</span> (<span class="fn">sqlite3_prepare_v2</span>(db.<span class="fn">get</span>(), sql.<span class="fn">data</span>(),
+        <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(sql.<span class="fn">size</span>()), &amp;raw, <span class="kw">nullptr</span>) != <span class="tp">SQLITE_OK</span>) {
+      <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(<span class="fn">sqlite3_errmsg</span>(db.<span class="fn">get</span>()));
+    }
+    stmt_.<span class="fn">reset</span>(raw);
+  }
+
+  <span class="kw">void</span> <span class="fn">bind</span>(<span class="kw">int</span> idx, <span class="tp">std::string_view</span> v) {
+    <span class="fn">sqlite3_bind_text</span>(stmt_.<span class="fn">get</span>(), idx, v.<span class="fn">data</span>(), <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(v.<span class="fn">size</span>()),
+      <span class="tp">SQLITE_TRANSIENT</span>);  <span class="com">// SQLITE_TRANSIENT == SQLite copia o dado</span>
+  }
+  <span class="kw">void</span> <span class="fn">bind</span>(<span class="kw">int</span> idx, <span class="kw">double</span> v)  { <span class="fn">sqlite3_bind_double</span>(stmt_.<span class="fn">get</span>(), idx, v); }
+  <span class="kw">void</span> <span class="fn">bind</span>(<span class="kw">int</span> idx, <span class="kw">int</span> v)     { <span class="fn">sqlite3_bind_int</span>(stmt_.<span class="fn">get</span>(), idx, v); }
+
+  <span class="kw">bool</span> <span class="fn">step</span>() { <span class="kw">return</span> <span class="fn">sqlite3_step</span>(stmt_.<span class="fn">get</span>()) == <span class="tp">SQLITE_ROW</span>; }
+  <span class="kw">void</span> <span class="fn">reset</span>() { <span class="fn">sqlite3_reset</span>(stmt_.<span class="fn">get</span>()); }
+
+  std::<span class="tp">string</span> <span class="fn">texto</span>(<span class="kw">int</span> col) {
+    <span class="kw">return</span> <span class="kw">reinterpret_cast</span>&lt;<span class="kw">const char</span>*&gt;(<span class="fn">sqlite3_column_text</span>(stmt_.<span class="fn">get</span>(), col));
+  }
+  <span class="kw">double</span> <span class="fn">real</span>(<span class="kw">int</span> col)  { <span class="kw">return</span> <span class="fn">sqlite3_column_double</span>(stmt_.<span class="fn">get</span>(), col); }
+  <span class="kw">int</span>    <span class="fn">inteiro</span>(<span class="kw">int</span> col) { <span class="kw">return</span> <span class="fn">sqlite3_column_int</span>(stmt_.<span class="fn">get</span>(), col); }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="tp">Database</span> db(  <span class="str">"loja.db"</span>);
+  db.<span class="fn">executar</span>(<span class="str">R"(
+    CREATE TABLE IF NOT EXISTS produtos (
+      id     INTEGER PRIMARY KEY AUTOINCREMENT,
+      nome   TEXT    NOT NULL,
+      preco  REAL    NOT NULL CHECK(preco > 0)
+    )
+  )"</span>);
+
+  <span class="com">// INSERT com prepared statement — parametros via ?</span>
+  <span class="tp">Statement</span> ins{ db, <span class="str">"INSERT INTO produtos (nome, preco) VALUES (?, ?)"</span> };
+  ins.<span class="fn">bind</span>(<span class="num">1</span>, <span class="str">"C++ Book"</span>);
+  ins.<span class="fn">bind</span>(<span class="num">2</span>, <span class="num">89.90</span>);
+  ins.<span class="fn">step</span>();
+
+  <span class="com">// SELECT com iteracao</span>
+  <span class="tp">Statement</span> sel{ db, <span class="str">"SELECT id, nome, preco FROM produtos"</span> };
+  <span class="kw">while</span> (sel.<span class="fn">step</span>()) {
+    std::<span class="fn">println</span>(<span class="str">"[{}] {} — R${:.2f}"</span>,
+      sel.<span class="fn">inteiro</span>(<span class="num">0</span>), sel.<span class="fn">texto</span>(<span class="num">1</span>), sel.<span class="fn">real</span>(<span class="num">2</span>));
+  }
+
+  <span class="com">// Transacao explicita</span>
+  db.<span class="fn">executar</span>(<span class="str">"BEGIN"</span>);
+  <span class="kw">try</span> {
+    <span class="tp">Statement</span> upd{ db, <span class="str">"UPDATE produtos SET preco = preco * 1.1 WHERE preco < 100"</span> };
+    upd.<span class="fn">step</span>();
+    db.<span class="fn">executar</span>(<span class="str">"COMMIT"</span>);
+  } <span class="kw">catch</span> (...) {
+    db.<span class="fn">executar</span>(<span class="str">"ROLLBACK"</span>);
+    <span class="kw">throw</span>;
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="libpqxx">PostgreSQL com libpqxx</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + libpqxx &mdash; conexao, transacao, prepared statements e pool</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;pqxx/pqxx&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+
+<span class="kw">struct</span> <span class="tp">Produto</span> {
+  <span class="kw">int</span>         id;
+  std::<span class="tp">string</span> nome;
+  <span class="kw">double</span>      preco;
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Connection string — nunca coloque credenciais em codigo</span>
+  pqxx::<span class="tp">connection</span> conn{
+    <span class="str">"host=localhost port=5432 dbname=loja user=app password=senha sslmode=require"</span> };
+
+  <span class="com">// Preparar statement uma vez, reutilizar N vezes</span>
+  conn.<span class="fn">prepare</span>(<span class="str">"inserir_produto"</span>,
+    <span class="str">"INSERT INTO produtos (nome, preco) VALUES ($1, $2) RETURNING id"</span>);
+  conn.<span class="fn">prepare</span>(<span class="str">"listar_porpreco"</span>,
+    <span class="str">"SELECT id, nome, preco FROM produtos WHERE preco < $1 ORDER BY preco"</span>);
+
+  <span class="com">// Transacao de escrita (work)</span>
+  {
+    pqxx::<span class="tp">work</span> txn{ conn };
+    <span class="kw">auto</span> r = txn.<span class="fn">exec_prepared</span>(<span class="str">"inserir_produto"</span>, <span class="str">"Effective C++"</span>, <span class="num">120.0</span>);
+    <span class="kw">int</span> novoId = r[<span class="num">0</span>][<span class="num">0</span>].<span class="fn">as</span>&lt;<span class="kw">int</span>&gt;();
+    std::<span class="fn">println</span>(<span class="str">"Produto inserido com id={}"</span>, novoId);
+    txn.<span class="fn">commit</span>();              <span class="com">// sem commit = rollback automatico no destrutor</span>
+  }
+
+  <span class="com">// Transacao de leitura (nontransaction — sem overhead de transacao)</span>
+  {
+    pqxx::<span class="tp">nontransaction</span> ntxn{ conn };
+    <span class="kw">auto</span> rows = ntxn.<span class="fn">exec_prepared</span>(<span class="str">"listar_porpreco"</span>, <span class="num">200.0</span>);
+    std::<span class="tp">vector</span>&lt;<span class="tp">Produto</span>&gt; produtos;
+    produtos.<span class="fn">reserve</span>(rows.<span class="fn">size</span>());
+    <span class="kw">for</span> (<span class="kw">const auto</span>&amp; row : rows) {
+      produtos.<span class="fn">push_back</span>({
+        row[<span class="str">"id"</span>].<span class="fn">as</span>&lt;<span class="kw">int</span>&gt;(),
+        row[<span class="str">"nome"</span>].<span class="fn">as</span>&lt;std::<span class="tp">string</span>&gt;(),
+        row[<span class="str">"preco"</span>].<span class="fn">as</span>&lt;<span class="kw">double</span>&gt;()
+      });
+    }
+    <span class="kw">for</span> (<span class="kw">const auto</span>&amp; [id, nome, preco] : produtos) {
+      std::<span class="fn">println</span>(<span class="str">"[{}] {} = R${:.2f}"</span>, id, nome, preco);
+    }
+  }
+
+  <span class="com">// Transacao com savepoint (nested)</span>
+  {
+    pqxx::<span class="tp">work</span> txn{ conn };
+    txn.<span class="fn">exec</span>(<span class="str">"UPDATE produtos SET preco = preco * 0.9"</span>);
+    pqxx::<span class="tp">subtransaction</span> sub{ txn, <span class="str">"ajuste"</span> };
+    <span class="kw">try</span> {
+      sub.<span class="fn">exec</span>(<span class="str">"UPDATE produtos SET estoque = -1"</span>);  <span class="com">// viola CHECK</span>
+      sub.<span class="fn">commit</span>();
+    } <span class="kw">catch</span> (...) {
+      sub.<span class="fn">abort</span>();   <span class="com">// rollback so do savepoint, txn continua</span>
+    }
+    txn.<span class="fn">commit</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis com hiredis</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + hiredis &mdash; SET/GET, pipelines e pub/sub</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;hiredis/hiredis.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;memory&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Conexao com RAII</span>
+  std::<span class="tp">unique_ptr</span>&lt;<span class="tp">redisContext</span>,
+    <span class="kw">decltype</span>(&amp;<span class="fn">redisFree</span>)&gt; ctx{
+      <span class="fn">redisConnect</span>(<span class="str">"127.0.0.1"</span>, <span class="num">6379</span>),
+      &amp;<span class="fn">redisFree</span> };
+
+  <span class="kw">if</span> (ctx == <span class="kw">nullptr</span> || ctx-&gt;err) {
+    <span class="kw">throw</span> std::<span class="tp">runtime_error</span>(ctx ? ctx-&gt;errstr : <span class="str">"falha ao alocar"</span>);
+  }
+
+  <span class="com">// SET com TTL</span>
+  std::<span class="tp">unique_ptr</span>&lt;<span class="tp">redisReply</span>,
+    <span class="kw">decltype</span>(&amp;<span class="fn">freeReplyObject</span>)&gt; reply{
+      <span class="kw">static_cast</span>&lt;<span class="tp">redisReply</span>*&gt;(<span class="fn">redisCommand</span>(
+        ctx.<span class="fn">get</span>(), <span class="str">"SET sessao:%s %s EX %d"</span>, <span class="str">"abc123"</span>, <span class="str">"user42"</span>, <span class="num">3600</span>)),
+      &amp;<span class="fn">freeReplyObject</span> };
+
+  <span class="com">// GET</span>
+  reply.<span class="fn">reset</span>(<span class="kw">static_cast</span>&lt;<span class="tp">redisReply</span>*&gt;(
+    <span class="fn">redisCommand</span>(ctx.<span class="fn">get</span>(), <span class="str">"GET sessao:abc123"</span>)));
+  <span class="kw">if</span> (reply &amp;&amp; reply-&gt;type == <span class="tp">REDIS_REPLY_STRING</span>) {
+    std::<span class="fn">println</span>(<span class="str">"sessao: {}"</span>, reply-&gt;str);
+  }
+
+  <span class="com">// Pipeline — envia multiplos comandos sem esperar resposta</span>
+  <span class="fn">redisAppendCommand</span>(ctx.<span class="fn">get</span>(), <span class="str">"INCR visitas"</span>);
+  <span class="fn">redisAppendCommand</span>(ctx.<span class="fn">get</span>(), <span class="str">"EXPIRE visitas 86400"</span>);
+  <span class="fn">redisAppendCommand</span>(ctx.<span class="fn">get</span>(), <span class="str">"GET visitas"</span>);
+
+  <span class="tp">redisReply</span>* r;
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; ++i) {
+    <span class="fn">redisGetReply</span>(ctx.<span class="fn">get</span>(), <span class="kw">reinterpret_cast</span>&lt;<span class="kw">void</span>**&gt;(&amp;r));
+    <span class="fn">freeReplyObject</span>(r);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LIBPQXX. <strong>The Official C++ Client API for PostgreSQL</strong>. Disponível em: &lt;https://pqxx.org&gt;. Acesso em: 2025.</li>
+            <li>SQLITE. <strong>An Introduction To The SQLite C/C++ Interface</strong>. Disponível em: &lt;https://sqlite.org/cintro.html&gt;. Acesso em: 2025.</li>
+            <li>REDIS. <strong>hiredis: Minimalistic C client for Redis</strong>. Disponível em: &lt;https://github.com/redis/hiredis&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Web</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Nunca concatene entrada do usuario diretamente em queries SQL. Use sempre PreparedStatements com parametros ($1, $2 no PostgreSQL ou ? no SQLite) — a biblioteca cuida do escape e previne SQL injection.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

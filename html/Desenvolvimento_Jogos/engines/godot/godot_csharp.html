@@ -1,0 +1,120 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Uso de C# no Godot para jogos com arquitetura mais robusta e integracao com .NET." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>C# no Godot | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>C# no Godot</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">C# no Godot 4</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>C# no Godot: .NET 6, Atributos e Interop com GDScript</h1>
+        <p>Quando usar C# no lugar de GDScript, como o sistema de atributos funciona e quais as limitacoes reais por plataforma.</p>
+      </div>
+      <p class="intro-highlight">C# no Godot 4 roda em .NET 6 via Mono/CoreCLR. Nao e uma versao limitada de C# — e C# completo, com LINQ, async/await e bibliotecas NuGet. A limitacao e de plataforma, nao de linguagem: iOS e Web exigem restricoes de AOT que ainda impactam o workflow.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">C# vs GDScript: Quando Usar Cada Um</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">Use C# quando...</h3>
+          <ul>
+            <li>O projeto ja tem equipe com experiencia C#/Unity.</li>
+            <li>Sistemas complexos precisam de tipagem estrita e refactoring seguro (IDE + Roslyn).</li>
+            <li>Integracao com bibliotecas .NET externas (redes, serialization, ML).</li>
+            <li>Exportacao apenas para PC/console — plataformas sem restricoes AOT.</li>
+          </ul>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Use GDScript quando...</h3>
+          <ul>
+            <li>Exportacao para Web (HTML5) ou iOS — C# tem limitacoes de IL2CPP/WASM.</li>
+            <li>Time pequeno ou solo dev sem background C#.</li>
+            <li>Iteracao rapida e prototipagem de mecanicas.</li>
+            <li>Scripts de UI e logica de cena simples.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">Atributos e Interop com o Editor</h2>
+      <p>No Godot 4, a ponte entre C# e o editor usa atributos. <code class="code-inline">[Export]</code> expoe variaveis no Inspector, <code class="code-inline">[Signal]</code> declara signals usaveis via editor e via codigo GDScript. Toda classe exposta ao Godot deve herdar de um tipo Godot (<code class="code-inline">Node</code>, <code class="code-inline">Resource</code>, etc.) — classes C# puras nao aparecem no editor.</p>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">Player.cs</div>
+        <pre class="example">using Godot;
+
+[GlobalClass]
+public partial class Player : CharacterBody2D
+{
+    [Export] public float Speed { get; set; } = 200f;
+    [Export] public NodePath AnimPlayerPath { get; set; }
+
+    [Signal] public delegate void PlayerDiedEventHandler();
+
+    private AnimationPlayer _anim;
+
+    public override void _Ready()
+    {
+        _anim = GetNode&lt;AnimationPlayer&gt;(AnimPlayerPath);
+    }
+
+    public override void _PhysicsProcess(double delta)
+    {
+        var dir = Input.GetAxis("move_left", "move_right");
+        Velocity = new Vector2(dir * Speed, Velocity.Y);
+        MoveAndSlide();
+    }
+}</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">Interop GDScript — C# e NuGet</h2>
+      <div class="panel">
+        <p>GDScript pode chamar metodos de classes C# e vice-versa via Variant. Passsagem de tipos primitivos e automatica; tipos complexos precisam de <code class="code-inline">Variant.From()</code>. Para libraries NuGet, basta adicionar no <code class="code-inline">.csproj</code> normalmente — Godot compila o projeto .NET junto ao build do jogo.</p>
+        <p>Cuidado com <code class="code-inline">async/await</code>: o loop principal do Godot nao e thread-safe. Use <code class="code-inline">await ToSignal()</code> para aguardar signals sem sair da main thread, ou use <code class="code-inline">CallDeferred()</code> para chamar metodos de threads filhas de volta na main thread.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>GODOT ENGINE FOUNDATION. <strong>C# Basics in Godot 4</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>GODOT ENGINE FOUNDATION. <strong>C# Platform Support</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>MICROSOFT. <strong>.NET Runtime — Godot Integration Notes</strong>. .NET Blog, 2023.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>C# no Godot da acesso a todo ecossistema .NET, mas plataforma-alvo deve ser a primeira pergunta — Web e iOS ainda tem restricoes que podem inviabilizar a escolha.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"Escolher C# ou GDScript no Godot e uma decisao de equipe e plataforma, nao de performance."</p>
+    </div>
+  </div></main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

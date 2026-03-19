@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e tooling F#: dotnet CLI, Paket, Fantomas, Ionide, FAKE, FsCheck, Fable e FSI scripting." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# — Ecossistema e Tooling</h1>
+          <p>F# usa o ecossistema .NET inteiro: dotnet CLI para projetos, NuGet/Paket para pacotes, Fantomas para formatação automática, Ionide no VS Code para IDE de nível profissional, FAKE para builds funcionais, FsCheck para property-based testing e Fable para compilar F# em JavaScript.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>Fable</strong> compila F# para JavaScript idiomatic — não é uma transpilação mecânica, mas gera código JS legível que integra diretamente com o ecossistema npm. Você pode usar React com Feliz (DSL F# para JSX), escrever testes com Jest e fazer bundle com Webpack ou Vite, tudo a partir de código F# puro.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dotnet-cli">dotnet CLI — Comandos Essenciais</h2>
+        <div class="panel">
+          <p class="panel-title">Ciclo completo de um projeto F#</p>
+          <table class="table">
+            <thead><tr><th>Comando</th><th>Resultado</th></tr></thead>
+            <tbody>
+              <tr><td><code>dotnet new console -lang F# -o MeuApp</code></td><td>Novo console app em F#</td></tr>
+              <tr><td><code>dotnet new classlib -lang F# -o MinhaLib</code></td><td>Biblioteca reutilizável</td></tr>
+              <tr><td><code>dotnet new xunit -lang F# -o MeuApp.Tests</code></td><td>Projeto de testes xUnit</td></tr>
+              <tr><td><code>dotnet sln add MeuApp MeuApp.Tests</code></td><td>Adiciona projetos à solution</td></tr>
+              <tr><td><code>dotnet add reference ../MinhaLib</code></td><td>Referência entre projetos</td></tr>
+              <tr><td><code>dotnet add package FSharp.Data</code></td><td>Instala pacote NuGet</td></tr>
+              <tr><td><code>dotnet build</code></td><td>Compila o projeto</td></tr>
+              <tr><td><code>dotnet run</code></td><td>Compila e executa</td></tr>
+              <tr><td><code>dotnet test</code></td><td>Roda todos os testes</td></tr>
+              <tr><td><code>dotnet publish -c Release -r linux-x64</code></td><td>Publica self-contained</td></tr>
+              <tr><td><code>dotnet fsi script.fsx</code></td><td>Executa F# script (FSI)</td></tr>
+              <tr><td><code>dotnet fsi</code></td><td>Inicia REPL interativo</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fsi-scripting">FSI — F# Interactive (Scripts)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">script.fsx — automação, análise de dados, glue code</div>
+          <pre class="example"><span class="com">// Arquivo: analise.fsx</span>
+<span class="com">// Executar: dotnet fsi analise.fsx</span>
+
+<span class="com">// Referência a pacotes NuGet direto no script (F# 5+)</span>
+#r "nuget: FSharp.Data, 6.4.0"
+#r "nuget: Plotly.NET, 4.0.0"
+#r "nuget: FsToolkit.ErrorHandling, 4.0.0"
+
+open FSharp.Data
+open Plotly.NET
+
+<span class="kw">let</span> args = fsi.CommandLineArgs   <span class="com">// argumentos da linha de comando</span>
+<span class="kw">let</span> arquivo = if args.Length > 1 then args.[1] else <span class="str">"dados.csv"</span>
+
+type Vendas = CsvProvider&lt;<span class="str">"vendas.csv"</span>&gt;
+<span class="kw">let</span> dados = Vendas.Load(arquivo)
+
+<span class="com">// Processar</span>
+<span class="kw">let</span> totalPorMes =
+    dados.Rows
+    |> Seq.groupBy (fun r -> r.Mes)
+    |> Seq.map (fun (mes, rows) -> mes, rows |> Seq.sumBy (fun r -> r.Valor))
+    |> Seq.sortBy fst
+
+<span class="kw">for</span> (mes, total) <span class="kw">in</span> totalPorMes do
+    printfn <span class="str">"Mês %d: R$ %.2f"</span> mes total
+
+<span class="com">// Gerar gráfico HTML</span>
+<span class="kw">let</span> meses, valores = totalPorMes |> Seq.toArray |> Array.unzip
+Chart.Bar(valores, meses)
+|> Chart.withTitle <span class="str">"Vendas por Mês"</span>
+|> Chart.show</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fantomas-formatacao">Fantomas — Formatação Automática</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Instalar e configurar Fantomas</div>
+          <pre class="example"><span class="com"># Instalar como dotnet tool local</span>
+dotnet tool install fantomas
+dotnet tool restore   <span class="com"># restaura .config/dotnet-tools.json</span>
+
+<span class="com"># Formatar arquivo ou diretório</span>
+dotnet fantomas src/
+dotnet fantomas --check src/   <span class="com"># apenas verifica (CI)</span>
+
+<span class="com"># Configuração: .editorconfig (preferido)</span>
+[*.{fs,fsx,fsi}]
+fsharp_max_line_length = 100
+fsharp_indent_size = 4
+fsharp_semicolon_at_end_of_line = false
+fsharp_keep_if_then_in_same_line = false
+
+<span class="com"># Ou .fantomas.json</span>
+<span class="com">// {</span>
+<span class="com">//   "MaxLineLength": 100,</span>
+<span class="com">//   "IndentSize": 4,</span>
+<span class="com">//   "SpaceBeforeColon": false</span>
+<span class="com">// }</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ionide">Ionide — IDE F# no VS Code</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>FsAutoComplete</h3>
+            <p>LSP server que alimenta o Ionide: completação, hover docs, peek definition, find references, rename, go to definition em projetos .NET completos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>F# Solution Explorer</h3>
+            <p>Gerencia arquivos <code>.fsproj</code>, ordena <code>&lt;Compile&gt;</code> (ordem importa em F#!), cria módulos, namespaces e projetos diretamente na UI.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>FSI Integrado</h3>
+            <p>Selecione código e pressione <kbd>Alt+Enter</kbd> para enviar ao FSI REPL embutido. Ideal para análise de dados exploratory e verificação rápida de funções.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Diagnósticos em tempo real</h3>
+            <p>Erros de tipo, warnings de pattern matching incompleto, subrecomendações de Fantomas e sugestões de refatoração aparecem inline enquanto você digita.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fscheck">FsCheck — Property-Based Testing</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Testar propriedades matemáticas em vez de exemplos</div>
+          <pre class="example"><span class="com">// dotnet add package FsCheck.Xunit</span>
+open FsCheck
+open FsCheck.Xunit
+open Xunit
+
+<span class="com">// Property: reverter duas vezes = original</span>
+[&lt;Property&gt;]
+<span class="kw">let</span> reverterDuasVezes (lista: int list) =
+    List.rev (List.rev lista) = lista   <span class="com">// FsCheck gera centenas de listas</span>
+
+<span class="com">// Property com pré-condição</span>
+[&lt;Property&gt;]
+<span class="kw">let</span> somaComutativa (a: int) (b: int) =
+    a + b = b + a
+
+<span class="com">// Custom generator para tipos de domínio</span>
+type Email = Email of string
+<span class="kw">let</span> emailGen =
+    Arb.generate&lt;string&gt;
+    |> Gen.map (fun s -> Email (s + <span class="str">"@test.com"</span>))
+    |> Arb.fromGen
+
+type Generators =
+    static member Email() = emailGen
+
+[&lt;Property(Arbitrary = [| typeof&lt;Generators&gt; |])&gt;]
+<span class="kw">let</span> emailSempreValido (Email e) =
+    e.Contains(<span class="str">"@"</span>)
+
+<span class="com">// Rodar FsCheck standalone (sem framework de teste)</span>
+Check.Quick reverterDuasVezes          <span class="com">// roda 100 casos</span>
+Check.Verbose reverterDuasVezes        <span class="com">// mostra cada caso gerado</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fake">FAKE — Build System Funcional</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">build.fsx — targets, dependências, CI/CD</div>
+          <pre class="example"><span class="com">// build.fsx</span>
+#r "nuget: Fake.Core.Target"
+#r "nuget: Fake.DotNet.Cli"
+#r "nuget: Fake.IO.FileSystem"
+
+open Fake.Core
+open Fake.DotNet
+open Fake.IO
+
+<span class="com">// Inicializar contexto FAKE</span>
+Target.initEnvironment()
+
+Target.create <span class="str">"Clean"</span> (fun _ ->
+    Shell.cleanDir <span class="str">"./artifacts"</span>
+)
+
+Target.create <span class="str">"Restore"</span> (fun _ ->
+    DotNet.restore id <span class="str">"."</span>
+)
+
+Target.create <span class="str">"Build"</span> (fun _ ->
+    DotNet.build (fun opts ->
+        { opts with Configuration = DotNet.BuildConfiguration.Release }) <span class="str">"."</span>
+)
+
+Target.create <span class="str">"Test"</span> (fun _ ->
+    DotNet.test (fun opts ->
+        { opts with NoBuild = true }) <span class="str">"."</span>
+)
+
+Target.create <span class="str">"Publish"</span> (fun _ ->
+    DotNet.publish (fun opts ->
+        { opts with OutputPath = Some <span class="str">"./artifacts"</span>
+                    Configuration = DotNet.BuildConfiguration.Release }) <span class="str">"."</span>
+)
+
+<span class="com">// Cadeia de dependências</span>
+open Fake.Core.TargetOperators
+<span class="str">"Clean"</span> ==> <span class="str">"Restore"</span> ==> <span class="str">"Build"</span> ==> <span class="str">"Test"</span> ==> <span class="str">"Publish"</span>
+
+[&lt;EntryPoint&gt;]
+<span class="kw">let</span> main args = Target.runOrDefault <span class="str">"Test"</span> args</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fable">Fable — F# para JavaScript</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">F# compilado para JS com Feliz (React DSL)</div>
+          <pre class="example"><span class="com">// Criar projeto Fable</span>
+<span class="com">// dotnet new fable -lang F# -o FableApp</span>
+<span class="com">// cd FableApp ; npm install ; dotnet fable watch src --run webpack serve</span>
+
+<span class="com">// Componente React com Feliz (F# React DSL)</span>
+<span class="com">// dotnet add package Feliz</span>
+open Feliz
+open Feliz.Hooks
+
+[&lt;ReactComponent&gt;]
+<span class="kw">let</span> Contador () =
+    <span class="kw">let</span> (count, setCount) = React.useState 0
+    Html.div [
+        prop.className <span class="str">"contador"</span>
+        prop.children [
+            Html.h1 (sprintf <span class="str">"Contagem: %d"</span> count)
+            Html.button [
+                prop.onClick (fun _ -> setCount (count + 1))
+                prop.text <span class="str">"Incrementar"</span>
+            ]
+            Html.button [
+                prop.onClick (fun _ -> setCount (count - 1))
+                prop.text <span class="str">"Decrementar"</span>
+            ]
+        ]
+    ]
+
+<span class="com">// Chamadas JS (bindings)</span>
+open Fable.Core.JsInterop
+
+[&lt;Import(<span class="str">"useState"</span>, from = <span class="str">"react"</span>)&gt;]
+<span class="kw">let</span> useState&lt;'T&gt; (init: 'T) : 'T * ('T -> unit) = jsNative
+
+<span class="com">// window.alert via Fable</span>
+open Browser.Dom
+window.alert(<span class="str">"olá do F#"</span>)
+
+<span class="com">// Fetch API</span>
+Fetch.fetch <span class="str">"/api/dados"</span> []
+|> Promise.bind (fun resp -> resp.json&lt;MeuTipo&gt;())
+|> Promise.map (fun dados -> printfn <span class="str">"%A"</span> dados)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="paket">Paket vs NuGet</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Use Paket quando</p>
+            <ul>
+              <li>Múltiplos projetos na solution com dependências centralizadas</li>
+              <li>Quiser paket.lock preciso com hashes de segurança</li>
+              <li>Precisar de dependências de fontes alternativas (GitHub, HTTP)</li>
+              <li>Quiser grupos de dependências (Main, Tests, Build)</li>
+              <li>Projetos F# mais antigos ou scripts FSI com <code>#load</code></li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Use NuGet (padrão) quando</p>
+            <ul>
+              <li>Projeto novo e simples — menos fricção de setup</li>
+              <li>Integração direta com <code>dotnet add package</code></li>
+              <li>Ferramentas de CI/CD que esperam <code>packages.lock.json</code></li>
+              <li>Solução .NET mista F# + C# com Visual Studio</li>
+              <li>Não precisar de features avançadas do Paket</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Ionide. <strong>Ionide for Visual Studio Code</strong>. Disponível em: &lt;https://ionide.io&gt;. Acesso em: 2026.</li>
+            <li>Fable. <strong>Fable — JavaScript you can be proud of!</strong>. Disponível em: &lt;https://fable.io&gt;. Acesso em: 2026.</li>
+            <li>FAKE. <strong>F# Make — A DSL for build tasks</strong>. Disponível em: &lt;https://fake.build&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com F#</a></li>
+          <li><a href="../aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>Ionide + FSI integrado</strong> transforma o VS Code num notebook interativo: você escreve uma função, seleciona, pressiona <kbd>Alt+Enter</kbd> e a função é avaliada instantaneamente no REPL embutido. Sem arquivo temporário, sem terminal separado — a mesma experiência de um Jupyter Notebook, mas com o poder total do compilador F# e tipagem estática.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

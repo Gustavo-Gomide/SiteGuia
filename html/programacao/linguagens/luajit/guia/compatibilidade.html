@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="LuaJIT — Compatibilidade e limitacoes: Lua 5.1, escolhas de runtime e uso em producao com OpenResty." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>LuaJIT — Compatibilidade e Limitacoes | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>LuaJIT — Compatibilidade e Limitacoes</strong></p></div>
+
+			<section>
+				<h2 id="hero" class="section-title">LuaJIT — Compatibilidade e Limitacoes</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="LuaJIT">
+						<span data-svg="lua" aria-hidden="true"></span>
+					</div>
+					<h1>Onde LuaJIT brilha e onde exige cautela</h1>
+					<p>Adotar LuaJIT envolve balancear velocidade, compatibilidade com ecossistema Lua e requisitos de plataforma.</p>
+				</div>
+				<p class="intro-highlight">Escolher runtime e decisao de arquitetura: performance imediata pode custar portabilidade futura.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="lua51" class="section-title">Compatibilidade com Lua 5.1</h2>
+				<p>LuaJIT e projetado para ser altamente compativel com Lua 5.1 e inclui parte de extensoes de 5.2.</p>
+				<div class="panel">
+					<table class="table">
+						<thead>
+							<tr><th>Area</th><th>Status no LuaJIT</th><th>Observacao</th></tr>
+						</thead>
+						<tbody>
+							<tr><td>API base Lua 5.1</td><td>Completa</td><td>Foco principal de compatibilidade</td></tr>
+							<tr><td>Bibliotecas padrao</td><td>Ampla</td><td>math/table/string/os/io disponiveis</td></tr>
+							<tr><td>Recursos 5.2+</td><td>Parcial</td><td>Nem tudo de 5.3/5.4 existe</td></tr>
+							<tr><td>FFI</td><td>Extensao propria</td><td>Nao existe no Lua padrao</td></tr>
+						</tbody>
+					</table>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="limitacoes" class="section-title">Limitacoes conhecidas</h2>
+				<div class="grid-cards">
+					<div class="card"><strong>JIT e corrotinas</strong><p>Alguns caminhos com coroutine podem sair do trace JIT.</p></div>
+					<div class="card"><strong>32-bit pointer mode</strong><p>Particularmente relevante em builds x86 e cenarios especificos.</p></div>
+					<div class="card"><strong>Plataformas</strong><p>Suporte forte em x86/x64/ARM, mas depende de versao e build.</p></div>
+					<div class="card"><strong>Recursos NYI</strong><p>Operacoes "not yet implemented" no JIT voltam ao interpretador.</p></div>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Nem toda lentidao significa "LuaJIT ruim"; muitas vezes o codigo caiu do trace.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="alternativas" class="section-title">Quando escolher: LuaJIT vs Lua 5.4 vs MoonScript</h2>
+				<div class="panel">
+					<table class="table">
+						<thead>
+							<tr><th>Opcao</th><th>Melhor para</th><th>Trade-off</th></tr>
+						</thead>
+						<tbody>
+							<tr><td>LuaJIT</td><td>Baixa latencia, embedding, OpenResty</td><td>Base 5.1 + limites de compatibilidade</td></tr>
+							<tr><td>Lua 5.4</td><td>Atualizacao da linguagem, recursos modernos</td><td>Sem JIT nativo oficial</td></tr>
+							<tr><td>MoonScript</td><td>Sintaxe alternativa para Lua</td><td>Camada extra de toolchain/transpilacao</td></tr>
+						</tbody>
+					</table>
+					<p class="note">Lua usa double IEEE 754; inteiros exatos acima de 2^52 podem perder precisao em algumas operacoes.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 id="openresty" class="section-title">LuaJIT em producao com OpenResty/nginx</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">OpenResty — cosocket e ngx.shared.DICT</div>
+					<pre class="example"><span class="com"># nginx.conf (trecho)</span>
+lua_shared_dict cache 50m;
+
+server {
+	listen 8080;
+	location /ping {
+		content_by_lua_block {
+			local dict = ngx.shared.cache
+			local hits = dict:incr("hits", 1, 0)
+			ngx.say("pong; hits=", hits)
+		}
+	}
+}</pre>
+				</div>
+				<p>
+					Em OpenResty, APIs como <strong>cosocket</strong> e <strong>ngx.shared.DICT</strong> permitem IO nao bloqueante e cache compartilhado,
+					combinando throughput alto com baixa latencia.
+				</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<div class="panel">
+					<ul>
+						<li>PALL, M. <strong>LuaJIT</strong>. Disponivel em: &lt;https://luajit.org/&gt;. Acesso em: 12 mar. 2026.</li>
+						<li>LUA.ORG. <strong>Lua 5.4 Reference Manual</strong>. Disponivel em: &lt;https://www.lua.org/manual/5.4/&gt;. Acesso em: 12 mar. 2026.</li>
+						<li>OPENRESTY. <strong>OpenResty Best Practices</strong>. Disponivel em: &lt;https://openresty.org/&gt;. Acesso em: 12 mar. 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Runtime certo nao e o mais rapido no benchmark, e o que encaixa no seu ciclo de vida de produto.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/introducao.html">LuaJIT — Introducao</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/performance.html">LuaJIT — Performance e JIT</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

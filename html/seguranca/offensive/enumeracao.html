@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Enumeração em Pentest: Nmap, service fingerprinting, SMB/LDAP/NFS enumeration, web enumeration com gobuster e nikto, Active Directory enumeration." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Enumeração em Pentest | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Enumeração</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Enumeração?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Enumeração</h1>
+          <p>Interação ativa com sistemas para descobrir serviços, versões e usuários.</p>
+        </div>
+
+        <p class="intro-highlight">Enumeração é o processo de interagir ativamente com sistemas para descobrir serviços, versões, usuários, shares, configurações e outras informações que não estão em fontes públicas. É a transição entre o reconhecimento passivo e a exploração ativa.</p>
+        <div class="section-divider"></div>
+
+        <p>A diferença entre reconhecimento e enumeração é contato direto: enumeração envia pacotes para os sistemas alvo e coleta suas respostas. Pode ser detectada por IDS/IPS e firewall.</p>
+      </section>
+
+      <section>
+        <h2 id="nmap" class="section-title">Port Scanning com Nmap</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Scan completo (todos os 65535 ports + detecção de versão):
+nmap -sV -sC -p- --open -T4 10.10.10.10 -oA scan_completo
+
+# Scan rápido — top 1000 ports:
+nmap -sV --open -T4 10.10.10.10
+
+# UDP scan (mais lento, frequentemente esquecido):
+sudo nmap -sU --top-ports 50 10.10.10.10
+
+# Script NSE para vulnerabilidades:
+nmap --script vuln 10.10.10.10
+
+# Descoberta de hosts na rede:
+nmap -sn 192.168.1.0/24</pre>
+
+        <div class="message-block">
+          <p><strong>Parâmetros Nmap essenciais:</strong> <span class="code-inline">-sV</span> detecta versões de serviço, <span class="code-inline">-sC</span> roda scripts padrão, <span class="code-inline">-p-</span> todos os 65535 ports, <span class="code-inline">-oA</span> salva em todos os formatos (texto, XML, grepable), <span class="code-inline">-T4</span> velocidade agressiva. Use <span class="code-inline">-T2</span> para ser mais furtivo.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="servicos" class="section-title">Enumeração por Protocolo</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>SMB (porta 445)</h3>
+            <p>File shares do Windows. Enum4linux ou smbclient para listar shares, usuários, grupos, políticas de senha. EternalBlue (MS17-010) explorava SMBv1 — verifique sempre se está ativo.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+enum4linux -a 10.10.10.10
+smbclient -L //10.10.10.10 -N
+crackmapexec smb 10.10.10.10 --shares</pre>
+          </div>
+          <div class="card">
+            <h3>LDAP (porta 389/636)</h3>
+            <p>Active Directory expõe enorme quantidade de informações via LDAP, às vezes sem autenticação (null session/anonymous). Usuários, grupos, GPOs, trust, SPNs para Kerberoasting.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+ldapsearch -x -H ldap://10.10.10.10 \
+    -b "dc=empresa,dc=com,dc=br"
+# Com bloodhound-python:
+bloodhound-python -d empresa.com.br \
+    -u user -p pass -c all</pre>
+          </div>
+          <div class="card">
+            <h3>FTP (porta 21)</h3>
+            <p>Verificar login anônimo, listar arquivos acessíveis. FTP envia credenciais em texto claro — sniffável em rede não criptografada. Buscar arquivos de configuração e backups.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+ftp 10.10.10.10
+# Tente: usuario anonymous
+#         senha: qualquer@email.com
+nmap -sV --script=ftp-anon 10.10.10.10</pre>
+          </div>
+          <div class="card">
+            <h3>SSH (porta 22)</h3>
+            <p>Identificar versão (banner grabbing) para CVEs específicos. Verificar métodos de autenticação aceitos. Enumerar usuários via timing attack (versões antigas do OpenSSH).</p>
+            <pre class="code-block" style="font-size:0.8rem">
+ssh 10.10.10.10 -v 2>&1 | grep "Server version"
+nmap -p 22 --script ssh-auth-methods 10.10.10.10</pre>
+          </div>
+          <div class="card">
+            <h3>SNMP (porta 161 UDP)</h3>
+            <p>Gerenciamento de rede. Community string "public" como padrão em dispositivos antigos expõe informações do sistema, interfaces de rede, processos, rotas de forma completamente não autenticada.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+snmpwalk -v2c -c public 10.10.10.10
+onesixtyone 10.10.10.10 public private
+snmp-check 10.10.10.10 -c public</pre>
+          </div>
+          <div class="card">
+            <h3>HTTP/HTTPS (porta 80/443)</h3>
+            <p>Identificar tecnologias (Wappalyzer, whatweb), diretórios ocultos (gobuster/feroxbuster), arquivos sensíveis (robots.txt, .git, .env), APIs, virtual hosts.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+whatweb http://10.10.10.10
+gobuster dir -u http://10.10.10.10 \
+    -w /usr/share/wordlists/dirbuster/med.txt
+nikto -h http://10.10.10.10</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="ad" class="section-title">Active Directory Enumeration</h2>
+        <div class="section-divider"></div>
+
+        <p>Active Directory é o alvo mais comum em pentests corporativos. Com qualquer credencial de domínio (até usuário comum), é possível fazer enumeração extensa:</p>
+
+        <pre class="code-block">
+# BloodHound — mapeamento visual de attack paths no AD:
+# Coletar dados:
+bloodhound-python -d empresa.com.br -u usuario -p senha -c all
+
+# PowerView (PowerShell) para enum de AD:
+Get-NetUser | select samaccountname, description
+Get-NetGroup "Domain Admins" | select member
+Find-LocalAdminAccess   # hosts onde temos admin local
+Get-NetComputer -Ping   # hosts ativos no domínio
+
+# Kerberosating — enumerar service accounts com SPN:
+GetUserSPNs.py empresa.com.br/usuario:senha -dc-ip 10.10.10.10</pre>
+      </section>
+
+      <div class="callout">
+        <p>Enumeração detalhada é a diferença entre um pentest raso e um profundo. Cada porta aberta é uma oportunidade. Explore cada serviço encontrado antes de partir para exploração. Próxima fase: <a href="/html/seguranca/offensive/exploracao.html">Exploração</a>. Veja também <a href="/html/seguranca/offensive/ferramentas/nmap.html">Nmap em detalhes</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Enumeração lenta é pentest amador. Mas enumeração sem documentação é tempo perdido."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

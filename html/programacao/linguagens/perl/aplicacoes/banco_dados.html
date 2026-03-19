@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Perl para banco de dados: DBI, drivers, transacoes, pool de conexoes, SQL seguro e padroes para operacao em producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Perl - Aplicacoes com Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Perl - Aplicacoes com Banco de Dados</strong></p>
+      </div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone Perl">
+            <span data-svg="perl" aria-hidden="true"></span>
+          </div>
+          <h1>Perl em Banco de Dados</h1>
+          <p>DBI, drivers SQL, transacoes e performance para sistemas de missao critica.</p>
+        </div>
+        <p class="intro-highlight">
+          Perl sempre teve relacao forte com dados. Com DBI, voce conecta MySQL, PostgreSQL, SQLite e outros bancos usando uma API estavel,
+          ideal para migracoes graduais e manutencao de legados sem sacrificar qualidade de engenharia.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Conceitos fundamentais</h2>
+        <p>
+          A interface <strong>DBI</strong> separa a aplicacao do driver especifico (DBD::Pg, DBD::mysql, DBD::SQLite).
+          O codigo de dominio conversa com DBI, e o driver conversa com o banco. Isso reduz acoplamento e melhora portabilidade.
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">Elementos centrais</h3>
+          <ul>
+            <li><strong>dbh</strong>: handle de conexao.</li>
+            <li><strong>sth</strong>: statement handle para SQL preparado.</li>
+            <li><strong>placeholders</strong>: parametros com <code class="code-inline">?</code>.</li>
+            <li><strong>transacao</strong>: bloco atomico com commit/rollback.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Como funciona na pratica</h2>
+        <svg viewBox="0 0 820 180" role="img" aria-label="Fluxo DBI" class="rounded-md border">
+          <rect x="20" y="50" width="160" height="60" rx="10" ry="10"></rect>
+          <rect x="240" y="50" width="160" height="60" rx="10" ry="10"></rect>
+          <rect x="460" y="50" width="160" height="60" rx="10" ry="10"></rect>
+          <rect x="680" y="50" width="120" height="60" rx="10" ry="10"></rect>
+          <text x="100" y="85" text-anchor="middle">HTTP/CLI</text>
+          <text x="320" y="85" text-anchor="middle">DBI</text>
+          <text x="540" y="85" text-anchor="middle">DBD Driver</text>
+          <text x="740" y="85" text-anchor="middle">SGBD</text>
+          <line x1="180" y1="80" x2="240" y2="80"></line>
+          <line x1="400" y1="80" x2="460" y2="80"></line>
+          <line x1="620" y1="80" x2="680" y2="80"></line>
+        </svg>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">repositorio.pl - acesso seguro com DBI</div>
+          <pre class="example"><span class="kw">use</span> <span class="fn">DBI</span>;
+
+<span class="kw">my</span> <span class="fn">$dbh</span> = <span class="fn">DBI</span>-&gt;connect(
+  <span class="str">'dbi:Pg:dbname=erp;host=localhost;port=5432'</span>,
+  <span class="str">'app_user'</span>,
+  <span class="str">'segredo'</span>,
+  { RaiseError =&gt; 1, AutoCommit =&gt; 1, pg_enable_utf8 =&gt; 1 }
+);
+
+<span class="kw">my</span> <span class="fn">$sth</span> = <span class="fn">$dbh</span>-&gt;prepare(<span class="str">'select id, nome from cliente where ativo = ?'</span>);
+<span class="fn">$sth</span>-&gt;execute(1);
+
+<span class="kw">while</span> (<span class="kw">my</span> <span class="fn">$row</span> = <span class="fn">$sth</span>-&gt;fetchrow_hashref) {
+  <span class="com"># processa cada cliente ativo</span>
+  <span class="fn">print</span> <span class="fn">$row</span>-&gt;{id} . <span class="str">' - '</span> . <span class="fn">$row</span>-&gt;{nome} . <span class="str">"\n"</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso-transacoes">Uso: transacoes e consistencia</h2>
+        <p>
+          Em operacoes financeiras ou de estoque, nunca execute multiplos updates sem transacao.
+          Em caso de falha parcial, o estado do banco pode ficar incoerente.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">transacao.pl - commit e rollback</div>
+          <pre class="example"><span class="kw">eval</span> {
+  <span class="fn">$dbh</span>-&gt;begin_work;
+
+  <span class="kw">my</span> <span class="fn">$debito</span> = <span class="fn">$dbh</span>-&gt;prepare(<span class="str">'update conta set saldo = saldo - ? where id = ?'</span>);
+  <span class="kw">my</span> <span class="fn">$credito</span> = <span class="fn">$dbh</span>-&gt;prepare(<span class="str">'update conta set saldo = saldo + ? where id = ?'</span>);
+
+  <span class="fn">$debito</span>-&gt;execute(250, 10);
+  <span class="fn">$credito</span>-&gt;execute(250, 20);
+
+  <span class="fn">$dbh</span>-&gt;commit;
+};
+
+<span class="kw">if</span> (<span class="fn">$@</span>) {
+  <span class="com"># desfaz tudo se qualquer passo falhar</span>
+  <span class="fn">$dbh</span>-&gt;rollback;
+  <span class="kw">die</span> <span class="str">"falha na transacao: $@"</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Avancado: performance e governanca SQL</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>Batch processing</strong>
+            <p>Use fetch em lotes para evitar consumo excessivo de memoria em tabelas grandes.</p>
+          </div>
+          <div class="card">
+            <strong>Indices e planos</strong>
+            <p>Analise EXPLAIN e ajuste indices antes de culpar a linguagem por lentidao.</p>
+          </div>
+          <div class="card">
+            <strong>Retry idempotente</strong>
+            <p>Para erros transientes, use retries com limite e operacoes idempotentes.</p>
+          </div>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite SQL construido por concatenacao de string; use placeholders em todas as entradas externas.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ecossistema">Ecossistema relacionado</h2>
+        <ul>
+          <li><strong>DBI</strong> para conexao e SQL generico.</li>
+          <li><strong>DBIx::Class</strong> para modelagem ORM mais declarativa.</li>
+          <li><strong>SQL::Abstract</strong> para gerar SQL dinamico com mais seguranca.</li>
+          <li><strong>Mojolicious</strong> para expor camada de dados via API.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>DBI Documentation. Disponivel em: <a href="https://metacpan.org/pod/DBI" target="_blank" rel="noopener">metacpan.org/pod/DBI</a></li>
+            <li>DBD::Pg Documentation. Disponivel em: <a href="https://metacpan.org/pod/DBD::Pg" target="_blank" rel="noopener">metacpan.org/pod/DBD::Pg</a></li>
+            <li>Kline, K.; Kline, D.; Hunt, B. <em>SQL in a Nutshell</em>. 3rd ed. O'Reilly, 2008. Disponivel em: <a href="https://www.oreilly.com/library/view/sql-in-a/9780596518844/" target="_blank" rel="noopener">oreilly.com</a></li>
+            <li>PostgreSQL Documentation. Disponivel em: <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">postgresql.org/docs</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/web.html">Perl para Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/dados_ia.html">Perl para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/projetos_boas_praticas.html">Perl: Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> SQL seguro e transacao bem desenhada valem mais que qualquer otimizacao prematura.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

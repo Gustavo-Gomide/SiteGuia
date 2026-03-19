@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Decorator: padrão estrutural que adiciona responsabilidades a objetos dinamicamente, envolvendo-os em camadas." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Decorator | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Adicionar comportamento em runtime sem modificar a classe</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Decorator</h1>
+          <p class="page-subtitle">Estrutural — GoF</p>
+        </div>
+        <p class="intro-highlight">Decorator envolve um objeto com outro que tem a mesma interface, acrescentando comportamento antes ou depois de delegar a chamada. Permite compor comportamentos como camadas sem subclasses e sem modificar o objeto original.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando" class="section-title">Decorator vs herança</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Aspecto</th>
+                <th>Herança</th>
+                <th>Decorator</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Momento</strong></td>
+                <td>Compilação (estático).</td>
+                <td>Runtime (dinâmico).</td>
+              </tr>
+              <tr>
+                <td><strong>Combinação</strong></td>
+                <td>Explosão de subclasses para cada combinação.</td>
+                <td>Decorators se encadeiam livremente.</td>
+              </tr>
+              <tr>
+                <td><strong>OCP</strong></td>
+                <td>Adicionar comportamento = modificar hierarquia.</td>
+                <td>Adicionar comportamento = nova classe decorator.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — logging e caching em repositório</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface PedidoRepo {
+  buscar(id: string): Promise&lt;Pedido&gt;;
+  salvar(pedido: Pedido): Promise&lt;void&gt;;
+}
+
+// Impl. base
+class PedidoRepoPostgres implements PedidoRepo {
+  async buscar(id: string) { /* query */ return {} as Pedido; }
+  async salvar(pedido: Pedido) { /* insert/update */ }
+}
+
+// DECORATOR: adiciona logging
+class PedidoRepoComLog implements PedidoRepo {
+  constructor(private repo: PedidoRepo, private log: Logger) {}
+
+  async buscar(id: string): Promise&lt;Pedido&gt; {
+    this.log.info(`Buscando pedido ${id}`);
+    const pedido = await this.repo.buscar(id); // delega
+    this.log.info(`Pedido ${id} encontrado`);
+    return pedido;
+  }
+
+  async salvar(pedido: Pedido): Promise&lt;void&gt; {
+    this.log.info(`Salvando pedido ${pedido.id}`);
+    await this.repo.salvar(pedido);
+  }
+}
+
+// DECORATOR: adiciona cache
+class PedidoRepoComCache implements PedidoRepo {
+  private cache = new Map&lt;string, Pedido&gt;();
+  constructor(private repo: PedidoRepo) {}
+
+  async buscar(id: string): Promise&lt;Pedido&gt; {
+    if (this.cache.has(id)) return this.cache.get(id)!;
+    const pedido = await this.repo.buscar(id);
+    this.cache.set(id, pedido);
+    return pedido;
+  }
+
+  async salvar(p: Pedido) { this.cache.delete(p.id); await this.repo.salvar(p); }
+}
+
+// Composicião: cache + log + postgres
+const repo = new PedidoRepoComCache(
+  new PedidoRepoComLog(
+    new PedidoRepoPostgres(), logger
+  )
+);</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Comportamentos são combinaveis: logging, cache, retry, circuit breaker, auditoria sobre qualquer repositório.</p>
+          </div>
+          <div class="card">
+            <h3>Encadeamento</h3>
+            <p>Decorators se encadeiam na ordem do <em>wrapping</em>. A ordem importa — Cache antes de Log vs Log antes de Cache são diferentes.</p>
+          </div>
+          <div class="card">
+            <h3>Annotations/TypeScript</h3>
+            <p>O síntax de decorator (<code>@Cache</code>, <code>@Log</code>) é Decorator pattern implementado como ação em meta-nível sobre classes.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Apenas um comportamento e sem composição. Subclasse ou função wrapper simples pode ser mais legível.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Decorator é base da cadeia de middlewares e AOP. Veja <a href="/html/engenharia_software/design/design_patterns/behavioral/chain_of_responsibility.html">Chain of Responsibility</a> para sequências onde cada handler decide parar ou passar.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Decorator é composição de comportamentos — cada camada adiciona uma responsabilidade sem saber das outras."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

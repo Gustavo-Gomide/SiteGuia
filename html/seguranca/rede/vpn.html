@@ -1,0 +1,158 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="VPN: IPsec, SSL/TLS VPN, WireGuard, split tunneling, Zero Trust vs VPN, casos de uso e configuração para acesso remoto seguro." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>VPN | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>VPN — Virtual Private Network</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é uma VPN?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>VPN — Virtual Private Network</h1>
+          <p>Túnel criptografado sobre a internet para acesso remoto e privacidade de tráfego.</p>
+        </div>
+
+        <p class="intro-highlight">VPN cria um túnel criptografado sobre uma rede pública (internet), permitindo que dispositivos se comuniquem como se estivessem na mesma rede privada. Usada para acesso remoto seguro, site-to-site entre filiais e privacidade de tráfego.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de VPN</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Tipo</th><th>Protocolo</th><th>Características</th><th>Uso Típico</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>IPsec Site-to-Site</td><td>IKEv2/IPsec</td><td>Conecta redes inteiras; roteador-para-roteador; transparente para usuários</td><td>Filiais → matriz</td></tr>
+              <tr><td>IPsec Remote Access</td><td>IKEv2/IPsec + EAP</td><td>Cliente VPN no dispositivo; agente instalado; muito usado em corporativo</td><td>Employee VPN</td></tr>
+              <tr><td>SSL/TLS VPN</td><td>TLS 1.3</td><td>Roda em navegador ou cliente leve; porta 443 (menos bloqueada); clientless possível</td><td>Acesso web apps</td></tr>
+              <tr><td>WireGuard</td><td>WireGuard (UDP)</td><td>Protocolo moderno; código enxuto (~4000 linhas); criptografia state-of-art; rápido</td><td>Self-hosted, Linux</td></tr>
+              <tr><td>OpenVPN</td><td>OpenSSL/TLS</td><td>Open source; customizável; compatível com todos SOs; mais lento que WireGuard</td><td>DIY, empresas</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="wireguard" class="section-title">WireGuard — Configuração Básica</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# ----- Servidor (wg0.conf) -----
+[Interface]
+PrivateKey = &lt;SERVER_PRIVATE_KEY&gt;
+Address = 10.0.0.1/24
+ListenPort = 51820
+PostUp = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+PublicKey = &lt;CLIENT_PUBLIC_KEY&gt;
+AllowedIPs = 10.0.0.2/32
+
+# ----- Cliente (wg0.conf) -----
+[Interface]
+PrivateKey = &lt;CLIENT_PRIVATE_KEY&gt;
+Address = 10.0.0.2/24
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = &lt;SERVER_PUBLIC_KEY&gt;
+Endpoint = vpn.exemplo.com:51820
+AllowedIPs = 0.0.0.0/0   # full tunnel
+# AllowedIPs = 10.0.0.0/24  # split tunnel — apenas rede interna
+
+# Gerar chaves:
+wg genkey | tee privatekey | wg pubkey > publickey</pre>
+      </section>
+
+      <section>
+        <h2 id="split" class="section-title">Split Tunneling vs Full Tunnel</h2>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="message-block">
+            <h3>Full Tunnel</h3>
+            <p><span class="code-inline">AllowedIPs = 0.0.0.0/0</span> — todo o tráfego do cliente passa pelo servidor VPN. Máxima visibilidade e controle para SOC. Pode impactar velocidade e saturar bandwidth corporativo.</p>
+          </div>
+          <div class="message-block">
+            <h3>Split Tunnel</h3>
+            <p>Apenas tráfego para redes internas vai pelo túnel; tráfego para internet sai direto. Reduz carga no gateway VPN. Risco: dispositivo comprometido pode exfiltrar dados via internet sem passar pela inspeção corporativa.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="zerotrust" class="section-title">VPN vs Zero Trust Network Access</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">VPN Tradicional — Limitações</h3>
+            <ul>
+              <li>Acesso amplo à rede interna após autenticação</li>
+              <li>Usuário comprometido = acesso lateral irrestrito</li>
+              <li>Difícil granularidade por aplicação</li>
+              <li>Não verifica postura do dispositivo continuamente</li>
+            </ul>
+          </div>
+          <div class="card card--success">
+            <h3>ZTNA — Zero Trust Network Access</h3>
+            <ul>
+              <li>Acesso por aplicação, não por rede inteira</li>
+              <li>Verifica identidade + dispositivo + contexto a cada sessão</li>
+              <li>Microsegmentação nativa</li>
+              <li>Exemplos: Cloudflare Access, Zscaler ZPA, Google BeyondCorp</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Para uso pessoal e pequenas empresas, WireGuard em VPS próprio é a melhor relação custo-benefício e privacidade. Para ambientes corporativos, avalie ZTNA — a tendência clara do mercado para substituir VPNs tradicionais. Sempre habilite MFA no gateway VPN.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Uma VPN protege o canal, não o destino. Combine com autenticação forte e monitoramento."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

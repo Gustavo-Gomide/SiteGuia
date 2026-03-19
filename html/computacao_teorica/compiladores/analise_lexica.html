@@ -1,0 +1,203 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Análise léxica em compiladores: tokens, lexemas, padrões, autômatos finitos, maximal munch, Flex e scanners manuais." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Análise Léxica | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores &rsaquo; Análise Léxica</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Análise Léxica</h1>
+        <p>Da sequência de caracteres para tokens &mdash; a primeira fase do pipeline.</p>
+      </div>
+      <p class="intro-highlight">
+        A <strong>análise léxica</strong> (ou <em>scanning</em>) é a fase do compilador que lê o código-fonte
+        carácter a carácter e o agrupa em unidades significativas chamadas <strong>tokens</strong>. É
+        formalmente equivalente ao reconhecimento de linguagens regulares por autômatos finitos.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">Token, Lexema e Padrão</h2>
+      <div class="card">
+        <p>Três conceitos formam a base da análise léxica:</p>
+        <table>
+          <thead><tr><th>Conceito</th><th>Definição</th><th>Exemplo (<code>x = 3.14</code>)</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Padrão</strong></td><td>Regra (expressão regular) que descreve a forma dos lexemas de um tipo</td><td><code>[a-z][a-z0-9]*</code> para identificadores</td></tr>
+            <tr><td><strong>Lexema</strong></td><td>Sequência exata de caracteres no fonte que casa com o padrão</td><td><code>x</code></td></tr>
+            <tr><td><strong>Token</strong></td><td>Par (tipo, valor) que o scanner entrega ao parser</td><td><code>&lt;ID, "x"&gt;</code>, <code>&lt;ASSIGN, "="&gt;</code>, <code>&lt;NUM, 3.14&gt;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="dfa" class="section-title">DFA e o Scanner</h2>
+      <div class="card">
+        <p>Cada tipo de token é descrito por uma expressão regular que é convertida em um
+        <strong>DFA</strong> (autômato finito determinístico). O scanner simula todos esses DFAs em
+        paralelo (ou um DFA combinado) para reconhecer tokens.</p>
+        <p>Abaixo: DFA mínimo para identificadores (<code>[a-zA-Z][a-zA-Z0-9]*</code>)</p>
+        <div>
+            <!-- DFA para identificadores -->
+            <svg viewBox="0 0 340 160" width="100%" role="img" aria-label="DFA mínimo para identificadores" style="max-width:800px;display:block;margin: auto">
+              <defs>
+                <marker id="dfa-ac" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="6" markerHeight="5" orient="auto">
+                  <polygon points="0,0 10,3.5 0,7" style="fill:var(--accent)"/>
+                </marker>
+                <marker id="dfa-rd" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="6" markerHeight="5" orient="auto">
+                  <polygon points="0,0 10,3.5 0,7" fill="#e55"/>
+                </marker>
+              </defs>
+              <!-- seta inicial -->
+              <line x1="18" y1="80" x2="64" y2="80" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dfa-ac)"/>
+              <!-- q0→q1 'letra' -->
+              <line x1="110" y1="80" x2="266" y2="80" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dfa-ac)"/>
+              <text x="188" y="70" text-anchor="middle" style="fill:var(--text-primary);font:11px monospace">letra</text>
+              <!-- q1 self-loop -->
+              <path d="M 304,64 C 322,28 258,28 276,64" fill="none" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dfa-ac)"/>
+              <text x="290" y="22" text-anchor="middle" style="fill:var(--text-primary);font:10px monospace">letra|dígito</text>
+              <!-- q0→err 'dígito' -->
+              <line x1="103" y1="95" x2="174" y2="127" stroke="#e55" stroke-width="1.5" marker-end="url(#dfa-rd)"/>
+              <text x="124" y="120" text-anchor="middle" style="fill:#e55;font:10px monospace">dígito</text>
+              <!-- estados -->
+              <circle cx="88" cy="80" r="22" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:2"/>
+              <text x="88" y="80" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">q0</text>
+              <circle cx="290" cy="80" r="22" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:2"/>
+              <circle cx="290" cy="80" r="16" style="fill:none;stroke:var(--accent);stroke-width:1.5"/>
+              <text x="290" y="80" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:13px monospace">q1</text>
+              <circle cx="190" cy="136" r="18" style="fill:var(--bg-secondary);stroke:#e55;stroke-width:2"/>
+              <text x="190" y="136" text-anchor="middle" dominant-baseline="middle" style="fill:#e55;font:13px monospace">err</text>
+              <!-- labels -->
+              <text x="88" y="114" text-anchor="middle" style="fill:var(--text-secondary);font:11px sans-serif">q0=inicial</text>
+              <text x="290" y="114" text-anchor="middle" style="fill:var(--text-secondary);font:11px sans-serif">q1=aceitação</text>
+            </svg>
+        </div>
+        <p>O estado <code>q1</code> é de aceitação (duplo círculo). <code>q0 &rarr; q1</code> em qualquer letra;
+        <code>q1 &rarr; q1</code> em letra ou dígito (<em>self-loop</em>). Dígito em <code>q0</code> é erro &mdash; começa um número.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="maximal-munch" class="section-title">Maximal Munch e Prioridade</h2>
+      <div class="card">
+        <h3>Regra do Maior Token</h3>
+        <p>O scanner usa a estratégia <strong>maximal munch</strong>: sempre avança enquanto o DFA aceitar,
+        e só emite o token quando o próximo carácter causaria rejeição. Isso garante que
+        <code>!=</code> seja um único token (operador), não dois (<code>!</code> e <code>=</code>).</p>
+        <h3>Prioridade entre Padrões</h3>
+        <p>Quando o mesmo lexema pode casar com vários padrões (ex.: <code>if</code> é tanto
+        identificador quanto palavra-chave), a <strong>prioridade</strong> define o vencedor &mdash;
+        geralmente palavras-chave têm prioridade sobre identificadores.</p>
+        <pre class="example">// Exemplo de entrada e saída do scanner para: if (x != 0) return x;
+Tokens emitidos:
+  &lt;KW,    "if"&gt;
+  &lt;LPAREN,"("&gt;
+  &lt;ID,    "x"&gt;
+  &lt;NEQ,   "!="&gt;
+  &lt;NUM,   "0"&gt;
+  &lt;RPAREN,")"&gt;
+  &lt;KW,    "return"&gt;
+  &lt;ID,    "x"&gt;
+  &lt;SEMI,  ";"&gt;</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="implementacao" class="section-title">Implementação: Manual vs Gerador</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Abordagem</th><th>Como funciona</th><th>Vantagens</th><th>Desvantagens</th></tr></thead>
+          <tbody>
+            <tr><td><strong>DFA manual</strong></td><td>Switch/if em cada estado, avança caracteres</td><td>Controle total, desempenho máximo</td><td>Trabalhoso, difícil de manter</td></tr>
+            <tr><td><strong>Flex/Lex</strong></td><td>Especifica regex; gera automaticamente o DFA em C</td><td>Conciso, amplamente usado (GCC, Clang)</td><td>Gera código C complexo, dificulta debugging</td></tr>
+            <tr><td><strong>ANTLR</strong></td><td>Gramática combinada lexer+parser; gera em várias linguagens</td><td>Integração parser, ferramentas ricas</td><td>Overhead maior, startup mais lento</td></tr>
+          </tbody>
+        </table>
+        <h3>Exemplo Flex</h3>
+        <pre class="example">/* lexer.l */
+%%
+[a-zA-Z][a-zA-Z0-9]*  { return IDENT; }  /* identificador */
+[0-9]+                 { return NUM;   }  /* inteiro */
+"if"                   { return KW_IF; }  /* palavra-chave */
+[ \t\n]+               { /* ignorar */ }
+.                      { return UNKNOWN; }
+%%</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="erros" class="section-title">Erros Léxicos e Recuperação</h2>
+      <div class="card">
+        <p>Um <strong>erro léxico</strong> ocorre quando nenhum padrão casa com o prefixo atual. Estratégias de recuperação:</p>
+        <ul>
+          <li><strong>Deletação</strong>: remove o carácter inválido e continua.</li>
+          <li><strong>Substituição</strong>: troca o carácter inválido por um válido.</li>
+          <li><strong>Modo pânico</strong>: avança até um delimitador conhecido (ponto-e-vírgula, chave).</li>
+        </ul>
+        <p>Registrar todos os erros e só interromper a compilação no final permite diagnosticar múltiplos problemas de uma vez.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/analise_sintatica.html">Análise Sintática</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/analise_semantica.html">Análise Semântica</a> &mdash;
+        <a href="/html/computacao_teorica/introducao.html">Teoria da Computação</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "O scanner é a ponte entre o mundo do texto e o mundo das estruturas &mdash; sem ele nada mais funciona."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

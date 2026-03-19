@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema OCaml: opam, dune, ocamlfind, utop, Merlin, ocamlformat, testes com Alcotest e OUnit, documentação com odoc, integração com VS Code." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml — Ecossistema &amp; Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml &mdash; Ecossistema &amp; Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>OCaml — Ecossistema &amp; Tooling</h1>
+          <p>opam, dune, utop, Merlin, ocamlformat e tudo que você precisa para um workflow profissional em OCaml.</p>
+        </div>
+        <p class="intro-highlight">
+          O ecossistema OCaml passou por uma revolução entre 2013 e 2020: opam tornou o gerenciamento de pacotes trivial, dune substituiu o caótico sistema de Makefiles, e ocaml-lsp trouxe autocompletar de primeira classe para VS Code e Emacs. Hoje, iniciar um projeto OCaml profissional leva menos de 5 minutos.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="opam">opam — Gerenciador de Pacotes</h2>
+        <div class="panel">
+          <p><strong>opam</strong> (OCaml Package Manager) gerencia compiladores, switches (ambientes isolados) e pacotes de terceiros. É o equivalente ao <code>rustup</code> + <code>cargo</code> do mundo OCaml.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Comandos opam essenciais</div>
+          <pre class="example"><span class="com"># ── Switches — ambientes isolados ──────────────────────────────────</span>
+opam switch list            <span class="com"># listar switches disponíveis</span>
+opam switch create 5.2.0    <span class="com"># criar switch com OCaml 5.2.0</span>
+opam switch create 4.14.2   <span class="com"># LTS — mais estável para produção</span>
+opam switch set 5.2.0       <span class="com"># ativar switch</span>
+eval $(opam env)            <span class="com"># aplicar variáveis ao shell atual</span>
+
+<span class="com"># Switch local para o projeto (recomendado)</span>
+cd meu_projeto
+opam switch create . 5.2.0 --no-install
+eval $(opam env)
+
+<span class="com"># ── Instalar pacotes ────────────────────────────────────────────────</span>
+opam install dune utop ocamlformat merlin ocaml-lsp-server
+opam install lwt dream yojson cohttp-lwt-unix
+opam install alcotest ppx_inline_test
+
+<span class="com"># ── Gerenciar pacotes ───────────────────────────────────────────────</span>
+opam list                   <span class="com"># listar instalados</span>
+opam list --available       <span class="com"># listar todos disponíveis no repositório</span>
+opam search json            <span class="com"># buscar pacotes</span>
+opam info yojson            <span class="com"># detalhes de um pacote</span>
+opam update                 <span class="com"># atualizar índice de pacotes</span>
+opam upgrade                <span class="com"># atualizar pacotes instalados</span>
+opam remove pacote          <span class="com"># remover pacote</span>
+
+<span class="com"># ── Arquivo opam — declarar dependências do projeto ─────────────────</span>
+<span class="com"># meu_projeto.opam (gerado pelo dune)</span>
+<span class="com"># opam install . --deps-only   ← instala apenas as deps do projeto</span>
+opam pin add . --no-action  <span class="com"># "pinnar" versão local do projeto</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dune">dune — Build System</h2>
+        <div class="panel">
+          <p><strong>dune</strong> é o build system padrão de OCaml. Usa arquivos declarativos (<code>dune</code>) para descrever o projeto. Gerencia compilação, testes, geração de documentação e empacotamento com um único comando.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de projeto com dune</div>
+          <pre class="example">meu_projeto/
+├── dune-project          <span class="com"># raiz do projeto — obrigatório</span>
+├── meu_projeto.opam      <span class="com"># gerado por dune (dune build @install)</span>
+├── lib/
+│   ├── dune              <span class="com"># biblioteca pública</span>
+│   ├── util.ml
+│   └── util.mli          <span class="com"># interface (opcional — assinatura explícita)</span>
+├── bin/
+│   ├── dune              <span class="com"># executável</span>
+│   └── main.ml
+└── test/
+    ├── dune              <span class="com"># testes</span>
+    └── test_util.ml</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dune-project — arquivo raiz</div>
+          <pre class="example">(lang dune 3.14)
+
+(name meu_projeto)
+
+(generate_opam_files true)
+
+(source
+ (github usuario/meu_projeto))
+
+(package
+ (name meu_projeto)
+ (synopsis "Descrição curta do projeto")
+ (description "Descrição longa")
+ (depends
+  (ocaml (>= 4.14))
+  dune
+  lwt
+  yojson
+  alcotest))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lib/dune — biblioteca</div>
+          <pre class="example">(library
+ (name meu_projeto)       <span class="com">; nome do módulo principal</span>
+ (public_name meu_projeto) <span class="com">; nome no opam (para libs instaláveis)</span>
+ (libraries lwt yojson)   <span class="com">; dependências</span>
+ (preprocess              <span class="com">; preprocessors (ppx)</span>
+  (pps lwt_ppx ppx_deriving.show)))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bin/dune — executável</div>
+          <pre class="example">(executable
+ (name main)
+ (public_name meu-projeto) <span class="com">; nome do binário instalado</span>
+ (libraries meu_projeto lwt lwt.unix)
+ (preprocess (pps lwt_ppx)))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Comandos dune</div>
+          <pre class="example">dune build              <span class="com"># compilar tudo</span>
+dune exec bin/main.exe  <span class="com"># compilar e executar</span>
+dune exec bin/main.exe -- --arg1 val  <span class="com"># com argumentos</span>
+dune test               <span class="com"># rodar todos os testes</span>
+dune clean              <span class="com"># limpar artefatos de build (_build/)</span>
+dune build @doc         <span class="com"># gerar documentação odoc</span>
+dune build @install     <span class="com"># gerar arquivo .opam</span>
+dune install            <span class="com"># instalar binário/lib no switch opam</span>
+
+<span class="com"># Modo watch — recompila ao salvar</span>
+dune build --watch
+dune exec --watch bin/main.exe</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="utop">utop — REPL Avançado</h2>
+        <div class="panel">
+          <p><strong>utop</strong> (Universal Top-Level) é um REPL interativo para OCaml com autocompletar, histórico, syntax highlighting e integração com dune. É a forma mais rápida de experimentar código OCaml.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">utop — sessão interativa</div>
+          <pre class="example"><span class="com"># Iniciar utop</span>
+utop
+
+<span class="com">(* Expressões terminam com ;; no toplevel *)</span>
+# <span class="num">1</span> + <span class="num">1</span>;;
+- : int = 2
+
+<span class="com">(* Definições sem ;; funcionam com utop moderno *)</span>
+# <span class="kw">let</span> x = <span class="num">42</span>;;
+val x : int = 42
+
+<span class="com">(* Carregar biblioteca *)</span>
+# #require "yojson";;
+# <span class="kw">open</span> Yojson.Basic;;
+# from_string {|{"nome": "OCaml", "ano": 1996}|};;
+- : t = `Assoc [("nome", `String "OCaml"); ("ano", `Int 1996)]
+
+<span class="com">(* Carregar arquivo .ml *)</span>
+# #use "meu_arquivo.ml";;
+
+<span class="com">(* Usar projeto dune no utop *)</span>
+dune utop lib  <span class="com"># ← no terminal, carrega a lib do projeto</span>
+
+<span class="com">(* Dentro do utop após dune utop lib: *)</span>
+# <span class="kw">open</span> Meu_projeto;;
+# Util.soma <span class="num">2</span> <span class="num">3</span>;;
+- : int = 5</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">~/.ocamlinit — configuração inicial do utop</div>
+          <pre class="example"><span class="com">(* ~/.ocamlinit — executado ao iniciar utop *)</span>
+#use "topfind";;
+#thread;;
+#require "str";;
+<span class="kw">let</span> pp = <span class="fn">Format.printf</span>;;  <span class="com">(* alias útil *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="merlin-lsp">Merlin e ocaml-lsp-server</h2>
+        <div class="panel">
+          <p><strong>Merlin</strong> é o servidor de análise semântica para OCaml. <strong>ocaml-lsp-server</strong> é o wrapper LSP que expõe Merlin para editores. Juntos, oferecem autocompletar, navegação, type hints e erros em tempo real nos editores mais populares.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Instalar suporte a editores</div>
+          <pre class="example"><span class="com"># Instalar servidor LSP (funciona com VS Code, Neovim, Emacs, etc.)</span>
+opam install merlin ocaml-lsp-server
+
+<span class="com"># VS Code: instalar extensão "OCaml Platform" (by OCaml Labs)</span>
+<span class="com"># ID: ocamllabs.ocaml-platform</span>
+
+<span class="com"># A extensão detecta automaticamente o switch opam ativo</span>
+<span class="com"># Para projetos com switch local:</span>
+cd meu_projeto
+eval $(opam env)
+code .
+
+<span class="com"># Neovim com nvim-lspconfig:</span>
+<span class="com"># require('lspconfig').ocamllsp.setup{}</span>
+
+<span class="com"># Emacs: instalar tuareg-mode + merlin via MELPA</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>Autocompletar</strong>
+            <p>Merlin analisa tipos em tempo real. <code>List.</code> + Tab mostra todos os valores do módulo com seus tipos. O autocompletar é baseado em semântica, não em texto.</p>
+          </div>
+          <div class="card">
+            <strong>Type-on-hover</strong>
+            <p>Passe o mouse sobre qualquer expressão para ver seu tipo inferido. Indispensável ao aprender OCaml — o compilador é o seu guia.</p>
+          </div>
+          <div class="card">
+            <strong>Erros em tempo real</strong>
+            <p>Erros de tipo são sublinhados antes de salvar. Como OCaml tem inferência total, erros geralmente indicam o local exato da discrepância de tipos.</p>
+          </div>
+          <div class="card">
+            <strong>Jump to definition</strong>
+            <p>Navegue até a definição de qualquer função, tipo ou módulo — incluindo a biblioteca padrão. Funciona mesmo através de fronteiras de módulo.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ocamlformat">ocamlformat — Formatação Automática</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash + .ocamlformat — formatador de código</div>
+          <pre class="example"><span class="com"># Instalar</span>
+opam install ocamlformat
+
+<span class="com"># Formatar um arquivo</span>
+ocamlformat --inplace meu_arquivo.ml
+
+<span class="com"># Formatar todos os .ml e .mli do projeto</span>
+dune fmt
+
+<span class="com"># Verificar se o código está formatado (CI)</span>
+dune fmt --check</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">.ocamlformat — arquivo de configuração (raiz do projeto)</div>
+          <pre class="example">version = 0.26.2
+profile = default    <span class="com"># default | compact | conventional | ocamlformat</span>
+line-length = 100
+break-string-literals = auto
+doc-comments = before</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Testes com Alcotest e OUnit2</h2>
+        <div class="panel">
+          <p><strong>Alcotest</strong> é o framework de testes mais moderno para OCaml: saída colorida, execução paralela e integração nativa com dune. <strong>OUnit2</strong> é mais antigo mas amplamente usado em projetos legados.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">test/test_util.ml — Alcotest</div>
+          <pre class="example"><span class="com">(* opam install alcotest *)</span>
+
+<span class="kw">open</span> <span class="tp">Alcotest</span>
+
+<span class="com">(* Testes unitários — verificações simples *)</span>
+<span class="kw">let</span> <span class="fn">test_soma</span> () =
+  <span class="fn">check</span> <span class="fn">int</span> <span class="str">"soma básica"</span> <span class="num">5</span> (<span class="num">2</span> + <span class="num">3</span>);
+  <span class="fn">check</span> <span class="fn">int</span> <span class="str">"soma com zero"</span> <span class="num">7</span> (<span class="num">7</span> + <span class="num">0</span>)
+
+<span class="kw">let</span> <span class="fn">test_strings</span> () =
+  <span class="fn">check</span> <span class="fn">string</span> <span class="str">"concatenação"</span> <span class="str">"hello world"</span> (<span class="str">"hello"</span> ^ <span class="str">" world"</span>);
+  <span class="fn">check</span> (<span class="fn">option</span> <span class="fn">int</span>) <span class="str">"parse int"</span> (<span class="tp">Some</span> <span class="num">42</span>) (<span class="fn">int_of_string_opt</span> <span class="str">"42"</span>);
+  <span class="fn">check</span> (<span class="fn">option</span> <span class="fn">int</span>) <span class="str">"parse inválido"</span> <span class="tp">None</span> (<span class="fn">int_of_string_opt</span> <span class="str">"abc"</span>)
+
+<span class="kw">let</span> <span class="fn">test_lista</span> () =
+  <span class="fn">check</span> (<span class="fn">list</span> <span class="fn">int</span>) <span class="str">"filter pares"</span>
+    [<span class="num">2</span>; <span class="num">4</span>]
+    (<span class="tp">List</span>.<span class="fn">filter</span> (<span class="kw">fun</span> x -> x <span class="kw">mod</span> <span class="num">2</span> = <span class="num">0</span>) [<span class="num">1</span>; <span class="num">2</span>; <span class="num">3</span>; <span class="num">4</span>; <span class="num">5</span>])
+
+<span class="com">(* Testar exceções *)</span>
+<span class="kw">let</span> <span class="fn">test_excecao</span> () =
+  <span class="fn">check_raises</span> <span class="str">"divisão por zero"</span> <span class="tp">Division_by_zero</span>
+    (<span class="kw">fun</span> () -> ignore (<span class="num">1</span> / <span class="num">0</span>))
+
+<span class="com">(* Agrupar em suites *)</span>
+<span class="kw">let</span> () =
+  <span class="fn">run</span> <span class="str">"Meu Projeto"</span> [
+    <span class="str">"aritmética"</span>, [
+      <span class="fn">test_case</span> <span class="str">"Soma básica"</span>   `Quick <span class="fn">test_soma</span>;
+      <span class="fn">test_case</span> <span class="str">"Divisão zero"</span>  `Quick <span class="fn">test_excecao</span>;
+    ];
+    <span class="str">"strings"</span>, [
+      <span class="fn">test_case</span> <span class="str">"Operações"</span>     `Quick <span class="fn">test_strings</span>;
+    ];
+    <span class="str">"listas"</span>, [
+      <span class="fn">test_case</span> <span class="str">"Filtragem"</span>     `Quick <span class="fn">test_lista</span>;
+    ];
+  ]</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">test/dune — configuração de testes</div>
+          <pre class="example">(test
+ (name test_util)
+ (libraries meu_projeto alcotest))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ppx_inline_test — testes inline no código fonte</div>
+          <pre class="example"><span class="com">(* No dune: (preprocess (pps ppx_inline_test)) + (inline_tests) *)</span>
+
+<span class="kw">let</span> <span class="fn">fatorial</span> n =
+  <span class="kw">let rec</span> go n acc = <span class="kw">if</span> n <= <span class="num">0</span> <span class="kw">then</span> acc <span class="kw">else</span> go (n-<span class="num">1</span>) (n*acc)
+  <span class="kw">in</span> go n <span class="num">1</span>
+
+<span class="kw">let</span>%test <span class="str">"fatorial 0"</span> = fatorial <span class="num">0</span> = <span class="num">1</span>
+<span class="kw">let</span>%test <span class="str">"fatorial 5"</span> = fatorial <span class="num">5</span> = <span class="num">120</span>
+<span class="kw">let</span>%test <span class="str">"fatorial 10"</span> = fatorial <span class="num">10</span> = <span class="num">3628800</span>
+
+<span class="com">(* Executar: dune test --force *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="odoc">odoc — Documentação</h2>
+        <div class="panel">
+          <p><strong>odoc</strong> gera documentação HTML a partir de comentários especiais <code>(** ... *)</code> nos arquivos <code>.mli</code>. A documentação é vinculada ao sistema de tipos — links entre módulos, tipos e funções são gerados automaticamente.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lib/util.mli — Documentação com odoc</div>
+          <pre class="example"><span class="com">(** Módulo de utilitários matemáticos.
+
+    Este módulo fornece funções para operações aritméticas comuns.
+    
+    {b Exemplo de uso:}
+    {[
+      let resultado = Util.soma 2 3
+      (* resultado = 5 *)
+    ]}
+*)</span>
+
+<span class="com">(** [soma a b] retorna a soma de [a] e [b].
+    
+    @param a primeiro operando
+    @param b segundo operando
+    @return a + b
+    @raise Invalid_argument se algum argumento for negativo
+*)</span>
+<span class="kw">val</span> <span class="fn">soma</span> : <span class="tp">int</span> -> <span class="tp">int</span> -> <span class="tp">int</span>
+
+<span class="com">(** [media xs] calcula a média aritmética de uma lista.
+    
+    @return [None] se a lista for vazia
+*)</span>
+<span class="kw">val</span> <span class="fn">media</span> : <span class="tp">float list</span> -> <span class="tp">float option</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Gerar e visualizar documentação</div>
+          <pre class="example"><span class="com"># Gerar documentação HTML</span>
+dune build @doc
+
+<span class="com"># Documentação gerada em:</span>
+<span class="com"># _build/default/_doc/_html/meu_projeto/index.html</span>
+
+<span class="com"># Servir localmente</span>
+cd _build/default/_doc/_html
+python3 -m http.server 8080
+<span class="com"># Acesse http://localhost:8080</span>
+
+<span class="com"># Publicar no ocaml.org (via opam-publish)</span>
+opam install opam-publish
+opam publish</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ocamlfind">ocamlfind — Gerenciamento de Bibliotecas</h2>
+        <div class="panel">
+          <p><strong>ocamlfind</strong> (findlib) é a camada de descoberta de bibliotecas OCaml. Permite compilar arquivos individuais com <code>-package nome</code> sem precisar especificar caminhos manualmente.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — ocamlfind para compilação manual</div>
+          <pre class="example"><span class="com"># Compilar com dependências via ocamlfind</span>
+ocamlfind ocamlopt \
+  -package yojson,lwt,lwt.unix \
+  -linkpkg \
+  main.ml -o main
+
+<span class="com"># Listar todas as bibliotecas instaladas</span>
+ocamlfind list
+
+<span class="com"># Ver metadados de uma biblioteca</span>
+ocamlfind query yojson
+<span class="com"># /home/user/.opam/5.2.0/lib/yojson</span>
+
+<span class="com"># Verificar dependências de uma biblioteca</span>
+ocamlfind query -r -p-format yojson</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ferramentas-resumo">Resumo das Ferramentas</h2>
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Ferramenta</th>
+                <th>Função</th>
+                <th>Equivalente em outras linguagens</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>opam</strong></td>
+                <td>Gerenciador de compiladores e pacotes</td>
+                <td>rustup + cargo (Rust), pyenv + pip (Python)</td>
+              </tr>
+              <tr>
+                <td><strong>dune</strong></td>
+                <td>Build system declarativo</td>
+                <td>Cargo (Rust), Maven (Java), CMake (C++)</td>
+              </tr>
+              <tr>
+                <td><strong>utop</strong></td>
+                <td>REPL interativo avançado</td>
+                <td>irb (Ruby), iex (Elixir), GHCi (Haskell)</td>
+              </tr>
+              <tr>
+                <td><strong>Merlin</strong></td>
+                <td>Servidor de análise semântica</td>
+                <td>rust-analyzer (Rust), pyright (Python)</td>
+              </tr>
+              <tr>
+                <td><strong>ocaml-lsp-server</strong></td>
+                <td>LSP wrapper para editores</td>
+                <td>rust-analyzer LSP, pylsp</td>
+              </tr>
+              <tr>
+                <td><strong>ocamlformat</strong></td>
+                <td>Formatador automático de código</td>
+                <td>rustfmt (Rust), black (Python), gofmt (Go)</td>
+              </tr>
+              <tr>
+                <td><strong>odoc</strong></td>
+                <td>Gerador de documentação</td>
+                <td>rustdoc (Rust), javadoc (Java)</td>
+              </tr>
+              <tr>
+                <td><strong>Alcotest</strong></td>
+                <td>Framework de testes unitários</td>
+                <td>pytest (Python), JUnit (Java)</td>
+              </tr>
+              <tr>
+                <td><strong>ocamlfind</strong></td>
+                <td>Descoberta e compilação com libs</td>
+                <td>pkg-config (C), classpath (Java)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DUNE TEAM. <strong>Dune Build System Documentation</strong>. 2024. Disponível em: <a href="https://dune.readthedocs.io/" target="_blank" rel="noopener">https://dune.readthedocs.io/</a></li>
+            <li>OPAM TEAM. <strong>opam Manual</strong>. OCamlPro, 2024. Disponível em: <a href="https://opam.ocaml.org/doc/Manual.html" target="_blank" rel="noopener">https://opam.ocaml.org/doc/Manual.html</a></li>
+            <li>MINSKY, Yaron; MADHAVAPEDDY, Anil; HICKEY, Jason. <strong>Real World OCaml — Chapter: The Build System (dune)</strong>. O'Reilly, 2022.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/avancado.html">OCaml — Avançado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/terminal_cli.html">OCaml — Terminal &amp; CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/web.html">OCaml — Web com Dream</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Com opam + dune + ocaml-lsp, você tem um ambiente de desenvolvimento de nível industrial em menos de 10 minutos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R para Mobile: Shiny como PWA, flexdashboard responsivo, shinymobile, Rserve como backend para Flutter/React Native, R no Termux (Android)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Mobile</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Dispositivos Móveis</h1>
+          <p>Shiny como PWA, flexdashboard responsivo, shinymobile com Framework7, Rserve como backend analítico, e R no Android via Termux.</p>
+        </div>
+        <p class="intro-highlight">
+          R <strong>não tem SDK nativo para iOS ou Android</strong> — você não compila código R em um <code>.apk</code> ou <code>.ipa</code>. A estratégia é diferente: R roda no <strong>servidor</strong> como back-end analítico, e a interface mobile é construída com tecnologias web (Shiny responsivo, PWA) ou com frameworks nativos (Flutter, React Native) que consomem APIs R via <strong>Plumber</strong> ou <strong>Rserve</strong>.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrategias">Estratégias de Acesso Mobile a R</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Abordagem</th><th>Complexidade</th><th>Experiência</th><th>Caso de Uso</th></tr></thead>
+            <tbody>
+              <tr><td>Shiny responsivo (browser)</td><td>Baixa</td><td>Web app</td><td>Dashboards para gestores</td></tr>
+              <tr><td>Shiny PWA</td><td>Baixa</td><td>Web app instalável</td><td>App interno corporativo</td></tr>
+              <tr><td>flexdashboard</td><td>Baixa</td><td>Web app static-like</td><td>Relatórios em campo</td></tr>
+              <tr><td>shinymobile</td><td>Média</td><td>Nativa (Framework7)</td><td>UX mobile profissional</td></tr>
+              <tr><td>Plumber API + Flutter</td><td>Alta</td><td>Nativa</td><td>Apps comerciais com análise R</td></tr>
+              <tr><td>Rserve + React Native</td><td>Alta</td><td>Nativa</td><td>Apps empresariais complexos</td></tr>
+              <tr><td>Termux (R no Android)</td><td>Alta</td><td>Linux terminal</td><td>Cientistas de dados em campo</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shiny-pwa">Shiny como PWA (Progressive Web App)</h2>
+        <p>
+          Uma PWA é instalável no homescreen do smartphones, funciona offline (parcialmente) e tem aparência próxima a um app nativo. Para transformar um app Shiny em PWA, basta adicionar um <code>manifest.json</code> e um Service Worker na pasta <code>www/</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">www/manifest.json — Web App Manifest</div>
+          <pre class="example">{
+  <span class="str">"name"</span>: <span class="str">"Dashboard Analítico"</span>,
+  <span class="str">"short_name"</span>: <span class="str">"Dashboard"</span>,
+  <span class="str">"description"</span>: <span class="str">"Dashboard de análise de vendas"</span>,
+  <span class="str">"start_url"</span>: <span class="str">"/"</span>,
+  <span class="str">"display"</span>: <span class="str">"standalone"</span>,
+  <span class="str">"background_color"</span>: <span class="str">"#1a1a2e"</span>,
+  <span class="str">"theme_color"</span>: <span class="str">"#3b7dd8"</span>,
+  <span class="str">"orientation"</span>: <span class="str">"any"</span>,
+  <span class="str">"icons"</span>: [
+    { <span class="str">"src"</span>: <span class="str">"icon-192.png"</span>, <span class="str">"sizes"</span>: <span class="str">"192x192"</span>, <span class="str">"type"</span>: <span class="str">"image/png"</span> },
+    { <span class="str">"src"</span>: <span class="str">"icon-512.png"</span>, <span class="str">"sizes"</span>: <span class="str">"512x512"</span>, <span class="str">"type"</span>: <span class="str">"image/png"</span> }
+  ]
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">app.R — adicionar manifest ao head do Shiny</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"shiny"</span>)
+
+ui &lt;- <span class="fn">fluidPage</span>(
+  <span class="fn">tags$head</span>(
+    <span class="com"># Link para o manifest</span>
+    <span class="fn">tags$link</span>(rel = <span class="str">"manifest"</span>, href = <span class="str">"manifest.json"</span>),
+    <span class="com"># Meta tags para iOS (Safari não suporta manifest plenamente)</span>
+    <span class="fn">tags$meta</span>(name = <span class="str">"apple-mobile-web-app-capable"</span>, content = <span class="str">"yes"</span>),
+    <span class="fn">tags$meta</span>(name = <span class="str">"apple-mobile-web-app-status-bar-style"</span>, content = <span class="str">"black"</span>),
+    <span class="fn">tags$meta</span>(name = <span class="str">"viewport"</span>,
+              content = <span class="str">"width=device-width, initial-scale=1.0, maximum-scale=1.0"</span>),
+    <span class="fn">tags$meta</span>(name = <span class="str">"theme-color"</span>, content = <span class="str">"#3b7dd8"</span>)
+  ),
+  <span class="fn">titlePanel</span>(<span class="str">"Dashboard Mobile"</span>),
+  <span class="com"># Detecção de orientação para layout adaptável</span>
+  <span class="fn">tags$style</span>(<span class="fn">HTML</span>(<span class="str">"
+    @media (max-width: 768px) { .sidebar { display: none; } }
+    @media (orientation: landscape) { .main { flex-direction: row; } }
+  "</span>)),
+  <span class="fn">plotOutput</span>(<span class="str">"grafico"</span>)
+)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shinymobile">shinymobile — Framework7 em Shiny</h2>
+        <p>
+          <strong>shinymobile</strong> integra o <a href="https://framework7.io/" target="_blank" rel="noopener">Framework7</a> ao Shiny, fornecendo componentes com visual nativo de iOS e Android: navbar, tabs, list views, cards, action sheets e side panels.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">shinymobile-app.R</div>
+          <pre class="example"><span class="com"># remotes::install_github("RinteRface/shinymobile")</span>
+<span class="fn">library</span>(<span class="str">"shiny"</span>)
+<span class="fn">library</span>(<span class="str">"shinymobile"</span>)
+
+ui &lt;- <span class="fn">mobilePageLayout</span>(
+  <span class="fn">mobileNavbar</span>(title = <span class="str">"Análise de Campos"</span>),
+
+  <span class="fn">mobileTabLayout</span>(
+    id = <span class="str">"tabs"</span>,
+
+    <span class="fn">mobileTab</span>(
+      tabName = <span class="str">"resumo"</span>,
+      icon    = "<span class="fn">chart_bar</span>",
+      label   = <span class="str">"Resumo"</span>,
+      <span class="fn">f7Card</span>(title = <span class="str">"Totais do Dia"</span>,
+             <span class="fn">uiOutput</span>(<span class="str">"card_totais"</span>)),
+      <span class="fn">plotOutput</span>(<span class="str">"grafico_hoje"</span>)
+    ),
+
+    <span class="fn">mobileTab</span>(
+      tabName = <span class="str">"entrada"</span>,
+      icon    = "<span class="fn">plus_circle</span>",
+      label   = <span class="str">"Entrada"</span>,
+      <span class="fn">f7Card</span>(
+        title = <span class="str">"Registrar Dado"</span>,
+        <span class="fn">f7Text</span>(<span class="str">"campo_id"</span>, <span class="str">"ID do Talhão:"</span>),
+        <span class="fn">f7Slider</span>(<span class="str">"valor"</span>, <span class="str">"Leitura:"</span>, <span class="num">0</span>, <span class="num">100</span>, <span class="num">50</span>),
+        <span class="fn">f7Button</span>(<span class="str">"salvar"</span>, <span class="str">"Salvar"</span>, fill = <span class="kw">TRUE</span>)
+      )
+    )
+  )
+)
+
+server &lt;- <span class="kw">function</span>(input, output, session) {
+  dados &lt;- <span class="fn">reactiveValues</span>(registros = <span class="fn">data.frame</span>())
+  <span class="fn">observeEvent</span>(input$salvar, {
+    novo &lt;- <span class="fn">data.frame</span>(id = input$campo_id, valor = input$valor, ts = <span class="fn">Sys.time</span>())
+    dados$registros &lt;- <span class="fn">rbind</span>(dados$registros, novo)
+  })
+  output$card_totais &lt;- <span class="fn">renderUI</span>({
+    <span class="fn">p</span>(<span class="fn">strong</span>(<span class="fn">nrow</span>(dados$registros)), <span class="str">" registros hoje"</span>)
+  })
+}
+
+<span class="fn">shinyApp</span>(ui, server)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rserve-flutter">Rserve — Backend para Apps Nativos</h2>
+        <p>
+          <strong>Rserve</strong> é um servidor TCP que expõe uma sessão R. Apps nativos em Flutter, React Native ou Swift podem enviar código R e receber resultados. É uma arquitetura mais complexa mas oferece experiência totalmente nativa.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Comparação: Plumber API vs Rserve</div>
+          <pre class="example"><span class="com"># ---- Opção 1: Plumber API (REST) — recomendado ----</span>
+<span class="com"># + Protocolo HTTP padrão, fácil de consumir de qualquer linguagem</span>
+<span class="com"># + Deploy em containers Docker</span>
+<span class="com"># + Auth com Bearer Token, CORS configurável</span>
+<span class="com"># - Stateless (cada request é independente)</span>
+
+<span class="fn">library</span>(<span class="str">"plumber"</span>)
+<span class="com">#* @get /previsao</span>
+<span class="kw">function</span>(x = <span class="str">"1,2,3,4,5"</span>) {
+  vals &lt;- <span class="fn">as.numeric</span>(<span class="fn">strsplit</span>(x, <span class="str">","</span>)[[<span class="num">1</span>]])
+  <span class="fn">list</span>(proximo = <span class="fn">forecast</span>::<span class="fn">forecast</span>(<span class="fn">ts</span>(vals), h = <span class="num">3</span>)$mean)
+}
+
+<span class="com"># A partir do Flutter: GET http://meuservidor.com/previsao?x=1,2,3,4,5</span>
+
+<span class="com"># ---- Opção 2: Rserve (TCP) — legado/especializado ----</span>
+<span class="com"># + Sessão R persistente (estado entre chamadas)</span>
+<span class="com"># - Protocolo binário proprietário</span>
+<span class="com"># - Mais difícil de autenticar/escalar</span>
+<span class="fn">library</span>(<span class="str">"Rserve"</span>)
+<span class="fn">Rserve</span>(args = <span class="str">"--no-save --RS-port 6311"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="termux">Termux — R no Android</h2>
+        <p>
+          <strong>Termux</strong> é um emulador de terminal Linux para Android. Permite instalar R sem root, tornando o dispositivo um ambiente de análise de dados de campo.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal Termux — instalação e uso</div>
+          <pre class="example"><span class="com"># Instalar pacotes no Termux</span>
+$ pkg update &amp;&amp; pkg upgrade
+$ pkg install r-base
+
+<span class="com"># Iniciar R</span>
+$ R
+R version 4.4.1 ...
+
+<span class="com"># Instalar pacotes R</span>
+&gt; install.packages("tidyverse", repos="https://cran.rstudio.com/")
+
+<span class="com"># Executar script de campo</span>
+$ Rscript analise_campo.R --input dados_gps.csv --output relatorio.html
+
+<span class="com"># Compartilhar resultados via Telegram (termux-api)</span>
+$ pkg install termux-api
+$ Rscript gerar_relatorio.R
+$ termux-share -a send relatorio.html</pre>
+        </div>
+        <div class="callout">
+          <p>
+            Termux junto com <strong>termux-api</strong> permite acessar GPS, câmera, microfone e sensor de aceleração diretamente de scripts R via chamadas de sistema — útil para cientistas fazendo coletas de campo que precisam de análise imediata no próprio dispositivo.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="flexdashboard">flexdashboard — Mobile-First sem Servidor</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">relatorio-campo.Rmd — flexdashboard responsivo</div>
+          <pre class="example">---
+title: "Relatório de Campo"
+output:
+  flexdashboard::flex_dashboard:
+    theme: bootstrap
+    orientation: rows
+    vertical_layout: scroll
+    mobile_scroll: true
+    source_code: embed
+params:
+  regiao: "Sul"
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(ggplot2)
+dados &lt;- readRDS("dados_campo.rds")
+```
+
+Row {data-height=200}
+---
+
+### Total de Amostras
+```{r}
+valueBox(nrow(dados), icon = "fa-flask", color = "primary")
+```
+
+### Anomalias Detectadas
+```{r}
+n_anomalias &lt;- sum(dados$anomalia)
+valueBox(n_anomalias, icon = "fa-exclamation-triangle",
+         color = ifelse(n_anomalias &gt; 0, "warning", "success"))
+```
+
+Row
+---
+
+### Distribuição por Setor
+```{r}
+dados |&gt;
+  count(setor) |&gt;
+  ggplot(aes(setor, n, fill = setor)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() + theme_minimal()
+```</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>IANNONE, Richard; ALLAIRE, J.J. <strong>flexdashboard: R Markdown Format for Flexible Dashboards</strong>. Posit Software, 2024. Disponível em: <a href="https://pkgs.rstudio.com/flexdashboard/" target="_blank" rel="noopener">pkgs.rstudio.com/flexdashboard</a></li>
+          <li>RINTEFACE. <strong>shinymobile: Mobile Framework7 for Shiny</strong>. R package, 2024. Disponível em: <a href="https://rinterface.github.io/shinymobile/" target="_blank" rel="noopener">rinterface.github.io/shinymobile</a></li>
+          <li>URBANEK, Simon. <strong>Rserve: Binary R server</strong>. R package, 2024. Disponível em: <a href="https://www.rforge.net/Rserve/" target="_blank" rel="noopener">rforge.net/Rserve</a></li>
+          <li>GOOGLE DEVELOPERS. <strong>Progressive Web Apps</strong>. web.dev, 2024. Disponível em: <a href="https://web.dev/progressive-web-apps/" target="_blank" rel="noopener">web.dev/progressive-web-apps</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Web com Shiny</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Terminal e CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Um app nativo bonito na frente, R estatisticamente rigoroso nos bastidores — a combinação ideal para análise científica em campo." — padrão Plumber + Framework nativo</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

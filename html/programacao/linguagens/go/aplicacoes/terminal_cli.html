@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Terminal e CLI com Go: Cobra + Viper, Bubble Tea TUI, lipgloss e tablewriter." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Terminal e CLI</h1>
+          <p>Go é uma das melhores linguagens para ferramentas CLI: binários estáticos sem dependências, cross-compile trivial, e uma das melhores bibliotecas do ecossistema — <strong>Cobra</strong> para argumentos/subcomandos, <strong>Viper</strong> para configuração hierárquica, <strong>Bubble Tea</strong> para TUIs interativas com arquitetura Elm, e <strong>lipgloss</strong> para estilo ANSI.</p>
+        </div>
+        <p class="intro-highlight">
+          O ecossistema Charmbracelet (<code>bubbletea</code> + <code>lipgloss</code> + <code>bubbles</code> + <code>glamour</code>) tornou Go na <strong>melhor plataforma para TUIs modernas</strong>. Ferramentas como <code>gh</code>, <code>lazygit</code>, <code>k9s</code> e <code>charm</code> são construídas com Go — provando que aplicações de terminal podem ter UX comparável a interfaces gráficas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cobra-viper">Cobra + Viper — CLI Profissional</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Subcomandos, flags, configuração e auto-complete</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"github.com/spf13/cobra"</span>
+    <span class="str">"github.com/spf13/viper"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"os"</span>
+)
+
+<span class="kw">var</span> rootCmd = &amp;cobra.Command{
+    Use:   <span class="str">"mytool"</span>,
+    Short: <span class="str">"Ferramenta de processamento de dados"</span>,
+    Long:  <span class="str">`mytool processa arquivos CSV, JSON e bancos de dados.`</span>,
+}
+
+<span class="kw">var</span> converterCmd = &amp;cobra.Command{
+    Use:     <span class="str">"converter [arquivo]"</span>,
+    Short:   <span class="str">"Converte formato de arquivo"</span>,
+    Args:    cobra.ExactArgs(1),
+    Example: <span class="str">"  mytool converter dados.csv --output dados.json --formato json"</span>,
+    RunE: <span class="kw">func</span>(cmd *cobra.Command, args []string) error {
+        entrada := args[0]
+        saida, _ := cmd.Flags().GetString(<span class="str">"output"</span>)
+        formato, _ := cmd.Flags().GetString(<span class="str">"formato"</span>)
+        verbose, _ := cmd.Flags().GetBool(<span class="str">"verbose"</span>)
+
+        <span class="kw">if</span> verbose {
+            fmt.Printf(<span class="str">"Convertendo %s → %s (formato: %s)\n"</span>, entrada, saida, formato)
+        }
+        <span class="com">// ... lógica real</span>
+        <span class="kw">return</span> nil
+    },
+}
+
+<span class="kw">func</span> <span class="fn">init</span>() {
+    <span class="com">// Flags persistentes (herdadas por subcomandos)</span>
+    rootCmd.PersistentFlags().Bool(<span class="str">"verbose"</span>, false, <span class="str">"saída detalhada"</span>)
+
+    <span class="com">// Flags locais do subcomando</span>
+    converterCmd.Flags().StringP(<span class="str">"output"</span>, <span class="str">"o"</span>, <span class="str">"output.json"</span>, <span class="str">"arquivo de saída"</span>)
+    converterCmd.Flags().StringP(<span class="str">"formato"</span>, <span class="str">"f"</span>, <span class="str">"json"</span>, <span class="str">"formato: json, csv, yaml"</span>)
+
+    rootCmd.AddCommand(converterCmd)
+
+    <span class="com">// Viper — arquivo de configuração + env vars</span>
+    viper.SetConfigName(<span class="str">"config"</span>)
+    viper.SetConfigType(<span class="str">"yaml"</span>)
+    viper.AddConfigPath(<span class="str">"$HOME/.mytool"</span>)
+    viper.AddConfigPath(<span class="str">"."</span>)
+    viper.AutomaticEnv()   <span class="com">// MYTOOL_DATABASE_URL → database.url</span>
+    viper.SetEnvPrefix(<span class="str">"MYTOOL"</span>)
+
+    <span class="kw">if</span> err := viper.ReadInConfig(); err == nil {
+        fmt.Println(<span class="str">"Config:"</span>, viper.ConfigFileUsed())
+    }
+
+    <span class="com">// Bind flag ao Viper</span>
+    viper.BindPFlag(<span class="str">"verbose"</span>, rootCmd.PersistentFlags().Lookup(<span class="str">"verbose"</span>))
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="kw">if</span> err := rootCmd.Execute(); err != nil {
+        os.Exit(1)
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bubbletea">Bubble Tea — TUI Interativa (Arquitetura Elm)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Model + Update + View — lista interativa no terminal</div>
+          <pre class="example"><span class="com">// go get github.com/charmbracelet/bubbletea</span>
+<span class="com">// go get github.com/charmbracelet/lipgloss</span>
+<span class="com">// go get github.com/charmbracelet/bubbles</span>
+<span class="kw">import</span> (
+    tea <span class="str">"github.com/charmbracelet/bubbletea"</span>
+    <span class="str">"github.com/charmbracelet/lipgloss"</span>
+    <span class="str">"github.com/charmbracelet/bubbles/textinput"</span>
+    <span class="str">"github.com/charmbracelet/bubbles/spinner"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="kw">type</span> Model <span class="kw">struct</span> {
+    itens     []string
+    cursor    int
+    selecionados <span class="kw">map</span>[int]bool
+    input     textinput.Model
+    loading   bool
+    spinner   spinner.Model
+}
+
+<span class="com">// Mensagens (Events)</span>
+<span class="kw">type</span> dadosCarregados []string
+
+<span class="kw">func</span> <span class="fn">novoModel</span>() Model {
+    ti := textinput.New()
+    ti.Placeholder = <span class="str">"Buscar..."</span>
+    ti.Focus()
+
+    sp := spinner.New()
+    sp.Spinner = spinner.Dot
+
+    <span class="kw">return</span> Model{
+        itens:     []string{<span class="str">"Go"</span>, <span class="str">"Rust"</span>, <span class="str">"Python"</span>, <span class="str">"TypeScript"</span>},
+        selecionados: make(<span class="kw">map</span>[int]bool),
+        input:     ti,
+        spinner:   sp,
+    }
+}
+
+<span class="com">// Init — comandos iniciais</span>
+<span class="kw">func</span> (m Model) <span class="fn">Init</span>() tea.Cmd {
+    <span class="kw">return</span> tea.Batch(textinput.Blink, m.spinner.Tick)
+}
+
+<span class="com">// Update — processam mensagens e retornam novo Model</span>
+<span class="kw">func</span> (m Model) <span class="fn">Update</span>(msg tea.Msg) (tea.Model, tea.Cmd) {
+    <span class="kw">switch</span> msg := msg.(type) {
+    <span class="kw">case</span> tea.KeyMsg:
+        <span class="kw">switch</span> msg.String() {
+        <span class="kw">case</span> <span class="str">"ctrl+c"</span>, <span class="str">"q"</span>:
+            <span class="kw">return</span> m, tea.Quit
+        <span class="kw">case</span> <span class="str">"up"</span>, <span class="str">"k"</span>:
+            <span class="kw">if</span> m.cursor > 0 { m.cursor-- }
+        <span class="kw">case</span> <span class="str">"down"</span>, <span class="str">"j"</span>:
+            <span class="kw">if</span> m.cursor &lt; len(m.itens)-1 { m.cursor++ }
+        <span class="kw">case</span> <span class="str">" "</span>:
+            m.selecionados[m.cursor] = !m.selecionados[m.cursor]
+        }
+    }
+    <span class="kw">var</span> cmd tea.Cmd
+    m.input, cmd = m.input.Update(msg)
+    <span class="kw">return</span> m, cmd
+}
+
+<span class="com">// View — renderização em string</span>
+<span class="kw">func</span> (m Model) <span class="fn">View</span>() string {
+    estiloCursor := lipgloss.NewStyle().Foreground(lipgloss.Color(<span class="str">"#00D7FF"</span>)).Bold(true)
+    estiloSel    := lipgloss.NewStyle().Foreground(lipgloss.Color(<span class="str">"#00FF87"</span>))
+    estiloNormal := lipgloss.NewStyle().Foreground(lipgloss.Color(<span class="str">"#FFFDF5"</span>))
+
+    s := <span class="str">"Selecione linguagens (espaço = selecionar, q = sair)\n\n"</span>
+    s += m.input.View() + <span class="str">"\n\n"</span>
+
+    <span class="kw">for</span> i, item := <span class="kw">range</span> m.itens {
+        cursor := <span class="str">"  "</span>
+        <span class="kw">if</span> m.cursor == i { cursor = estiloCursor.Render(<span class="str">"▶ "</span>) }
+
+        check := <span class="str">"○ "</span>
+        <span class="kw">if</span> m.selecionados[i] { check = estiloSel.Render(<span class="str">"● "</span>) }
+
+        line := estiloNormal.Render(item)
+        s += fmt.Sprintf(<span class="str">"%s%s%s\n"</span>, cursor, check, line)
+    }
+    <span class="kw">return</span> s
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    p := tea.NewProgram(novoModel(), tea.WithAltScreen())
+    <span class="kw">if</span> _, err := p.Run(); err != nil { panic(err) }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tables-output">Saída Formatada — Tabelas e Progress Bar</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tablewriter, progress bar e saída colorida</div>
+          <pre class="example"><span class="com">// go get github.com/olekukonko/tablewriter</span>
+<span class="kw">import</span> (
+    <span class="str">"github.com/olekukonko/tablewriter"</span>
+    <span class="str">"os"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="com">// Tabela formatada</span>
+table := tablewriter.NewWriter(os.Stdout)
+table.SetHeader([]string{<span class="str">"Linguagem"</span>, <span class="str">"Versão"</span>, <span class="str">"Tipo"</span>})
+table.SetBorder(false)
+table.SetHeaderAlignment(tablewriter.ALIGN_LEFT)
+table.SetAlignment(tablewriter.ALIGN_LEFT)
+table.SetColumnSeparator(<span class="str">" │ "</span>)
+
+dados := [][]string{
+    {<span class="str">"Go"</span>, <span class="str">"1.22"</span>, <span class="str">"Compilada"</span>},
+    {<span class="str">"Rust"</span>, <span class="str">"1.75"</span>, <span class="str">"Compilada"</span>},
+    {<span class="str">"Python"</span>, <span class="str">"3.12"</span>, <span class="str">"Interpretada"</span>},
+}
+table.AppendBulk(dados)
+table.Render()
+
+<span class="com">// Progress bar simples sem dependências</span>
+<span class="kw">func</span> <span class="fn">progressBar</span>(atual, total int, largura int) string {
+    pct := float64(atual) / float64(total)
+    preenchido := int(pct * float64(largura))
+    barra := strings.Repeat(<span class="str">"█"</span>, preenchido) + strings.Repeat(<span class="str">"░"</span>, largura-preenchido)
+    <span class="kw">return</span> fmt.Sprintf(<span class="str">"\r[%s] %d/%d (%.0f%%)"</span>, barra, atual, total, pct*100)
+}
+
+<span class="com">// Usar em loop</span>
+<span class="kw">for</span> i := 0; i &lt;= 100; i++ {
+    fmt.Print(progressBar(i, 100, 30))
+    time.Sleep(20 * time.Millisecond)
+}
+fmt.Println()    <span class="com">// nova linha ao finalizar</span>
+
+<span class="com">// Cores ANSI sem dependências</span>
+<span class="kw">const</span> (
+    Reset  = <span class="str">"\033[0m"</span>
+    Verde  = <span class="str">"\033[32m"</span>
+    Vermelho = <span class="str">"\033[31m"</span>
+    Azul   = <span class="str">"\033[34m"</span>
+    Negrito = <span class="str">"\033[1m"</span>
+)
+
+<span class="kw">func</span> <span class="fn">sucesso</span>(msg string) { fmt.Printf(<span class="str">"%s%s✓ %s%s\n"</span>, Negrito, Verde, msg, Reset) }
+<span class="kw">func</span> <span class="fn">erro</span>(msg string)    { fmt.Fprintf(os.Stderr, <span class="str">"%s✗ %s%s\n"</span>, Vermelho, msg, Reset) }
+<span class="kw">func</span> <span class="fn">info</span>(msg string)    { fmt.Printf(<span class="str">"%sℹ %s%s\n"</span>, Azul, msg, Reset) }
+
+<span class="com">// Spinner sem dependências</span>
+frames := []string{<span class="str">"⠋"</span>, <span class="str">"⠙"</span>, <span class="str">"⠹"</span>, <span class="str">"⠸"</span>, <span class="str">"⠼"</span>, <span class="str">"⠴"</span>, <span class="str">"⠦"</span>, <span class="str">"⠧"</span>, <span class="str">"⠇"</span>, <span class="str">"⠏"</span>}
+i := 0
+ticker := time.NewTicker(80 * time.Millisecond)
+done := make(chan bool)
+<span class="kw">go</span> <span class="kw">func</span>() {
+    <span class="kw">for</span> {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> &lt;-ticker.C:
+            fmt.Printf(<span class="str">"\r%s Processando..."</span>, frames[i%len(frames)])
+            i++
+        <span class="kw">case</span> &lt;-done:
+            fmt.Println(<span class="str">"\r✓ Concluído!   "</span>)
+            <span class="kw">return</span>
+        }
+    }
+}()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SPFGO. <strong>Cobra — A Framework for Modern CLI Apps in Go</strong>. Disponível em: &lt;https://github.com/spf13/cobra&gt;. Acesso em: 2026.</li>
+            <li>CHARMBRACELET. <strong>Bubble Tea — A fun, functional and stateful TUI framework</strong>. Disponível em: &lt;https://github.com/charmbracelet/bubbletea&gt;. Acesso em: 2026.</li>
+            <li>CHARMBRACELET. <strong>lipgloss — Style definitions for terminal apps</strong>. Disponível em: &lt;https://github.com/charmbracelet/lipgloss&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Go</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A arquitetura <strong>Elm no Bubble Tea</strong> (<code>Model</code> imutável → <code>Update(msg)</code> retorna novo <code>Model</code> → <code>View()</code> renderiza string) é revolucionária para TUIs: estado <strong>sempre previsível</strong>, sem callbacks entrelaçados, sem mutação concorrente. Cada tecla pressionada é uma mensagem tipada; cada efeito assíncrono (chamada HTTP, leitura de arquivo) retorna uma mensagem — tornando o fluxo de dados 100% rastreável e testável.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

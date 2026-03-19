@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C e bancos de dados: SQLite embutido, API C do PostgreSQL (libpq), acesso a Redis, padrões de acesso a dados e transações em C." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C e Bancos de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Bancos de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="banco-dados" aria-hidden="true"></span></div>
+          <h1>C e Bancos de Dados</h1>
+          <p>SQLite embutido, libpq do PostgreSQL, hiredis para Redis e padrões avançados de acesso a dados em C.</p>
+        </div>
+        <p class="intro-highlight">
+          Os próprios bancos de dados são escritos em C — PostgreSQL, SQLite, MySQL, Redis e MongoDB. Para aplicações que precisam persistência, C oferece APIs nativas de máximo desempenho, sem camadas de abstração desnecessárias.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite">SQLite — Banco Embutido</h2>
+        <p>SQLite é uma biblioteca C que implementa um SGBD completo em um único arquivo. Zero configuração, zero servidor, zero dependências — apenas incluir <code>sqlite3.h</code> e linkar <code>-lsqlite3</code>.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; SQLite: CRUD completo com prepared statements</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sqlite3.h&gt;</span>
+
+<span class="kw">#define</span> <span class="fn">CHECK</span>(rc, db) \
+    <span class="kw">if</span> ((rc) != SQLITE_OK) { \
+        <span class="fn">fprintf</span>(stderr, <span class="str">"SQLite: %s\n"</span>, <span class="fn">sqlite3_errmsg</span>(db)); \
+        <span class="kw">goto</span> cleanup; }
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">sqlite3</span>      *db   = NULL;
+    <span class="tp">sqlite3_stmt</span> *stmt = NULL;
+    <span class="tp">int</span> rc;
+
+    <span class="com">/* Abrir (ou criar) banco */</span>
+    rc = <span class="fn">sqlite3_open</span>(<span class="str">"escola.db"</span>, &amp;db);
+    <span class="fn">CHECK</span>(rc, db);
+
+    <span class="com">/* Criar tabela */</span>
+    rc = <span class="fn">sqlite3_exec</span>(db,
+        <span class="str">"CREATE TABLE IF NOT EXISTS alunos ("</span>
+        <span class="str">"  id    INTEGER PRIMARY KEY AUTOINCREMENT,"</span>
+        <span class="str">"  nome  TEXT    NOT NULL,"</span>
+        <span class="str">"  nota  REAL    NOT NULL"</span>
+        <span class="str>");"</span>,
+        NULL, NULL, NULL);
+    <span class="fn">CHECK</span>(rc, db);
+
+    <span class="com">/* INSERT com prepared statement (previne SQL injection) */</span>
+    rc = <span class="fn">sqlite3_prepare_v2</span>(db,
+        <span class="str">"INSERT INTO alunos (nome, nota) VALUES (?, ?);"</span>,
+        -<span class="num">1</span>, &amp;stmt, NULL);
+    <span class="fn">CHECK</span>(rc, db);
+
+    <span class="kw">struct</span> { <span class="kw">const</span> <span class="tp">char</span> *nome; <span class="tp">double</span> nota; } dados[] = {
+        {<span class="str">"Ana"</span>, <span class="num">9.5</span>}, {<span class="str">"Bruno"</span>, <span class="num">7.8</span>}, {<span class="str">"Carla"</span>, <span class="num">8.2</span>}
+    };
+
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; i++) {
+        <span class="fn">sqlite3_bind_text</span>(stmt, <span class="num">1</span>, dados[i].nome, -<span class="num">1</span>, SQLITE_STATIC);
+        <span class="fn">sqlite3_bind_double</span>(stmt, <span class="num">2</span>, dados[i].nota);
+        <span class="fn">sqlite3_step</span>(stmt);
+        <span class="fn">sqlite3_reset</span>(stmt);
+    }
+    <span class="fn">sqlite3_finalize</span>(stmt);
+
+    <span class="com">/* SELECT */</span>
+    rc = <span class="fn">sqlite3_prepare_v2</span>(db,
+        <span class="str">"SELECT id, nome, nota FROM alunos ORDER BY nota DESC;"</span>,
+        -<span class="num">1</span>, &amp;stmt, NULL);
+    <span class="fn">CHECK</span>(rc, db);
+
+    <span class="fn">printf</span>(<span class="str">"%-4s %-15s %s\n"</span>, <span class="str">"ID"</span>, <span class="str">"Nome"</span>, <span class="str">"Nota"</span>);
+    <span class="fn">printf</span>(<span class="str">"%-4s %-15s %s\n"</span>, <span class="str">"--"</span>, <span class="str">"----"</span>, <span class="str">"----"</span>);
+    <span class="kw">while</span> (<span class="fn">sqlite3_step</span>(stmt) == SQLITE_ROW) {
+        <span class="fn">printf</span>(<span class="str">"%-4d %-15s %.1f\n"</span>,
+            <span class="fn">sqlite3_column_int</span>   (stmt, <span class="num">0</span>),
+            <span class="fn">sqlite3_column_text</span>  (stmt, <span class="num">1</span>),
+            <span class="fn">sqlite3_column_double</span>(stmt, <span class="num">2</span>));
+    }
+
+cleanup:
+    <span class="fn">sqlite3_finalize</span>(stmt);
+    <span class="fn">sqlite3_close</span>(db);
+    <span class="kw">return</span> rc != SQLITE_OK ? <span class="num">1</span> : <span class="num">0</span>;
+}
+<span class="com">/* gcc -o escola escola.c -lsqlite3 */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="postgresql">PostgreSQL — libpq</h2>
+        <p>libpq é a API C oficial do PostgreSQL. Suporta queries síncronas e assíncronas, prepared statements, COPY de dados em bulk e notificações LISTEN/NOTIFY.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; libpq: conexão, query e parâmetros</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;libpq-fe.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">PGconn</span>   *conn   = NULL;
+    <span class="tp">PGresult</span> *result = NULL;
+
+    <span class="com">/* Conectar */</span>
+    conn = <span class="fn">PQconnectdb</span>(
+        <span class="str">"host=localhost port=5432 dbname=escola user=postgres password=secret"</span>
+    );
+    <span class="kw">if</span> (<span class="fn">PQstatus</span>(conn) != CONNECTION_OK) {
+        <span class="fn">fprintf</span>(stderr, <span class="str">"Conexão falhou: %s\n"</span>, <span class="fn">PQerrorMessage</span>(conn));
+        <span class="kw">goto</span> cleanup;
+    }
+
+    <span class="com">/* SELECT com parâmetro ($1 previne SQL injection) */</span>
+    <span class="kw">const</span> <span class="tp">char</span> *param = <span class="str">"7.0"</span>;
+    result = <span class="fn">PQexecParams</span>(conn,
+        <span class="str">"SELECT nome, nota FROM alunos WHERE nota &gt; $1 ORDER BY nota DESC"</span>,
+        <span class="num">1</span>,           <span class="com">/* nparams */</span>
+        NULL,        <span class="com">/* paramTypes (NULL = inferir) */</span>
+        &amp;param,      <span class="com">/* paramValues */</span>
+        NULL, NULL,  <span class="com">/* paramLengths, paramFormats */</span>
+        <span class="num">0</span>            <span class="com">/* resultFormat: 0=text, 1=binary */</span>
+    );
+
+    <span class="kw">if</span> (<span class="fn">PQresultStatus</span>(result) != PGRES_TUPLES_OK) {
+        <span class="fn">fprintf</span>(stderr, <span class="str">"Query falhou: %s\n"</span>, <span class="fn">PQerrorMessage</span>(conn));
+        <span class="kw">goto</span> cleanup;
+    }
+
+    <span class="tp">int</span> nrows = <span class="fn">PQntuples</span>(result);
+    <span class="fn">printf</span>(<span class="str">"%-20s %s\n"</span>, <span class="str">"Nome"</span>, <span class="str">"Nota"</span>);
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; nrows; i++) {
+        <span class="fn">printf</span>(<span class="str">"%-20s %s\n"</span>,
+            <span class="fn">PQgetvalue</span>(result, i, <span class="num">0</span>),
+            <span class="fn">PQgetvalue</span>(result, i, <span class="num">1</span>));
+    }
+
+cleanup:
+    <span class="fn">PQclear</span>(result);
+    <span class="fn">PQfinish</span>(conn);
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o pg_app pg_app.c -lpq */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis — hiredis</h2>
+        <p>hiredis é o cliente C oficial do Redis. Mínimo, rápido e direto — envia comandos Redis e recebe respostas tipadas. Usado internamente pelo próprio Redis source.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; hiredis: SET, GET, LPUSH, EXPIRE</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;hiredis/hiredis.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="tp">redisContext</span> *c = <span class="fn">redisConnect</span>(<span class="str">"127.0.0.1"</span>, <span class="num">6379</span>);
+    <span class="kw">if</span> (!c || c-&gt;err) {
+        <span class="fn">fprintf</span>(stderr, <span class="str">"Erro: %s\n"</span>, c ? c-&gt;errstr : <span class="str">"OOM"</span>);
+        <span class="kw">return</span> <span class="num">1</span>;
+    }
+
+    <span class="com">/* SET com expiração */</span>
+    <span class="tp">redisReply</span> *r = <span class="fn">redisCommand</span>(c, <span class="str">"SET usuario:1 'Ana' EX 3600"</span>);
+    <span class="fn">printf</span>(<span class="str">"SET: %s\n"</span>, r-&gt;str);  <span class="com">/* OK */</span>
+    <span class="fn">freeReplyObject</span>(r);
+
+    <span class="com">/* GET */</span>
+    r = <span class="fn">redisCommand</span>(c, <span class="str">"GET usuario:1"</span>);
+    <span class="fn">printf</span>(<span class="str">"GET: %s\n"</span>, r-&gt;str);
+    <span class="fn">freeReplyObject</span>(r);
+
+    <span class="com">/* LPUSH list + LRANGE */</span>
+    <span class="fn">redisCommand</span>(c, <span class="str">"RPUSH log 'evento1' 'evento2' 'evento3'"</span>);
+    r = <span class="fn">redisCommand</span>(c, <span class="str">"LRANGE log 0 -1"</span>);
+    <span class="fn">printf</span>(<span class="str">"Log (%lld entradas):\n"</span>, r-&gt;elements);
+    <span class="kw">for</span> (<span class="tp">size_t</span> i = <span class="num">0</span>; i &lt; r-&gt;elements; i++)
+        <span class="fn">printf</span>(<span class="str">"  %s\n"</span>, r-&gt;element[i]-&gt;str);
+    <span class="fn">freeReplyObject</span>(r);
+
+    <span class="fn">redisFree</span>(c);
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o redis_app redis_app.c -lhiredis */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SQLite Consortium. <strong>SQLite C Interface</strong>. Disponível em: &lt;https://www.sqlite.org/c3ref/intro.html&gt;. Acesso em: 2025.</li>
+            <li>The PostgreSQL Global Development Group. <strong>libpq — C Library</strong>. Disponível em: &lt;https://www.postgresql.org/docs/current/libpq.html&gt;. Acesso em: 2025.</li>
+            <li>Sanfilippo, Antirez. <strong>hiredis — Minimalistic C client for Redis</strong>. Disponível em: &lt;https://github.com/redis/hiredis&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Embarcados &mdash; microcontroladores e IoT</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para CLI &mdash; ferramentas de terminal</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "SQL injection: the bug that never goes away. Prepared statements: the cure that always works." &mdash; Unknown</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

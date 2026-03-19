@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas praticas em Assembly: organizacao de codigo, convencoes de nomenclatura, uso de macros NASM, documentacao, interop com C e quando usar Assembly vs linguagens de alto nivel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Projetos e Boas Práticas</h1>
+          <p>Escrever assembly de qualidade exige <strong>disciplina de nomenclatura</strong>, uso consistente de macros para evitar repetição, comentários que explicam <em>por que</em> (não apenas o que), organização de seções e a sabedoria de saber <strong>quando não usar Assembly</strong>. Projetos reais combinam assembly de forma cirúrgica com C/C++ de alto desempenho.</p>
+        </div>
+        <p class="intro-highlight">
+          A melhor prática mais importante em Assembly: <strong>comente cada função como se explicasse para alguém que nunca viu código assembly</strong>. Diferente de C, não há nomes de variáveis nem tipos que comuniquem intenção — o comentário é toda a documentação disponível.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura e Organizacao de Projetos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM &mdash; Estrutura de arquivo assembly bem organizado</div>
+          <pre class="example"><span class="com">;;==============================================================</span>
+<span class="com">;; módulo: vetor_ops.asm</span>
+<span class="com">;; descrição: Operações sobre vetores de double (IEEE 754 64-bit)</span>
+<span class="com">;; ABI: System V AMD64 (Linux/macOS)</span>
+<span class="com">;;==============================================================</span>
+
+<span class="com">; ── Exports (funções públicas) ─────────────────────────────</span>
+<span class="kw">global</span> vec_soma
+<span class="kw">global</span> vec_produto_escalar
+<span class="kw">global</span> vec_norma
+
+<span class="com">; ── Imports (dependências externas) ───────────────────────</span>
+<span class="kw">extern</span> sqrt                   <span class="com">; da libm</span>
+
+<span class="com">; ── Constantes (symbolic names em vez de magic numbers) ────</span>
+DOUBLE_SIZE <span class="kw">equ</span> <span class="num">8</span>
+FLOAT_SIZE  <span class="kw">equ</span> <span class="num">4</span>
+
+<span class="com">; ── Seção de dados read-only ───────────────────────────────</span>
+<span class="kw">section</span> .rodata
+    .mask_abs <span class="fn">dq</span> <span class="num">0x7FFFFFFFFFFFFFFF</span>   <span class="com">; máscara para abs(double)</span>
+
+<span class="com">; ── Seção de dados writable ────────────────────────────────</span>
+<span class="kw">section</span> .data
+    <span class="com">; (variáveis globais mutáveis aqui — evitar globais quando possível)</span>
+
+<span class="com">; ── Seção não-inicializada ────────────────────────────────</span>
+<span class="kw">section</span> .bss
+    buf_tmp  <span class="fn">resq</span> <span class="num">16</span>           <span class="com">; reservar 128 bytes temporários</span>
+
+<span class="com">; ── Código ───────────────────────────────────────────────</span>
+<span class="kw">section</span> .text
+
+<span class="com">;;--------------------------------------------------------------</span>
+<span class="com">;; vec_soma: soma vetorial de dois arrays de doubles</span>
+<span class="com">;; Entrada:  rdi = ptr array A</span>
+<span class="com">;;           rsi = ptr array B</span>
+<span class="com">;;           rdx = ptr array output</span>
+<span class="com">;;           rcx = n (quantidade de elementos)</span>
+<span class="com">;; Retorno:  void</span>
+<span class="com">;; Clobbers: rax, rdx, rcx, xmm0, xmm1</span>
+<span class="com">;;--------------------------------------------------------------</span>
+vec_soma:
+    <span class="kw">test</span>   rcx, rcx
+    <span class="kw">jz</span>     .ret
+.loop:
+    <span class="kw">movsd</span>  xmm0, [rdi]           <span class="com">; xmm0 = A[i]</span>
+    <span class="kw">addsd</span>  xmm0, [rsi]           <span class="com">; xmm0 += B[i]</span>
+    <span class="kw">movsd</span>  [rdx], xmm0           <span class="com">; output[i] = resultado</span>
+    <span class="kw">add</span>    rdi, DOUBLE_SIZE
+    <span class="kw">add</span>    rsi, DOUBLE_SIZE
+    <span class="kw">add</span>    rdx, DOUBLE_SIZE
+    <span class="kw">dec</span>    rcx
+    <span class="kw">jnz</span>    .loop
+.ret:
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="macros">Macros NASM: %macro, %rep, %if</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM &mdash; Sistema de macros completo</div>
+          <pre class="example"><span class="com">; ── Macro simples: prologue/epilogue ──────────────────────</span>
+<span class="at">%macro</span> fn_entra 1                   <span class="com">; 1 argumento: bytes de stack locais</span>
+    <span class="kw">push</span>  rbp
+    <span class="kw">mov</span>   rbp, rsp
+    <span class="kw">sub</span>   rsp, %1                   <span class="com">; %1 = primeiro argumento da macro</span>
+<span class="at">%endmacro</span>
+
+<span class="at">%macro</span> fn_sai 0
+    <span class="kw">mov</span>   rsp, rbp
+    <span class="kw">pop</span>   rbp
+    <span class="kw">ret</span>
+<span class="at">%endmacro</span>
+
+<span class="com">; Uso:</span>
+minha_funcao:
+    fn_entra <span class="num">32</span>                     <span class="com">; reservar 32 bytes locais</span>
+    <span class="com">; ... código da função ...</span>
+    fn_sai
+
+<span class="com">; ── Macro para syscall genérica ────────────────────────────</span>
+<span class="at">%macro</span> syscall1 2                   <span class="com">; syscall1 num, arg1</span>
+    <span class="kw">mov</span>   eax, %1
+    <span class="kw">mov</span>   rdi, %2
+    <span class="kw">syscall</span>
+<span class="at">%endmacro</span>
+
+<span class="at">%macro</span> syscall3 4                   <span class="com">; syscall3 num, arg1, arg2, arg3</span>
+    <span class="kw">mov</span>   eax, %1
+    <span class="kw">mov</span>   rdi, %2
+    <span class="kw">mov</span>   rsi, %3
+    <span class="kw">mov</span>   rdx, %4
+    <span class="kw">syscall</span>
+<span class="at">%endmacro</span>
+
+<span class="com">; Uso:</span>
+    syscall3 <span class="num">1</span>, <span class="num">1</span>, msg, <span class="num">13</span>          <span class="com">; write(stdout, msg, 13)</span>
+    syscall1 <span class="num">60</span>, <span class="num">0</span>                  <span class="com">; exit(0)</span>
+
+<span class="com">; ── Rotulos locais com %% ──────────────────────────────────</span>
+<span class="at">%macro</span> max_int 2                    <span class="com">; arg1=reg_a, arg2=reg_b  → result em rax</span>
+    <span class="kw">mov</span>   rax, %1
+    <span class="kw">cmp</span>   rax, %2
+    <span class="kw">jge</span>   %%fim                      <span class="com">; %% = local label (único por expansão)</span>
+    <span class="kw">mov</span>   rax, %2
+%%fim:
+<span class="at">%endmacro</span>
+
+<span class="com">; ── %rep — gerar código repetitivo ────────────────────────</span>
+<span class="at">%assign</span> i <span class="num">0</span>
+<span class="at">%rep</span> <span class="num">8</span>
+    <span class="fn">db</span> i * <span class="num">2</span>                         <span class="com">; gera: db 0, db 2, db 4... db 14</span>
+    <span class="at">%assign</span> i i+<span class="num">1</span>
+<span class="at">%endrep</span>
+
+<span class="com">; ── %if — compilação condicional ──────────────────────────</span>
+<span class="at">%define</span> DEBUG <span class="num">1</span>
+
+<span class="at">%if</span> DEBUG
+    <span class="com">; INT3 = breakpoint de software — apenas em builds debug</span>
+    <span class="at">%macro</span> debug_break 0
+        <span class="kw">int</span> <span class="num">3</span>
+    <span class="at">%endmacro</span>
+<span class="at">%else</span>
+    <span class="at">%macro</span> debug_break 0
+    <span class="at">%endmacro</span>          <span class="com">; no-op em release</span>
+<span class="at">%endif</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interop-c">Interop com C/C++</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM + C &mdash; Modulo assembly chamado de C</div>
+          <pre class="example"><span class="com">; --- arquivo: ops.asm ---</span>
+<span class="com">; Funções assembly exportadas para uso em C/C++</span>
+
+<span class="kw">global</span> checksum_fletcher32
+<span class="kw">global</span> popcount64
+
+<span class="kw">section</span> .text
+
+<span class="com">;;--------------------------------------------------------------</span>
+<span class="com">;; uint32_t checksum_fletcher32(const uint16_t* data, size_t n)</span>
+<span class="com">;; rdi = ptr, rsi = número de uint16_t</span>
+<span class="com">;;--------------------------------------------------------------</span>
+checksum_fletcher32:
+    <span class="kw">xor</span>   eax, eax      <span class="com">; sum1 = 0</span>
+    <span class="kw">xor</span>   ecx, ecx      <span class="com">; sum2 = 0</span>
+    <span class="kw">test</span>  rsi, rsi
+    <span class="kw">jz</span>    .done
+.loop:
+    <span class="kw">movzx</span> edx, <span class="tp">word</span> [rdi]
+    <span class="kw">add</span>   eax, edx
+    <span class="kw">cmp</span>   eax, <span class="num">0xFFFF</span>
+    <span class="kw">jb</span>    .no_wrap1
+    <span class="kw">sub</span>   eax, <span class="num">0xFFFF</span>
+.no_wrap1:
+    <span class="kw">add</span>   ecx, eax
+    <span class="kw">cmp</span>   ecx, <span class="num">0xFFFF</span>
+    <span class="kw">jb</span>    .no_wrap2
+    <span class="kw">sub</span>   ecx, <span class="num">0xFFFF</span>
+.no_wrap2:
+    <span class="kw">add</span>   rdi, <span class="num">2</span>
+    <span class="kw">dec</span>   rsi
+    <span class="kw">jnz</span>   .loop
+.done:
+    <span class="kw">shl</span>   ecx, <span class="num">16</span>
+    <span class="kw">or</span>    eax, ecx
+    <span class="kw">ret</span>
+
+<span class="com">;;--------------------------------------------------------------</span>
+<span class="com">;; int popcount64(uint64_t x)  — conta bits 1 em uma palavra 64-bit</span>
+<span class="com">;; rdi = x, retorna int em rax</span>
+<span class="com">;;--------------------------------------------------------------</span>
+popcount64:
+    <span class="kw">popcnt</span> rax, rdi     <span class="com">; instrução dedicada (SSE4.2 / Nehalem+)</span>
+    <span class="kw">ret</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; Header para usar o modulo assembly</div>
+          <pre class="example"><span class="com">// ops.h — declarações C das funções em assembly</span>
+<span class="kw">#pragma once</span>
+<span class="kw">#include</span> <span class="str">&lt;stdint.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stddef.h&gt;</span>
+
+<span class="kw">uint32_t</span> <span class="fn">checksum_fletcher32</span>(<span class="kw">const</span> <span class="kw">uint16_t</span>* data, size_t n);
+<span class="kw">int</span>      <span class="fn">popcount64</span>(<span class="kw">uint64_t</span> x);
+
+<span class="com">// main.c — uso</span>
+<span class="kw">#include</span> <span class="str">"ops.h"</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+    <span class="kw">uint16_t</span> dados[] = {<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>};
+    <span class="kw">uint32_t</span> cs = <span class="fn">checksum_fletcher32</span>(dados, <span class="num">5</span>);
+    <span class="fn">printf</span>(<span class="str">"Checksum: 0x%08X\n"</span>, cs);
+    <span class="fn">printf</span>(<span class="str">"popcount(255) = %d\n"</span>, <span class="fn">popcount64</span>(<span class="num">255</span>));
+}
+
+<span class="com">// Compilar:</span>
+<span class="com">// nasm -f elf64 ops.asm -o ops.o</span>
+<span class="com">// gcc -o programa main.c ops.o</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="quando-usar">Quando Usar Assembly</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Use Assembly quando...</p>
+            <ul>
+              <li>— Otimizar hot paths críticos que o compilador não vetoriza (SIMD manual)</li>
+              <li>— Escrever bootloaders, firmware ou código bare-metal sem OS</li>
+              <li>— Implementar rotinas de criptografia que precisam de constant-time (sem branch por dado secreto)</li>
+              <li>— Fazer profiling e entender o output do compilador (para retroalimentar o código C)</li>
+              <li>— Escrever shellcode ou analisadores de segurança</li>
+              <li>— Desenvolver ISRs (interrupt service routines) em sistemas embarcados</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Evite Assembly quando...</p>
+            <ul>
+              <li>— O compilador C/C++ com -O3 já gera código equivalente</li>
+              <li>— O gargalo é I/O (não CPU) — assembly não acelera leitura de disco/rede</li>
+              <li>— A lógica muda frequentemente — manutenção de assembly grande é cara</li>
+              <li>— Precisar de portabilidade entre arquiteturas (x86, ARM, RISC-V)</li>
+              <li>— Intrinsics C (AVX/SSE) já expressam o que você precisa</li>
+              <li>— O time não tem expertise em assembly</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="convencoes">Convencoes de Nomenclatura e Comentarios</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM &mdash; Estilo de codigo assembly profissional</div>
+          <pre class="example"><span class="com">; ── Nomenclatura ──────────────────────────────────────────</span>
+<span class="com">; GLOBAIS:   snake_case, substantivos ou verbo_objeto</span>
+<span class="com">; Locais:    .loop, .fim, .erro, .ret (ponto no inicio = local label NASM)</span>
+<span class="com">; Constantes: CAPS_SNAKE_CASE  (SYS_WRITE, BUFFER_SIZE)</span>
+<span class="com">; Seções:    sempre .text, .data, .bss, .rodata (minúsculo)</span>
+
+<span class="com">; ── Comentários: explicar INTENÇÃO, não a instrução ────────</span>
+
+<span class="com">; MAU comentário (óbvio demais):</span>
+    <span class="kw">inc</span>  rax       <span class="com">; incrementa rax</span>
+
+<span class="com">; BOM comentário (explica por quê):</span>
+    <span class="kw">inc</span>  rax       <span class="com">; avança ao próximo índice do array</span>
+
+<span class="com">; BOM comentário (explica convenção):</span>
+    <span class="kw">xor</span>  eax, eax  <span class="com">; zero-extend para 64-bit sem REX prefix (menor e mais rápido)</span>
+
+<span class="com">; ── Cabeçalho de função (template) ────────────────────────</span>
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; nome_funcao: descrição breve</span>
+<span class="com">;; Entradas:</span>
+<span class="com">;;   rdi = descrição do argumento 1</span>
+<span class="com">;;   rsi = descrição do argumento 2</span>
+<span class="com">;; Saída:</span>
+<span class="com">;;   rax = descrição do retorno</span>
+<span class="com">;; Preserva: rbx, rbp, r12-r15 (System V ABI)</span>
+<span class="com">;; Destrói:  rcx, rdx, r8, r9 (clobbers)</span>
+<span class="com">;;------------------------------------------------------------</span>
+
+<span class="com">; ── Alinhamento de instruções (legibilidade) ──</span>
+<span class="com">; Use tabulações consistentes — instrução, operandos, comentário</span>
+    <span class="kw">mov</span>   rdi, rax        <span class="com">; align operands at column 10, comments at 40</span>
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">jz</span>    .erro
+    <span class="kw">call</span>  processa</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>AGNER FOG. <strong>Calling Conventions for Different C++ Compilers and Operating Systems</strong>. Copenhagen: Technical University of Denmark, 2024. Disponível em: &lt;https://agner.org/optimize&gt;. Acesso em: 2025.</li>
+            <li>WIKI.OSDEV.ORG. <strong>Assembly Best Practices</strong>. OSDev Wiki, 2024. Disponível em: &lt;https://wiki.osdev.org/Assembly_Tips_and_Tricks&gt;. Acesso em: 2025.</li>
+            <li>DANDAMUDI, Sivarama P. <strong>Introduction to Assembly Language Programming</strong>. 2. ed. New York: Springer, 2005. ISBN 978-0-387-20636-3.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Bibliotecas e Interop</a></li>
+          <li><a href="../aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Aplicações: Terminal/CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O princípio mais importante de projetos assembly: <strong>misture assembly com C com precisão cirúrgica</strong>. Escreva toda a lógica de negócio em C/C++, profile com <code>perf</code>, identifique as 3–5 funções que consomem 80% do CPU, e reescreva apenas essas em assembly com SIMD — o resultado é portabilidade + desempenho máximo ao mesmo tempo.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

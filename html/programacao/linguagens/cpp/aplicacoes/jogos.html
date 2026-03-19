@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Jogos: SDL2 com OpenGL, SFML 2D, Box2D fisicas, EnTT ECS (Entity Component System), audio com SDL_mixer e game loop profissional." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Jogos</h1>
+          <p>Desenvolvimento de jogos em C++ com SDL2 + OpenGL para renderizacao customizada, SFML para jogos 2D rapidos, Box2D para fisicas rigorosas, EnTT como arquitetura ECS (Entity Component System) de alta performance, e game loop profissional com timestep fixo.</p>
+        </div>
+        <p class="intro-highlight">
+          C++ e a linguagem de jogos por excelencia — Unreal Engine, id Software (DOOM, Quake), Valve Source Engine e a maioria dos AAA sao escritos em C++. Controle de alocacao de memoria, cache-friendly data-oriented design (DOD) e SIMD sao diferenciais criticos nessa area.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sdl2">SDL2 + OpenGL — Game Loop e Renderizacao</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + SDL2 &mdash; game loop com timestep fixo e input system</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;SDL.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;SDL_mixer.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;array&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;chrono&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">using namespace</span> std::chrono;
+
+<span class="kw">class</span> <span class="tp">InputManager</span> {
+  std::<span class="tp">array</span>&lt;<span class="kw">bool</span>, <span class="tp">SDL_NUM_SCANCODES</span>&gt; curr_{}, prev_{};
+<span class="kw">public</span>:
+  <span class="kw">void</span> <span class="fn">update</span>() {
+    prev_ = curr_;
+    <span class="kw">const</span> <span class="kw">uint8_t</span>* state = <span class="fn">SDL_GetKeyboardState</span>(<span class="kw">nullptr</span>);
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="tp">SDL_NUM_SCANCODES</span>; ++i)
+      curr_[i] = state[i];
+  }
+  <span class="kw">bool</span> <span class="fn">pressionado</span>(<span class="tp">SDL_Scancode</span> k) <span class="kw">const</span> { <span class="kw">return</span> curr_[k]; }
+  <span class="kw">bool</span> <span class="fn">acabouDePressionar</span>(<span class="tp">SDL_Scancode</span> k) <span class="kw">const</span> { <span class="kw">return</span> curr_[k] &amp;&amp; !prev_[k]; }
+  <span class="kw">bool</span> <span class="fn">acabouDeSoltar</span>(<span class="tp">SDL_Scancode</span> k) <span class="kw">const</span> { <span class="kw">return</span> !curr_[k] &amp;&amp; prev_[k]; }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="fn">SDL_Init</span>(<span class="tp">SDL_INIT_VIDEO</span> | <span class="tp">SDL_INIT_AUDIO</span>);
+  <span class="fn">Mix_OpenAudio</span>(<span class="num">44100</span>, <span class="tp">MIX_DEFAULT_FORMAT</span>, <span class="num">2</span>, <span class="num">2048</span>);
+  <span class="fn">Mix_AllocateChannels</span>(<span class="num">16</span>);  <span class="com">// 16 canais de audio simultaneos</span>
+
+  <span class="tp">SDL_Window</span>* win = <span class="fn">SDL_CreateWindow</span>(
+    <span class="str">"Jogo C++"</span>, <span class="tp">SDL_WINDOWPOS_CENTERED</span>, <span class="tp">SDL_WINDOWPOS_CENTERED</span>,
+    <span class="num">1280</span>, <span class="num">720</span>, <span class="tp">SDL_WINDOW_SHOWN</span>);
+  <span class="tp">SDL_Renderer</span>* ren = <span class="fn">SDL_CreateRenderer</span>(
+    win, -<span class="num">1</span>, <span class="tp">SDL_RENDERER_ACCELERATED</span> | <span class="tp">SDL_RENDERER_PRESENTVSYNC</span>);
+
+  <span class="com">// Carregar assets</span>
+  <span class="tp">Mix_Chunk</span>* sfxPulo  = <span class="fn">Mix_LoadWAV</span>(<span class="str">"pulo.wav"</span>);
+  <span class="tp">Mix_Music</span>* bgmusic  = <span class="fn">Mix_LoadMUS</span>(<span class="str">"musica.ogg"</span>);
+  <span class="fn">Mix_PlayMusic</span>(bgmusic, -<span class="num">1</span>);  <span class="com">// loop infinito</span>
+
+  <span class="tp">InputManager</span> input;
+  <span class="kw">bool</span> rodando = <span class="kw">true</span>;
+
+  <span class="com">// Fixed Timestep Loop — fisica a 60Hz, render desacoplado</span>
+  <span class="kw">constexpr</span> <span class="kw">double</span> DT    = <span class="num">1.0</span> / <span class="num">60.0</span>;
+  <span class="kw">double</span> acumulado       = <span class="num">0.0</span>;
+  <span class="kw">auto</span>   tAnterior       = high_resolution_clock::<span class="fn">now</span>();
+
+  <span class="kw">float</span> jogadorX = <span class="num">100.0f</span>, jogadorY = <span class="num">400.0f</span>;
+  <span class="kw">float</span> velX = <span class="num">0.0f</span>, velY = <span class="num">0.0f</span>;
+  <span class="kw">bool</span>  noChao = <span class="kw">true</span>;
+
+  <span class="kw">while</span> (rodando) {
+    <span class="kw">auto</span> tAgora = high_resolution_clock::<span class="fn">now</span>();
+    <span class="kw">double</span> frameTempo = duration_cast&lt;duration&lt;<span class="kw">double</span>&gt;&gt;(tAgora - tAnterior).<span class="fn">count</span>();
+    tAnterior = tAgora;
+    <span class="kw">if</span> (frameTempo &gt; <span class="num">0.05</span>) frameTempo = <span class="num">0.05</span>;  <span class="com">// spiral of death cap</span>
+    acumulado += frameTempo;
+
+    <span class="com">// Processar eventos</span>
+    <span class="tp">SDL_Event</span> ev;
+    <span class="kw">while</span> (<span class="fn">SDL_PollEvent</span>(&amp;ev)) {
+      <span class="kw">if</span> (ev.type == <span class="tp">SDL_QUIT</span>) rodando = <span class="kw">false</span>;
+    }
+    input.<span class="fn">update</span>();
+
+    <span class="com">// Updates de fisica em passo fixo</span>
+    <span class="kw">while</span> (acumulado &gt;= DT) {
+      <span class="kw">float</span> spd = <span class="num">200.0f</span> * <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(DT);
+      velX = <span class="num">0.0f</span>;
+      <span class="kw">if</span> (input.<span class="fn">pressionado</span>(<span class="tp">SDL_SCANCODE_A</span>)) velX = -spd;
+      <span class="kw">if</span> (input.<span class="fn">pressionado</span>(<span class="tp">SDL_SCANCODE_D</span>)) velX =  spd;
+      <span class="kw">if</span> (input.<span class="fn">acabouDePressionar</span>(<span class="tp">SDL_SCANCODE_SPACE</span>) &amp;&amp; noChao) {
+        velY = -<span class="num">500.0f</span>;
+        noChao = <span class="kw">false</span>;
+        <span class="fn">Mix_PlayChannel</span>(-<span class="num">1</span>, sfxPulo, <span class="num">0</span>);
+      }
+      velY += <span class="num">1200.0f</span> * <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(DT);  <span class="com">// gravidade</span>
+      jogadorX += velX;
+      jogadorY += velY * <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(DT);
+      <span class="kw">if</span> (jogadorY &gt;= <span class="num">400.0f</span>) { jogadorY = <span class="num">400.0f</span>; velY = <span class="num">0.0f</span>; noChao = <span class="kw">true</span>; }
+      acumulado -= DT;
+    }
+
+    <span class="com">// Render</span>
+    <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">15</span>, <span class="num">15</span>, <span class="num">30</span>, <span class="num">255</span>);
+    <span class="fn">SDL_RenderClear</span>(ren);
+    <span class="tp">SDL_Rect</span> player{ <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(jogadorX),
+                      <span class="kw">static_cast</span>&lt;<span class="kw">int</span>&gt;(jogadorY), <span class="num">40</span>, <span class="num">60</span> };
+    <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">100</span>, <span class="num">180</span>, <span class="num">255</span>, <span class="num">255</span>);
+    <span class="fn">SDL_RenderFillRect</span>(ren, &amp;player);
+    <span class="fn">SDL_RenderPresent</span>(ren);
+  }
+
+  <span class="fn">Mix_FreeChunk</span>(sfxPulo);
+  <span class="fn">Mix_FreeMusic</span>(bgmusic);
+  <span class="fn">Mix_CloseAudio</span>();
+  <span class="fn">SDL_DestroyRenderer</span>(ren);
+  <span class="fn">SDL_DestroyWindow</span>(win);
+  <span class="fn">SDL_Quit</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="entt">EnTT — Entity Component System (ECS)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + EnTT &mdash; registry, components POD, views e sistemas</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;entt/entt.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Components sao structs POD — sem heranca, sem virtual</span>
+<span class="kw">struct</span> <span class="tp">Posicao</span>  { <span class="kw">float</span> x, y; };
+<span class="kw">struct</span> <span class="tp">Velocidade</span>{ <span class="kw">float</span> dx, dy; };
+<span class="kw">struct</span> <span class="tp">Saude</span>    { <span class="kw">int</span> hp, maxHp; };
+<span class="kw">struct</span> <span class="tp">Inimigo</span>  {};   <span class="com">// tag component — sem dados</span>
+<span class="kw">struct</span> <span class="tp">Sprite</span>   { <span class="kw">int</span> texId; <span class="kw">float</span> escala; };
+
+<span class="com">// Sistema de movimento</span>
+<span class="kw">void</span> <span class="fn">sistemaMovimento</span>(entt::<span class="tp">registry</span>&amp; reg, <span class="kw">float</span> dt) {
+  <span class="com">// View: itera somente entidades com Posicao E Velocidade</span>
+  <span class="kw">auto</span> view = reg.<span class="fn">view</span>&lt;<span class="tp">Posicao</span>, <span class="tp">Velocidade</span>&gt;();
+  <span class="kw">for</span> (<span class="kw">auto</span> [entity, pos, vel] : view.<span class="fn">each</span>()) {
+    pos.x += vel.dx * dt;
+    pos.y += vel.dy * dt;
+  }
+}
+
+<span class="com">// Sistema de colisao com borda</span>
+<span class="kw">void</span> <span class="fn">sistemaBorda</span>(entt::<span class="tp">registry</span>&amp; reg) {
+  reg.<span class="fn">view</span>&lt;<span class="tp">Posicao</span>, <span class="tp">Velocidade</span>&gt;().<span class="fn">each</span>(
+    [](<span class="tp">Posicao</span>&amp; pos, <span class="tp">Velocidade</span>&amp; vel) {
+      <span class="kw">if</span> (pos.x &lt; <span class="num">0.0f</span>)    { pos.x = <span class="num">0.0f</span>;   vel.dx *= -<span class="num">1.0f</span>; }
+      <span class="kw">if</span> (pos.x &gt; <span class="num">1280.0f</span>) { pos.x = <span class="num">1280.0f</span>; vel.dx *= -<span class="num">1.0f</span>; }
+      <span class="kw">if</span> (pos.y &lt; <span class="num">0.0f</span>)    { pos.y = <span class="num">0.0f</span>;   vel.dy *= -<span class="num">1.0f</span>; }
+      <span class="kw">if</span> (pos.y &gt; <span class="num">720.0f</span>)  { pos.y = <span class="num">720.0f</span>; vel.dy *= -<span class="num">1.0f</span>; }
+    });
+}
+
+<span class="com">// Sistema de dano em area</span>
+<span class="kw">void</span> <span class="fn">aplicarDanoAoRedor</span>(entt::<span class="tp">registry</span>&amp; reg, <span class="kw">float</span> cx, <span class="kw">float</span> cy, <span class="kw">float</span> raio, <span class="kw">int</span> dano) {
+  <span class="kw">auto</span> view = reg.<span class="fn">view</span>&lt;<span class="tp">Saude</span>, <span class="tp">Posicao</span>, <span class="tp">Inimigo</span>&gt;();
+  <span class="kw">for</span> (<span class="kw">auto</span> [e, saude, pos] : view.<span class="fn">each</span>()) {
+    <span class="kw">float</span> dx = pos.x - cx, dy = pos.y - cy;
+    <span class="kw">if</span> (dx * dx + dy * dy &lt;= raio * raio) {
+      saude.hp -= dano;
+      <span class="kw">if</span> (saude.hp &lt;= <span class="num">0</span>) reg.<span class="fn">destroy</span>(e);  <span class="com">// remove entidade morta</span>
+    }
+  }
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  entt::<span class="tp">registry</span> reg;
+
+  <span class="com">// Criar entidades</span>
+  <span class="kw">auto</span> jogador = reg.<span class="fn">create</span>();
+  reg.<span class="fn">emplace</span>&lt;<span class="tp">Posicao</span>&gt;  (jogador, <span class="num">640.0f</span>, <span class="num">360.0f</span>);
+  reg.<span class="fn">emplace</span>&lt;<span class="tp">Velocidade</span>&gt;(jogador, <span class="num">150.0f</span>, <span class="num">0.0f</span>);
+  reg.<span class="fn">emplace</span>&lt;<span class="tp">Saude</span>&gt;    (jogador, <span class="num">100</span>, <span class="num">100</span>);
+  reg.<span class="fn">emplace</span>&lt;<span class="tp">Sprite</span>&gt;   (jogador, <span class="num">0</span>, <span class="num">1.0f</span>);
+
+  <span class="com">// Criar 100 inimigos de uma vez com construct_batch</span>
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">100</span>; ++i) {
+    <span class="kw">auto</span> e = reg.<span class="fn">create</span>();
+    reg.<span class="fn">emplace</span>&lt;<span class="tp">Posicao</span>&gt;  (e, <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(i * <span class="num">12</span>), <span class="num">200.0f</span>);
+    reg.<span class="fn">emplace</span>&lt;<span class="tp">Velocidade</span>&gt;(e, <span class="num">50.0f</span>, <span class="num">30.0f</span>);
+    reg.<span class="fn">emplace</span>&lt;<span class="tp">Saude</span>&gt;    (e, <span class="num">30</span>, <span class="num">30</span>);
+    reg.<span class="fn">emplace</span>&lt;<span class="tp">Inimigo</span>&gt;  (e);
+  }
+
+  <span class="com">// Game loop ECS</span>
+  <span class="kw">float</span> dt = <span class="num">1.0f</span> / <span class="num">60.0f</span>;
+  <span class="kw">for</span> (<span class="kw">int</span> frame = <span class="num">0</span>; frame &lt; <span class="num">120</span>; ++frame) {
+    <span class="fn">sistemaMovimento</span>(reg, dt);
+    <span class="fn">sistemaBorda</span>(reg);
+    <span class="kw">if</span> (frame == <span class="num">60</span>)
+      <span class="fn">aplicarDanoAoRedor</span>(reg, <span class="num">640</span>, <span class="num">360</span>, <span class="num">200</span>, <span class="num">50</span>);
+  }
+
+  std::<span class="fn">println</span>(<span class="str">"Inimigos vivos: {}"</span>,
+    reg.<span class="fn">view</span>&lt;<span class="tp">Inimigo</span>&gt;().<span class="fn">size</span>());
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="box2d">Box2D — Fisica 2D</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Box2D v2 &mdash; mundo, corpos dinamicos/estaticos, joint e raycast</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;box2d/box2d.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Callback de contato — detecta colisoes</span>
+<span class="kw">class</span> <span class="tp">MyContactListener</span> : <span class="kw">public</span> <span class="tp">b2ContactListener</span> {
+<span class="kw">public</span>:
+  <span class="kw">void</span> <span class="fn">BeginContact</span>(<span class="tp">b2Contact</span>* c) <span class="kw">override</span> {
+    <span class="kw">void</span>* a = c-&gt;<span class="fn">GetFixtureA</span>()-&gt;<span class="fn">GetBody</span>()-&gt;<span class="fn">GetUserData</span>().<span class="fn">pointer</span>;
+    <span class="kw">void</span>* b = c-&gt;<span class="fn">GetFixtureB</span>()-&gt;<span class="fn">GetBody</span>()-&gt;<span class="fn">GetUserData</span>().<span class="fn">pointer</span>;
+    std::<span class="fn">println</span>(<span class="str">"Colisao entre {} e {}"</span>,
+      <span class="kw">reinterpret_cast</span>&lt;<span class="kw">const char</span>*&gt;(a),
+      <span class="kw">reinterpret_cast</span>&lt;<span class="kw">const char</span>*&gt;(b));
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="com">// Mundo com gravidade</span>
+  <span class="tp">b2World</span> mundo({ <span class="num">0.0f</span>, -<span class="num">9.8f</span> });
+  <span class="tp">MyContactListener</span> cl;
+  mundo.<span class="fn">SetContactListener</span>(&amp;cl);
+
+  <span class="com">// Chao estatico</span>
+  <span class="tp">b2BodyDef</span> chaoDef;
+  chaoDef.position.<span class="fn">Set</span>(<span class="num">0.0f</span>, -<span class="num">10.0f</span>);
+  chaoDef.userData.pointer = <span class="kw">reinterpret_cast</span>&lt;<span class="kw">uintptr_t</span>&gt;(<span class="str">"chao"</span>);
+  <span class="tp">b2Body</span>* chao = mundo.<span class="fn">CreateBody</span>(&amp;chaoDef);
+  <span class="tp">b2PolygonShape</span> chaoShape;
+  chaoShape.<span class="fn">SetAsBox</span>(<span class="num">50.0f</span>, <span class="num">10.0f</span>);
+  chao-&gt;<span class="fn">CreateFixture</span>(&amp;chaoShape, <span class="num">0.0f</span>);  <span class="com">// densidade 0 = estatico</span>
+
+  <span class="com">// Cubo dinamico</span>
+  <span class="tp">b2BodyDef</span> cuboDef;
+  cuboDef.type = <span class="tp">b2_dynamicBody</span>;
+  cuboDef.position.<span class="fn">Set</span>(<span class="num">0.0f</span>, <span class="num">10.0f</span>);
+  cuboDef.userData.pointer = <span class="kw">reinterpret_cast</span>&lt;<span class="kw">uintptr_t</span>&gt;(<span class="str">"cubo"</span>);
+  <span class="tp">b2Body</span>* cubo = mundo.<span class="fn">CreateBody</span>(&amp;cuboDef);
+  <span class="tp">b2PolygonShape</span> cuboShape;
+  cuboShape.<span class="fn">SetAsBox</span>(<span class="num">1.0f</span>, <span class="num">1.0f</span>);
+  <span class="tp">b2FixtureDef</span> fixDef;
+  fixDef.shape       = &amp;cuboShape;
+  fixDef.density     = <span class="num">1.0f</span>;
+  fixDef.friction    = <span class="num">0.3f</span>;
+  fixDef.restitution = <span class="num">0.5f</span>;  <span class="com">// elasticidade</span>
+  cubo-&gt;<span class="fn">CreateFixture</span>(&amp;fixDef);
+
+  <span class="com">// Simular 3 segundos (180 steps a 60hz)</span>
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">180</span>; ++i) {
+    mundo.<span class="fn">Step</span>(<span class="num">1.0f</span> / <span class="num">60.0f</span>, <span class="num">8</span>, <span class="num">3</span>);  <span class="com">// velocity/position iterations</span>
+  }
+
+  <span class="tp">b2Vec2</span> pos = cubo-&gt;<span class="fn">GetPosition</span>();
+  std::<span class="fn">println</span>(<span class="str">"Posicao final: ({:.2f}, {:.2f})"</span>, pos.x, pos.y);
+
+  <span class="com">// Raycast — verifica se algo esta abaixo de um ponto</span>
+  <span class="kw">struct</span> RayHit : <span class="tp">b2RayCastCallback</span> {
+    <span class="kw">bool</span> acertou = <span class="kw">false</span>;
+    <span class="kw">float</span> <span class="fn">ReportFixture</span>(<span class="tp">b2Fixture</span>*, <span class="kw">const</span> <span class="tp">b2Vec2</span>&amp;, <span class="kw">const</span> <span class="tp">b2Vec2</span>&amp;, <span class="kw">float</span>) <span class="kw">override</span> {
+      acertou = <span class="kw">true</span>; <span class="kw">return</span> <span class="num">0.0f</span>;  <span class="com">// para no primeiro hit</span>
+    }
+  } rh;
+  mundo.<span class="fn">RayCast</span>(&amp;rh, { <span class="num">0.0f</span>, <span class="num">50.0f</span> }, { <span class="num">0.0f</span>, -<span class="num">50.0f</span> });
+  std::<span class="fn">println</span>(<span class="str">"Raycast acertou: {}"</span>, rh.acertou);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sfml">SFML — Jogo 2D Rapido</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + SFML 2.6 &mdash; sprites, animacoes, tilemap e colisao AABB</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;SFML/Graphics.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;SFML/Audio.hpp&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="kw">class</span> <span class="tp">Animacao</span> {
+  sf::<span class="tp">Sprite</span>&amp;      sprite_;
+  sf::<span class="tp">IntRect</span>       quadro_;
+  <span class="kw">int</span>               nQuadros_, quadroAtual_{ <span class="num">0</span> };
+  <span class="kw">float</span>             intervalo_, tempoAcum_{ <span class="num">0.0f</span> };
+<span class="kw">public</span>:
+  <span class="tp">Animacao</span>(sf::<span class="tp">Sprite</span>&amp; s, sf::<span class="tp">IntRect</span> inicio, <span class="kw">int</span> n, <span class="kw">float</span> fps)
+    : sprite_(s), quadro_(inicio), nQuadros_(n), intervalo_(<span class="num">1.0f</span> / fps) {}
+
+  <span class="kw">void</span> <span class="fn">update</span>(<span class="kw">float</span> dt) {
+    tempoAcum_ += dt;
+    <span class="kw">if</span> (tempoAcum_ &gt;= intervalo_) {
+      tempoAcum_ -= intervalo_;
+      quadroAtual_ = (quadroAtual_ + <span class="num">1</span>) % nQuadros_;
+      quadro_.left = quadro_.width * quadroAtual_;
+      sprite_.<span class="fn">setTextureRect</span>(quadro_);
+    }
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  sf::<span class="tp">RenderWindow</span> win({ <span class="num">1280</span>, <span class="num">720</span> }, <span class="str">"SFML Game"</span>);
+  win.<span class="fn">setFramerateLimit</span>(<span class="num">60</span>);
+
+  sf::<span class="tp">Texture</span> txPlayer, txTiles;
+  txPlayer.<span class="fn">loadFromFile</span>(<span class="str">"player.png"</span>);
+  txTiles.<span class="fn">loadFromFile</span>(<span class="str">"tileset.png"</span>);
+
+  sf::<span class="tp">Sprite</span> sprPlayer(txPlayer);
+  sprPlayer.<span class="fn">setOrigin</span>(<span class="num">16</span>, <span class="num">16</span>);  <span class="com">// pivô no centro do sprite 32x32</span>
+  <span class="tp">Animacao</span> anim_idle (sprPlayer, { <span class="num">0</span>, <span class="num">0</span>, <span class="num">32</span>, <span class="num">32</span> }, <span class="num">4</span>, <span class="num">8.0f</span>);
+  <span class="tp">Animacao</span> anim_walk (sprPlayer, { <span class="num">0</span>, <span class="num">32</span>, <span class="num">32</span>, <span class="num">32</span> }, <span class="num">6</span>, <span class="num">12.0f</span>);
+  <span class="tp">Animacao</span>* animAtual = &amp;anim_idle;
+
+  sf::<span class="tp">SoundBuffer</span> buf;
+  buf.<span class="fn">loadFromFile</span>(<span class="str">"passo.wav"</span>);
+  sf::<span class="tp">Sound</span> som(buf);
+
+  sf::<span class="tp">Clock</span> clock;
+  sf::<span class="tp">Vector2f</span> pos(200, 360);
+
+  <span class="kw">while</span> (win.<span class="fn">isOpen</span>()) {
+    <span class="kw">float</span> dt = clock.<span class="fn">restart</span>().<span class="fn">asSeconds</span>();
+
+    sf::<span class="tp">Event</span> ev;
+    <span class="kw">while</span> (win.<span class="fn">pollEvent</span>(ev)) {
+      <span class="kw">if</span> (ev.type == sf::<span class="tp">Event</span>::<span class="tp">Closed</span>) win.<span class="fn">close</span>();
+    }
+
+    <span class="kw">bool</span> movendo = <span class="kw">false</span>;
+    <span class="kw">if</span> (sf::<span class="tp">Keyboard</span>::<span class="fn">isKeyPressed</span>(sf::<span class="tp">Keyboard</span>::<span class="tp">Left</span>))  {
+      pos.x -= <span class="num">200.0f</span> * dt; sprPlayer.<span class="fn">setScale</span>(-<span class="num">1.0f</span>, <span class="num">1.0f</span>); movendo = <span class="kw">true</span>;
+    }
+    <span class="kw">if</span> (sf::<span class="tp">Keyboard</span>::<span class="fn">isKeyPressed</span>(sf::<span class="tp">Keyboard</span>::<span class="tp">Right</span>)) {
+      pos.x += <span class="num">200.0f</span> * dt; sprPlayer.<span class="fn">setScale</span>( <span class="num">1.0f</span>, <span class="num">1.0f</span>); movendo = <span class="kw">true</span>;
+    }
+    animAtual = movendo ? &amp;anim_walk : &amp;anim_idle;
+    animAtual-&gt;<span class="fn">update</span>(dt);
+    sprPlayer.<span class="fn">setPosition</span>(pos);
+
+    win.<span class="fn">clear</span>({ <span class="num">20</span>, <span class="num">20</span>, <span class="num">40</span> });
+    win.<span class="fn">draw</span>(sprPlayer);
+    win.<span class="fn">display</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SDL COMMUNITY. <strong>SDL2 Documentation</strong>. Disponível em: &lt;https://wiki.libsdl.org/SDL2&gt;. Acesso em: 2025.</li>
+            <li>SKYPJACK. <strong>EnTT: Fast and Reliable Entity Component System for C++17</strong>. Disponível em: &lt;https://github.com/skypjack/entt&gt;. Acesso em: 2025.</li>
+            <li>ERIN, C. <strong>Box2D: A 2D Physics Engine for Games</strong>. Disponível em: &lt;https://box2d.org&gt;. Acesso em: 2025.</li>
+            <li>SFML. <strong>SFML 2.6 Tutorials</strong>. Disponível em: &lt;https://www.sfml-dev.org/tutorials&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para GUI Desktop</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Mobile (NDK)</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O padrao ECS (Entity Component System) com EnTT e cache-friendly: componentes sao armazenados em arrays contiguos por tipo, permitindo que sistemas iterem dados em ordem sequencial de memoria, maximizando o uso do cache L1/L2 da CPU e oferecendo performance muito superior a abordagem OOP classica com heranca.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

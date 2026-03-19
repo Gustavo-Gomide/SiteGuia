@@ -1,0 +1,534 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Apache Cassandra: banco NoSQL masterless de familia de colunas, tolerante a falhas e otimizado para escritas massivas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Apache Cassandra | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Apache Cassandra</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Apache Cassandra</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Apache Cassandra</h1>
+          <p>Banco de família de colunas masterless — do básico ao avançado</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>Cassandra</strong> foi criado pelo Facebook em 2007 para resolver o problema
+          da Inbox Search — bilhões de mensagens indexadas em tempo real. Em 2008 foi aberto ao
+          público e hoje é usado pela Netflix, Apple, Instagram, Uber e Spotify. Sua proposta
+          central: um banco que <em>nunca cai</em>, não tem nó primário nem ponto único de
+          falha, e escreve na velocidade de um log sequencial em disco.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é o Apache Cassandra?</h2>
+        <p>
+          O Cassandra é um banco de dados <strong>NoSQL de família de colunas</strong> (column-family),
+          distribuído, masterless e tolerante a falhas. Ele combina o modelo de dados do
+          <strong>Google Bigtable</strong> (famílias de colunas esparsas) com a arquitetura de
+          distribuição do <strong>Amazon Dynamo</strong> (consistent hashing, sem nó primário) —
+          conforme descrito pelos criadores Avinash Lakshman e Prashant Malik no paper original
+          de 2010.
+        </p>
+        <p>
+          Pense no Cassandra como um fichário infinito e distribuído: os dados são organizados em
+          linhas identificadas por uma <strong>partition key</strong>, e cada linha pode ter
+          centenas de colunas diferentes. Esse fichário vive simultaneamente em 3, 5 ou 7 gavetas
+          (nós) ao mesmo tempo — se uma gaveta pegar fogo, as outras continuam servindo os dados
+          sem interrupção.
+        </p>
+        <p>
+          Segundo <strong>Eben Hewitt (Cassandra: The Definitive Guide, 2022)</strong>,
+          <em>"Cassandra was designed to handle write-heavy workloads at Internet scale,
+          where no single node is a bottleneck and no single failure takes the system down."</em>
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Para iniciantes:</strong> o Cassandra não é um banco de propósito geral.
+            Ele brilha em escritas massivas e contínuas (logs, IoT, séries temporais) e
+            é péssimo para queries ad-hoc e JOINs complexos. Escolha Cassandra quando você
+            <em>sabe exatamente quais queries vai executar</em> antes de modelar os dados.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">Como Funciona Internamente</h2>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-md)">Arquitetura em anel e Consistent Hashing</h3>
+        <p>
+          Todos os nós do Cassandra formam um <strong>anel lógico</strong>. Quando um dado chega,
+          o hash da partition key determina em qual posição do anel ele pertence — e os nós
+          responsáveis por aquela faixa do anel ficam com ele. Não há nó primário nem coordenador
+          fixo: qualquer nó pode receber qualquer requisição e faz o roteamento internamente.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Protocolo Gossip</h3>
+            <p>
+              A cada segundo, cada nó troca informações de estado com até 3 vizinhos aleatórios.
+              Em poucos rounds, todo o cluster sabe que um nó nasceu, morreu ou ficou lento —
+              sem nenhum servidor central de coordenação.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Replication Factor</h3>
+            <p>
+              Cada dado é replicado em N nós consecutivos no anel (tipicamente 3).
+              <em>RF=3</em> significa: o sistema tolera 2 falhas simultâneas sem perder
+              nenhum dado e sem interrupção de serviço.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Consistência Configurável</h3>
+            <p>
+              Por query, você escolhe o nível de consistência:
+              <code class="code-inline">ONE</code> (1 nó confirma, mais rápido),
+              <code class="code-inline">QUORUM</code> (maioria confirma, mais seguro),
+              <code class="code-inline">ALL</code> (todos confirmam, mais forte).
+            </p>
+          </div>
+        </div>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-lg)">LSM Tree: por que escritas são O(1)</h3>
+        <p>
+          O segredo da performance de escrita do Cassandra é a
+          <strong>Log-Structured Merge Tree (LSM Tree)</strong>. Em vez de atualizar dados
+          diretamente no disco (operação cara e lenta), o Cassandra segue este fluxo:
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">fluxo-escrita-cassandra.txt</div>
+          <pre class="example"><span class="com">── Passo 1: Commit Log (WAL) ────────────────────────────────</span>
+<span class="tp">Escrita</span> → append no Commit Log (arquivo sequencial em disco)
+          → operação sequencial = ultra-rápida mesmo em HDD
+          → garante durabilidade: se o nó reiniciar, replay do log
+
+<span class="com">── Passo 2: Memtable (memória RAM) ──────────────────────────</span>
+<span class="tp">Dado</span> → carregado na Memtable (estrutura em memória ordenada)
+     → leituras recentes resolvidas aqui — sem I/O de disco
+
+<span class="com">── Passo 3: Flush para SSTable (disco) ──────────────────────</span>
+<span class="tp">Memtable</span> cheia → flush para SSTable (Sorted String Table)
+           → SSTable é imutável: nunca é modificada após gravação
+           → SSTable velhas são mescladas em background (compaction)
+
+<span class="com">── Resultado: Escrita é sempre O(1) sequential I/O ──────────</span>
+<span class="tp">Sem</span> UPDATE in-place. Sem random I/O. Sem btree rebalancing.
+<span class="tp">Cada</span> escrita é um append — o mais rápido possível em qualquer disco.</pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            UPDATE e DELETE no Cassandra são, internamente, <strong>novas escritas</strong>.
+            Um UPDATE insere um novo registro com timestamp maior. Um DELETE insere um marcador
+            especial chamado <strong>tombstone</strong>. A reconciliação acontece durante a leitura
+            e na compactação — nunca em tempo de escrita.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CQL -->
+      <section>
+        <h2 id="cql" class="section-title">CQL — Cassandra Query Language</h2>
+        <p>
+          O CQL tem sintaxe propositalmente parecida com SQL para reduzir a curva de aprendizado.
+          Mas o modelo de dados é completamente diferente: tudo gira em torno da
+          <strong>partition key</strong> e das <strong>clustering keys</strong>. A partition key
+          determina em qual nó o dado vive; as clustering keys determinam a ordem dentro da
+          partição.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">logs-acesso.cql</div>
+          <pre class="example"><span class="com">-- 1. Criar keyspace (equivalente ao database/schema no SQL)</span>
+<span class="kw">CREATE KEYSPACE</span> <span class="tp">app</span>
+  <span class="kw">WITH</span> replication = {
+    <span class="str">'class'</span>: <span class="str">'NetworkTopologyStrategy'</span>,
+    <span class="str">'datacenter1'</span>: <span class="num">3</span>   <span class="com">-- RF=3 no datacenter1</span>
+  };
+
+<span class="com">-- 2. Criar tabela modelada para a query: "logs de um usuário, por data DESC"</span>
+<span class="com">--    PRIMARY KEY ((partition_key), clustering_key1, clustering_key2)</span>
+<span class="kw">CREATE TABLE</span> <span class="tp">app.logs_acesso</span> (
+  <span class="tp">usuario_id</span>   <span class="kw">UUID</span>,        <span class="com">-- partition key: distribui dados pelo cluster</span>
+  <span class="tp">data_hora</span>    <span class="kw">TIMESTAMP</span>,   <span class="com">-- clustering key: ordena dentro da partição</span>
+  <span class="tp">ip_origem</span>    <span class="kw">TEXT</span>,
+  <span class="tp">acao</span>         <span class="kw">TEXT</span>,
+  <span class="tp">detalhes</span>     <span class="kw">MAP</span>&lt;<span class="kw">TEXT</span>, <span class="kw">TEXT</span>&gt;,  <span class="com">-- tipo collection nativo do CQL</span>
+  <span class="kw">PRIMARY KEY</span>  ((<span class="tp">usuario_id</span>), <span class="tp">data_hora</span>)
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (<span class="tp">data_hora</span> <span class="kw">DESC</span>)
+  <span class="kw">AND</span> default_time_to_live = <span class="num">2592000</span>;  <span class="com">-- TTL: 30 dias automático</span>
+
+<span class="com">-- 3. Inserir — append-only, sempre O(1)</span>
+<span class="kw">INSERT INTO</span> <span class="tp">app.logs_acesso</span> (<span class="tp">usuario_id</span>, <span class="tp">data_hora</span>, <span class="tp">ip_origem</span>, <span class="tp">acao</span>)
+<span class="kw">VALUES</span> (<span class="tp">uuid</span>(), <span class="tp">toTimestamp</span>(<span class="tp">now</span>()), <span class="str">'192.168.1.1'</span>, <span class="str">'LOGIN'</span>)
+<span class="kw">USING TTL</span> <span class="num">86400</span>;  <span class="com">-- TTL por linha: 24h</span>
+
+<span class="com">-- 4. Busca eficiente: WHERE na partition key é obrigatório</span>
+<span class="kw">SELECT</span> <span class="tp">data_hora</span>, <span class="tp">ip_origem</span>, <span class="tp">acao</span>
+<span class="kw">FROM</span> <span class="tp">app.logs_acesso</span>
+<span class="kw">WHERE</span> <span class="tp">usuario_id</span> = <span class="str">a1b2c3d4-e5f6-7890-abcd-ef1234567890</span>
+  <span class="kw">AND</span> <span class="tp">data_hora</span> &gt; <span class="str">'2024-01-01 00:00:00'</span>
+<span class="kw">LIMIT</span> <span class="num">100</span>;</pre>
+        </div>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-lg)">Tipos nativos do CQL</h3>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tipo</th>
+                  <th>Descrição</th>
+                  <th>Exemplo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="code-inline">UUID / TIMEUUID</code></td>
+                  <td>ID único universal; TIMEUUID inclui timestamp</td>
+                  <td><code class="code-inline">uuid(), now()</code></td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">LIST&lt;T&gt;</code></td>
+                  <td>Lista ordenada de valores do tipo T</td>
+                  <td><code class="code-inline">['a', 'b', 'c']</code></td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">SET&lt;T&gt;</code></td>
+                  <td>Conjunto sem duplicatas</td>
+                  <td><code class="code-inline">{'tag1', 'tag2'}</code></td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">MAP&lt;K,V&gt;</code></td>
+                  <td>Dicionário chave-valor</td>
+                  <td><code class="code-inline">{'chave': 'valor'}</code></td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">FROZEN&lt;T&gt;</code></td>
+                  <td>Valor imutável serializado (UDT, List, etc.)</td>
+                  <td>Usado em chaves primárias compostas</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SEM JOINS -->
+      <section>
+        <h2 id="modelagem" class="section-title">Modelagem por Query — Sem JOINs</h2>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Regra fundamental:</strong> o Cassandra não tem JOINs, subqueries nem
+            transações multi-partição. Você não projeta tabelas pela normalização dos dados —
+            projeta pela <em>query</em> que precisa responder. Duplicar dados é intencional
+            e esperado. Uma tabela por padrão de acesso é a regra.
+          </p>
+        </div>
+        <p>
+          Suponha que você precisa de duas queries distintas: buscar logs por
+          <code class="code-inline">usuario_id</code> E por <code class="code-inline">ip_origem</code>.
+          Em SQL, um único <code class="code-inline">SELECT</code> com índice resolve. No Cassandra,
+          você cria duas tabelas — uma para cada padrão de acesso:
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">modelagem-por-query.cql</div>
+          <pre class="example"><span class="com">-- Query 1: "logs de um usuário específico"</span>
+<span class="com">-- Partition key = usuario_id (concentra dados do usuário no mesmo nó)</span>
+<span class="kw">CREATE TABLE</span> <span class="tp">logs_por_usuario</span> (
+  <span class="tp">usuario_id</span> <span class="kw">UUID</span>,
+  <span class="tp">data_hora</span>  <span class="kw">TIMESTAMP</span>,
+  <span class="tp">ip_origem</span>  <span class="kw">TEXT</span>,
+  <span class="tp">acao</span>       <span class="kw">TEXT</span>,
+  <span class="kw">PRIMARY KEY</span> ((<span class="tp">usuario_id</span>), <span class="tp">data_hora</span>)
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (<span class="tp">data_hora</span> <span class="kw">DESC</span>);
+
+<span class="com">-- Query 2: "logs de um IP específico" → tabela separada, dados duplicados</span>
+<span class="com">-- Partition key = ip_origem (concentra logs do mesmo IP no mesmo nó)</span>
+<span class="kw">CREATE TABLE</span> <span class="tp">logs_por_ip</span> (
+  <span class="tp">ip_origem</span>  <span class="kw">TEXT</span>,
+  <span class="tp">data_hora</span>  <span class="kw">TIMESTAMP</span>,
+  <span class="tp">usuario_id</span> <span class="kw">UUID</span>,
+  <span class="tp">acao</span>       <span class="kw">TEXT</span>,
+  <span class="kw">PRIMARY KEY</span> ((<span class="tp">ip_origem</span>), <span class="tp">data_hora</span>)
+) <span class="kw">WITH CLUSTERING ORDER BY</span> (<span class="tp">data_hora</span> <span class="kw">DESC</span>);
+
+<span class="com">-- A aplicação insere em AMBAS as tabelas a cada evento — duplicação intencional</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Casos de Uso</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+              </svg>
+              Use Cassandra quando...
+            </h3>
+            <ul>
+              <li>Séries temporais com escrita contínua (IoT, métricas, logs)</li>
+              <li>Zero downtime é obrigatório — tolerância a falhas extrema</li>
+              <li>Escrita é muito mais frequente do que leitura</li>
+              <li>Volume de dados cresce horizontalmente sem limite previsível</li>
+              <li>Queries são conhecidas antecipadamente e simples por partição</li>
+              <li>Replicação multi-datacenter ou multi-região é necessária</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor" style="margin:0">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+              Evite Cassandra quando...
+            </h3>
+            <ul>
+              <li>Queries ad-hoc e JOINs complexos são o uso principal</li>
+              <li>Transações ACID multi-linha são frequentes</li>
+              <li>O volume de dados cabe confortavelmente em um único servidor</li>
+              <li>Os padrões de acesso mudam frequentemente (requer reescrita de tabelas)</li>
+              <li>A equipe não tem experiência com modelagem orientada a query</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANÇADO -->
+      <section>
+        <h2 id="avancado" class="section-title">Avançado: Tunable Consistency e Compaction</h2>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-md)">Tunable Consistency — o equilíbrio CAP na sua mão</h3>
+        <p>
+          O Cassandra permite calibrar o trade-off entre consistência e disponibilidade
+          <em>por query</em>. A fórmula que garante consistência forte (leitura sempre
+          atualizada) é: <code class="code-inline">W + R &gt; RF</code>, onde W é o nível de
+          escrita, R o de leitura e RF o Replication Factor.
+        </p>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Nível de Escrita</th>
+                  <th>Nível de Leitura</th>
+                  <th>Resultado (RF=3)</th>
+                  <th>Uso típico</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="code-inline">ONE</code></td>
+                  <td><code class="code-inline">ONE</code></td>
+                  <td>Consistência eventual — possível ler dado desatualizado</td>
+                  <td>Logs, eventos, telemetria</td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">QUORUM</code></td>
+                  <td><code class="code-inline">QUORUM</code></td>
+                  <td>Consistência forte — W+R=4 &gt; RF=3</td>
+                  <td>Perfis de usuário, catálogos</td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">ALL</code></td>
+                  <td><code class="code-inline">ALL</code></td>
+                  <td>MAX consistência, MIN disponibilidade</td>
+                  <td>Operações críticas raras</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-lg)">Compaction Strategies</h3>
+        <p>
+          Como as SSTables são imutáveis e se acumulam no disco, o Cassandra precisa mesclá-las
+          periodicamente em background (compaction). A estratégia de compaction impacta
+          diretamente a performance de leitura e o uso de disco:
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>STCS (SizeTieredCompaction)</h3>
+            <p>
+              Padrão. Mescla SSTables de tamanho similar. Ótimo para workloads de
+              <em>escrita pesada</em>. Problema: amplificação de espaço em disco durante
+              a compaction (precisa de 2x o espaço temporariamente).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>LCS (LeveledCompaction)</h3>
+            <p>
+              Organiza SSTables em níveis de tamanho fixo. Ótimo para
+              <em>leitura pesada</em> — leituras examinam menos SSTables. Usa mais I/O
+              de escrita durante compaction. Recomendado para dados que são lidos com frequência.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>TWCS (TimeWindowCompaction)</h3>
+            <p>
+              Ideal para <em>séries temporais com TTL</em>. Agrupa SSTables por janela
+              de tempo. Quando o TTL de uma janela expira, a SSTable inteira é descartada —
+              sem tombstone bloat, sem compaction cara.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="section-title" style="font-size:1.1rem; margin-top: var(--space-lg)">Lightweight Transactions (LWT)</h3>
+        <p>
+          Para casos que exigem operações condicionais ("inserir apenas se não existe"),
+          o Cassandra oferece <strong>LWT</strong> baseado no protocolo Paxos:
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lwt-cassandra.cql</div>
+          <pre class="example"><span class="com">-- INSERT IF NOT EXISTS: garante unicidade sem race condition</span>
+<span class="kw">INSERT INTO</span> <span class="tp">usuarios</span> (<span class="tp">email</span>, <span class="tp">nome</span>, <span class="tp">criado_em</span>)
+<span class="kw">VALUES</span> (<span class="str">'ana@ex.com'</span>, <span class="str">'Ana'</span>, <span class="tp">toTimestamp</span>(<span class="tp">now</span>()))
+<span class="kw">IF NOT EXISTS</span>;  <span class="com">-- retorna [applied]=true se inseriu, false se já existia</span>
+
+<span class="com">-- UPDATE condicional: atualiza só se o valor atual corresponde</span>
+<span class="kw">UPDATE</span> <span class="tp">usuarios</span> <span class="kw">SET</span> <span class="tp">saldo</span> = <span class="num">500</span>
+<span class="kw">WHERE</span> <span class="tp">usuario_id</span> = <span class="str">abc123</span>
+<span class="kw">IF</span> <span class="tp">saldo</span> = <span class="num">450</span>;  <span class="com">-- CAS: Compare-And-Swap</span></pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>LWT tem custo alto:</strong> usa 4 roundtrips de rede (Paxos) em vez de 1.
+            Use apenas quando a operação condicional for estritamente necessária. Para a grande
+            maioria dos casos de uso do Cassandra (logs, events, time series), LWT é desnecessário.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema Cassandra</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>DataStax Astra</h3>
+            <p>
+              Cassandra gerenciado como serviço (DBaaS). Elimina operação de cluster.
+              Tier gratuito disponível. Compatível 100% com drivers Apache Cassandra padrão.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>cqlsh</h3>
+            <p>
+              Shell interativo oficial para CQL. Conecta ao cluster, executa queries,
+              importa/exporta dados. Ferramenta básica para qualquer desenvolvedor Cassandra.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Drivers Oficiais</h3>
+            <p>
+              Drivers nativos para Java (DataStax Java Driver), Python
+              (<code class="code-inline">cassandra-driver</code>), Node.js
+              (<code class="code-inline">cassandra-driver</code>) e Go. Todos com suporte
+              a async, connection pooling e retry policies configuráveis.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Spring Data Cassandra</h3>
+            <p>
+              Integração Spring Boot com Cassandra. Mapeamento de entidades Java para
+              tabelas CQL via annotations (<code class="code-inline">@Table</code>,
+              <code class="code-inline">@PrimaryKeyColumn</code>), repositories e queries
+              derivadas de nome de método.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Cassandra + Kafka</h3>
+            <p>
+              Padrão comum em streaming: Kafka ingere eventos em tempo real, Cassandra
+              os persiste para consultas históricas. O Kafka Connect possui conector
+              oficial para Cassandra (Sink Connector).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>nodetool</h3>
+            <p>
+              Ferramenta de administração de cluster: verificar status dos nós
+              (<code class="code-inline">nodetool status</code>), disparar compaction
+              (<code class="code-inline">nodetool compact</code>), reparar réplicas
+              (<code class="code-inline">nodetool repair</code>).
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LAKSHMAN, Avinash; MALIK, Prashant. <strong>Cassandra: A Decentralized Structured Storage System</strong>. ACM SIGOPS Operating Systems Review, vol. 44, n. 2, p. 35–40, 2010.</li>
+            <li>HEWITT, Eben. <strong>Cassandra: The Definitive Guide</strong>. 3. ed. O'Reilly Media, 2022.</li>
+            <li>APACHE SOFTWARE FOUNDATION. <strong>Apache Cassandra Documentation</strong>. Disponível em: <a href="https://cassandra.apache.org/doc/latest/" target="_blank" rel="noopener">cassandra.apache.org/doc/latest</a>. Acesso em: 2026.</li>
+            <li>DATASTAX. <strong>DataStax Astra DB Documentation</strong>. Disponível em: <a href="https://docs.datastax.com/en/astra-serverless/docs/" target="_blank" rel="noopener">docs.datastax.com</a>. Acesso em: 2026.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled</strong>. Addison-Wesley, 2012.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>Cassandra é a escolha certa quando nenhum nó pode ser o ponto único de falha e a escrita nunca pode parar — independentemente da escala.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/hbase.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>HBase — Família de Colunas Hadoop</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/redis.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Redis — In-Memory</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/dynamodb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>DynamoDB — Serverless AWS</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Cassandra was designed to handle write-heavy workloads at Internet scale, where no single node is a bottleneck and no single failure takes the system down." — Eben Hewitt
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

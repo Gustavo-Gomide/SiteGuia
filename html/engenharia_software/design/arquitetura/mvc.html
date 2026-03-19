@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="MVC: separação entre Model, View e Controller, quando usar, sinais de controller gordo e boas práticas.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>MVC | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Separar dados, apresentação e coordenação</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">MVC</h1>
+          <p class="page-subtitle">Model-View-Controller — padrão clássico de separação de responsabilidades</p>
+        </div>
+        <p class="intro-highlight">MVC separa o sistema em três partes: o Model representa dados e regras, a View renderiza e apresenta, e o Controller coordena entradas do usuário e seleciona a resposta. Na prática web, o Controller orquestra chamadas a serviços/casos de uso — não contém regras de negócio.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="papel" class="section-title">Papel de cada parte</h2>
+        <div class="section-divider"></div>
+        <p>Cada componente tem uma responsabilidade clara e violatões conhecidas:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Responsabilidade</th>
+                <th>Não deve</th>
+                <th>Armadilha comum</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td>Estado, validações e invariantes do domínio.</td>
+                <td>Conhecer HTTP, renderização ou ORM.</td>
+                <td>Model anêmico (apenas getters/setters, regras no Controller).</td>
+              </tr>
+              <tr>
+                <td><strong>View</strong></td>
+                <td>Apresentar dados ao usuário (HTML, JSON, etc.).</td>
+                <td>Decidir regras de negócio ou acessar BD.</td>
+                <td>Lógica de negócio escondida em templates/componentes.</td>
+              </tr>
+              <tr>
+                <td><strong>Controller</strong></td>
+                <td>Receber input, chamar serviço/caso de uso, selecionar View.</td>
+                <td>Conter regras de negócio ou manipular banco diretamente.</td>
+                <td>Controller gordo com 500+ linhas de lógica.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="fluxo" class="section-title">Fluxo request-response</h2>
+        <div class="section-divider"></div>
+        <p>Um request HTTP fluindo por MVC com separação correta de responsabilidades:</p>
+        <div class="code-container">
+          <pre class="code-block">// CONTROLLER — coordena, não decide
+export class PedidosController {
+  constructor(private criarPedidoUseCase: CriarPedidoUseCase) {}
+
+  async criarPedido(req: Request, res: Response): Promise&lt;void&gt; {
+    // 1. Parsing e validação de input (responsabilidade do Controller)
+    const { clienteId, itens } = PedidoSchema.parse(req.body);
+
+    // 2. Delegar a lógica ao caso de uso (NUNCA aqui)
+    const pedidoId = await this.criarPedidoUseCase.executar({
+      clienteId,
+      itens,
+    });
+
+    // 3. Selecionar resposta (responsabilidade do Controller)
+    res.status(201).json({ pedidoId });
+  }
+}
+
+// CASO DE USO (fora do MVC, orquestra domínio)
+class CriarPedidoUseCase {
+  async executar(cmd: CriarPedidoCmd): Promise&lt;string&gt; {
+    const pedido = Pedido.criar(cmd.clienteId, cmd.itens);
+    await this.repo.salvar(pedido);
+    return pedido.id;
+  }
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Corrigiões práticas</h2>
+        <div class="section-divider"></div>
+        <p>Os anti-padrões mais comuns e como corrigi-los:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Controller gordo</h3>
+            <p>Mova regras para Service ou Use Case. O Controller deve ter no máximo 20-30 linhas por action.</p>
+          </div>
+          <div class="card">
+            <h3>Model anêmico</h3>
+            <p>Consolidar invarântes dentro da entidade. Se o estado só muda via métodos, o model defende-se.</p>
+          </div>
+          <div class="card">
+            <h3>View com lógica</h3>
+            <p>Extraia cálculos e decisões para Presenter/ViewModel. A View apenas renderiza dados prontos.</p>
+          </div>
+          <div class="card">
+            <h3>Testabilidade</h3>
+            <p>Controllers magros são fáceis de testar. Casos de uso testam-se sem HTTP. Models testam invariantes.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>MVC é um ponto de partida. Em sistemas maiores, combine com <a href="/html/engenharia_software/design/arquitetura/mvvm.html">MVVM</a> (para UI rica) ou <a href="/html/engenharia_software/design/clean_architecture.html">Clean Architecture</a> (para domínio complexo).</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um Controller que faz mais do que coordenar é um Controller que roubou responsabilidade de outra camada."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

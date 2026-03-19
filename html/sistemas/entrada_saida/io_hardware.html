@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Entrada e saída em nível de hardware: controladores, registradores de dispositivo, polling vs interrupções, DMA e o ciclo completo de uma operação de I/O." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>I/O — Hardware | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">I/O — Hardware</h1>
+            <p class="page-subtitle">Controladores, registradores, polling, interrupções, DMA e o ciclo completo de I/O</p>
+          </div>
+        </div>
+        <p class="intro-highlight">I/O é a parte mais lenta de um computador: um disco NVMe leva ~100 µs; um HDD, ~10 ms; uma requisição de rede pode demorar centenas de ms. Entender como hardware comunica com a CPU — via registradores, interrupções e DMA — é essencial para otimizar aplicações I/O-bound e projeto de drivers.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CONTROLADORES ═══════════════════ -->
+      <section id="controladores">
+        <h2>Controladores e Registradores de Dispositivo</h2>
+        <p>Cada dispositivo de I/O tem um <strong>controlador</strong> — um chip que gerencia a operação do hardware e expõe uma interface de registradores para o processador. Os registradores básicos são:</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Status Register</h3>
+            <p>A CPU lê este registrador para saber se o dispositivo está ocupado (busy), pronto (ready), ou se ocorreu um erro. O kernel lê repetidamente no polling ou aguarda uma interrupção.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Control Register</h3>
+            <p>A CPU escreve comandos aqui: iniciar leitura, iniciar escrita, reset, etc. O controlador executa a operação e atualiza o status register ao concluir.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Data-In / Data-Out</h3>
+            <p>Registradores de dados. A CPU lê data-in para receber bytes do dispositivo; escreve em data-out para enviar bytes. Em transferências lentas, isso é feito byte a byte (programmed I/O). Em transferências rápidas, usa-se DMA.</p>
+          </div>
+        </div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Aspecto</th>
+                <th>Port-Mapped I/O (PMIO)</th>
+                <th>Memory-Mapped I/O (MMIO)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Acesso</td><td>Instruções especiais (in/out no x86)</td><td>Load/store normais (endereços de memória reservados)</td></tr>
+              <tr><td>Espaço de endereços</td><td>Espaço de I/O separado (64 KB no x86)</td><td>Espaço de endereços da memória principal</td></tr>
+              <tr><td>Proteção</td><td>Controlada pelo bit IOPL no processador</td><td>Via MMU/page tables (acesso em ring 0)</td></tr>
+              <tr><td>Arquitetura</td><td>x86 legado</td><td>ARM, RISC-V, x86 moderno (PCIe, USB)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — POLLING VS INTERRUPÇÕES ═══════════════════ -->
+      <section id="polling-interrupcoes">
+        <h2>Polling vs Interrupções</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Técnica</th>
+                <th>Como funciona</th>
+                <th>Vantagens</th>
+                <th>Desvantagens</th>
+                <th>Uso típico</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Busy-waiting / Polling</td><td>CPU verifica o status register em loop ate o dispositivo ficar pronto</td><td>Baixa latência; sem overhead de interrupção; simples</td><td>Desperdiça 100% de CPU enquanto espera</td><td>Dispositivos muito rápidos (NVMe em alta carga, NIC kernel bypass)</td></tr>
+              <tr><td>Interrupções</td><td>Dispositivo envia sinal IRQ ao controlador de interrupção (APIC); CPU suspende processo atual e executa ISR</td><td>CPU livre para outras tarefas enquanto espera; eficiente para I/O lento</td><td>Overhead de context switch do interrupt handler; latência de IRQ delivery (~1-10 µs)</td><td>Disco, teclado, mouse, NIC em carga normal</td></tr>
+              <tr><td>Interrupt Coalescing</td><td>Hardware agrupa multiplas operações e gera uma unica interrupção</td><td>Reduz drasticamente numero de interrupcoes; melhor throughput</td><td>Aumenta latência individual por operação</td><td>NICs de alta velocidade (10GbE+), NVMe com aggregate IRQ</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — DMA ═══════════════════ -->
+      <section id="dma">
+        <h2>DMA — Direct Memory Access</h2>
+        <p>O controlador DMA transfere dados diretamente entre o dispositivo e a RAM sem envolver a CPU para cada byte. A CPU apenas configura a transferência (endereço de destino, tamanho, direção) e é interrompida somente ao final. Isso libera a CPU para executar outro processo durante a transferência.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pseudocódigo — setup de transferência DMA</div>
+          <pre class="code-block">// CPU configura o controlador DMA
+dma_controller.source_address  = disk_buffer_phys_addr
+dma_controller.dest_address    = kernel_page_phys_addr
+dma_controller.transfer_count  = 512  // bytes (1 setor)
+dma_controller.direction       = DEVICE_TO_MEMORY
+dma_controller.control         = START_TRANSFER
+
+// CPU fica livre — escalona outro processo
+// ...
+// Quando DMA terminar, dispositivo envia IRQ
+// ISR (Interrupt Service Routine):
+void dma_irq_handler() {
+    if (dma_controller.status == TRANSFER_COMPLETE)
+        wake_up(waiting_process)   // acorda o processo que fez o read()
+}
+
+// IOMMU: protege contra DMA attacks
+// mapeia apenas o buffer autorizado no espaço de I/O virtual do dispositivo</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — CICLO COMPLETO ═══════════════════ -->
+      <section id="ciclo">
+        <h2>Ciclo Completo de um read() de Disco</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Etapa</th>
+                <th>O que ocorre</th>
+                <th>Latência típica (HDD)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>1. Aplicação chama read()</td><td>Syscall — modo usuário → modo kernel; VFS verifica page cache</td><td>~1 µs</td></tr>
+              <tr><td>2. Page cache miss</td><td>Bloco não está em cache; I/O real é necessário</td><td>—</td></tr>
+              <tr><td>3. Escalonador de I/O</td><td>Requisição entra na fila (CFQ, deadline, mq-deadline, kyber); pode ser reordenada</td><td>0–10 ms (fila)</td></tr>
+              <tr><td>4. Driver programa operação</td><td>Driver configura registradores do controlador ou chama DMA setup</td><td>~10 µs</td></tr>
+              <tr><td>5. DMA transfere</td><td>Controlador lê bloco do disco; DMA move para RAM sem CPU</td><td>~5–10 ms (seek + rotacional)</td></tr>
+              <tr><td>6. IRQ concluida</td><td>Interrupção DMA/disco chega ao kernel; ISR acorda o processo</td><td>~5 µs</td></tr>
+              <tr><td>7. Dados copiados</td><td>Kernel copia do page cache para o buffer do usuário</td><td>~1 µs</td></tr>
+              <tr><td>8. Retorno ao processo</td><td>Controle volta para read(); dado disponível</td><td>~1 µs</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/entrada_saida/io_software.html">I/O — Software</a> e <a href="/html/sistemas/entrada_saida/drivers.html">Drivers de Dispositivo</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Toda otimização de I/O começa por entender onde o microsegundo vai: seek, rotação, DMA ou contexto."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

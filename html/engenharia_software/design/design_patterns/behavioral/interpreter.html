@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Interpreter: padrão comportamental para definir uma gramática e interpretar sentenças, modelando regras como objetos." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Interpreter | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Linguagem de domínio interpretada como árvore de objetos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Interpreter</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">Interpreter representa uma gramática de linguagem como uma hierarquia de classes. Cada expressão da linguagem é um objeto que sabe se interpretar. É usado em expressões regulares, buscas estruturadas, regras de negócio configuráveis e configurações declarátivas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Terminal</strong></td>
+                <td>Expressão folha — interpreta um valor concreto.</td>
+                <td>Número literal, variável, constante</td>
+              </tr>
+              <tr>
+                <td><strong>NonTerminal</strong></td>
+                <td>Expressão composta — agrega outros nós e os interpreta.</td>
+                <td>Soma, E, Ou, Negação</td>
+              </tr>
+              <tr>
+                <td><strong>Contexto</strong></td>
+                <td>Informação global para a interpretação (variáveis, estado).</td>
+                <td>Map de variáveis para valores</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — regra de elegibilidade</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface Expressao {
+  interpretar(ctx: Record&lt;string, boolean&gt;): boolean;
+}
+
+class Variavel implements Expressao {
+  constructor(private nome: string) {}
+  interpretar(ctx: Record&lt;string, boolean&gt;) {
+    return ctx[this.nome] ?? false;
+  }
+}
+
+class E implements Expressao {
+  constructor(private esq: Expressao, private dir: Expressao) {}
+  interpretar(ctx: Record&lt;string, boolean&gt;) {
+    return this.esq.interpretar(ctx) && this.dir.interpretar(ctx);
+  }
+}
+
+class Ou implements Expressao {
+  constructor(private esq: Expressao, private dir: Expressao) {}
+  interpretar(ctx: Record&lt;string, boolean&gt;) {
+    return this.esq.interpretar(ctx) || this.dir.interpretar(ctx);
+  }
+}
+
+// Regra: (ehVip OU ehBulk) E pagamentoConfirmado
+const regra = new E(
+  new Ou(new Variavel('ehVip'), new Variavel('ehBulk')),
+  new Variavel('pagamentoConfirmado')
+);
+
+console.log(regra.interpretar({ ehVip: true, pagamentoConfirmado: true })); // true
+console.log(regra.interpretar({ ehBulk: false, pagamentoConfirmado: true })); // false</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e quando evitar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>A gramática é simples e estável. Regras de negócio precisam ser compostas dinamicamente (ex: permissões configuráveis).</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>A gramática é complexa. Parsers reais (ANTLR, PEG.js) são mais robústo para linguagens não triviais.</p>
+          </div>
+          <div class="card">
+            <h3>Na prática</h3>
+            <p>SQL parsers, expressões regulares, rule engines, filtros de query são casos clássicos de Interpreter.</p>
+          </div>
+          <div class="card">
+            <h3>Alternativa</h3>
+            <p>Para gramáticas grandes, use Strategy com parâmetros ou um visitor sobre uma árvore gerada por um parser externo.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Interpreter é menos comum que outros padrões comportamentais. Para fluxos mais simples, <a href="/html/engenharia_software/design/design_patterns/behavioral/strategy.html">Strategy</a> ou <a href="/html/engenharia_software/design/design_patterns/behavioral/chain_of_responsibility.html">Chain of Responsibility</a> geralmente são suficientes.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Interpreter brilha quando as regras mudam com mais frequência do que o código — configuração como código."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

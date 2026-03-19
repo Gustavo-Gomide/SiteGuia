@@ -1,0 +1,164 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaFX com Kotlin: Scene Graph, FXML e propriedades reativas usando a expressividade do Kotlin na JVM." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Kotlin JavaFX | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Kotlin &mdash; JavaFX</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Kotlin + JavaFX</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>JavaFX com Kotlin &mdash; GUI Moderna e Segura de Tipos</h1>
+          <p>O poder do JavaFX + a expressividade de Kotlin: lambdas, null safety e coroutines para UI desktop.</p>
+        </div>
+        <p class="intro-highlight">
+          JavaFX funciona perfeitamente bem em Kotlin, ja que ambos rodam na JVM. A interoperabilidade
+          e total: todas as APIs JavaFX (FXML, Properties, ObservableLists, CSS, Task) ficam disponíveis
+          com a sintaxe mais concisa e segura do Kotlin. Alguns destaques: <strong>lambdas</strong>
+          substituem o <code>EventHandler</code> verboso; a <strong>null safety</strong> do Kotlin
+          protege contra NPE em <code>@FXML</code> injetados; e <strong>coroutines</strong> substituem
+          <code>Task</code> para background work de forma mais natural. Para projetos novos de desktop
+          na JVM, Kotlin + JavaFX ou TornadoFX sao as melhores opcoes.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="app-basico" class="section-title">1. App JavaFX em Kotlin</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kotlin &mdash; app javafx com lambdas e null safety</div>
+          <pre class="example"><span class="kw">import</span> javafx.application.Application
+<span class="kw">import</span> javafx.scene.Scene
+<span class="kw">import</span> javafx.scene.control.Button
+<span class="kw">import</span> javafx.scene.control.Label
+<span class="kw">import</span> javafx.scene.layout.VBox
+<span class="kw">import</span> javafx.stage.Stage
+
+<span class="kw">class</span> <span class="fn">MinhaApp</span> : Application() {
+    <span class="kw">override fun</span> <span class="fn">start</span>(stage: Stage) {
+        <span class="kw">val</span> label = <span class="fn">Label</span>(<span class="str">"Ola, Kotlin + JavaFX!"</span>)
+        <span class="kw">val</span> btn = <span class="fn">Button</span>(<span class="str">"Clique"</span>)
+
+        <span class="com">// Lambda em vez de EventHandler verboso do Java</span>
+        btn.setOnAction { label.text = <span class="str">"Clicado!"</span> }
+
+        <span class="kw">val</span> root = VBox(<span class="num">16.0</span>, label, btn).apply {
+            setPrefSize(<span class="num">300.0</span>, <span class="num">150.0</span>)
+            style = <span class="str">"-fx-padding: 24; -fx-alignment: center;"</span>
+        }
+
+        stage.scene = <span class="fn">Scene</span>(root)
+        stage.title = <span class="str">"App Kotlin"</span>
+        stage.<span class="fn">show</span>()
+    }
+}
+
+<span class="kw">fun</span> <span class="fn">main</span>() = Application.<span class="fn">launch</span>(MinhaApp::<span class="kw">class</span>.java)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="coroutines" class="section-title">2. Coroutines para Background Work</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kotlin &mdash; coroutine em vez de Task/SwingWorker</div>
+          <pre class="example"><span class="kw">import</span> javafx.application.Platform
+<span class="kw">import</span> kotlinx.coroutines.*
+
+<span class="com">// Dispatcher que executa na EDT (JavaFX Application Thread)</span>
+<span class="kw">val</span> FxDispatcher = object : CoroutineDispatcher() {
+    <span class="kw">override fun</span> <span class="fn">dispatch</span>(context: CoroutineContext, block: Runnable) {
+        <span class="kw">if</span> (Platform.<span class="fn">isFxApplicationThread</span>()) block.<span class="fn">run</span>()
+        <span class="kw">else</span> Platform.<span class="fn">runLater</span>(block)
+    }
+}
+
+<span class="com">// Uso: background pesado no IO dispatcher, update da UI no FxDispatcher</span>
+btn.setOnAction {
+    CoroutineScope(FxDispatcher).<span class="fn">launch</span> {
+        label.text = <span class="str">"Carregando..."</span>
+        <span class="kw">val</span> resultado = withContext(Dispatchers.IO) {
+            <span class="fn">fazerRequisicaoLenta</span>()   <span class="com">// nao trava a UI</span>
+        }
+        label.text = resultado  <span class="com">// de volta na FX thread</span>
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">3. Quando Usar Kotlin + JavaFX Direto</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Projetos Kotlin que precisam de UI desktop simples sem adicionar outra dependencia de DSL</li>
+              <li>Times que ja conhecem JavaFX em Java e estao migrando para Kotlin</li>
+              <li>Compatibilidade maxima: usa a API JavaFX oficial sem abstracao adicional</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>Quer uma DSL Kotlin mais expressiva para UI &mdash; use TornadoFX</li>
+              <li>Precisa de Compose Multiplatform para compartilhar UI entre Android e desktop</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>OPENJFX. <strong>JavaFX Documentation</strong>. Disponivel em: <a href="https://openjfx.io/openjfx-docs/" target="_blank" rel="noopener">openjfx.io/openjfx-docs</a>. Acesso em: 2026.</li>
+            <li>JETBRAINS. <strong>Kotlin Coroutines Guide</strong>. kotlinlang.org. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/kotlin/kotlin_tornadofx.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>TornadoFX &mdash; DSL Kotlin nativo para JavaFX</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/java/java_javafx.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>JavaFX em Java</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Kotlin transforma o JavaFX verboso em algo que d&aacute; prazer escrever." &mdash; JVM Desktop Community
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

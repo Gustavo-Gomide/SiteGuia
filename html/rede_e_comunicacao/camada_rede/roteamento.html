@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Roteamento IP: tabela de roteamento, LPM, distância administrativa, rotas estáticas, dinâmicas, ECMP e CEF." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Roteamento IP | Camada de Rede | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Rede</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Roteamento IP</h1>
+          <p class="page-subtitle">Como roteadores tomam decisões de encaminhamento: tabela de roteamento, LPM e distâncias administrativas</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>Roteamento</strong> é o processo pelo qual um roteador decide para qual interface encaminhar um pacote IP. A decisão é baseada na <strong>tabela de roteamento</strong> usando o algoritmo <em>Longest Prefix Match</em> (LPM): a rota com a máscara mais longa (mais específica) vence.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tabela" class="section-title">Tabela de Roteamento</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>show ip route (Cisco IOS)</span></div>
+          <pre class="code-block">Codes: C - connected, S - static, R - RIP, O - OSPF,
+       D - EIGRP, B - BGP, i - IS-IS
+
+Gateway of last resort is 10.0.0.1 to network 0.0.0.0
+
+ C    192.168.1.0/24 is directly connected, GigabitEthernet0/0
+ S    10.10.10.0/24 [1/0] via 10.0.0.2
+ O    172.16.0.0/16 [110/20] via 10.0.0.3, 00:01:00, GigabitEthernet0/1
+ D    10.20.0.0/24 [90/256000] via 10.0.0.4, 00:02:00, GigabitEthernet0/2
+ B    203.0.113.0/24 [20/0] via 198.51.100.1
+ S*   0.0.0.0/0 [1/0] via 10.0.0.1   &lt;-- default route</pre>
+        </div>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Componentes de uma entrada</h3>
+            <ul>
+              <li><strong>C&ouml;digo:</strong> origem da rota (C=direta, S=estática, O=OSPF, etc.)</li>
+              <li><strong>Prefixo/máscara:</strong> rede de destino</li>
+              <li><strong>[AD/métrica]:</strong> AD = distância administrativa; métrica = custo interno ao protocolo</li>
+              <li><strong>via NEXT-HOP:</strong> endereço IP do próximo salto</li>
+              <li><strong>Interface de saída:</strong> interface local pelo qual o pacote sai</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Distância Administrativa (AD)</h3>
+            <p>Desempata rotas de origens diferentes para o mesmo destino &mdash; <strong>menor AD = mais confiável</strong>:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>AD padrão Cisco</span></div>
+              <pre class="code-block">Direta (C)         0
+Rota estática (S)  1
+EBGP               20
+EIGRP sumário      5
+EIGRP interno      90
+OSPF               110
+IS-IS              115
+RIP                120
+EIGRP externo      170
+IBGP               200</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="rotas" class="section-title">Tipos de Rota</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Rota Direta (Connected)</h3>
+            <p>Adicionada automaticamente quando uma interface é configurada com IP e está <em>up/up</em>. AD = 0; é sempre a mais confiável.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Rota Estática</h3>
+            <p>Configurada manualmente pelo administrador. Útil para redes pequeñas ou para links de backup.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS</span></div>
+              <pre class="code-block"># Rota para rede específica
+ip route 10.10.10.0 255.255.255.0 10.0.0.2
+
+# Rota padrão (default route)
+ip route 0.0.0.0 0.0.0.0 10.0.0.1
+
+# Rota flutuante (backup, AD alta)
+ip route 10.10.10.0 255.255.255.0 10.0.0.3 200</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">ECMP &mdash; Equal-Cost Multi-Path</h3>
+            <p>Quando existem múltiplas rotas com o <strong>mesmo AD e mesma métrica</strong> para o mesmo destino, o roteador <em>balanceia carga</em> entre elas. Cisco usa até 4 caminhos por padrão (máx 16 com EIGRP/OSPF).</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">CEF &mdash; Cisco Express Forwarding</h3>
+            <p>Mecanismo de hardware/software para encaminhamento rápido de pacotes:</p>
+            <ul>
+              <li><strong>FIB (Forwarding Information Base):</strong> versão pré-computada da tabela de roteamento, pronta para LPM instantâneo</li>
+              <li><strong>Adjacency Table:</strong> armazena informações de Camada 2 (MAC de próximo salto, rewrite de header) para cada próximo salto</li>
+              <li>Elimina a necessidade de consultar a tabela ARP a cada pacote</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="protocolos_roteamento.html"><strong>Protocolos de Roteamento</strong></a>, <a href="nat.html"><strong>NAT</strong></a>, <a href="icmp.html"><strong>ICMP</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O roteador não rota pacotes &mdash; encaminha. Rotear é calcular o melhor caminho; encaminhar é movêr o pacote. São planos distintos: control-plane vs. data-plane."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

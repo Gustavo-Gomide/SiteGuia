@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Python avançado: generators, decorators, context managers, async/await, metaclasses, descritores e o modelo de objetos do Python." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Python Avançado</h1>
+          <p>Generators, decorators, context managers, async/await, metaclasses, descritores, tipagem estática com mypy e o modelo de execução interno do CPython.</p>
+        </div>
+        <p class="intro-highlight">
+          Python avançado é sobre entender o <em>modelo de objetos</em> da linguagem: como descriptors, metaclasses e o protocolo de iteração funcionam por baixo dos açúcares sintáticos. Esse conhecimento transforma código imperativo em código expressivo, extensível e idiomático.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generators">Generators e o Protocolo de Iteração</h2>
+        <p>Um generator é uma função que usa <code>yield</code> para produzir valores sob demanda, sem carregar tudo na memória. São a base de pipelines de dados eficientes e do async/await.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; generators: yield, send, throw e pipeline</div>
+          <pre class="example"><span class="kw">from</span> typing <span class="kw">import</span> Iterator, Generator
+
+<span class="com"># Generator simples</span>
+<span class="kw">def</span> <span class="fn">fibonacci</span>() -&gt; <span class="tp">Iterator</span>[<span class="tp">int</span>]:
+    a, b = <span class="num">0</span>, <span class="num">1</span>
+    <span class="kw">while</span> <span class="kw">True</span>:
+        <span class="kw">yield</span> a
+        a, b = b, a + b
+
+<span class="kw">from</span> itertools <span class="kw">import</span> islice
+<span class="fn">print</span>(<span class="fn">list</span>(<span class="fn">islice</span>(<span class="fn">fibonacci</span>(), <span class="num">10</span>)))
+<span class="com"># [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]</span>
+
+<span class="com"># Generator com send(): coroutine básica</span>
+<span class="kw">def</span> <span class="fn">acumulador</span>() -&gt; <span class="tp">Generator</span>[<span class="tp">float</span>, <span class="tp">float</span>, <span class="tp">str</span>]:
+    total = <span class="num">0.0</span>
+    <span class="kw">while</span> <span class="kw">True</span>:
+        valor = <span class="kw">yield</span> total   <span class="com"># recebe via send()</span>
+        <span class="kw">if</span> valor <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">return</span> <span class="str">f"Total final: {total}"</span>
+        total += valor
+
+gen = <span class="fn">acumulador</span>()
+<span class="fn">next</span>(gen)          <span class="com"># avança até primeiro yield</span>
+gen.<span class="fn">send</span>(<span class="num">10.0</span>)    <span class="com"># → 10.0</span>
+gen.<span class="fn">send</span>(<span class="num">20.0</span>)    <span class="com"># → 30.0</span>
+gen.<span class="fn">send</span>(<span class="num">5.0</span>)     <span class="com"># → 35.0</span>
+
+<span class="com"># Pipeline de generators (sem armazenar na memória)</span>
+<span class="kw">def</span> <span class="fn">ler_linhas</span>(caminho: <span class="tp">str</span>) -&gt; <span class="tp">Iterator</span>[<span class="tp">str</span>]:
+    <span class="kw">with</span> <span class="fn">open</span>(caminho, encoding=<span class="str">"utf-8"</span>) <span class="kw">as</span> f:
+        <span class="kw">yield</span> <span class="kw">from</span> f  <span class="com"># yield from delega para sub-iterável</span>
+
+<span class="kw">def</span> <span class="fn">filtrar</span>(linhas: <span class="tp">Iterator</span>[<span class="tp">str</span>], palavra: <span class="tp">str</span>) -&gt; <span class="tp">Iterator</span>[<span class="tp">str</span>]:
+    <span class="kw">return</span> (l <span class="kw">for</span> l <span class="kw">in</span> linhas <span class="kw">if</span> palavra <span class="kw">in</span> l)
+
+<span class="kw">def</span> <span class="fn">strip_linhas</span>(linhas: <span class="tp">Iterator</span>[<span class="tp">str</span>]) -&gt; <span class="tp">Iterator</span>[<span class="tp">str</span>]:
+    <span class="kw">return</span> (l.strip() <span class="kw">for</span> l <span class="kw">in</span> linhas)
+
+<span class="com"># Compor: só processa linha por linha, sem carregar o arquivo</span>
+<span class="com"># pipeline = strip_linhas(filtrar(ler_linhas("log.txt"), "ERROR"))</span>
+<span class="com"># for linha in pipeline: ...</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="decorators">Decorators: Funções de Ordem Superior</h2>
+        <p>Um decorator é uma função que recebe e retorna uma função, adicionando comportamento sem modificar o código original. São usados para logging, cache, autenticação, validação e muito mais.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; decorators: timer, retry, cache e class decorator</div>
+          <pre class="example"><span class="kw">import</span> functools
+<span class="kw">import</span> time
+<span class="kw">import</span> logging
+<span class="kw">from</span> typing <span class="kw">import</span> Callable, TypeVar, ParamSpec
+
+P = <span class="fn">ParamSpec</span>(<span class="str">"P"</span>)
+R = <span class="fn">TypeVar</span>(<span class="str">"R"</span>)
+
+
+<span class="com"># Decorator com preservação de metadados via @wraps</span>
+<span class="kw">def</span> <span class="fn">timer</span>(func: <span class="tp">Callable</span>[P, R]) -&gt; <span class="tp">Callable</span>[P, R]:
+    <span class="at">@functools.wraps</span>(func)
+    <span class="kw">def</span> <span class="fn">wrapper</span>(*args: P.args, **kwargs: P.kwargs) -&gt; R:
+        inicio = time.<span class="fn">perf_counter</span>()
+        resultado = <span class="fn">func</span>(*args, **kwargs)
+        fim = time.<span class="fn">perf_counter</span>()
+        <span class="fn">print</span>(<span class="str">f"{func.__name__} levou {(fim-inicio)*1000:.2f}ms"</span>)
+        <span class="kw">return</span> resultado
+    <span class="kw">return</span> wrapper
+
+
+<span class="com"># Decorator parametrizado (fábrica de decorators)</span>
+<span class="kw">def</span> <span class="fn">retry</span>(vezes: <span class="tp">int</span> = <span class="num">3</span>, excecoes: <span class="tp">tuple</span> = (<span class="tp">Exception</span>,)):
+    <span class="kw">def</span> <span class="fn">decorator</span>(func: <span class="tp">Callable</span>[P, R]) -&gt; <span class="tp">Callable</span>[P, R]:
+        <span class="at">@functools.wraps</span>(func)
+        <span class="kw">def</span> <span class="fn">wrapper</span>(*args: P.args, **kwargs: P.kwargs) -&gt; R:
+            <span class="kw">for</span> tentativa <span class="kw">in</span> <span class="fn">range</span>(<span class="num">1</span>, vezes + <span class="num">1</span>):
+                <span class="kw">try</span>:
+                    <span class="kw">return</span> <span class="fn">func</span>(*args, **kwargs)
+                <span class="kw">except</span> excecoes <span class="kw">as</span> e:
+                    <span class="kw">if</span> tentativa == vezes:
+                        <span class="kw">raise</span>
+                    logging.<span class="fn">warning</span>(<span class="str">f"Tentativa {tentativa} falhou: {e}"</span>)
+                    time.<span class="fn">sleep</span>(<span class="num">0.5</span> * tentativa)
+        <span class="kw">return</span> wrapper
+    <span class="kw">return</span> decorator
+
+
+<span class="at">@timer</span>
+<span class="at">@retry</span>(vezes=<span class="num">3</span>, excecoes=(<span class="tp">ConnectionError</span>,))
+<span class="kw">def</span> <span class="fn">buscar_dados</span>(url: <span class="tp">str</span>) -&gt; <span class="tp">dict</span>:
+    <span class="kw">import</span> urllib.request, json
+    <span class="kw">with</span> urllib.request.<span class="fn">urlopen</span>(url, timeout=<span class="num">5</span>) <span class="kw">as</span> r:
+        <span class="kw">return</span> json.<span class="fn">loads</span>(r.<span class="fn">read</span>())
+
+
+<span class="com"># functools.lru_cache — memoization nativa</span>
+<span class="at">@functools.lru_cache</span>(maxsize=<span class="kw">None</span>)
+<span class="kw">def</span> <span class="fn">fib</span>(n: <span class="tp">int</span>) -&gt; <span class="tp">int</span>:
+    <span class="kw">return</span> n <span class="kw">if</span> n &lt; <span class="num">2</span> <span class="kw">else</span> <span class="fn">fib</span>(n-<span class="num">1</span>) + <span class="fn">fib</span>(n-<span class="num">2</span>)
+
+<span class="fn">print</span>(<span class="fn">fib</span>(<span class="num">100</span>))   <span class="com"># instantâneo; sem recalcular</span>
+<span class="fn">print</span>(fib.cache_info())  <span class="com"># CacheInfo(hits=98, misses=101, ...)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="context-managers">Context Managers e o Protocolo <code>with</code></h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; __enter__/__exit__, @contextmanager e ExitStack</div>
+          <pre class="example"><span class="kw">from</span> contextlib <span class="kw">import</span> contextmanager, ExitStack, suppress
+<span class="kw">import</span> threading
+<span class="kw">import</span> time
+
+
+<span class="com"># Context manager com classe</span>
+<span class="kw">class</span> <span class="tp">Timer</span>:
+    <span class="kw">def</span> <span class="fn">__enter__</span>(self):
+        self._inicio = time.<span class="fn">perf_counter</span>()
+        <span class="kw">return</span> self
+
+    <span class="kw">def</span> <span class="fn">__exit__</span>(self, exc_type, exc_val, exc_tb):
+        self.elapsed = time.<span class="fn">perf_counter</span>() - self._inicio
+        <span class="fn">print</span>(<span class="str">f"Elapsed: {self.elapsed*1000:.2f}ms"</span>)
+        <span class="kw">return</span> <span class="kw">False</span>   <span class="com"># False = não suprime exceções</span>
+
+<span class="kw">with</span> <span class="fn">Timer</span>() <span class="kw">as</span> t:
+    <span class="fn">sum</span>(<span class="fn">range</span>(<span class="num">10</span>_<span class="num">000</span>_<span class="num">000</span>))
+<span class="fn">print</span>(<span class="str">f"Total: {t.elapsed:.3f}s"</span>)
+
+
+<span class="com"># @contextmanager — mais conciso</span>
+<span class="at">@contextmanager</span>
+<span class="kw">def</span> <span class="fn">transacao</span>(conn):
+    <span class="kw">try</span>:
+        <span class="kw">yield</span> conn
+        conn.<span class="fn">commit</span>()
+    <span class="kw">except</span> <span class="tp">Exception</span>:
+        conn.<span class="fn">rollback</span>()
+        <span class="kw">raise</span>
+
+
+<span class="com"># suppress: silencia exceções específicas (use com cuidado)</span>
+<span class="kw">with</span> <span class="fn">suppress</span>(<span class="tp">FileNotFoundError</span>):
+    <span class="kw">import</span> os
+    os.<span class="fn">remove</span>(<span class="str">"arquivo_que_pode_nao_existir.tmp"</span>)
+
+
+<span class="com"># ExitStack: múltiplos context managers dinâmicos</span>
+<span class="kw">def</span> <span class="fn">processar_arquivos</span>(paths: <span class="tp">list</span>[<span class="tp">str</span>]):
+    <span class="kw">with</span> <span class="fn">ExitStack</span>() <span class="kw">as</span> stack:
+        arquivos = [stack.<span class="fn">enter_context</span>(<span class="fn">open</span>(p)) <span class="kw">for</span> p <span class="kw">in</span> paths]
+        <span class="kw">for</span> f <span class="kw">in</span> arquivos:
+            <span class="fn">print</span>(f.<span class="fn">readline</span>())  <span class="com"># todos fecham ao sair do with</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="async">Programação Assíncrona: async/await e asyncio</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; asyncio: tasks, gather, semáforo e aiohttp</div>
+          <pre class="example"><span class="kw">import</span> asyncio
+<span class="kw">import</span> time
+
+
+<span class="com"># Coroutine básica</span>
+<span class="kw">async def</span> <span class="fn">buscar</span>(url: <span class="tp">str</span>, session) -&gt; <span class="tp">str</span>:
+    <span class="kw">async with</span> session.<span class="fn">get</span>(url) <span class="kw">as</span> resp:
+        <span class="kw">return</span> <span class="kw">await</span> resp.<span class="fn">text</span>()
+
+
+<span class="com"># Executar múltiplas coroutines em paralelo</span>
+<span class="kw">async def</span> <span class="fn">buscar_varios</span>(urls: <span class="tp">list</span>[<span class="tp">str</span>]) -&gt; <span class="tp">list</span>[<span class="tp">str</span>]:
+    <span class="kw">import</span> aiohttp
+    sem = asyncio.<span class="fn">Semaphore</span>(<span class="num">10</span>)  <span class="com"># limita concorrência a 10</span>
+
+    <span class="kw">async def</span> <span class="fn">buscar_com_sem</span>(session, url: <span class="tp">str</span>) -&gt; <span class="tp">str</span>:
+        <span class="kw">async with</span> sem:
+            <span class="kw">return</span> <span class="kw">await</span> <span class="fn">buscar</span>(url, session)
+
+    <span class="kw">async with</span> aiohttp.<span class="fn">ClientSession</span>() <span class="kw">as</span> session:
+        tasks = [<span class="fn">asyncio.create_task</span>(<span class="fn">buscar_com_sem</span>(session, u)) <span class="kw">for</span> u <span class="kw">in</span> urls]
+        <span class="kw">return</span> <span class="kw">await</span> asyncio.<span class="fn">gather</span>(*tasks, return_exceptions=<span class="kw">True</span>)
+
+
+<span class="com"># Producer / Consumer com Queue</span>
+<span class="kw">async def</span> <span class="fn">producer</span>(q: asyncio.Queue, n: <span class="tp">int</span>) -&gt; <span class="tp">None</span>:
+    <span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(n):
+        <span class="kw">await</span> asyncio.<span class="fn">sleep</span>(<span class="num">0.1</span>)
+        <span class="kw">await</span> q.<span class="fn">put</span>(i)
+    <span class="kw">await</span> q.<span class="fn">put</span>(<span class="kw">None</span>)  <span class="com"># sentinel</span>
+
+<span class="kw">async def</span> <span class="fn">consumer</span>(q: asyncio.Queue) -&gt; <span class="tp">None</span>:
+    <span class="kw">while</span> <span class="kw">True</span>:
+        item = <span class="kw">await</span> q.<span class="fn">get</span>()
+        <span class="kw">if</span> item <span class="kw">is</span> <span class="kw">None</span>:
+            <span class="kw">break</span>
+        <span class="fn">print</span>(<span class="str">f"Processando: {item}"</span>)
+        q.<span class="fn">task_done</span>()
+
+<span class="kw">async def</span> <span class="fn">main</span>() -&gt; <span class="tp">None</span>:
+    q: asyncio.Queue = <span class="fn">asyncio.Queue</span>(maxsize=<span class="num">5</span>)
+    <span class="kw">await</span> asyncio.<span class="fn">gather</span>(<span class="fn">producer</span>(q, <span class="num">10</span>), <span class="fn">consumer</span>(q))
+
+asyncio.<span class="fn">run</span>(<span class="fn">main</span>())</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="typing">Tipagem Estática com mypy e Protocóis</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; typing: Generic, Protocol, TypedDict, Literal</div>
+          <pre class="example"><span class="kw">from</span> typing <span class="kw">import</span> (
+    Generic, TypeVar, Protocol, TypedDict,
+    Literal, Final, Annotated, overload, runtime_checkable
+)
+
+T = <span class="fn">TypeVar</span>(<span class="str">"T"</span>)
+K = <span class="fn">TypeVar</span>(<span class="str">"K"</span>)
+V = <span class="fn">TypeVar</span>(<span class="str">"V"</span>)
+
+<span class="com"># Generic class</span>
+<span class="kw">class</span> <span class="tp">Pilha</span>(<span class="tp">Generic</span>[T]):
+    <span class="kw">def</span> <span class="fn">__init__</span>(self) -&gt; <span class="tp">None</span>:
+        self._dados: <span class="tp">list</span>[T] = []
+    <span class="kw">def</span> <span class="fn">push</span>(self, item: T) -&gt; <span class="tp">None</span>: self._dados.append(item)
+    <span class="kw">def</span> <span class="fn">pop</span>(self) -&gt; T: <span class="kw">return</span> self._dados.pop()
+    <span class="kw">def</span> <span class="fn">__len__</span>(self) -&gt; <span class="tp">int</span>: <span class="kw">return</span> <span class="fn">len</span>(self._dados)
+
+p: <span class="tp">Pilha</span>[<span class="tp">int</span>] = <span class="fn">Pilha</span>()
+p.<span class="fn">push</span>(<span class="num">1</span>); p.<span class="fn">push</span>(<span class="num">2</span>)
+
+<span class="com"># Protocol: duck typing com type safety</span>
+<span class="at">@runtime_checkable</span>
+<span class="kw">class</span> <span class="tp">Desenhavel</span>(<span class="tp">Protocol</span>):
+    <span class="kw">def</span> <span class="fn">desenhar</span>(self) -&gt; <span class="tp">None</span>: ...
+
+<span class="kw">class</span> <span class="tp">Circulo</span>:
+    <span class="kw">def</span> <span class="fn">desenhar</span>(self) -&gt; <span class="tp">None</span>: <span class="fn">print</span>(<span class="str">"O"</span>)
+
+<span class="kw">def</span> <span class="fn">renderizar</span>(forma: <span class="tp">Desenhavel</span>) -&gt; <span class="tp">None</span>:
+    forma.<span class="fn">desenhar</span>()
+
+<span class="fn">renderizar</span>(<span class="fn">Circulo</span>())  <span class="com"># OK: Circulo satisfaz Desenhavel</span>
+
+<span class="com"># TypedDict: dicionários com tipos</span>
+<span class="kw">class</span> <span class="tp">ConfigDB</span>(<span class="tp">TypedDict</span>):
+    host: <span class="tp">str</span>
+    porta: <span class="tp">int</span>
+    banco: <span class="tp">str</span>
+    ssl: <span class="tp">bool</span>
+
+cfg: <span class="tp">ConfigDB</span> = {<span class="str">"host"</span>: <span class="str">"localhost"</span>, <span class="str">"porta"</span>: <span class="num">5432</span>,
+                   <span class="str">"banco"</span>: <span class="str">"app"</span>, <span class="str">"ssl"</span>: <span class="kw">True</span>}
+
+<span class="com"># Literal: valores específicos</span>
+Direcao = <span class="tp">Literal</span>[<span class="str">"norte"</span>, <span class="str">"sul"</span>, <span class="str">"leste"</span>, <span class="str">"oeste"</span>]
+<span class="kw">def</span> <span class="fn">mover</span>(d: <span class="tp">Direcao</span>) -&gt; <span class="tp">None</span>: ...
+
+<span class="com"># Annotated: metadados de validação (Pydantic usa isso)</span>
+<span class="kw">from</span> typing <span class="kw">import</span> Annotated
+Positivo = <span class="fn">Annotated</span>[<span class="tp">int</span>, <span class="str">"must be > 0"</span>]
+Url      = <span class="fn">Annotated</span>[<span class="tp">str</span>, <span class="str">"must start with http"</span>]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="descritores-metaclasses">Descritores e Metaclasses</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; descriptor protocol e __init_subclass__</div>
+          <pre class="example"><span class="com"># Descriptor: qualquer objeto com __get__, __set__ ou __delete__</span>
+<span class="kw">class</span> <span class="tp">Validado</span>:
+    <span class="str">"""Descriptor que valida que o valor é positivo."""</span>
+    <span class="kw">def</span> <span class="fn">__set_name__</span>(self, owner, name: <span class="tp">str</span>) -&gt; <span class="tp">None</span>:
+        self._name = name
+
+    <span class="kw">def</span> <span class="fn">__get__</span>(self, obj, objtype=<span class="kw">None</span>):
+        <span class="kw">if</span> obj <span class="kw">is</span> <span class="kw">None</span>: <span class="kw">return</span> self  <span class="com"># acesso via classe</span>
+        <span class="kw">return</span> obj.__dict__.get(self._name, <span class="kw">None</span>)
+
+    <span class="kw">def</span> <span class="fn">__set__</span>(self, obj, value) -&gt; <span class="tp">None</span>:
+        <span class="kw">if</span> <span class="kw">not</span> <span class="fn">isinstance</span>(value, (<span class="tp">int</span>, <span class="tp">float</span>)) <span class="kw">or</span> value &lt;= <span class="num">0</span>:
+            <span class="kw">raise</span> <span class="tp">ValueError</span>(<span class="str">f"{self._name} deve ser número positivo"</span>)
+        obj.__dict__[self._name] = value
+
+
+<span class="kw">class</span> <span class="tp">Produto</span>:
+    preco    = <span class="fn">Validado</span>()
+    estoque  = <span class="fn">Validado</span>()
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, nome: <span class="tp">str</span>, preco: <span class="tp">float</span>, estoque: <span class="tp">int</span>) -&gt; <span class="tp">None</span>:
+        self.nome    = nome
+        self.preco   = preco    <span class="com"># aciona __set__ do descriptor</span>
+        self.estoque = estoque
+
+
+p = <span class="fn">Produto</span>(<span class="str">"Caneta"</span>, <span class="num">2.50</span>, <span class="num">100</span>)  <span class="com"># OK</span>
+<span class="com"># Produto("Caneta", -5, 100)  → ValueError</span>
+
+
+<span class="com"># __init_subclass__: hook de herança sem metaclasses</span>
+<span class="kw">class</span> <span class="tp">RegistroPlugin</span>:
+    _plugins: <span class="tp">dict</span>[<span class="tp">str</span>, type] = {}
+
+    <span class="kw">def</span> <span class="fn">__init_subclass__</span>(cls, nome: <span class="tp">str</span>, **kwargs):
+        <span class="fn">super</span>().__init_subclass__(**kwargs)
+        <span class="fn">RegistroPlugin._plugins</span>[nome] = cls
+
+
+<span class="kw">class</span> <span class="tp">PluginCSV</span>(<span class="tp">RegistroPlugin</span>, nome=<span class="str">"csv"</span>): ...
+<span class="kw">class</span> <span class="tp">PluginJSON</span>(<span class="tp">RegistroPlugin</span>, nome=<span class="str">"json"</span>): ...
+
+<span class="fn">print</span>(RegistroPlugin._plugins)
+<span class="com"># {'csv': &lt;class 'PluginCSV'&gt;, 'json': &lt;class 'PluginJSON'&gt;}</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>RAMALHO, Luciano. <strong>Python Fluente</strong>. 2. ed. Novatec, 2023. Capítulos sobre descritores, generators e async.</li>
+            <li>BEAZLEY, David; JONES, Brian K. <strong>Python Cookbook</strong>. 3. ed. O'Reilly Media, 2013.</li>
+            <li>PYTHON SOFTWARE FOUNDATION. <strong>PEP 492 – Coroutines with async and await syntax</strong>. Disponível em: &lt;https://peps.python.org/pep-0492/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas: NumPy, FastAPI, SQLAlchemy</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Ferramentas Python</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Python's power comes from its expressiveness, not its speed." &mdash; Luciano Ramalho</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

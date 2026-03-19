@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Banco de dados com Julia: DBInterface, LibPQ, SQLite, DataFrames, transações, prepared statements e cache." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Julia — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+          <h1>Julia — Banco de Dados</h1>
+          <p>Julia acessa bancos relacionais e analíticos por meio de drivers que seguem a interface comum de <code>DBInterface.jl</code>. Na prática, os pacotes mais usados são <code>LibPQ.jl</code> para PostgreSQL, <code>SQLite.jl</code> para SQLite, além de integração natural com <code>DataFrames.jl</code> e <code>Tables.jl</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Julia, banco de dados e análise não ficam separados. Uma consulta SQL pode virar diretamente um <code>DataFrame</code>, passar por transformação vetorizada, alimentar um modelo estatístico e voltar ao banco no mesmo pipeline, sem sair da linguagem.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dbinterface">DBInterface.jl e Prepared Statements</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Interface comum entre drivers</div>
+          <pre class="example">using DBInterface
+using SQLite
+using DataFrames
+
+conn = SQLite.DB("app.db")
+
+DBInterface.execute(conn, """
+CREATE TABLE IF NOT EXISTS produtos (
+    id INTEGER PRIMARY KEY,
+    nome TEXT NOT NULL,
+    preco REAL NOT NULL
+)
+""")
+
+stmt = DBInterface.prepare(conn,
+    "INSERT INTO produtos (nome, preco) VALUES (?, ?)")
+
+DBInterface.execute(stmt, ("Teclado", 199.9))
+DBInterface.execute(stmt, ("Mouse", 89.5))
+DBInterface.close!(stmt)
+
+resultado = DBInterface.execute(conn,
+    "SELECT id, nome, preco FROM produtos WHERE preco > ?", (100.0,))
+
+df = DataFrame(resultado)
+println(df)
+
+DBInterface.close!(conn)
+
+<span class="com"># Prepared statements evitam SQL injection e reduzem parse repetido.</span>
+<span class="com"># A mesma ideia vale para PostgreSQL, MySQL e outros drivers aderentes.</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="postgresql">PostgreSQL com LibPQ.jl</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Conexão, consultas e transações</div>
+          <pre class="example">using LibPQ
+using DataFrames
+using DBInterface
+
+conn = LibPQ.Connection("host=localhost port=5432 dbname=loja user=app password=senha")
+
+DBInterface.execute(conn, "BEGIN")
+
+try
+    DBInterface.execute(conn,
+        "INSERT INTO contas (nome, saldo) VALUES ($1, $2)",
+        ("Ana", 1000.0)
+    )
+    DBInterface.execute(conn,
+        "UPDATE contas SET saldo = saldo - $1 WHERE nome = $2",
+        (150.0, "Ana")
+    )
+    DBInterface.execute(conn,
+        "UPDATE contas SET saldo = saldo + $1 WHERE nome = $2",
+        (150.0, "Carlos")
+    )
+    DBInterface.execute(conn, "COMMIT")
+catch err
+    DBInterface.execute(conn, "ROLLBACK")
+    rethrow(err)
+end
+
+res = DBInterface.execute(conn,
+    "SELECT id, nome, saldo FROM contas ORDER BY saldo DESC")
+
+df = DataFrame(res)
+println(first(df, 5))
+close(conn)
+
+<span class="com"># PostgreSQL usa placeholders $1, $2, $3...</span>
+<span class="com"># Transações devem proteger operações com consistência múltipla.</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">COPY para carga em lote</div>
+          <pre class="example">using LibPQ
+using Tables
+using DataFrames
+
+conn = LibPQ.Connection("dbname=analytics")
+
+lote = DataFrame(
+    nome = ["A", "B", "C"],
+    preco = [10.0, 20.0, 30.0],
+)
+
+copy_query = "COPY produtos (nome, preco) FROM STDIN (FORMAT CSV)"
+open(LibPQ.CopyIn(conn, copy_query)) do io
+    for row in eachrow(lote)
+        println(io, "$(row.nome),$(row.preco)")
+    end
+end
+
+close(conn)
+
+<span class="com"># COPY é preferível a milhares de INSERTs unitários.</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sqlite-dataframes">SQLite, DataFrames e Fluxo Analítico</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Banco embutido com ida e volta para DataFrame</div>
+          <pre class="example">using SQLite
+using DBInterface
+using DataFrames
+using Statistics
+
+conn = SQLite.DB("metricas.db")
+
+DBInterface.execute(conn,
+    "CREATE TABLE IF NOT EXISTS vendas (dia TEXT, valor REAL, categoria TEXT)")
+
+for linha in [("2026-01-01", 120.0, "A"), ("2026-01-02", 80.0, "B"), ("2026-01-03", 140.0, "A")]
+    DBInterface.execute(conn,
+        "INSERT INTO vendas (dia, valor, categoria) VALUES (?, ?, ?)", linha)
+end
+
+vendas = DataFrame(DBInterface.execute(conn, "SELECT * FROM vendas"))
+resumo = combine(groupby(vendas, :categoria),
+    :valor => mean => :media,
+    :valor => sum => :total,
+    nrow => :quantidade)
+
+SQLite.load!(resumo, conn, "resumo_vendas", ifnotexists = false)
+close(conn)
+
+<span class="com"># SQLite é excelente para apps desktop, protótipos e pipelines locais.</span>
+<span class="com"># DataFrame permite análise antes de persistir resultados derivados.</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cache-integracao">ODBC, Cache e Boas Práticas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ODBC para sistemas legados e cache com Redis</div>
+          <pre class="example">using ODBC
+using DataFrames
+
+conn = ODBC.Connection("DSN=MeuERP")
+clientes = DBInterface.execute(conn, "SELECT id, nome FROM clientes") |> DataFrame
+close(conn)
+
+<span class="com"># Para cache, pacotes Redis permitem padrão cache-aside.</span>
+<span class="com"># Ideia geral:</span>
+<span class="com"># 1. tentar ler chave no Redis</span>
+<span class="com"># 2. se não existir, consultar SQL</span>
+<span class="com"># 3. serializar e armazenar com TTL</span>
+<span class="com"># 4. invalidar após escrita</span>
+
+<span class="com"># Boas práticas:</span>
+<span class="com"># - nunca concatenar SQL com input do usuário</span>
+<span class="com"># - use transações em operações compostas</span>
+<span class="com"># - converta resultados para DataFrame só quando precisar análise tabular</span>
+<span class="com"># - para grandes volumes, itere resultados em streaming</span>
+<span class="com"># - documente migrações e esquema fora do código ad hoc</span></pre>
+        </div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Tecnologia</th><th>Ponto forte</th><th>Cenário ideal</th></tr></thead>
+            <tbody>
+              <tr><td>SQLite.jl</td><td>Zero infraestrutura</td><td>Apps locais, testes, protótipos</td></tr>
+              <tr><td>LibPQ.jl</td><td>PostgreSQL robusto</td><td>Backends, analytics, produção</td></tr>
+              <tr><td>ODBC.jl</td><td>Integração com legado</td><td>ERP, BI corporativo, bancos diversos</td></tr>
+              <tr><td>DataFrames.jl</td><td>Análise imediata</td><td>Pós-processamento e ETL</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DBINTERFACE.JL. <strong>Documentation</strong>. Disponível em: &lt;https://juliadatabases.org/DBInterface.jl/&gt;. Acesso em: 2026.</li>
+            <li>LIBPQ.JL. <strong>PostgreSQL client library for Julia</strong>. Disponível em: &lt;https://juliadatabases.org/LibPQ.jl/&gt;. Acesso em: 2026.</li>
+            <li>SQLITE.JL. <strong>SQLite interface for Julia</strong>. Disponível em: &lt;https://juliadatabases.org/SQLite.jl/&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Julia</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Julia</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Julia, o banco de dados deixa de ser apenas armazenamento e vira parte do pipeline científico. Consultar, transformar, modelar e regravar resultados no mesmo ambiente reduz fricção e mantém o raciocínio técnico mais coeso do que dividir tudo entre várias linguagens.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

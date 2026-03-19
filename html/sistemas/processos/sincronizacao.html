@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sincronização entre processos e threads: seção crítica, condições de corrida, soluções de software (algoritmo de Peterson) e primitivas de sincronização (mutex, semáforo, monitor)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Sincronização de Processos | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Sincronização de Processos</h1>
+            <p class="page-subtitle">Seção crítica, algoritmo de Peterson, primitivas de sincronização e os problemas clássicos de concorrência.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Quando múltiplos processos ou threads compartilham dados mutáveis, a <strong>sincronização</strong> garante que apenas um acesse a região crítica por vez — sem ela surgem <em>race conditions</em> e resultados não-determinísticos que são notoriamente difíceis de reproduzir e depurar. A teoria da sincronização define os requisitos formais e as ferramentas para satisfazê-los.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SEÇÃO CRÍTICA ═══════════════════ -->
+      <section id="secao-critica">
+        <h2>Seção Crítica e Requisitos Formais</h2>
+        <p>Uma solução correta para o problema da seção crítica deve satisfazer exatamente três condições:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Exclusão Mútua</h3>
+            <p>Se o processo P<sub>i</sub> está executando na seção crítica, nenhum outro processo pode estar na seção crítica ao mesmo tempo. Esta é a condição fundamental — sem ela, dados são corrompidos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Progresso</h3>
+            <p>Se nenhum processo está na seção crítica e alguns desejam entrar, somente os processos que não estão na seção restante participam da decisão. A decisão não pode ser adiada indefinidamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Bounded Waiting</h3>
+            <p>Existe um limite no número de vezes que outros processos podem entrar na seção crítica após um processo ter solicitado a entrada e antes de sua solicitação ser atendida — prevenindo starvation.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — PETERSON ═══════════════════ -->
+      <section id="peterson">
+        <h2>Algoritmo de Peterson</h2>
+        <p>Uma solução puramente em software para dois processos, sem hardware especial. Usa duas variáveis compartilhadas: <code class="code-inline">flag[2]</code> (intenção de entrar) e <code class="code-inline">turn</code> (vez de quem):</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — Algoritmo de Peterson para 2 threads</div>
+          <pre class="code-block">#include &lt;stdbool.h&gt;
+#include &lt;stdatomic.h&gt;
+
+/* Variáveis compartilhadas */
+static _Atomic bool flag[2] = { false, false }; /* flag[i]: processo i quer entrar */
+static _Atomic int  turn    = 0;                /* de quem é a vez */
+
+/* Executado pelo processo i (outro processo é j = 1 - i) */
+void lock(int i) {
+    int j = 1 - i;
+    flag[i] = true;   /* anuncio intenção */
+    turn    = j;      /* cedo a vez ao outro */
+    /* Espero enquanto o outro quer entrar E é a vez dele */
+    while (flag[j] &amp;&amp; turn == j)
+        ;  /* busy-wait */
+}
+
+void unlock(int i) {
+    flag[i] = false;  /* libero seção crítica */
+}
+
+/* Uso:
+   lock(0);
+   // ... seção crítica do processo 0 ...
+   unlock(0);
+*/
+
+/* LIMITAÇÕES:
+   - Funciona apenas para 2 processos (existem generalizações)
+   - Requer barreiras de memória em CPUs modernas que reordenam instruções
+   - Busy-wait desperdiça CPU — use mutex do SO em produção            */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — PRIMITIVAS ═══════════════════ -->
+      <section id="primitivas">
+        <h2>Primitivas de Sincronização</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Primitiva</th><th>Mecanismo</th><th>Blocking?</th><th>Custo</th><th>Quando usar</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Spinlock</strong></td>
+                <td>Busy-wait em loop até adquirir lock</td>
+                <td>Não (ocupa CPU)</td>
+                <td>Zero overhead de syscall; desperdiça CPU se espera for longa</td>
+                <td>Seções críticas muito curtas no kernel; multicore</td>
+              </tr>
+              <tr>
+                <td><strong>Mutex</strong></td>
+                <td>Lock exclusivo; thread dorme se indisponível</td>
+                <td>Sim</td>
+                <td>Syscall na contenção; rápido quando sem contenção</td>
+                <td>Proteger estrutura de dados compartilhada entre threads</td>
+              </tr>
+              <tr>
+                <td><strong>Semáforo</strong></td>
+                <td>Contador inteiro; P(wait) decrementa, V(signal) incrementa</td>
+                <td>Sim (quando contador = 0)</td>
+                <td>Similar ao mutex; mais expressivo (contagem)</td>
+                <td>Controlar acesso a N recursos; sinalização entre threads</td>
+              </tr>
+              <tr>
+                <td><strong>Monitor</strong></td>
+                <td>Mutex + variáveis de condição encapsulados em abstração de alto nível</td>
+                <td>Sim</td>
+                <td>Médio</td>
+                <td>Java (synchronized), C# (lock), abstração OOP de concorrência</td>
+              </tr>
+              <tr>
+                <td><strong>Variável de Condição</strong></td>
+                <td>Permite thread dormir até que uma condição seja sinalizada</td>
+                <td>Sim</td>
+                <td>Baixo (usa mutex internamente)</td>
+                <td>Produtores/consumidores; esperar estado específico</td>
+              </tr>
+              <tr>
+                <td><strong>Barrier</strong></td>
+                <td>Sincroniza N threads num ponto de rendezvous</td>
+                <td>Sim (até todas chegarem)</td>
+                <td>Baixo</td>
+                <td>Computação paralela em fases; OpenMP, MPI</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — PROBLEMAS CLÁSSICOS ═══════════════════ -->
+      <section id="classicos">
+        <h2>Problemas Clássicos de Concorrência</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Produtor-Consumidor (Buffer Limitado)</h3>
+            <p>Produtor insere itens num buffer de capacidade N; consumidor os retira. Sem sincronização, produtor pode sobrescrever items ou consumidor ler posição vazia. Solução: semáforo <code class="code-inline">vazio</code> (inicializado em N) e <code class="code-inline">cheio</code> (inicializado em 0).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Leitores-Escritores</h3>
+            <p>Múltiplos leitores simultâneos são permitidos; escritores precisam de acesso exclusivo. Preferência para leitores pode causar starvation de escritores. Solução: contagem de leitores ativos com mutex + semáforo de escrita.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Jantar dos Filósofos</h3>
+            <p>5 filósofos, 5 garfos, cada um precisa de dois garfos para comer. Pegar todos o garfo esquerdo ao mesmo tempo causa deadlock. Soluções: filósofo assimétrico, limite de 4 filósofos na mesa, ou adquirir ambos os garfos atomicamente.</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — Produtor-Consumidor com semáforos POSIX</div>
+          <pre class="code-block">#include &lt;stdio.h&gt;
+#include &lt;semaphore.h&gt;
+#include &lt;pthread.h&gt;
+
+#define N 5   /* tamanho do buffer */
+int buffer[N];
+int in = 0, out = 0;
+
+sem_t vazio;  /* slots disponíveis para produzir */
+sem_t cheio;  /* itens disponíveis para consumir */
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+void *produtor(void *arg) {
+    for (int item = 0; item &lt; 20; item++) {
+        sem_wait(&amp;vazio);          /* aguarda slot livre */
+        pthread_mutex_lock(&amp;mtx);
+        buffer[in] = item;
+        in = (in + 1) % N;
+        pthread_mutex_unlock(&amp;mtx);
+        sem_post(&amp;cheio);          /* sinaliza item disponível */
+    }
+    return NULL;
+}
+
+void *consumidor(void *arg) {
+    for (int i = 0; i &lt; 20; i++) {
+        sem_wait(&amp;cheio);          /* aguarda item disponível */
+        pthread_mutex_lock(&amp;mtx);
+        int item = buffer[out];
+        out = (out + 1) % N;
+        pthread_mutex_unlock(&amp;mtx);
+        sem_post(&amp;vazio);          /* libera slot */
+        printf("consumido: %d\n", item);
+    }
+    return NULL;
+}
+
+int main(void) {
+    sem_init(&amp;vazio, 0, N);
+    sem_init(&amp;cheio, 0, 0);
+    pthread_t tp, tc;
+    pthread_create(&amp;tp, NULL, produtor, NULL);
+    pthread_create(&amp;tc, NULL, consumidor, NULL);
+    pthread_join(tp, NULL);
+    pthread_join(tc, NULL);
+    sem_destroy(&amp;vazio);
+    sem_destroy(&amp;cheio);
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se nas primitivas em
+          <a href="/html/sistemas/processos/mutex_semaforos.html">Mutex e Semáforos</a> e
+          <a href="/html/sistemas/processos/deadlocks.html">Deadlocks</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"A seção crítica é pequena, mas protegê-la corretamente é a diferença entre um sistema confiável e um sistema que falha de formas misteriosas."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para ciência de dados e IA: BLAS/LAPACK, TensorFlow C API, ONNX Runtime, OpenCL, redes neurais e álgebra linear de alta performance." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Dados e Inteligência Artificial</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cerebro" aria-hidden="true"></span></div>
+          <h1>C para Dados e IA</h1>
+          <p>BLAS/LAPACK para álgebra linear, TensorFlow C API, ONNX Runtime, OpenCL para GPU, e implementação de redes neurais do zero em C puro.</p>
+        </div>
+        <p class="intro-highlight">
+          NumPy, PyTorch, TensorFlow — todas as bibliotecas de ML do Python são wrappers sobre código C/C++/CUDA. O núcleo de desempenho de toda IA moderna é escrito em C. Entender C para dados e IA é entender o que acontece por baixo do <code>model.fit()</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="blas-lapack">BLAS e LAPACK: Álgebra Linear de Alto Desempenho</h2>
+        <p>BLAS (Basic Linear Algebra Subprograms) e LAPACK (Linear Algebra PACKage) são os padrões industriais para operações de álgebra linear. NumPy usa OpenBLAS internamente. Chamá-los diretamente em C elimina qualquer overhead.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; BLAS: multiplicação de matrizes com cblas_dgemm</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;cblas.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+
+<span class="com">/*
+ * C = alpha * A * B + beta * C
+ * cblas_dgemm: double-precision General Matrix Multiply
+ *
+ * A[m×k], B[k×n] → C[m×n]
+ */</span>
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="kw">const</span> <span class="tp">int</span> M = <span class="num">3</span>, N = <span class="num">3</span>, K = <span class="num">3</span>;
+
+    <span class="tp">double</span> A[<span class="num">9</span>] = {<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>,
+                    <span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span>,
+                    <span class="num">7</span>, <span class="num">8</span>, <span class="num">9</span>};
+
+    <span class="tp">double</span> B[<span class="num">9</span>] = {<span class="num">9</span>, <span class="num">8</span>, <span class="num">7</span>,
+                    <span class="num">6</span>, <span class="num">5</span>, <span class="num">4</span>,
+                    <span class="num">3</span>, <span class="num">2</span>, <span class="num">1</span>};
+    <span class="tp">double</span> C[<span class="num">9</span>] = {<span class="num">0</span>};
+
+    <span class="fn">cblas_dgemm</span>(
+        CblasRowMajor, CblasNoTrans, CblasNoTrans,
+        M, N, K,
+        <span class="num">1.0</span>,   <span class="com">/* alpha */</span>
+        A, K,   <span class="com">/* A, lda */</span>
+        B, N,   <span class="com">/* B, ldb */</span>
+        <span class="num">0.0</span>,    <span class="com">/* beta */</span>
+        C, N    <span class="com">/* C, ldc */</span>
+    );
+
+    <span class="fn">printf</span>(<span class="str">"C = A × B:\n"</span>);
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; M; i++) {
+        <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; N; j++) <span class="fn">printf</span>(<span class="str">"%8.2f "</span>, C[i*N+j]);
+        <span class="fn">printf</span>(<span class="str">"\n"</span>);
+    }
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o blas_ex blas_ex.c -lopenblas  (ou -lblas -llapack) */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rede-neural">Rede Neural do Zero em C</h2>
+        <p>Implementar um perceptron multicamadas (MLP) em C força o entendimento real das matemáticas de backpropagation, gradiente descendente e funções de ativação — sem abstrações de frameworks.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; MLP com forward pass, sigmoid e backpropagation (XOR)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;math.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;time.h&gt;</span>
+
+<span class="kw">#define</span> ENTRADA  <span class="num">2</span>
+<span class="kw">#define</span> OCULTA   <span class="num">4</span>
+<span class="kw">#define</span> SAIDA    <span class="num">1</span>
+<span class="kw">#define</span> LR       <span class="num">0.5</span>
+<span class="kw">#define</span> EPOCAS   <span class="num">10000</span>
+
+<span class="kw">typedef</span> <span class="kw">struct</span> {
+    <span class="tp">double</span> w1[ENTRADA][OCULTA];  <span class="com">/* pesos camada 1 */</span>
+    <span class="tp">double</span> b1[OCULTA];           <span class="com">/* bias camada 1 */</span>
+    <span class="tp">double</span> w2[OCULTA][SAIDA];   <span class="com">/* pesos camada 2 */</span>
+    <span class="tp">double</span> b2[SAIDA];            <span class="com">/* bias camada 2 */</span>
+} <span class="tp">MLP</span>;
+
+<span class="tp">double</span> <span class="fn">sigmoid</span>(<span class="tp">double</span> x) { <span class="kw">return</span> <span class="num">1.0</span> / (<span class="num">1.0</span> + <span class="fn">exp</span>(-x)); }
+<span class="tp">double</span> <span class="fn">dsigmoid</span>(<span class="tp">double</span> y) { <span class="kw">return</span> y * (<span class="num">1.0</span> - y); }
+
+<span class="tp">double</span> <span class="fn">rand01</span>(<span class="tp">void</span>) { <span class="kw">return</span> ((<span class="tp">double</span>)<span class="fn">rand</span>() / RAND_MAX) * <span class="num">2.0</span> - <span class="num">1.0</span>; }
+
+<span class="tp">void</span> <span class="fn">inicializar</span>(<span class="tp">MLP</span> *nn) {
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; ENTRADA; i++)
+        <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++)
+            nn-&gt;w1[i][j] = <span class="fn">rand01</span>() * <span class="num">0.5</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) nn-&gt;b1[j] = <span class="num">0.0</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++)
+        <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++)
+            nn-&gt;w2[j][k] = <span class="fn">rand01</span>() * <span class="num">0.5</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++) nn-&gt;b2[k] = <span class="num">0.0</span>;
+}
+
+<span class="com">/* Forward pass + Backprop numa função só (para clareza pedagógica) */</span>
+<span class="tp">void</span> <span class="fn">treinar</span>(<span class="tp">MLP</span> *nn, <span class="tp">double</span> *x, <span class="tp">double</span> *y) {
+    <span class="com">/* Forward */</span>
+    <span class="tp">double</span> h[OCULTA], o[SAIDA];
+
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) {
+        <span class="tp">double</span> s = nn-&gt;b1[j];
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; ENTRADA; i++) s += x[i] * nn-&gt;w1[i][j];
+        h[j] = <span class="fn">sigmoid</span>(s);
+    }
+    <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++) {
+        <span class="tp">double</span> s = nn-&gt;b2[k];
+        <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) s += h[j] * nn-&gt;w2[j][k];
+        o[k] = <span class="fn">sigmoid</span>(s);
+    }
+
+    <span class="com">/* Backward (gradiente no output) */</span>
+    <span class="tp">double</span> delta_o[SAIDA];
+    <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++)
+        delta_o[k] = (y[k] - o[k]) * <span class="fn">dsigmoid</span>(o[k]);
+
+    <span class="tp">double</span> delta_h[OCULTA];
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) {
+        <span class="tp">double</span> e = <span class="num">0.0</span>;
+        <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++) e += delta_o[k] * nn-&gt;w2[j][k];
+        delta_h[j] = e * <span class="fn">dsigmoid</span>(h[j]);
+    }
+
+    <span class="com">/* Atualার pesos */</span>
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++)
+        <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++)
+            nn-&gt;w2[j][k] += LR * delta_o[k] * h[j];
+    <span class="kw">for</span> (<span class="tp">int</span> k = <span class="num">0</span>; k &lt; SAIDA; k++) nn-&gt;b2[k] += LR * delta_o[k];
+
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; ENTRADA; i++)
+        <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++)
+            nn-&gt;w1[i][j] += LR * delta_h[j] * x[i];
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) nn-&gt;b1[j] += LR * delta_h[j];
+}
+
+<span class="tp">double</span> <span class="fn">predizer</span>(<span class="tp">MLP</span> *nn, <span class="tp">double</span> *x) {
+    <span class="tp">double</span> h[OCULTA];
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) {
+        <span class="tp">double</span> s = nn-&gt;b1[j];
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; ENTRADA; i++) s += x[i] * nn-&gt;w1[i][j];
+        h[j] = <span class="fn">sigmoid</span>(s);
+    }
+    <span class="tp">double</span> s = nn-&gt;b2[<span class="num">0</span>];
+    <span class="kw">for</span> (<span class="tp">int</span> j = <span class="num">0</span>; j &lt; OCULTA; j++) s += h[j] * nn-&gt;w2[j][<span class="num">0</span>];
+    <span class="kw">return</span> <span class="fn">sigmoid</span>(s);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="fn">srand</span>((<span class="tp">unsigned</span>)<span class="fn">time</span>(NULL));
+    <span class="tp">MLP</span> nn; <span class="fn">inicializar</span>(&amp;nn);
+
+    <span class="tp">double</span> X[<span class="num">4</span>][<span class="num">2</span>] = {{<span class="num">0</span>,<span class="num">0</span>},{<span class="num">0</span>,<span class="num">1</span>},{<span class="num">1</span>,<span class="num">0</span>},{<span class="num">1</span>,<span class="num">1</span>}};
+    <span class="tp">double</span> Y[<span class="num">4</span>]    = {<span class="num">0</span>,<span class="num">1</span>,<span class="num">1</span>,<span class="num">0</span>};  <span class="com">/* XOR */</span>
+
+    <span class="kw">for</span> (<span class="tp">int</span> ep = <span class="num">0</span>; ep &lt; EPOCAS; ep++)
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">4</span>; i++)
+            <span class="fn">treinar</span>(&amp;nn, X[i], &amp;Y[i]);
+
+    <span class="fn">printf</span>(<span class="str">"XOR após %d épocas:\n"</span>, EPOCAS);
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">4</span>; i++)
+        <span class="fn">printf</span>(<span class="str">"  (%.0f, %.0f) → %.4f\n"</span>,
+               X[i][<span class="num">0</span>], X[i][<span class="num">1</span>], <span class="fn">predizer</span>(&amp;nn, X[i]));
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* Saída esperada: ~0.05, ~0.95, ~0.95, ~0.05 */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tensorflow-c">TensorFlow C API e ONNX Runtime</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>TensorFlow C API</h3>
+            <p>TensorFlow fornece uma API C estável (<code>tensorflow/c/c_api.h</code>) que permite carregar modelos SavedModel e executar inferências sem Python. Ideal para servidores de produção de baixo overhead.</p>
+            <pre class="example"><span class="com">// carregar modelo SavedModel</span>
+<span class="tp">TF_Graph</span> *graph = <span class="fn">TF_NewGraph</span>();
+<span class="tp">TF_Status</span> *status = <span class="fn">TF_NewStatus</span>();
+<span class="tp">TF_SessionOptions</span> *opts = <span class="fn">TF_NewSessionOptions</span>();
+<span class="kw">const</span> <span class="tp">char</span> *tags[] = {<span class="str">"serve"</span>};
+<span class="tp">TF_Session</span> *sess = <span class="fn">TF_LoadSessionFromSavedModel</span>(
+    opts, NULL, <span class="str">"./modelo"</span>,
+    tags, <span class="num">1</span>, graph, NULL, status);</pre>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>ONNX Runtime C API</h3>
+            <p>ONNX Runtime tem uma API C de primeira classe (<code>onnxruntime_c_api.h</code>). Suporta execução em CPU, CUDA, TensorRT, OpenVINO e CoreML via providers. É o runtime de inferência mais portável para C.</p>
+            <pre class="example"><span class="com">// inicializar ONNX Runtime</span>
+<span class="kw">const</span> <span class="tp">OrtApi</span> *g_ort = <span class="fn">OrtGetApiBase</span>()-&gt;<span class="fn">GetApi</span>(<span class="num">16</span>);
+<span class="tp">OrtEnv</span> *env;
+g_ort-&gt;<span class="fn">CreateEnv</span>(ORT_LOGGING_LEVEL_WARNING,
+                  <span class="str">"onnx_c"</span>, &amp;env);
+<span class="tp">OrtSession</span> *session;
+g_ort-&gt;<span class="fn">CreateSession</span>(env, <span class="str">L"modelo.onnx"</span>,
+                       opts, &amp;session);</pre>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>OpenCL: Computação em GPU</h3>
+            <p>OpenCL permite executar kernels no GPU em C. Frameworks como TensorFlow e PyTorch usam OpenCL ou CUDA internamente para acelerar operações matriciais.</p>
+            <pre class="example"><span class="com">/* kernel em C string */</span>
+<span class="kw">const</span> <span class="tp">char</span> *src =
+  <span class="str">"__kernel void add("</span>
+  <span class="str">"  __global float* a,"</span>
+  <span class="str">"  __global float* b,"</span>
+  <span class="str">"  __global float* c)"</span>
+  <span class="str">"{ int i = get_global_id(0);"</span>
+  <span class="str">"  c[i] = a[i] + b[i]; }"</span>;</pre>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="whisper-llama">llama.cpp e whisper.cpp: IA de Ponta em C puro</h2>
+
+        <div class="panel">
+          <p class="panel-title">C como fundação de IA moderna</p>
+          <p><strong>llama.cpp</strong> (Georgi Gerganov) implementa inferência de LLMs como LLaMA, Mistral e Phi inteiramente em C/C++ puramente — sem Python, sem CUDA obrigatório, rodando em CPUs de consumidor com quantização 4-bit (GGML). É o projeto Open Source de IA de crescimento mais rápido em 2024.</p>
+          <p><strong>whisper.cpp</strong> do mesmo autor porta o modelo Whisper da OpenAI para C puro, com suporte a Apple Silicon (Metal), CUDA, OpenCL e CPU puro. Transcrição local de áudio sem nuvem.</p>
+          <p>Ambos usam GGML — uma biblioteca de tensores escrita em C sem dependências externas — como prova de que C é suficiente para IA de produção.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOLUB, Gene H.; VAN LOAN, Charles F. <strong>Matrix Computations</strong>. 4. ed. Johns Hopkins University Press, 2013.</li>
+            <li>GOODFELLOW, Ian; BENGIO, Yoshua; COURVILLE, Aaron. <strong>Deep Learning</strong>. MIT Press, 2016. Disponível em: &lt;https://www.deeplearningbook.org/&gt;.</li>
+            <li>GERGANOV, Georgi. <strong>llama.cpp: Inference of LLaMA model in pure C/C++</strong>. GitHub, 2023. Disponível em: &lt;https://github.com/ggerganov/llama.cpp&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> C Avançado: ponteiros, UB e C23</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C com Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Everything in Python ML is C underneath. Learn C, understand ML." &mdash; Georgi Gerganov</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

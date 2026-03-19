@@ -1,0 +1,264 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Monitoramento de redes: SNMP, Prometheus com Grafana, Zabbix, alertas, métricas de latência e disponibilidade." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Monitoramento de Redes | Administração | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Administração de Redes</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="monitoring"></span>
+          <div>
+            <h1 class="page-title">Monitoramento de Redes</h1>
+            <p class="page-subtitle"><abbr title="Simple Network Management Protocol">SNMP</abbr>, Prometheus, Grafana, Zabbix, alertas e métricas de disponibilidade</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O monitoramento de redes fornece visibilidade sobre disponibilidade, performance e
+          problemas em tempo real. Combinar coleta de métricas, visualização e alertas
+          é essencial para manter <abbr title="Service Level Agreement">SLA</abbr>s e diagnosticar incidentes rapidamente.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — MÉTRICAS FUNDAMENTAIS ═══════════════════ -->
+      <section id="metricas-fundamentais">
+        <h2 id="metricas-fundamentais" class="section-title">Métricas Fundamentais</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Métrica</th><th>Definição</th><th>Unidade</th><th>Threshold de Alerta</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Disponibilidade (Uptime)</td><td>% do tempo que o serviço está acessível</td><td>%</td><td>&lt; 99.9% (3 noves)</td></tr>
+              <tr><td>Latência (RTT)</td><td>Round-trip time de um pacote ICMP</td><td>ms</td><td>&gt; 100 ms (WAN), &gt; 1 ms (LAN)</td></tr>
+              <tr><td>Jitter</td><td>Variação no RTT</td><td>ms</td><td>&gt; 10 ms para VoIP</td></tr>
+              <tr><td>Packet Loss</td><td>% de pacotes descartados</td><td>%</td><td>&gt; 0.1% para dados, &gt; 0 para VoIP</td></tr>
+              <tr><td>Bandwidth Utilization</td><td>% da capacidade do link em uso</td><td>%</td><td>&gt; 80% de capacidade</td></tr>
+              <tr><td>Erros de Interface</td><td>CRC errors, discards, collisions</td><td>pkt/s</td><td>Qualquer incremento</td></tr>
+              <tr><td>SNMP ifOperStatus</td><td>Estado operacional da interface</td><td>1=up, 2=down</td><td>Estado = 2 (down)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — SNMP ═══════════════════ -->
+      <section id="snmp">
+        <h2 id="snmp" class="section-title"><abbr title="Simple Network Management Protocol">SNMP</abbr> — Simple Network Management Protocol</h2>
+        <div class="section-divider"></div>
+        <p><abbr title="Simple Network Management Protocol">SNMP</abbr> é o protocolo padrão para monitorar e gerenciar dispositivos de rede (switches, roteadores,
+        firewalls, servidores). Usa uma base de dados hierárquica chamada <abbr title="Management Information Base">MIB</abbr> (Management Information Base).</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Versão</th><th>Segurança</th><th>Autenticidade</th><th>Criptografia</th><th>Uso Atual</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>SNMPv1</td><td>Community string (texto claro)</td><td>Não</td><td>Não</td><td>Legado</td></tr>
+              <tr><td>SNMPv2c</td><td>Community string (texto claro)</td><td>Não</td><td>Não</td><td>Ainda comum</td></tr>
+              <tr><td>SNMPv3</td><td>USM (User-based Security)</td><td>MD5/SHA</td><td>DES/AES</td><td>Recomendado</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="logic-grid">
+          <div class="card">
+            <h3 class="panel-title">OIDs importantes</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># CPU load (HOST-RESOURCES-MIB)
+1.3.6.1.2.1.25.3.3.1.2
+
+# Interface stats (IF-MIB)
+1.3.6.1.2.1.2.2.1.8   # ifOperStatus (1=up,2=down)
+1.3.6.1.2.1.2.2.1.16  # ifOutOctets
+1.3.6.1.2.1.2.2.1.10  # ifInOctets
+
+# sysDescr, sysName, sysUpTime
+1.3.6.1.2.1.1.1.0
+1.3.6.1.2.1.1.5.0
+1.3.6.1.2.1.1.3.0</pre>
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="panel-title">snmpwalk / snmpget</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># v2c
+snmpget -v2c -c public 192.168.1.1 \
+  sysDescr.0
+
+snmpwalk -v2c -c public 192.168.1.1 \
+  interfaces
+
+# v3
+snmpget -v3 -u admin \
+  -l authPriv \
+  -a SHA -A senhaSHA \
+  -x AES -X senhaAES \
+  192.168.1.1 sysUpTimeInstance</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — PROMETHEUS + GRAFANA ═══════════════════ -->
+      <section id="prometheus-grafana">
+        <h2 id="prometheus-grafana" class="section-title">Prometheus + Grafana</h2>
+        <div class="section-divider"></div>
+        <p><strong>Prometheus</strong> coleta métricas via HTTP de endpoints (<em>exporters</em>) em modelo pull.
+        <strong>Grafana</strong> consome o Prometheus como datasource e cria dashboards visualizáveis.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Exporters comuns</h3>
+            <div class="scroll-x">
+              <table class="tabela-gigante">
+                <tbody>
+                  <tr><td><code class="code-inline">node_exporter</code></td><td>CPU, mem, disco, interfaces</td></tr>
+                  <tr><td><code class="code-inline">blackbox_exporter</code></td><td>ICMP ping, HTTP check, TCP</td></tr>
+                  <tr><td><code class="code-inline">snmp_exporter</code></td><td>Dispositivos SNMP</td></tr>
+                  <tr><td><code class="code-inline">nginx-prometheus-exporter</code></td><td>Métricas Nginx</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Prometheus — prometheus.yml</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'nodes'
+    static_configs:
+      - targets:
+          - node1:9100
+          - node2:9100
+
+  - job_name: 'blackbox_http'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - https://example.com
+          - https://api.example.com/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - target_label: __address__
+        replacement: blackbox:9115</pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">PromQL — Queries úteis</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block"># Up/Down de instâncias
+up
+up{job="nodes"}
+
+# Bandwidth (bytes/s)
+rate(node_network_receive_bytes_total[5m])
+
+# Packet loss ICMP
+1 - avg_over_time(probe_success[5m])
+
+# Latência HTTP
+probe_duration_seconds{job="blackbox_http"}
+
+# CPU usage
+100 - (avg by(instance)(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — ZABBIX ═══════════════════ -->
+      <section id="zabbix">
+        <h2 id="zabbix" class="section-title">Zabbix — Monitoramento Enterprise</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Arquitetura</h3>
+            <p>Zabbix Server coleta dados via Zabbix Agent (instalado nos hosts), SNMP, ICMP polling,
+            ou Zabbix Proxy (para redes remotas). Armazena histórico em banco de dados (PostgreSQL/MySQL).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fontes de dados</h3>
+            <ul>
+              <li><strong>Zabbix Agent:</strong> CPU, mem, disco, processos, logs</li>
+              <li><strong>SNMP:</strong> Switches, roteadores, UPS</li>
+              <li><strong>ICMP:</strong> Polls de disponibilidade</li>
+              <li><strong>HTTP agent:</strong> Endpoints web/API</li>
+              <li><strong>JMX:</strong> Aplicações Java</li>
+            </ul>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Alertas</h3>
+            <p>Triggers baseados em expressões: <code class="code-inline">{host:key.last()} &lt; 10</code>.<br>
+            Ações automáticas: email, Slack, PagerDuty, script customizado, auto-remediation.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 6 — COMPARATIVO ═══════════════════ -->
+      <section id="comparativo">
+        <h2 id="comparativo" class="section-title">Comparativo de Ferramentas</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Ferramenta</th><th>Tipo</th><th>Coleta</th><th>Alertas</th><th>Visualização</th><th>Ideal para</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Prometheus</td><td>Open-source</td><td>Pull / Exporters</td><td>Alertmanager</td><td>Grafana</td><td>Cloud-native, containers, métricas</td></tr>
+              <tr><td>Zabbix</td><td>Open-source</td><td>Agent, SNMP, ICMP</td><td>Nativo</td><td>Nativo</td><td>On-premise, infraestrutura mista</td></tr>
+              <tr><td>PRTG</td><td>Pago (Windows)</td><td>SNMP, WMI, NetFlow</td><td>Nativo</td><td>Nativo</td><td>Ambientes Windows, SME</td></tr>
+              <tr><td>Nagios</td><td>Open-source</td><td>Agent / Plugins</td><td>Nativo</td><td>Nativo (básico)</td><td>Legado, on-premise</td></tr>
+              <tr><td>Datadog</td><td>SaaS (pago)</td><td>Agent, + 500 integ.</td><td>Nativo + ML</td><td>Nativo</td><td>Cloud, DevOps, APM</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Combine monitoramento com diagnóstico ativo:
+          <a href="/html/rede_e_comunicacao/administracao/ferramentas_rede.html">Ferramentas de Rede</a> e
+          <a href="/html/rede_e_comunicacao/administracao/seguranca_redes.html">Segurança de Redes</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Você não pode melhorar o que não mede — e não pode proteger o que não monitora."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

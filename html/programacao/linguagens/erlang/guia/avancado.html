@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang Avançado: OTP gen_statem, ETS tables (new/insert/lookup/select), Mnesia distributed database, hot code upgrades e process introspection." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Avançado</h1>
+          <p>Além dos fundamentos, Erlang oferece behaviours especializados (gen_statem para máquinas de estado), armazenamento em memória compartilhada via ETS, banco de dados distribuído Mnesia, mecanismos de introspecção de processos e hot code upgrade — substituição de código em produção sem parar o sistema.</p>
+        </div>
+        <p class="intro-highlight">
+          ETS (Erlang Term Storage) é a exceção à regra de imutabilidade: uma tabela ETS é mutável e acessível por múltiplos processos simultaneamente sem cópia de dados — ideal para cache e contadores de alta frequência. O processo dono da tabela define permissões de acesso.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gen-statem">gen_statem — Máquina de Estados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Semáforo com gen_statem (callback_mode: state_functions)</div>
+          <pre class="example">-module(semaforo).
+-behaviour(gen_statem).
+-export([start_link/0, avancar/0, estado/0]).
+-export([init/1, callback_mode/0, vermelho/3, verde/3, amarelo/3]).
+
+start_link() -&gt; gen_statem:start_link({local, ?MODULE}, ?MODULE, [], []).
+avancar()    -&gt; gen_statem:cast(?MODULE, avancar).
+estado()     -&gt; gen_statem:call(?MODULE, estado).
+
+callback_mode() -&gt; state_functions.  <span class="com">% nome-da-função == estado</span>
+
+init([]) -&gt; {ok, vermelho, 0}.       <span class="com">% estado inicial, dados iniciais</span>
+
+<span class="com">%% Estado: vermelho</span>
+vermelho(cast, avancar, Ciclos) -&gt;
+    io:format(<span class="str">"Vermelho → Verde~n"</span>),
+    {next_state, verde, Ciclos};
+vermelho({call, From}, estado, Ciclos) -&gt;
+    {keep_state, Ciclos, [{reply, From, vermelho}]}.
+
+<span class="com">%% Estado: verde</span>
+verde(cast, avancar, Ciclos) -&gt;
+    io:format(<span class="str">"Verde → Amarelo~n"</span>),
+    {next_state, amarelo, Ciclos};
+verde({call, From}, estado, Ciclos) -&gt;
+    {keep_state, Ciclos, [{reply, From, verde}]}.
+
+<span class="com">%% Estado: amarelo</span>
+amarelo(cast, avancar, Ciclos) -&gt;
+    io:format(<span class="str">"Amarelo → Vermelho (ciclo ~p completo)~n"</span>, [Ciclos + 1]),
+    {next_state, vermelho, Ciclos + 1};
+amarelo({call, From}, estado, Ciclos) -&gt;
+    {keep_state, Ciclos, [{reply, From, amarelo}]}.
+
+<span class="com">%% Uso no shell:</span>
+<span class="com">%% semaforo:start_link().</span>
+<span class="com">%% semaforo:estado().  % vermelho</span>
+<span class="com">%% semaforo:avancar(). % → verde</span>
+<span class="com">%% semaforo:avancar(). % → amarelo</span>
+<span class="com">%% semaforo:avancar(). % → vermelho (ciclo 1 completo)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ets">ETS — Erlang Term Storage</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos de tabela, CRUD e operações atômicas</div>
+          <pre class="example"><span class="com">%% Criar tabela — tipos:</span>
+<span class="com">%% set: chave única, melhor para lookup</span>
+<span class="com">%% ordered_set: chave única, itreração ordenada (menos eficiente)</span>
+<span class="com">%% bag: múltiplos valores por chave (tuplas duplicadas retornadas)</span>
+<span class="com">%% duplicate_bag: permite duplicatas exatas</span>
+T = ets:new(minha_tabela, [set, named_table, public]).
+<span class="com">% named_table: acessar pelo nome em vez do TID</span>
+<span class="com">% public/protected/private: quem pode ler/escrever</span>
+
+<span class="com">%% Inserir</span>
+ets:insert(minha_tabela, {joao, 30, engenheiro}).
+ets:insert(minha_tabela, [{maria, 25, designer}, {pedro, 35, dev}]).
+
+<span class="com">%% Lookup por chave (elemento 1 da tupla por padrão)</span>
+ets:lookup(minha_tabela, joao).     <span class="com">% [{joao, 30, engenheiro}]</span>
+ets:member(minha_tabela, joao).     <span class="com">% true</span>
+
+<span class="com">%% Match — padrão com _</span>
+ets:match(minha_tabela, {joao, '$1', '_'}).  <span class="com">% [[30]]</span>
+ets:match_object(minha_tabela, {'_', '_', dev}).
+
+<span class="com">%% Select com matchspecs (mais poderoso)</span>
+MS = ets:fun2ms(fun({Nome, Idade, _}) when Idade &gt; 28 -&gt; Nome end).
+ets:select(minha_tabela, MS).     <span class="com">% [joao, pedro]</span>
+
+<span class="com">%% Update atômico — incrementa contador sem race condition</span>
+ets:insert(minha_tabela, {visitas, 0}).
+ets:update_counter(minha_tabela, visitas, 1).  <span class="com">% retorna novo valor</span>
+ets:update_counter(minha_tabela, visitas, {2, 1}).  <span class="com">% {pos, incremento}</span>
+
+<span class="com">%% Deletar</span>
+ets:delete(minha_tabela, joao).
+ets:delete_all_objects(minha_tabela).
+ets:delete(minha_tabela).  <span class="com">% apaga a tabela</span>
+
+<span class="com">%% Tamanho e informações</span>
+ets:info(minha_tabela, size).     <span class="com">% número de objetos</span>
+ets:info(minha_tabela, memory).   <span class="com">% words usadas</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mnesia">Mnesia — Banco de Dados Distribuído</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Schema, tabelas e transações Mnesia</div>
+          <pre class="example"><span class="com">%% Schema e inicialização (uma vez, antes de start)</span>
+mnesia:create_schema([node()]).   <span class="com">% criar schema no disco</span>
+mnesia:start().
+
+<span class="com">%% Definir registro</span>
+-record(usuario, {id, nome, email, criado_em}).
+
+<span class="com">%% Criar tabela</span>
+mnesia:create_table(usuario, [
+    {attributes, record_info(fields, usuario)},
+    {disc_copies, [node()]},      <span class="com">% disco + RAM (vs ram_copies ou disc_only)</span>
+    {type, set}
+]).
+
+<span class="com">%% Transação — ACID garantido</span>
+F = fun() -&gt;
+    U = #usuario{id = 1, nome = <span class="str">"João"</span>, email = <span class="str">"jo@ex.com"</span>,
+                 criado_em = erlang:system_time(second)},
+    mnesia:write(U)
+end,
+mnesia:transaction(F).    <span class="com">% {atomic, ok} ou {aborted, Reason}</span>
+
+<span class="com">%% Leitura transacional</span>
+Ler = fun() -&gt; mnesia:read(usuario, 1) end,
+{atomic, [Registro]} = mnesia:transaction(Ler).
+
+<span class="com">%% Query com QLC (Query List Comprehension)</span>
+Q = fun() -&gt;
+    qlc:e(qlc:q([U#usuario.nome || U &lt;- mnesia:table(usuario),
+                                    U#usuario.id &gt; 0]))
+end,
+{atomic, Nomes} = mnesia:transaction(Q).
+
+<span class="com">%% dirty_read/write — sem transação, mais rápido (sem garantias)</span>
+mnesia:dirty_write(#usuario{id = 2, nome = <span class="str">"Ana"</span>, email = <span class="str">"ana@ex.com"</span>}).
+mnesia:dirty_read(usuario, 2).
+
+<span class="com">%% Mnesia em múltiplos nodes</span>
+mnesia:add_table_copy(usuario, outro_node@host, disc_copies).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="introspection">Introspecção e Diagnóstico de Processos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">process_info, erlang:system_info e ferramentas de diagnóstico</div>
+          <pre class="example"><span class="com">%% Informações de um processo</span>
+erlang:process_info(Pid).                        <span class="com">% tudo</span>
+erlang:process_info(Pid, message_queue_len).     <span class="com">% tamanho da mailbox</span>
+erlang:process_info(Pid, memory).                <span class="com">% bytes usados</span>
+erlang:process_info(Pid, heap_size).             <span class="com">% words do heap</span>
+erlang:process_info(Pid, reductions).            <span class="com">% reduções executadas</span>
+erlang:process_info(Pid, current_function).      <span class="com">% onde está agora</span>
+erlang:process_info(Pid, registered_name).       <span class="com">% nome, se registrado</span>
+erlang:process_info(Pid, links).                 <span class="com">% PIDs linkados</span>
+erlang:process_info(Pid, monitors).              <span class="com">% PIDs monitorados</span>
+
+<span class="com">%% Informações do sistema</span>
+erlang:system_info(schedulers).         <span class="com">% número de schedulers</span>
+erlang:system_info(process_count).      <span class="com">% processos ativos</span>
+erlang:system_info(process_limit).      <span class="com">% máximo permitido</span>
+erlang:system_info(atom_count).         <span class="com">% átomos criados</span>
+
+<span class="com">%% Listar todos os processos</span>
+Pids = erlang:processes().
+GrandePid = lists:max([{element(2, erlang:process_info(P, memory)), P}
+                        || P &lt;- Pids]).
+
+<span class="com">%% Inspecionar estado de um gen_server em produção</span>
+sys:get_state(contador).              <span class="com">% retorna estado interno</span>
+sys:get_status(contador).             <span class="com">% status completo com histórico</span>
+sys:suspend(contador).                <span class="com">% pausar processamento</span>
+sys:resume(contador).                 <span class="com">% retomar</span>
+
+<span class="com">%% Rastrear mensagens de um processo em tempo real</span>
+dbg:tracer().
+dbg:p(Pid, [send, receive]).
+<span class="com">% ... executar ações ...</span>
+dbg:stop().</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hot-code">Hot Code Upgrade — Atualização sem Parar</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Atualizar módulos em produção via code:load_file e code_change/3</div>
+          <pre class="example"><span class="com">%% A BEAM mantém 2 versões de cada módulo: "current" e "old"</span>
+<span class="com">%% Processos em code_change migram dados do estado antigo para novo</span>
+
+<span class="com">%% No shell — recompilar e carregar novo módulo</span>
+c(contador).              <span class="com">% recompila e carrega no shell</span>
+l(contador).              <span class="com">% só carrega (sem compilar)</span>
+code:load_file(contador). <span class="com">% semelhante a l/1</span>
+code:which(contador).     <span class="com">% caminho do .beam carregado</span>
+code:purge(contador).     <span class="com">% remove versão "old"</span>
+
+<span class="com">%% Chamada qualificada — usa versão "current" imediatamente</span>
+<span class="com">%% (loop normal usa versão já carregada pelo processo)</span>
+loop(Estado) -&gt;
+    receive
+        Msg -&gt; handle(Msg, Estado)
+    end,
+    ?MODULE:loop(Estado).   <span class="com">% chamada qualificada = hot swap ponto de entrada</span>
+
+<span class="com">%% code_change/3 em gen_server — migrar estado entre versões</span>
+code_change(VersaoAntiga, EstadoAntigo, _Extra) -&gt;
+    <span class="com">%% converter {estado_v1, Contador} → {estado_v2, Contador, Historico}</span>
+    {contador_v1, N} = EstadoAntigo,
+    NovoEstado = {contador_v2, N, []},
+    io:format(<span class="str">"Migrado de ~p para v2~n"</span>, [VersaoAntiga]),
+    {ok, NovoEstado}.
+
+<span class="com">%% Upgrade coordenado via release handler (systools/appup)</span>
+<span class="com">%%   1. Criar arquivo .appup com instruções update/load/purge</span>
+<span class="com">%%   2. systools:make_relup/3 gera relup file</span>
+<span class="com">%%   3. release_handler:install_release/1 aplica em produção</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ARMSTRONG, J. <strong>Programming Erlang</strong>. 2. ed. Pragmatic Bookshelf, 2013.</li>
+            <li>Erlang/OTP. <strong>ETS — Erlang Term Storage</strong>. Disponível em: &lt;https://www.erlang.org/doc/man/ets.html&gt;. Acesso em: 2026.</li>
+            <li>LOGAN, M.; MERRITT, E.; CARLSSON, R. <strong>Erlang and OTP in Action</strong>. Manning, 2010.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ferramentas e Ecossistema Erlang</a></li>
+          <li><a href="../aplicacoes/alta_disponibilidade.html"><span data-svg="seta-direita" aria-hidden="true"></span> Alta Disponibilidade com OTP</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Hot code upgrade é viável em Erlang porque processos <strong>não compartilham estado</strong>: a troca de versão de um módulo afeta apenas novas chamadas. O estado persiste dentro de cada processo e é migrado explicitamente via <code>code_change/3</code> — o desenvolvedor controla completamente a transformação de dados durante o upgrade, mesmo enquanto o sistema serve requisições.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

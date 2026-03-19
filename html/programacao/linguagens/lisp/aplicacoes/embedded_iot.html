@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Lisp em embedded/IoT: integracao com C, Clojure embarcado e limites praticos em hardware restrito." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Lisp - Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Lisp - Embedded e IoT</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="hero">Lisp em hardware embarcado</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="lisp" aria-hidden="true"></span></div>
+          <h1>Controle de alto nivel com integracao nativa</h1>
+          <p>Em IoT, Lisp costuma atuar na camada de orquestracao, regras e configuracao, enquanto partes criticas de tempo real ficam em C/C++ ou firmware dedicado.</p>
+        </div>
+        <p class="intro-highlight">A estrategia mais realista e combinar Lisp para logica evolutiva com componentes nativos para acesso deterministico ao hardware.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura-iot" class="section-title">Arquitetura recomendada</h2>
+        <div class="grid grid--2">
+          <div class="card"><h3>Edge gateway</h3><p>Lisp roda em Linux embarcado (gateway) para agregacao de sensores, regras e envio para nuvem.</p></div>
+          <div class="card"><h3>Microcontrolador</h3><p>Firmware em C/C++ cuida de IO, interrupcoes e protocolos de baixo nivel.</p></div>
+        </div>
+        <table>
+          <thead><tr><th>Componente</th><th>Responsabilidade</th><th>Tecnologia comum</th></tr></thead>
+          <tbody>
+            <tr><td>Gateway</td><td>Regras, filas, telemetria</td><td>SBCL/Clojure + MQTT client</td></tr>
+            <tr><td>Firmware</td><td>Drivers e tempo real</td><td>C/C++</td></tr>
+            <tr><td>Cloud</td><td>Persistencia e analytics</td><td>API + banco time-series</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="exemplo-integracao" class="section-title">Exemplo de integracao com biblioteca C</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Common Lisp - chamada FFI simplificada</div>
+          <pre class="example"><span class="com">;; Exemplo conceitual com CFFI para leitura de sensor</span>
+(cffi:define-foreign-library libsensores
+  (t (:default <span class="str">\"libsensores.so\"</span>)))
+(cffi:use-foreign-library libsensores)
+
+(cffi:defcfun (<span class="str">\"ler_temperatura\"</span> <span class="fn">ler-temperatura-c</span>) :float
+  (canal :int))
+
+(<span class="kw">defun</span> <span class="fn">ler-temperatura</span> (&optional (canal 0))
+  (<span class="kw">let</span> ((valor (ler-temperatura-c canal)))
+    (<span class="kw">if</span> (< valor -100.0)
+        (<span class="kw">error</span> <span class="str">\"Leitura invalida do sensor\"</span>)
+        valor)))</pre>
+        </div>
+        <p>Esse padrao permite manter algoritmos de decisao em Lisp sem abrir mao de drivers nativos. Em campo, inclua retries, timeout e watchdog.</p>
+        <div class="panel">
+          <h3 class="panel-title">Aviso de engenharia</h3>
+          <p>Se o requisito inclui hard real-time estrito (microsegundos previsiveis), Lisp puro no dispositivo pode nao ser adequado. Priorize separacao de responsabilidades.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tradeoffs-embedded" class="section-title">Limites e trade-offs</h2>
+        <div class="panel"><p>Vantagem: velocidade de evolucao de regras de negocio e configuracao remota. Limite: footprint de runtime e menor disponibilidade de stacks embarcadas prontas comparado a C/C++.</p></div>
+        <div class="panel"><p>Quando o hardware e restrito em RAM/flash, considere usar Lisp no gateway e manter o microcontrolador com firmware enxuto.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li><a href="https://cffi.common-lisp.dev/" target="_blank" rel="noopener">CFFI. Common Foreign Function Interface for Lisp.</a></li>
+          <li><a href="https://mqtt.org/" target="_blank" rel="noopener">MQTT. Official Protocol Site.</a></li>
+          <li><a href="https://www.contiki-ng.org/" target="_blank" rel="noopener">CONTIKI-NG. Open Source Operating System for IoT.</a></li>
+          <li><a href="https://www.freertos.org/" target="_blank" rel="noopener">FREERTOS. Real-Time Kernel Documentation.</a></li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em embedded, Lisp tende a ser excelente no controle inteligente do sistema, nao no lugar do firmware de tempo real.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/lisp/aplicacoes/dados_ia.html">Regras e inferencia para IoT inteligente</a></li>
+          <li><a class="link-card" href="/html/embedded_iot/introducao.html">Panorama geral de Embedded e IoT</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/c/aplicacoes/embedded_iot.html">Comparar com C em embarcados</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

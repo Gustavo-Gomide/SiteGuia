@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir Avançado: processos e concorrência com GenServer, Supervisor, OTP behaviours, macros, protocolos, behaviours, metaprogramação com quote/unquote e tarefas assíncronas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Avançado</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir Avancado</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Avançado</h1>
+          <p>O diferencial de Elixir está em seu modelo de concorrência baseado em <strong>processos leves</strong> da BEAM — não threads do SO, mas atores isolados com caixas de mensagem. Junto com o framework <strong>OTP</strong> (Open Telecom Platform), o Elixir oferece primitivas para construir sistemas que se auto-curam, tolerantes a falhas e escaláveis a milhões de conexões simultâneas.</p>
+        </div>
+        <p class="intro-highlight">
+          Um processo BEAM consome ~2 KB de memória e pode ser criado em microssegundos. Uma máquina comum comporta milhões de processos simultâneos. Cada processo tem seu próprio heap, sem memória compartilhada — eliminando race conditions por design.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processos">Processos — spawn, send, receive</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criação e comunicação de processos</div>
+          <pre class="example"><span class="com"># spawn — cria processo e retorna PID</span>
+pid = <span class="fn">spawn</span>(<span class="kw">fn</span> ->
+  <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Olá do processo #{inspect(self())}"</span>)
+<span class="kw">end</span>)
+<span class="com"># PID do processo filho</span>
+
+<span class="com"># self() — PID do processo atual</span>
+<span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Principal: #{inspect(self())}"</span>)
+
+<span class="com"># Enviar mensagem — operador send</span>
+<span class="fn">send</span>(pid, {<span class="at">:ola</span>, <span class="str">"mundo"</span>})
+
+<span class="com"># receive — bloqueia até receber mensagem correspondente</span>
+<span class="kw">receive</span> <span class="kw">do</span>
+  {<span class="at">:ola</span>, msg} ->
+    <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Recebi: #{msg}"</span>)
+  {<span class="at">:erro</span>, motivo} ->
+    <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Erro: #{motivo}"</span>)
+<span class="kw">after</span>
+  <span class="num">5000</span> -> <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Timeout!"</span>)  <span class="com"># timeout em ms</span>
+<span class="kw">end</span>
+
+<span class="com"># Loop de servidor genérico manual</span>
+<span class="kw">defmodule</span> <span class="tp">Contador</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">iniciar</span>, <span class="kw">do</span>: <span class="fn">spawn</span>(__MODULE__, <span class="at">:loop</span>, [<span class="num">0</span>])
+
+  <span class="kw">def</span> <span class="fn">loop</span>(n) <span class="kw">do</span>
+    <span class="kw">receive</span> <span class="kw">do</span>
+      <span class="at">:incrementar</span>              -> <span class="fn">loop</span>(n + <span class="num">1</span>)
+      {<span class="at">:buscar</span>, caller_pid}     -> <span class="fn">send</span>(caller_pid, n); <span class="fn">loop</span>(n)
+      <span class="at">:parar</span>                    -> <span class="at">:ok</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+pid = <span class="tp">Contador</span>.<span class="fn">iniciar</span>()
+<span class="fn">send</span>(pid, <span class="at">:incrementar</span>)
+<span class="fn">send</span>(pid, <span class="at">:incrementar</span>)
+<span class="fn">send</span>(pid, {<span class="at">:buscar</span>, self()})
+<span class="kw">receive</span> <span class="kw">do</span> n -> <span class="kw">IO</span>.<span class="fn">inspect</span>(n) <span class="kw">end</span>   <span class="com"># 2</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="genserver">GenServer — Servidor Genérico OTP</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GenServer completo — callbacks e API pública</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">Estoque</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">GenServer</span>
+
+  <span class="com"># ── API Pública ───────────────────────────────────────────────</span>
+  <span class="kw">def</span> <span class="fn">start_link</span>(opts \\ []) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">start_link</span>(__MODULE__, %{}, <span class="fn">name</span>: __MODULE__)
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">adicionar</span>(produto, qtd) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">cast</span>(__MODULE__, {<span class="at">:adicionar</span>, produto, qtd})
+    <span class="com"># cast = assíncrono, não aguarda resposta</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">consultar</span>(produto) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">call</span>(__MODULE__, {<span class="at">:consultar</span>, produto})
+    <span class="com"># call = síncrono, espera resposta</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">remover</span>(produto, qtd) <span class="kw">do</span>
+    <span class="tp">GenServer</span>.<span class="fn">call</span>(__MODULE__, {<span class="at">:remover</span>, produto, qtd})
+  <span class="kw">end</span>
+
+  <span class="com"># ── Callbacks (lado servidor) ────────────────────────────────</span>
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">init</span>(_args) <span class="kw">do</span>
+    {<span class="at">:ok</span>, %{}}    <span class="com"># estado inicial = mapa vazio</span>
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_cast</span>({<span class="at">:adicionar</span>, produto, qtd}, estado) <span class="kw">do</span>
+    novo_estado = <span class="tp">Map</span>.<span class="fn">update</span>(estado, produto, qtd, &(&amp;<span class="num">1</span> + qtd))
+    {<span class="at">:noreply</span>, novo_estado}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_call</span>({<span class="at">:consultar</span>, produto}, _from, estado) <span class="kw">do</span>
+    qtd = <span class="tp">Map</span>.<span class="fn">get</span>(estado, produto, <span class="num">0</span>)
+    {<span class="at">:reply</span>, qtd, estado}   <span class="com"># {:reply, resposta, novo_estado}</span>
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_call</span>({<span class="at">:remover</span>, produto, qtd}, _from, estado) <span class="kw">do</span>
+    atual = <span class="tp">Map</span>.<span class="fn">get</span>(estado, produto, <span class="num">0</span>)
+    <span class="kw">cond</span> <span class="kw">do</span>
+      atual >= qtd ->
+        novo = <span class="tp">Map</span>.<span class="fn">put</span>(estado, produto, atual - qtd)
+        {<span class="at">:reply</span>, {<span class="at">:ok</span>, atual - qtd}, novo}
+      <span class="kw">true</span> ->
+        {<span class="at">:reply</span>, {<span class="at">:error</span>, <span class="str">"estoque insuficiente"</span>}, estado}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_info</span>(<span class="at">:verificar_estoque_critico</span>, estado) <span class="kw">do</span>
+    <span class="com"># handle_info para mensagens não-call/cast (Process.send_after, etc.)</span>
+    estado |&gt; <span class="tp">Enum</span>.<span class="fn">each</span>(<span class="kw">fn</span> {p, q} ->
+      <span class="kw">if</span> q &lt; <span class="num">10</span>, <span class="kw">do</span>: <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"ALERTA: #{p} com apenas #{q} unidades"</span>)
+    <span class="kw">end</span>)
+    {<span class="at">:noreply</span>, estado}
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Uso</span>
+{<span class="at">:ok</span>, _pid} = <span class="tp">Estoque</span>.<span class="fn">start_link</span>()
+<span class="tp">Estoque</span>.<span class="fn">adicionar</span>(<span class="str">"maçã"</span>, <span class="num">100</span>)
+<span class="tp">Estoque</span>.<span class="fn">adicionar</span>(<span class="str">"banana"</span>, <span class="num">50</span>)
+<span class="tp">Estoque</span>.<span class="fn">consultar</span>(<span class="str">"maçã"</span>)     <span class="com"># 100</span>
+<span class="tp">Estoque</span>.<span class="fn">remover</span>(<span class="str">"maçã"</span>, <span class="num">30</span>)   <span class="com"># {:ok, 70}</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="supervisor">Supervisor — Tolerância a Falhas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Supervisor tree — "let it crash" philosophy</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MeuApp.Application</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Application</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">start</span>(_type, _args) <span class="kw">do</span>
+    children = [
+      <span class="tp">Estoque</span>,                           <span class="com"># módulo com start_link/1</span>
+      {<span class="tp">CacheServer</span>, ttl: <span class="num">3600</span>},          <span class="com"># com opções</span>
+      {<span class="tp">Task.Supervisor</span>, name: <span class="tp">MeuApp.TaskSupervisor</span>}
+    ]
+
+    opts = [
+      strategy: <span class="at">:one_for_one</span>,  <span class="com"># reiniciar só o filho que falhou</span>
+      <span class="com"># :one_for_all   — reiniciar todos se um falhar</span>
+      <span class="com"># :rest_for_one  — reiniciar o que falhou + os iniciados depois</span>
+      max_restarts: <span class="num">3</span>,          <span class="com"># máximo 3 reinícios</span>
+      max_seconds: <span class="num">5</span>            <span class="com"># dentro de 5 segundos</span>
+    ]
+
+    <span class="tp">Supervisor</span>.<span class="fn">start_link</span>(children, opts)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Supervisor dinâmico — adicionar filhos em runtime</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.SessionSupervisor</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">DynamicSupervisor</span>
+
+  <span class="kw">def</span> <span class="fn">start_link</span>(opts), <span class="kw">do</span>: <span class="tp">DynamicSupervisor</span>.<span class="fn">start_link</span>(__MODULE__, opts, name: __MODULE__)
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">init</span>(_opts), <span class="kw">do</span>: <span class="tp">DynamicSupervisor</span>.<span class="fn">init</span>(strategy: <span class="at">:one_for_one</span>)
+
+  <span class="kw">def</span> <span class="fn">iniciar_sessao</span>(usuario_id) <span class="kw">do</span>
+    spec = {<span class="tp">SessaoServer</span>, usuario_id}
+    <span class="tp">DynamicSupervisor</span>.<span class="fn">start_child</span>(__MODULE__, spec)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Uma falha em um processo filho NÃO afeta os irmãos</span>
+<span class="com"># O Supervisor detecta a queda e reinicia automaticamente</span>
+<span class="com"># Isso é o "let it crash" — não defensivo, mas resiliente</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="task-agent">Task e Agent — Concorrência Simplificada</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Task para paralelismo e Agent para estado simples</div>
+          <pre class="example"><span class="com"># Task — executar trabalho assíncrono</span>
+task = <span class="tp">Task</span>.<span class="fn">async</span>(<span class="kw">fn</span> -> <span class="fn">operacao_longa</span>() <span class="kw">end</span>)
+<span class="com"># continua executando código aqui...</span>
+resultado = <span class="tp">Task</span>.<span class="fn">await</span>(task, <span class="num">10_000</span>)  <span class="com"># timeout 10s</span>
+
+<span class="com"># Múltiplas tasks em paralelo</span>
+tarefas = <span class="kw">Enum</span>.<span class="fn">map</span>(<span class="num">1</span>..<span class="num">10</span>, <span class="kw">fn</span> i ->
+  <span class="tp">Task</span>.<span class="fn">async</span>(<span class="kw">fn</span> -> <span class="fn">processar</span>(i) <span class="kw">end</span>)
+<span class="kw">end</span>)
+resultados = <span class="tp">Task</span>.<span class="fn">await_many</span>(tarefas, <span class="num">30_000</span>)
+
+<span class="com"># Task.Supervisor para tasks supervisionadas</span>
+<span class="tp">Task</span>.<span class="tp">Supervisor</span>.<span class="fn">async_nolink</span>(<span class="tp">MeuApp.TaskSupervisor</span>, <span class="kw">fn</span> ->
+  <span class="fn">enviar_email</span>(destinatario, conteudo)
+<span class="kw">end</span>)
+
+<span class="com"># Agent — wrapper de GenServer para estado simples</span>
+{<span class="at">:ok</span>, ag} = <span class="tp">Agent</span>.<span class="fn">start_link</span>(<span class="kw">fn</span> -> %{} <span class="kw">end</span>)
+
+<span class="tp">Agent</span>.<span class="fn">update</span>(ag, <span class="kw">fn</span> estado -> <span class="tp">Map</span>.<span class="fn">put</span>(estado, <span class="at">:chave</span>, <span class="str">"valor"</span>) <span class="kw">end</span>)
+valor = <span class="tp">Agent</span>.<span class="fn">get</span>(ag, <span class="kw">fn</span> estado -> estado[<span class="at">:chave</span>] <span class="kw">end</span>)
+<span class="com"># "valor"</span>
+
+<span class="tp">Agent</span>.<span class="fn">get_and_update</span>(ag, <span class="kw">fn</span> estado ->
+  {estado[<span class="at">:chave</span>], <span class="tp">Map</span>.<span class="fn">put</span>(estado, <span class="at">:chave</span>, <span class="str">"novo"</span>)}
+<span class="kw">end</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="protocolos">Protocolos e Behaviours</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">protocol — polimorfismo para qualquer tipo</div>
+          <pre class="example"><span class="com"># Definir protocolo (como interface em OOP)</span>
+<span class="kw">defprotocol</span> <span class="tp">Serializavel</span> <span class="kw">do</span>
+  <span class="at">@doc</span> <span class="str">"Converte estrutura para string JSON-like"</span>
+  <span class="kw">def</span> <span class="fn">serializar</span>(valor)
+<span class="kw">end</span>
+
+<span class="com"># Implementar para diferentes tipos</span>
+<span class="kw">defimpl</span> <span class="tp">Serializavel</span>, <span class="fn">for</span>: <span class="tp">Integer</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">serializar</span>(n), <span class="kw">do</span>: <span class="kw">Integer</span>.<span class="fn">to_string</span>(n)
+<span class="kw">end</span>
+
+<span class="kw">defimpl</span> <span class="tp">Serializavel</span>, <span class="fn">for</span>: <span class="tp">Map</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">serializar</span>(mapa) <span class="kw">do</span>
+    pares = mapa
+    |&gt; <span class="tp">Enum</span>.<span class="fn">map</span>(<span class="kw">fn</span> {k, v} -> <span class="str">"\"#{k}\": #{<span class="tp">Serializavel</span>.<span class="fn">serializar</span>(v)}"</span> <span class="kw">end</span>)
+    |&gt; <span class="kw">Enum</span>.<span class="fn">join</span>(<span class="str">", "</span>)
+    <span class="str">"{#{pares}}"</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="tp">Serializavel</span>.<span class="fn">serializar</span>(<span class="num">42</span>)             <span class="com"># "42"</span>
+<span class="tp">Serializavel</span>.<span class="fn">serializar</span>(%{nome: <span class="str">"Ana"</span>}) <span class="com"># "{\"nome\": \"Ana\"}"</span>
+
+<span class="com"># Behaviour — definir contrato para módulos</span>
+<span class="kw">defmodule</span> <span class="tp">Pagamento</span> <span class="kw">do</span>
+  <span class="at">@callback</span> <span class="fn">processar</span>(<span class="tp">Float</span>.t()) :: {<span class="at">:ok</span>, <span class="tp">String</span>.t()} | {<span class="at">:error</span>, <span class="tp">String</span>.t()}
+  <span class="at">@callback</span> <span class="fn">estornar</span>(<span class="tp">String</span>.t()) :: <span class="at">:ok</span> | {<span class="at">:error</span>, <span class="tp">String</span>.t()}
+<span class="kw">end</span>
+
+<span class="kw">defmodule</span> <span class="tp">Boleto</span> <span class="kw">do</span>
+  <span class="at">@behaviour</span> <span class="tp">Pagamento</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">processar</span>(valor), <span class="kw">do</span>: {<span class="at">:ok</span>, <span class="str">"boleto_#{:rand.uniform(9999)}"</span>}
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">estornar</span>(id), <span class="kw">do</span>: <span class="at">:ok</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="macros">Metaprogramação — Macros</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">defmacro, quote e unquote — código que gera código</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MinhasMacros</span> <span class="kw">do</span>
+
+  <span class="com"># unless personalizado</span>
+  <span class="kw">defmacro</span> <span class="fn">menos_que</span>(valor, limite, <span class="kw">do</span>: bloco) <span class="kw">do</span>
+    <span class="fn">quote</span> <span class="kw">do</span>
+      <span class="kw">if</span> <span class="fn">unquote</span>(valor) &lt; <span class="fn">unquote</span>(limite) <span class="kw">do</span>
+        <span class="fn">unquote</span>(bloco)
+      <span class="kw">end</span>
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="com"># Macro para benchmark</span>
+  <span class="kw">defmacro</span> <span class="fn">medir_tempo</span>(label, <span class="kw">do</span>: bloco) <span class="kw">do</span>
+    <span class="fn">quote</span> <span class="kw">do</span>
+      inicio = <span class="tp">System</span>.<span class="fn">monotonic_time</span>(<span class="at">:microsecond</span>)
+      resultado = <span class="fn">unquote</span>(bloco)
+      fim = <span class="tp">System</span>.<span class="fn">monotonic_time</span>(<span class="at">:microsecond</span>)
+      <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"#{unquote(label)}: #{fim - inicio} µs"</span>)
+      resultado
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="kw">require</span> <span class="tp">MinhasMacros</span>
+
+<span class="tp">MinhasMacros</span>.<span class="fn">menos_que</span> estoque, <span class="num">10</span> <span class="kw">do</span>
+  <span class="kw">IO</span>.<span class="fn">puts</span>(<span class="str">"Estoque crítico!"</span>)
+<span class="kw">end</span>
+
+<span class="tp">MinhasMacros</span>.<span class="fn">medir_tempo</span> <span class="str">"sort de 1M elementos"</span> <span class="kw">do</span>
+  <span class="kw">Enum</span>.<span class="fn">sort</span>(<span class="kw">Enum</span>.<span class="fn">to_list</span>(<span class="num">1</span>..<span class="num">1_000_000</span>))
+<span class="kw">end</span>
+
+<span class="com"># quote — inspecionar AST do Elixir</span>
+<span class="fn">quote</span> <span class="kw">do</span>: <span class="num">1</span> + <span class="num">2</span>
+<span class="com"># {:+, [context: Elixir, imports: [{1, Kernel}, {2, Kernel}]], [1, 2]}</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>VALIM, J. <strong>Elixir — Processes and OTP</strong>. Elixir Official Docs. Disponível em: &lt;https://elixir-lang.org/getting-started/processes.html&gt;. Acesso em: 2026.</li>
+            <li>CESARINI, F.; THOMPSON, S. <strong>Erlang Programming</strong>. O'Reilly, 2009. Cap. 12 — OTP Behaviours.</li>
+            <li>MCCORD, C. <strong>Elixir in Action</strong>. 3. ed. Manning, 2024. Cap. 5 — Concurrency Primitives.</li>
+          </ul>
+          <ul>
+            <li><a href="https://www.erlang.org/doc/design_principles/des_princ.html" target="_blank" rel="noopener">ERLANG/OTP. Design Principles.</a></li>
+            <li><a href="https://hexdocs.pm/elixir/GenServer.html" target="_blank" rel="noopener">HEXDOCS. GenServer.</a></li>
+            <li><a href="https://hexdocs.pm/elixir/Supervisor.html" target="_blank" rel="noopener">HEXDOCS. Supervisor.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do Elixir</a></li>
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A filosofia <strong>"let it crash"</strong> do OTP é contraintuitiva mas poderosa: em vez de escrever código defensivo com try/catch em cada ponto de falha possível, você deixa o processo falhar e conta com o Supervisor para reiniciá-lo em estado limpo. Isso resulta em código mais simples, mais legível e sistemas que se auto-curam — provado em produção pelo Erlang/OTP há décadas em telecomunicações com 99.9999999% de uptime (nine nines).</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

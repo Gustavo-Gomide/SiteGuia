@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# Avancado: async/await, Task Parallel Library, Span&lt;T&gt;, Memory&lt;T&gt;, unsafe, generics avancados, Source Generators, Reflection, expression trees e interop nativo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# Avancado</h1>
+          <p>Recursos de elite do C#: programacao assincrona com async/await e ValueTask, paralelismo com TPL Dataflow e Channels, performance com Span&lt;T&gt; e Memory&lt;T&gt;, generics avancados com constraints e variancia, Source Generators para metaprogramacao em compile-time, Reflection, expression trees e interop nativo com P/Invoke.</p>
+        </div>
+        <p class="intro-highlight">
+          .NET e uma das plataformas de maior performance disponivel — benchmarks TechEmpower colocam ASP.NET Core consistentemente entre os 5 frameworks mais rapidos. Isso e alcancado por otimizacoes como Span&lt;T&gt; para zero-copy, ValueTask para hot paths sem alocacao, e Native AOT para startup imediato.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="async">async / await e Task</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; async/await, Task, ValueTask, IAsyncEnumerable e CancellationToken</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Threading</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Threading</span>.<span class="tp">Tasks</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Net</span>.<span class="tp">Http</span>;
+
+<span class="com">// Task — operacao assincrona I/O-bound</span>
+<span class="kw">static async</span> <span class="tp">Task</span>&lt;<span class="kw">string</span>&gt; <span class="fn">BuscarDadosAsync</span>(<span class="kw">string</span> url, <span class="tp">CancellationToken</span> ct)
+{
+  <span class="kw">using var</span> http = <span class="kw">new</span> <span class="tp">HttpClient</span>();
+  <span class="kw">var</span> resposta = <span class="kw">await</span> http.<span class="fn">GetAsync</span>(url, ct);
+  resposta.<span class="fn">EnsureSuccessStatusCode</span>();
+  <span class="kw">return await</span> resposta.Content.<span class="fn">ReadAsStringAsync</span>(ct);
+}
+
+<span class="com">// Aguardar multiplas tasks em paralelo</span>
+<span class="kw">static async</span> <span class="tp">Task</span> <span class="fn">BuscarParaleloAsync</span>()
+{
+  <span class="kw">using var</span> cts = <span class="kw">new</span> <span class="tp">CancellationTokenSource</span>(<span class="tp">TimeSpan</span>.<span class="fn">FromSeconds</span>(<span class="num">10</span>));
+  <span class="tp">Task</span>&lt;<span class="kw">string</span>&gt;[] tarefas = [
+    <span class="fn">BuscarDadosAsync</span>(<span class="str">"https://api.exemplo.com/users"</span>,  cts.Token),
+    <span class="fn">BuscarDadosAsync</span>(<span class="str">"https://api.exemplo.com/orders"</span>, cts.Token),
+  ];
+  <span class="kw">string</span>[] resultados = <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">WhenAll</span>(tarefas);
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">$"Recebidos: {string.Join(", ", resultados.Select(r => r.Length))}"</span>);
+}
+
+<span class="com">// ValueTask — evita alocar Task quando resultado ja disponivel (hot path)</span>
+<span class="kw">static async</span> <span class="tp">ValueTask</span>&lt;<span class="kw">int</span>&gt; <span class="fn">LerDoCache</span>(<span class="kw">int</span> id)
+{
+  <span class="kw">if</span> (_cache.<span class="fn">TryGetValue</span>(id, <span class="kw">out var</span> val)) <span class="kw">return</span> val;  <span class="com">// sincrono, sem Task</span>
+  <span class="kw">return</span> <span class="kw">await</span> <span class="fn">LerDoBancoDeDadosAsync</span>(id);
+}
+
+<span class="com">// IAsyncEnumerable — stream assincrono de dados (backpressure)</span>
+<span class="kw">static async</span> <span class="tp">IAsyncEnumerable</span>&lt;<span class="tp">LogEntry</span>&gt; <span class="fn">StreamLogsAsync</span>(
+    <span class="tp">Stream</span> stream,
+    [<span class="tp">EnumeratorCancellation</span>] <span class="tp">CancellationToken</span> ct = <span class="kw">default</span>)
+{
+  <span class="kw">using var</span> reader = <span class="kw">new</span> <span class="tp">StreamReader</span>(stream);
+  <span class="kw">while</span> (!reader.<span class="tp">EndOfStream</span>)
+  {
+    ct.<span class="fn">ThrowIfCancellationRequested</span>();
+    <span class="kw">var</span> linha = <span class="kw">await</span> reader.<span class="fn">ReadLineAsync</span>(ct);
+    <span class="kw">if</span> (linha <span class="kw">is not null</span>)
+      <span class="kw">yield return</span> <span class="tp">LogEntry</span>.<span class="fn">Parse</span>(linha);
+  }
+}
+
+<span class="com">// Consumir IAsyncEnumerable</span>
+<span class="kw">await foreach</span> (<span class="kw">var</span> entry <span class="kw">in</span> <span class="fn">StreamLogsAsync</span>(stream).<span class="fn">WithCancellation</span>(ct))
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>(entry);
+
+<span class="com">// ConfigureAwait — evitar capturar SynchronizationContext em bibliotecas</span>
+<span class="kw">static async</span> <span class="tp">Task</span>&lt;<span class="kw">byte</span>[]&gt; <span class="fn">LerArquivoAsync</span>(<span class="kw">string</span> path)
+{
+  <span class="kw">return await</span> <span class="tp">File</span>.<span class="fn">ReadAllBytesAsync</span>(path).<span class="fn">ConfigureAwait</span>(<span class="kw">false</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="span">Span&lt;T&gt;, Memory&lt;T&gt; e Zero-Copy</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; Span&lt;T&gt;, ReadOnlySpan, MemoryMarshal e processamento de buffer sem alocacao</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Runtime</span>.<span class="tp">InteropServices</span>;
+
+<span class="com">// Span — view tipo fatia (slice) sem copiar memoria</span>
+<span class="kw">int</span>[] array = { <span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>, <span class="num">6</span> };
+<span class="tp">Span</span>&lt;<span class="kw">int</span>&gt; fatia = array.<span class="fn">AsSpan</span>(<span class="num">2</span>, <span class="num">3</span>);   <span class="com">// { 3, 4, 5 } — sem alocacao</span>
+fatia[<span class="num">0</span>] = <span class="num">99</span>;                         <span class="com">// modifica o array original</span>
+
+<span class="com">// Processar string sem alocar substrings</span>
+<span class="kw">static int</span> <span class="fn">ContarPalavras</span>(<span class="tp">ReadOnlySpan</span>&lt;<span class="kw">char</span>&gt; texto)
+{
+  <span class="kw">int</span> count = <span class="num">0</span>;
+  <span class="kw">bool</span> emPalavra = <span class="kw">false</span>;
+  <span class="kw">foreach</span> (<span class="kw">char</span> c <span class="kw">in</span> texto) {
+    <span class="kw">if</span> (<span class="kw">char</span>.<span class="fn">IsWhiteSpace</span>(c)) { emPalavra = <span class="kw">false</span>; }
+    <span class="kw">else if</span> (!emPalavra)      { emPalavra = <span class="kw">true</span>; count++; }
+  }
+  <span class="kw">return</span> count;
+}
+<span class="kw">int</span> palavras = <span class="fn">ContarPalavras</span>(<span class="str">"ola mundo como vai"</span>);  <span class="com">// 4, sem alocs</span>
+
+<span class="com">// Parsing numerico sem alocar string</span>
+<span class="tp">ReadOnlySpan</span>&lt;<span class="kw">char</span>&gt; numStr = <span class="str">"3.14159"</span>.<span class="fn">AsSpan</span>();
+<span class="kw">double</span> pi = <span class="kw">double</span>.<span class="fn">Parse</span>(numStr);
+
+<span class="com">// MemoryMarshal — interpretar bytes como structs sem copiar</span>
+<span class="kw">struct</span> <span class="tp">PacoteUDP</span> { <span class="kw">public int</span> Seq; <span class="kw">public short</span> Tipo; <span class="kw">public short</span> Len; }
+
+<span class="kw">byte</span>[] buffer = <span class="kw">new</span> <span class="kw">byte</span>[<span class="num">1024</span>];
+<span class="kw">ref</span> <span class="tp">PacoteUDP</span> header = <span class="kw">ref</span> <span class="tp">MemoryMarshal</span>.<span class="fn">AsRef</span>&lt;<span class="tp">PacoteUDP</span>&gt;(buffer);
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">$"Seq={header.Seq} Tipo={header.Tipo}"</span>);
+
+<span class="com">// stackalloc — alocar na stack (sem GC pressure)</span>
+<span class="tp">Span</span>&lt;<span class="kw">byte</span>&gt; chave = <span class="kw">stackalloc byte</span>[<span class="num">32</span>];  <span class="com">// seguro — Span impede escape</span>
+System.Security.Cryptography.<span class="tp">RandomNumberGenerator</span>.<span class="fn">Fill</span>(chave);
+
+<span class="com">// ArrayPool — reutilizar arrays grandes sem pressionar GC</span>
+<span class="kw">var</span> pool = System.Buffers.<span class="tp">ArrayPool</span>&lt;<span class="kw">byte</span>&gt;.Shared;
+<span class="kw">byte</span>[] alugado = pool.<span class="fn">Rent</span>(<span class="num">4096</span>);
+<span class="kw">try</span> {
+  <span class="com">// usar alugado...</span>
+} <span class="kw">finally</span> {
+  pool.<span class="fn">Return</span>(alugado, clearArray: <span class="kw">true</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generics">Generics Avancados e Constraints</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; constraints, variancia, static abstract members e generic math</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Numerics</span>;
+
+<span class="com">// Constraints — restringir T para garantir operacoes seguras</span>
+<span class="kw">static</span> T <span class="fn">Max</span>&lt;T&gt;(T a, T b) <span class="kw">where</span> T : <span class="tp">IComparable</span>&lt;T&gt;
+  =&gt; a.<span class="fn">CompareTo</span>(b) &gt;= <span class="num">0</span> ? a : b;
+
+<span class="kw">static</span> T <span class="fn">CriarESalvar</span>&lt;T&gt;() <span class="kw">where</span> T : <span class="kw">new</span>(), <span class="tp">IDisposable</span>
+{
+  <span class="kw">var</span> obj = <span class="kw">new</span> T();     <span class="com">// new() permite construtor default</span>
+  <span class="com">// ...</span>
+  <span class="kw">return</span> obj;
+}
+
+<span class="com">// Generic math (C# 11+) — static abstract members em interfaces</span>
+<span class="kw">static</span> T <span class="fn">Somar</span>&lt;T&gt;(<span class="tp">IEnumerable</span>&lt;T&gt; items) <span class="kw">where</span> T : <span class="tp">IAdditionOperators</span>&lt;T, T, T&gt;, <span class="kw">new</span>()
+{
+  T acc = <span class="kw">new</span>() { }; <span class="com">// ou T.Zero se T : IAdditiveIdentity</span>
+  <span class="kw">foreach</span> (<span class="kw">var</span> item <span class="kw">in</span> items) acc += item;
+  <span class="kw">return</span> acc;
+}
+
+<span class="com">// Variancia — covariance e contravariance</span>
+<span class="tp">IEnumerable</span>&lt;<span class="kw">string</span>&gt; strings = [<span class="str">"a"</span>, <span class="str">"b"</span>];
+<span class="tp">IEnumerable</span>&lt;<span class="kw">object</span>&gt; objects = strings;  <span class="com">// IEnumerable&lt;out T&gt; e covariante</span>
+
+<span class="tp">Action</span>&lt;<span class="kw">object</span>&gt; logObj = o =&gt; <span class="tp">Console</span>.<span class="fn">WriteLine</span>(o);
+<span class="tp">Action</span>&lt;<span class="kw">string</span>&gt; logStr = logObj;         <span class="com">// Action&lt;in T&gt; e contravariante</span>
+
+<span class="com">// Interface com static abstract — tipo de retorno calculado</span>
+<span class="kw">interface</span> <span class="tp">IParseable</span>&lt;TSelf&gt; <span class="kw">where</span> TSelf : <span class="tp">IParseable</span>&lt;TSelf&gt;
+{
+  <span class="kw">static abstract</span> TSelf <span class="fn">Parse</span>(<span class="kw">string</span> input);
+}
+
+<span class="kw">record struct</span> <span class="tp">Temperatura</span>(<span class="kw">double</span> Celsius) : <span class="tp">IParseable</span>&lt;<span class="tp">Temperatura</span>&gt;
+{
+  <span class="kw">public static</span> <span class="tp">Temperatura</span> <span class="fn">Parse</span>(<span class="kw">string</span> s) =&gt; <span class="kw">new</span>(<span class="kw">double</span>.<span class="fn">Parse</span>(s));
+  <span class="kw">public double</span> Fahrenheit =&gt; Celsius * <span class="num">9</span> / <span class="num">5</span> + <span class="num">32</span>;
+}
+
+<span class="kw">static</span> T <span class="fn">ParseGenerico</span>&lt;T&gt;(<span class="kw">string</span> s) <span class="kw">where</span> T : <span class="tp">IParseable</span>&lt;T&gt; =&gt; T.<span class="fn">Parse</span>(s);
+<span class="tp">Temperatura</span> t = <span class="fn">ParseGenerico</span>&lt;<span class="tp">Temperatura</span>&gt;(<span class="str">"100"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="source-generators">Source Generators e Reflection</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; atributos, Reflection em runtime e Source Generator em compile-time</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Reflection</span>;
+
+<span class="com">// Atributo customizado</span>
+[<span class="tp">AttributeUsage</span>(<span class="tp">AttributeTargets</span>.Property)]
+<span class="kw">class</span> <span class="tp">ValidarAttribute</span>(<span class="kw">int</span> min, <span class="kw">int</span> max) : <span class="tp">Attribute</span>
+{
+  <span class="kw">public int</span> Min { <span class="kw">get</span>; } = min;
+  <span class="kw">public int</span> Max { <span class="kw">get</span>; } = max;
+}
+
+<span class="kw">class</span> <span class="tp">Produto</span>
+{
+  [<span class="tp">Validar</span>(<span class="num">1</span>, <span class="num">100</span>)]
+  <span class="kw">public int</span> Quantidade { <span class="kw">get</span>; <span class="kw">set</span>; }
+  [<span class="tp">Validar</span>(<span class="num">0</span>, <span class="num">10000</span>)]
+  <span class="kw">public decimal</span> Preco { <span class="kw">get</span>; <span class="kw">set</span>; } = <span class="num">0m</span>;
+}
+
+<span class="com">// Validacao via Reflection</span>
+<span class="kw">static</span> <span class="tp">IEnumerable</span>&lt;<span class="kw">string</span>&gt; <span class="fn">Validar</span>&lt;T&gt;(T obj)
+{
+  <span class="kw">foreach</span> (<span class="kw">var</span> prop <span class="kw">in</span> <span class="kw">typeof</span>(T).<span class="fn">GetProperties</span>())
+  {
+    <span class="kw">var</span> attr = prop.<span class="fn">GetCustomAttribute</span>&lt;<span class="tp">ValidarAttribute</span>&gt;();
+    <span class="kw">if</span> (attr == <span class="kw">null</span>) <span class="kw">continue</span>;
+    <span class="kw">var</span> valor = (<span class="kw">double</span>)<span class="tp">Convert</span>.<span class="fn">ChangeType</span>(prop.<span class="fn">GetValue</span>(obj)!, <span class="kw">typeof</span>(<span class="kw">double</span>));
+    <span class="kw">if</span> (valor &lt; attr.Min || valor &gt; attr.Max)
+      <span class="kw">yield return</span> <span class="str">$"{prop.Name} fora do intervalo [{attr.Min}, {attr.Max}]: {valor}"</span>;
+  }
+}
+
+<span class="com">// Expression trees — inspecionar codigo como dado</span>
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Linq</span>.<span class="tp">Expressions</span>;
+
+<span class="tp">Expression</span>&lt;<span class="tp">Func</span>&lt;<span class="kw">int</span>, <span class="kw">bool</span>&gt;&gt; expr = x =&gt; x &gt; <span class="num">5</span> &amp;&amp; x &lt; <span class="num">20</span>;
+<span class="kw">var</span> body = (<span class="tp">BinaryExpression</span>)expr.<span class="tp">Body</span>;
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">$"Operador: {body.NodeType}"</span>);  <span class="com">// AndAlso</span>
+<span class="kw">var</span> compilada = expr.<span class="fn">Compile</span>();
+<span class="kw">bool</span> ok = <span class="fn">compilada</span>(<span class="num">10</span>);  <span class="com">// true</span>
+
+<span class="com">// Source Generator (Incremental Generator — .NET 6+)</span>
+<span class="com">// Projeto separado do tipo 'netstandard2.0' com referencia ao Roslyn SDK</span>
+<span class="com">// [Generator] atributo registra a classe no compilador</span>
+<span class="com">// Exemplo conceitual — o gerador criaria metodos ToString() sem Reflection:</span>
+<span class="com">//   [GenerateToString]</span>
+<span class="com">//   partial class Ponto { public int X; public int Y; }</span>
+<span class="com">// O gerador emite em compile-time:</span>
+<span class="com">//   partial class Ponto { public override string ToString() => $"Ponto(X={X}, Y={Y})"; }</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interop">P/Invoke e Interop com Codigo Nativo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; P/Invoke, unsafe, fixed e LibraryImport (C# 11+)</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Runtime</span>.<span class="tp">InteropServices</span>;
+
+<span class="com">// P/Invoke classico — chamar DLL nativa</span>
+<span class="kw">static class</span> <span class="tp">Libc</span>
+{
+  [<span class="tp">DllImport</span>(<span class="str">"libc"</span>, EntryPoint = <span class="str">"getpid"</span>)]
+  <span class="kw">public static extern int</span> <span class="fn">GetPid</span>();
+
+  [<span class="tp">DllImport</span>(<span class="str">"libc"</span>, CharSet = <span class="tp">CharSet</span>.Ansi)]
+  <span class="kw">public static unsafe extern int</span> <span class="fn">write</span>(<span class="kw">int</span> fd, <span class="kw">byte</span>* buf, <span class="kw">nint</span> count);
+}
+
+<span class="com">// LibraryImport — API moderna com source gen, sem boxing (C# 11+)</span>
+<span class="kw">static partial class</span> <span class="tp">Native</span>
+{
+  [<span class="tp">LibraryImport</span>(<span class="str">"libcalc.so"</span>, EntryPoint = <span class="str">"add_doubles"</span>)]
+  <span class="kw">public static partial double</span> <span class="fn">Somar</span>(<span class="kw">double</span> a, <span class="kw">double</span> b);
+
+  [<span class="tp">LibraryImport</span>(<span class="str">"libcalc.so"</span>)]
+  <span class="com">// MarshalAs para controlar marshaling de string</span>
+  [<span class="kw">return</span>: <span class="tp">MarshalAs</span>(<span class="tp">UnmanagedType</span>.LPStr)]
+  <span class="kw">public static partial string</span> <span class="fn">Versao</span>();
+}
+
+<span class="com">// unsafe — ponteiros e aritmética de ponteiro</span>
+<span class="kw">unsafe static void</span> <span class="fn">ProcessarBuffer</span>(<span class="kw">byte</span>* ptr, <span class="kw">int</span> len)
+{
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; len; i++)
+    *(ptr + i) ^= <span class="num">0xFF</span>;  <span class="com">// inverter bits</span>
+}
+
+<span class="com">// fixed — fixar objeto gerenciado para ponteiro nao se mover durante GC</span>
+<span class="kw">byte</span>[] dados = { <span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span> };
+<span class="kw">unsafe</span> {
+  <span class="kw">fixed</span> (<span class="kw">byte</span>* p = dados) {
+    <span class="fn">ProcessarBuffer</span>(p, dados.<span class="tp">Length</span>);
+  }
+}
+
+<span class="com">// Struct com layout explícito para interop com C (ex: cabecalho de arquivo)</span>
+[<span class="tp">StructLayout</span>(<span class="tp">LayoutKind</span>.Sequential, Pack = <span class="num">1</span>)]
+<span class="kw">struct</span> <span class="tp">CabecalhoBMP</span>
+{
+  <span class="kw">public ushort</span> Tipo;     <span class="com">// 0x4D42 = "BM"</span>
+  <span class="kw">public uint</span>   Tamanho;
+  <span class="kw">public uint</span>   Reservado;
+  <span class="kw">public uint</span>   Offset;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>Asynchronous programming with async and await</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/csharp/asynchronous-programming/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Memory and spans</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/standard/memory-and-spans/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Source generators</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/csharp/roslyn-sdk/source-generators-overview&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do C#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Span&lt;T&gt; e uma ref struct — so pode existir na stack, nunca no heap. Isso garante em compile-time que nao ha referencias a memoria invalida, tornando codigo de processamento de buffer tao seguro quanto C# normal mas tao rapido quanto C++.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

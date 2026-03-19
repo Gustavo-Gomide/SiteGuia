@@ -1,0 +1,119 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="NAT: estático, dinâmico e PAT/masquerade; tabela de tradução, problemas com ALG e NAT64 para transição IPv6." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>NAT | Camada de Rede | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Rede</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">NAT &mdash; Network Address Translation</h1>
+          <p class="page-subtitle">Tradução de endereços que permitiu a internet sobreviver ao esgotamento do IPv4</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>NAT</strong> (RFC 3022) é executado pelo roteador de borda e traduz endereços IP (e portas) entre a rede privada e a internet. Possibilita que <em>milhares de dispositivos</em> com IPs privados (RFC 1918) compartilhem um único IP público. É o mecanismo que adiou o fim do IPv4 por duas décadas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de NAT</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">NAT Estático (1:1)</h3>
+            <p>Mapeia um IP privado fixo para um IP público fixo. Usado para servidores internos que precisam ser acessíveis de fora (web server, FTP server).</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; NAT Estático</span></div>
+              <pre class="code-block">ip nat inside source static 192.168.1.10 203.0.113.10
+
+interface GigabitEthernet0/0
+ ip nat inside
+interface GigabitEthernet0/1
+ ip nat outside</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">NAT Dinâmico (N:M)</h3>
+            <p>Mapeia IPs privados para um pool de IPs públicos. Quando o pool acaba, novas conexões são bloqueadas.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; NAT Dinâmico</span></div>
+              <pre class="code-block">ip nat pool MEUPOOL 203.0.113.1 203.0.113.10 prefix-length 28
+ip nat inside source list 1 pool MEUPOOL
+access-list 1 permit 192.168.1.0 0.0.0.255</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">PAT / Masquerade (N:1) &mdash; mais comum</h3>
+            <p>Também chamado <strong>NAT Overload</strong>. Traduz múltiplos IPs privados para <em>um único IP público</em>, diferenciados por <strong>porta de origem</strong>. É o que ocorre em roteadores domésticos e corporativos.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; PAT (overload)</span></div>
+              <pre class="code-block">ip nat inside source list 1 interface GigabitEthernet0/1 overload
+access-list 1 permit 192.168.0.0 0.0.255.255</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Tabela de Tradução NAT</h3>
+            <p>O roteador mantém uma tabela de estado com cada conexão ativa:</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>show ip nat translations</span></div>
+              <pre class="code-block">Pro  Inside global      Inside local       Outside local      Outside global
+tcp  203.0.113.1:50001  192.168.1.10:50001 8.8.8.8:443        8.8.8.8:443
+tcp  203.0.113.1:50002  192.168.1.20:49500 1.1.1.1:443        1.1.1.1:443
+udp  203.0.113.1:50010  192.168.1.30:5353  224.0.0.251:5353   224.0.0.251:5353</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="problemas" class="section-title">Problemas e Limitações</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">ALG &mdash; Application Layer Gateway</h3>
+            <p>Protocolos que embutem IPs no payload (FTP ativa, SIP, H.323) quebram com NAT. O <strong>ALG</strong> no roteador inspeciona e reescreve o payload. Pode causar incompatibilidades com VoIP e conferências.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">NAT Traversal (NAT-T)</h3>
+            <p>IPsec em modo túnel (ESP) não carrega informação de porta &mdash; o NAT não consegue desmultiplexar. <strong>NAT-T</strong> (RFC 3948) encapsula o ESP dentro de UDP/4500 para atravessar NAT.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">NAT64</h3>
+            <p>Tradução entre IPv6 e IPv4: hosts IPv6-only acessam servidores IPv4-only. O gateway NAT64 usa o prefixo <code class="code-inline">64:ff9b::/96</code> + DNS64 que sintetiza registros AAAA para hosts sem IPv6.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="subredes.html"><strong>Subnetting</strong></a>, <a href="roteamento.html"><strong>Roteamento</strong></a>, <a href="ip_v6.html"><strong>IPv6</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "NAT quebra o modelo fim-a-fim da internet. É uma gambiarra brilhante &mdash; funciona tão bem que atrasou a adoção do IPv6 por décadas."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

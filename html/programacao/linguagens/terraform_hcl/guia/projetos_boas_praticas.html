@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Boas praticas em projetos Terraform/HCL: estrutura modular, naming, tags, ambientes e governanca." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Terraform e HCL: Projetos e Boas Praticas | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Terraform e HCL: Projetos e Boas Praticas</strong></p></div>
+
+			<section>
+				<h2 class="section-title" id="design-de-projeto-para-longo-prazo">Design de Projeto para Longo Prazo</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="terraform" aria-hidden="true"></span></div>
+					<h1>Como evitar caos em repositorios de infraestrutura</h1>
+					<p>Modularizacao, padroes de naming, segregacao por ambiente e politicas.</p>
+				</div>
+				<p class="intro-highlight">A maior parte dos problemas de Terraform em producao nao e de sintaxe, e de arquitetura de projeto.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="estrutura-modulos">Estrutura de Modulos e Repositorios</h2>
+				<p>Separar modulos reutilizaveis de stacks por ambiente reduz acoplamento e melhora evolucao.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">text - estrutura recomendada</div>
+					  <pre class="example"><span class="com"># Layout sugerido para separar stacks e modulos</span>
+			terraform-live/
+	envs/
+		dev/
+		stg/
+		prod/
+	modules/
+		network/
+		compute/
+		observability/</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="naming-tags">Naming Convention e Tags Obrigatorias</h2>
+				<p>Nomes consistentes facilitam operacao, custos, auditoria e troubleshooting.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - padrao de tags</div>
+					  <pre class="example"><span class="com"># Tags minimas para operacao e custos</span>
+			<span class="kw">locals</span> {
+	common_tags = {
+		Project     = var.project
+		Environment = var.environment
+		Owner       = <span class="str">"plataforma"</span>
+		ManagedBy   = <span class="str">"terraform"</span>
+		CostCenter  = var.cost_center
+	}
+}</pre>
+				</div>
+				<p>Padrao pratico de nome: <code class="code-inline">{projeto}-{ambiente}-{tipo}-{indice}</code>.</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="segregacao-ambiente">Segregacao por Ambiente</h2>
+				<p>Dev, staging e producao devem ter estados distintos e, idealmente, contas/projetos de nuvem distintos. Isso reduz blast radius de erro humano.</p>
+				<div class="grid grid--2">
+					<div class="card"><h3>Separacao minima</h3><p>Workspaces + backend remoto por chave distinta.</p></div>
+					<div class="card"><h3>Separacao robusta</h3><p>Conta cloud separada por ambiente, credenciais e politicas independentes.</p></div>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="state-governanca">State Remoto, Governanca e Politicas</h2>
+				<p>State remoto com locking e versao e requisito operacional. Governanca entra com policy as code para impedir configuracoes perigosas.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - backend remoto com seguranca</div>
+					  <pre class="example"><span class="com"># Backend remoto em bucket dedicado</span>
+			<span class="kw">terraform</span> {
+	backend <span class="str">"s3"</span> {
+		bucket  = <span class="str">"org-state-prod"</span>
+		key     = <span class="str">"prod/network/terraform.tfstate"</span>
+		region  = <span class="str">"us-east-1"</span>
+		encrypt = true
+	}
+}
+
+<span class="fn">terraform</span> <span class="kw">init</span></pre>
+				</div>
+				<div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Nunca commite arquivos <code class="code-inline">.tfstate</code> no Git. Eles podem conter segredos e metadados sensiveis.</p></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<ul>
+					<li>HASHICORP. <strong>Terraform Recommended Practices</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/cloud-docs/recommended-practices" target="_blank" rel="noopener">developer.hashicorp.com/terraform/cloud-docs/recommended-practices</a>. Acesso em: 13 mar. 2026.</li>
+					<li>HASHICORP. <strong>Style Conventions</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language/style" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language/style</a>. Acesso em: 13 mar. 2026.</li>
+					<li>NIST. <strong>SP 800-204C: Infrastructure as Code Security</strong>. Disponivel em: <a href="https://csrc.nist.gov/publications/detail/sp/800-204c/final" target="_blank" rel="noopener">csrc.nist.gov/publications/detail/sp/800-204c/final</a>. Acesso em: 13 mar. 2026.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Tooling para manter padroes</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/aplicacoes/nuvem.html"><span data-svg="seta-direita" aria-hidden="true"></span> Arquiteturas cloud com Terraform</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto IaC bom e aquele que uma nova pessoa consegue operar com seguranca na primeira semana.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

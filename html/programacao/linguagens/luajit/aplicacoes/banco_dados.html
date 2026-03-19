@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="LuaJIT com bancos SQL: SQLite, MySQL e PostgreSQL com drivers, pooling, prepared statements e transacoes." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT e Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>LuaJIT e Banco de Dados</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="luajit-e-banco-de-dados">LuaJIT e Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone LuaJIT"><span data-svg="lua" aria-hidden="true"></span></div>
+          <h1>Acesso SQL de alta eficiencia em runtime leve</h1>
+          <p>Integre LuaJIT a SQLite, MySQL e PostgreSQL com foco em latencia, seguranca e consistencia.</p>
+        </div>
+        <p class="intro-highlight">Nao basta conectar e consultar: desempenho real depende de pool, prepared statements, transacoes e observabilidade de erro.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="drivers" class="section-title">Drivers e estrategias de conexao</h2>
+        <p>No ecossistema LuaJIT, voce encontra dois caminhos principais: wrappers SQL classicos (LuaSQL, LuaDBI) e drivers focados em OpenResty (resty.*). A escolha depende do ambiente de execucao.</p>
+        <table class="table">
+          <thead><tr><th>Ambiente</th><th>Opcao comum</th><th>Observacao</th></tr></thead>
+          <tbody>
+            <tr><td>Script/daemon</td><td>LuaSQL, LuaDBI</td><td>API simples, boa portabilidade</td></tr>
+            <tr><td>OpenResty</td><td>lua-resty-mysql, lua-resty-postgres</td><td>Cosockets e pool no worker</td></tr>
+            <tr><td>Dados locais</td><td>lsqlite3</td><td>Zero servidor, ideal para edge</td></tr>
+          </tbody>
+        </table>
+        <div class="panel">
+          <h3 class="panel-title">Trade-off central</h3>
+          <p>Drivers blocking sao mais simples em scripts de lote. Em servidores concorrentes, prefira drivers nao bloqueantes para nao degradar throughput.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="prepared-transacoes" class="section-title">Prepared statements e transacoes</h2>
+        <p>Prepared statements reduzem overhead de parse e mitigam SQL injection. Transacoes garantem consistencia quando varias operacoes devem ser atomicas.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Exemplo com LuaDBI (conceito portavel)</div>
+          <pre class="example"><span class="kw">local</span> DBI = <span class="fn">require</span>(<span class="str">"DBI"</span>)
+<span class="kw">local</span> conn = DBI.<span class="fn">Connect</span>(<span class="str">"PostgreSQL"</span>, <span class="str">"appdb"</span>, <span class="str">"app"</span>, <span class="str">"segredo"</span>)
+
+conn:<span class="fn">autocommit</span>(<span class="kw">false</span>)
+<span class="kw">local</span> st = conn:<span class="fn">prepare</span>(<span class="str">"INSERT INTO pedidos(cliente_id, total) VALUES(?, ?)"</span>)
+<span class="kw">local</span> ok, err = st:<span class="fn">execute</span>(<span class="num">42</span>, <span class="num">199.90</span>)
+
+<span class="kw">if</span> ok <span class="kw">then</span>
+  conn:<span class="fn">commit</span>()
+<span class="kw">else</span>
+  conn:<span class="fn">rollback</span>()
+  <span class="kw">error</span>(err)
+<span class="kw">end</span></pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Nunca concatene parametros de usuario em SQL. Mesmo em scripts internos, use bind de parametros.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="pooling" class="section-title">Pooling, timeout e retry</h2>
+        <p>Conectar para cada requisicao custa caro. Pool de conexoes reduz handshake e melhora estabilidade sob carga.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pseudo-config de pool em contexto OpenResty</div>
+          <pre class="example"><span class="kw">local</span> db = <span class="fn">require</span>(<span class="str">"resty.mysql"</span>):<span class="fn">new</span>()
+db:<span class="fn">set_timeout</span>(<span class="num">2000</span>)
+
+<span class="kw">local</span> ok, err = db:<span class="fn">connect</span>({
+  host = <span class="str">"127.0.0.1"</span>,
+  port = <span class="num">3306</span>,
+  user = <span class="str">"app"</span>,
+  password = <span class="str">"segredo"</span>,
+  database = <span class="str">"appdb"</span>,
+  pool = <span class="str">"main_rw"</span>,
+  pool_size = <span class="num">100</span>
+})
+
+<span class="kw">if</span> <span class="kw">not</span> ok <span class="kw">then</span>
+  ngx.log(ngx.ERR, err)
+<span class="kw">end</span></pre>
+        </div>
+        <svg viewBox="0 0 760 160" role="img" aria-label="Pool de conexoes" focusable="false">
+          <rect x="20" y="55" width="150" height="50" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="95" y="84" text-anchor="middle">Workers LuaJIT</text>
+          <path d="M170 80 L280 80" stroke="currentColor"></path>
+          <rect x="280" y="30" width="180" height="100" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="370" y="84" text-anchor="middle">Pool de conexoes</text>
+          <path d="M460 80 L580 80" stroke="currentColor"></path>
+          <rect x="580" y="55" width="150" height="50" rx="8" fill="none" stroke="currentColor"></rect>
+          <text x="655" y="84" text-anchor="middle">Banco SQL</text>
+        </svg>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="migracoes" class="section-title">Migracoes e governanca de schema</h2>
+        <p>Modelos de dados mudam. Defina migracoes versionadas para evitar drift entre ambientes.</p>
+        <div class="grid-cards">
+          <div class="card"><strong>Versionamento</strong><p>Tabela de controle com versao aplicada por ambiente.</p></div>
+          <div class="card"><strong>Idempotencia</strong><p>Scripts seguros para reexecucao parcial.</p></div>
+          <div class="card"><strong>Rollback</strong><p>Planeje desfazer alteracoes de alto risco.</p></div>
+          <div class="card"><strong>Janela de deploy</strong><p>Combine mudanca de schema e release de app.</p></div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Boa pratica</h3>
+          <p>Separe conexoes de leitura e escrita quando necessario. Isso simplifica escalabilidade e protege workloads analiticos.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">PostgreSQL Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>ORACLE. <a href="https://dev.mysql.com/doc/" target="_blank" rel="noopener">MySQL Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>SQLITE CONSORTIUM. <a href="https://www.sqlite.org/docs.html" target="_blank" rel="noopener">SQLite Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>LUAROCKS COMMUNITY. <a href="https://luarocks.org/modules/tomasguisasola/luasql-postgres" target="_blank" rel="noopener">LuaSQL Drivers</a>. Acesso em: 12 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Dados confiaveis nascem de codigo disciplinado: performance sem integridade e apenas uma falha adiada.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/web.html">LuaJIT para Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/dados_ia.html">LuaJIT para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/ffi.html">LuaJIT FFI</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

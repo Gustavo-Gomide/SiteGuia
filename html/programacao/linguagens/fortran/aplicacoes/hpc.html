@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fortran HPC e Supercomputação: MPI para memória distribuída, OpenMP para threads, coarrays nativos, otimização de memória e profiling de performance em clusters." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — HPC e Supercomputação | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; HPC e Supercomputação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — HPC e Supercomputação</h1>
+          <p>HPC (High-Performance Computing) em Fortran combina três camadas de paralelismo: MPI para memória distribuída entre nós de cluster, OpenMP para threads dentro de um nó multicore, e vetorização SIMD automática dentro de cada thread. Esse modelo <strong>MPI+OpenMP</strong> é o padrão na computação científica de alto desempenho.</p>
+        </div>
+        <p class="intro-highlight">
+          O benchmark <strong>LINPACK</strong> — que classifica o TOP500 de supercomputadores — é escrito em Fortran usando BLAS/LAPACK. Em 2024, o supercomputador mais rápido do mundo (Frontier, Oak Ridge, EUA) executa 1.206 exaFLOPS usando código Fortran+MPI+OpenMP como kernel de referência.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mpi">MPI — Message Passing Interface</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">MPI ponto-a-ponto, broadcast, reduce e scatter/gather</div>
+          <pre class="example">program mpi_demo
+    use mpi_f08   <span class="com">! interface moderna Fortran 2008 (vs use mpi)</span>
+    implicit none
+    integer, parameter :: dp = kind(1.0d0)
+    integer :: rank, nprocs, ierr
+    real(dp) :: local_sum, global_sum
+    real(dp), allocatable :: dados(:), local_dados(:)
+    integer :: N, local_N, i
+
+    call MPI_Init(ierr)
+    call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)   <span class="com">! rank = id do processo</span>
+    call MPI_Comm_size(MPI_COMM_WORLD, nprocs, ierr) <span class="com">! nprocs = total</span>
+
+    N = 1000
+    local_N = N / nprocs
+
+    <span class="com">! Processo 0 gera dados e distribui (scatter)</span>
+    if (rank == 0) then
+        allocate(dados(N))
+        dados = [(real(i, dp), i=1,N)]
+    end if
+    allocate(local_dados(local_N))
+
+    call MPI_Scatter(dados, local_N, MPI_DOUBLE_PRECISION, &
+                     local_dados, local_N, MPI_DOUBLE_PRECISION, &
+                     0, MPI_COMM_WORLD, ierr)
+
+    <span class="com">! Cada processo calcula soma local</span>
+    local_sum = sum(local_dados)
+
+    <span class="com">! Reduzir (somar) em todos → rank 0</span>
+    call MPI_Reduce(local_sum, global_sum, 1, MPI_DOUBLE_PRECISION, &
+                    MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+
+    if (rank == 0) then
+        print '(A, F12.0)', <span class="str">"Soma total: "</span>, global_sum   <span class="com">! = 500500</span>
+    end if
+
+    <span class="com">! Broadcast de scalar de rank 0 para todos</span>
+    real(dp) :: param = 0.0_dp
+    if (rank == 0) param = 3.14_dp
+    call MPI_Bcast(param, 1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+    <span class="com">! Agora todos os processos têm param = 3.14</span>
+
+    <span class="com">! Operação coletiva com MPI_Allreduce (resultado em todos os processos)</span>
+    call MPI_Allreduce(local_sum, global_sum, 1, MPI_DOUBLE_PRECISION, &
+                       MPI_SUM, MPI_COMM_WORLD, ierr)
+
+    call MPI_Finalize(ierr)
+
+end program mpi_demo
+
+<span class="com">! Compilar: mpif90 -O3 mpi_demo.f90 -o mpi_demo</span>
+<span class="com">! Executar:  mpirun -np 8 ./mpi_demo</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="coarrays">Coarrays — Paralelismo Nativo do Fortran</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Coarrays SPMD: imagens, [] e sync all</div>
+          <pre class="example">program coarray_demo
+    implicit none
+    integer, parameter :: dp = kind(1.0d0)
+
+    <span class="com">! Coarray: cada "imagem" tem sua cópia de x</span>
+    real(dp) :: x[*]          <span class="com">! escalar coarray</span>
+    real(dp) :: v(100)[*]     <span class="com">! array coarray</span>
+    real(dp) :: soma
+    integer  :: me, n_imgs, i
+
+    me     = this_image()     <span class="com">! número da imagem atual (inicia em 1)</span>
+    n_imgs = num_images()     <span class="com">! total de imagens</span>
+
+    <span class="com">! Cada imagem inicializa seu valor local</span>
+    x = real(me, dp) * 10.0_dp
+
+    <span class="com">! Sincronizar antes de ler valores de outras imagens</span>
+    sync all
+
+    <span class="com">! Imagem 1 lê de todas as outras</span>
+    if (me == 1) then
+        soma = 0.0_dp
+        do i = 1, n_imgs
+            soma = soma + x[i]   <span class="com">! x[i] = x na imagem i</span>
+        end do
+        print *, <span class="str">"Soma total:"</span>, soma
+    end if
+
+    <span class="com">! Comunicação one-sided: imagem 1 escreve em imagem 2</span>
+    if (me == 1) x[2] = 999.0_dp
+    sync all
+
+    if (me == 2) print *, <span class="str">"x na imagem 2:"</span>, x   <span class="com">! 999.0</span>
+
+    <span class="com">! Compilar com gfortran: gfortran -fcoarray=single prog.f90  (1 imagem)</span>
+    <span class="com">! Para múltiplas: gfortran -fcoarray=lib prog.f90 -lcaf_mpi</span>
+    <span class="com">! Executar: cafrun -n 4 ./prog (OpenCoarrays)</span>
+
+end program coarray_demo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mpi-openmp">Modelo Híbrido MPI+OpenMP</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Paralelismo em dois níveis: distribuído + threads</div>
+          <pre class="example">program hibrido_mpi_omp
+    use mpi_f08
+    use omp_lib
+    implicit none
+    integer :: rank, nprocs, nthreads, tid
+    integer :: ierr
+    real :: local_result
+
+    <span class="com">! MPI_Init_thread para suporte a threads dentro de processos MPI</span>
+    integer :: provided
+    call MPI_Init_thread(MPI_THREAD_FUNNELED, provided, ierr)
+    call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
+    call MPI_Comm_size(MPI_COMM_WORLD, nprocs, ierr)
+
+    <span class="com">! Cada processo MPI usa OpenMP internamente</span>
+    <span class="com">!$omp parallel private(tid, nthreads)</span>
+    tid      = omp_get_thread_num()
+    nthreads = omp_get_num_threads()
+
+    <span class="com">!$omp single</span>
+    print '(A,I3,A,I3,A,I3)', &
+        <span class="str">"MPI rank: "</span>, rank, <span class="str">" de "</span>, nprocs, &
+        <span class="str">" | Threads OMP: "</span>, nthreads
+    <span class="com">!$omp end single</span>
+
+    <span class="com">! Trabalho computacional dividido por tid</span>
+    <span class="com">!$omp do reduction(+:local_result)</span>
+    <span class="com">! ... processamento intensivo ...</span>
+    <span class="com">!$omp end do</span>
+
+    <span class="com">!$omp end parallel</span>
+
+    <span class="com">! MPI reduz resultados de todos os ranks</span>
+    call MPI_Finalize(ierr)
+
+end program hibrido_mpi_omp
+
+<span class="com">! Compilar: mpif90 -O3 -fopenmp hibrido.f90 -o hibrido</span>
+<span class="com">! Executar: mpirun -np 4 -bind-to socket --map-by ppr:1:socket:PE=16 &amp;</span>
+<span class="com">!            env OMP_NUM_THREADS=16 ./hibrido</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GROPP, W.; LUSK, E.; SKJELLUM, A. <strong>Using MPI: Portable Parallel Programming with the Message Passing Interface</strong>. 3. ed. MIT Press, 2014.</li>
+            <li>ISO/IEC 1539-1:2010. <strong>Fortran 2008 — Coarrays</strong>. Seção 2.3.4 e capítulo 13.</li>
+            <li>Top500.org. <strong>TOP500 List</strong>. Disponível em: &lt;https://www.top500.org/&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="computacao_cientifica.html"><span data-svg="seta-direita" aria-hidden="true"></span> Computação Científica</a></li>
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> OpenMP e DO CONCURRENT</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O modelo MPI+OpenMP usa <strong>um processo MPI por nó NUMA</strong> e uma thread OpenMP por core — isso evita overhead de comunicação entre threads de memórias NUMA diferentes via MPI, ao mesmo tempo que maximiza o uso de todos os cores do nó com OpenMP. É o modelo padrão dos 10 supercomputadores mais rápidos do mundo em 2024.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dados e IA com Haskell: hmatrix, Cassava para CSV, pipes para streaming e análise funcional." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Dados e IA</h1>
+          <p>Haskell combina <strong>pureza funcional com lazy evaluation</strong> para processamento de dados: <code>hmatrix</code> para álgebra linear, <code>Cassava</code> para CSV type-safe, <code>pipes</code> e <code>conduit</code> para streaming eficiente de grandes datasets, e funções puras compostas para transformações de dados.</p>
+        </div>
+        <p class="intro-highlight">
+          O estilo funcional de Haskell é naturalmente expressivo para análise de dados: <strong>pipelines são composições de função</strong>. Uma transformação de dados é literalmente <code>processar = filtrar . mapear . agrupar</code>. A lazy evaluation permite que sequências infinitas de dados sejam processadas linha a linha sem carregar tudo na memória.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="cassava-csv" class="section-title">Cassava — CSV Type-Safe</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ler e escrever CSV com tipos derivados automaticamente</div>
+          <pre class="example"><span class="com">-- cabal install cassava vector</span>
+{-# LANGUAGE DeriveGeneric #-}
+import Data.Csv
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.Vector as V
+import GHC.Generics
+
+data Venda = Venda
+    { vendaId      :: Int
+    , vendaProduto :: String
+    , vendaValor   :: Double
+    , vendaRegiao  :: String
+    } deriving (Show, Generic)
+
+instance FromRecord Venda     <span class="com">-- derivação automática por posição</span>
+instance ToRecord   Venda
+
+instance FromNamedRecord Venda  <span class="com">-- derivação por nome da coluna</span>
+instance ToNamedRecord   Venda
+instance DefaultOrdered  Venda  <span class="com">-- ordem dos campos no header</span>
+
+<span class="com">-- Ler CSV por posição (sem header)</span>
+lerVendas :: FilePath -> IO (V.Vector Venda)
+lerVendas path = do
+    conteudo &lt;- BL.readFile path
+    case decode NoHeader conteudo of
+        Left err     -> error err
+        Right vendas -> return vendas
+
+<span class="com">-- Ler CSV com header (por nome)</span>
+lerVendasNamed :: FilePath -> IO (V.Vector Venda)
+lerVendasNamed path = do
+    conteudo &lt;- BL.readFile path
+    case decodeByName conteudo of
+        Left err          -> error err
+        Right (_, vendas) -> return vendas
+
+<span class="com">-- Análise com funções puras</span>
+analise :: V.Vector Venda -> IO ()
+analise vendas = do
+    let lista = V.toList vendas
+    let total  = sum (map vendaValor lista)
+    let count  = length lista
+    let media  = total / fromIntegral count
+    let maxVal = maximum (map vendaValor lista)
+
+    putStrLn $ "Total vendas: " ++ show count
+    putStrLn $ "Valor total: R$ " ++ show total
+    putStrLn $ "Média: R$ " ++ show media
+    putStrLn $ "Máximo: R$ " ++ show maxVal
+
+    <span class="com">-- Agrupar por região (Map das somas)</span>
+    let porRegiao = foldl (\m v -> Map.insertWith (+) (vendaRegiao v) (vendaValor v) m)
+                         Map.empty lista
+    mapM_ (\(regiao, total) -> putStrLn $ regiao ++ ": R$ " ++ show total)
+           (Map.toDescList porRegiao)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="hmatrix" class="section-title">hmatrix — Álgebra Linear</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Matrizes, vetores e operações numéricas</div>
+          <pre class="example"><span class="com">-- cabal install hmatrix</span>
+import Numeric.LinearAlgebra
+
+<span class="com">-- Criar matrizes e vetores</span>
+a :: Matrix Double
+a = (2><2) [1, 2,     <span class="com">-- 2x2 matrix from list</span>
+             3, 4]
+
+b :: Matrix Double
+b = (2><2) [5, 6,
+             7, 8]
+
+<span class="com">-- Operações matriciais</span>
+produto  = a <> b         <span class="com">-- multiplicação de matrizes</span>
+soma     = a + b
+escalar  = 2 * a
+transposta = tr a         <span class="com">-- transposta</span>
+det      = det a          <span class="com">-- determinante (-2.0)</span>
+inv      = inv a          <span class="com">-- inversa</span>
+
+<span class="com">-- Vetores</span>
+v :: Vector Double
+v = fromList [1, 2, 3, 4, 5]
+
+media = mean v             <span class="com">-- 3.0</span>
+std   = stdDev v           <span class="com">-- 1.58...</span>
+norm  = norm_2 v           <span class="com">-- norma euclidiana</span>
+
+<span class="com">-- Regressão linear simples</span>
+regressaoLinear :: Matrix Double -> Vector Double -> Vector Double
+regressaoLinear x y = x <\> y    <span class="com">-- mínimos quadrados: x\y = inv(x^T x) x^T y</span>
+
+<span class="com">-- Exemplo de uso</span>
+exemplo :: IO ()
+exemplo = do
+    let n = 100
+    let xs = fromList [1..fromIntegral n]
+    <span class="com">-- X matrix com coluna de 1s (intercepto) e xs</span>
+    let xMat = (fromIntegral n><2) (concatMap (\x -> [1, x]) [1..fromIntegral n])
+    let ys   = fromList $ map (\x -> 2*x + 3 + ruido x) [1..fromIntegral n]
+    let coefs = regressaoLinear xMat ys
+    print coefs    <span class="com">-- aprox: [3.0, 2.0]</span>
+  where ruido x = fromIntegral (mod (round x) 5) - 2</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="pipes-streaming" class="section-title">pipes — Streaming e Processamento Lazy</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Processar arquivos gigantes linha a linha com O(1) memória</div>
+          <pre class="example"><span class="com">-- cabal install pipes pipes-csv</span>
+import Pipes
+import qualified Pipes.Prelude as P
+import qualified Pipes.ByteString as PB
+import System.IO
+
+<span class="com">-- Producer: gera valores para o pipeline</span>
+lerLinhas :: FilePath -> Producer String IO ()
+lerLinhas path = do
+    h &lt;- liftIO $ openFile path ReadMode
+    loop h
+    liftIO $ hClose h
+  where
+    loop h = do
+        eof &lt;- liftIO $ hIsEOF h
+        if eof then return ()
+        else do
+            linha &lt;- liftIO $ hGetLine h
+            yield linha
+            loop h
+
+<span class="com">-- Pipe: transforma Producer em Producer</span>
+parsearCSV :: Pipe String [String] IO ()
+parsearCSV = P.map (splitOn ',')  <span class="com">-- transformar linha em campos</span>
+  where splitOn d s = case break (==d) s of
+            (x, [])    -> [x]
+            (x, _:rest) -> x : splitOn d rest
+
+filtrarValidos :: Pipe [String] [String] IO ()
+filtrarValidos = P.filter (\cols -> length cols >= 4)
+
+<span class="com">-- Consumer: consome e processa</span>
+contarLinhas :: Consumer [String] IO Int
+contarLinhas = P.length
+
+<span class="com">-- Pipeline completo</span>
+processarArquivo :: FilePath -> IO ()
+processarArquivo path = do
+    n &lt;- runEffect $
+        lerLinhas path
+        >-> P.drop 1              <span class="com">-- pular header</span>
+        >-> parsearCSV
+        >-> filtrarValidos
+        >-> P.map (!! 2)          <span class="com">-- pegar terceira coluna</span>
+        >-> P.map (read :: String -> Double)
+        >-> P.filter (> 0)
+        >-> P.fold (+) 0 id       <span class="com">-- somar acumulando</span>
+    putStrLn $ "Soma da coluna 3: " ++ show n</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura-dados-ia" class="section-title">Arquitetura de Dados e IA em Producao</h2>
+        <p>Em contexto corporativo, Haskell atua muito bem na camada de preparacao, validacao e orquestracao de dados. Um desenho comum e: ingestao streaming -> validacao tipada -> transformacoes puras -> persistencia/serving. A inferencia de modelos costuma ficar em frameworks especializados, enquanto Haskell garante consistencia de pipeline e observabilidade.</p>
+        <div class="panel">
+          <h3 class="panel-title">Exemplos reais</h3>
+          <p>ETL de dados financeiros, saneamento de eventos de telemetria, feature engineering reprodutivel e servicos de inferencia com regras de negocio acopladas.</p>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Trade-off central: Haskell oferece alta confiabilidade em processamento e contratos, mas o ecossistema de treino de modelos e menor que Python. Estrategia recomendada: integrar, nao substituir cegamente.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>HMATRIX. <strong>hmatrix — Linear Algebra and Numerical Computation</strong>. Disponível em: &lt;https://hackage.haskell.org/package/hmatrix&gt;. Acesso em: 2026.</li>
+            <li>CASSAVA. <strong>cassava — A CSV parsing and encoding library</strong>. Disponível em: &lt;https://hackage.haskell.org/package/cassava&gt;. Acesso em: 2026.</li>
+            <li>GONZALEZ, Gabriella. <strong>pipes — Compositional Pipelines</strong>. Disponível em: &lt;https://hackage.haskell.org/package/pipes&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Haskell</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Haskell</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O paradigma de <strong>streaming com pipes/conduit</strong> em Haskell é matematicamente fundamentado em categoria: um <em>Producer</em> é uma co-rotina que produz valores, um <em>Pipe</em> é uma co-rotina que consome e produz, um <em>Consumer</em> consome. A composição <code>&gt;-&gt;</code> conecta co-rotinas em pipeline lazy garantindo que apenas o necessário é processado por vez — processamento de arquivos de 100 GB com KB de memória é o resultado natural.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

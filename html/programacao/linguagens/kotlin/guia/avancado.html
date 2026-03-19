@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Kotlin avançado: coroutines, flows, sealed classes, generics, inline/reified e DSLs." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Avançado | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Avançado</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Tópicos Avançados</h1>
+					<p>Nesta etapa, Kotlin deixa de ser apenas sintaxe amigável e vira ferramenta de arquitetura: concorrência estruturada com coroutines, modelagem de domínios fechados com sealed classes e APIs expressivas com extension functions e DSLs.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="coroutines">Coroutines e Concorrência Estruturada</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">suspend, launch, async e cancellation</div>
+					<pre class="example">import kotlinx.coroutines.*
+
+suspend fun buscarUsuario(id: Int): String {
+		delay(200)
+		return "usuario-$id"
+}
+
+fun main() = runBlocking {
+		val job = launch {
+				repeat(5) { i -&gt;
+						println("tick $i")
+						delay(100)
+				}
+		}
+
+		val perfil = async { buscarUsuario(42) }
+		println("Perfil: ${perfil.await()}")
+
+		delay(250)
+		job.cancelAndJoin()
+		println("cancelado com seguranca")
+}</pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Flow para streams assíncronos</div>
+					<pre class="example">import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
+
+fun eventos(): Flow&lt;Int&gt; = flow {
+		for (i in 1..5) {
+				emit(i)
+				delay(100)
+		}
+}
+
+fun main() = runBlocking {
+		eventos()
+				.map { it * 10 }
+				.filter { it &gt;= 20 }
+				.collect { println(it) }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="modelagem-forte">Sealed Classes e Modelagem de Estado</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Hierarquias fechadas e when exaustivo</div>
+					<pre class="example">sealed interface Resultado&lt;out T&gt; {
+		data class Sucesso&lt;T&gt;(val dado: T) : Resultado&lt;T&gt;
+		data class Erro(val mensagem: String) : Resultado&lt;Nothing&gt;
+		object Carregando : Resultado&lt;Nothing&gt;
+}
+
+fun render(r: Resultado&lt;String&gt;): String = when (r) {
+		is Resultado.Sucesso -&gt; "OK: ${r.dado}"
+		is Resultado.Erro -&gt; "ERRO: ${r.mensagem}"
+		Resultado.Carregando -&gt; "Aguarde..."
+}
+
+<span class="com">// when não precisa de else quando a sealed está completa.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="generics-inline">Generics, Inline e Reified</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">APIs genéricas mais seguras e eficientes</div>
+					<pre class="example">inline fun &lt;reified T&gt; Any?.asOrNull(): T? = this as? T
+
+fun main() {
+		val x: Any = "abc"
+		val s: String? = x.asOrNull&lt;String&gt;()
+		val n: Int? = x.asOrNull&lt;Int&gt;()
+
+		println(s)
+		println(n)
+}
+
+<span class="com">// reified permite acessar o tipo em runtime dentro de inline.</span>
+
+inline fun medir(nome: String, bloco: () -&gt; Unit) {
+		val ini = System.nanoTime()
+		bloco()
+		val fim = System.nanoTime()
+		println("$nome levou ${(fim - ini) / 1_000_000.0} ms")
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="dsl-extensoes">Extension Functions e DSL Builders</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Criando APIs expressivas em Kotlin</div>
+					<pre class="example">data class Query(
+		var tabela: String = "",
+		var filtro: String = "",
+)
+
+class QueryBuilder {
+		private val q = Query()
+		fun from(t: String) { q.tabela = t }
+		fun where(f: String) { q.filtro = f }
+		fun build() = q
+}
+
+fun query(block: QueryBuilder.() -&gt; Unit): Query {
+		val b = QueryBuilder()
+		b.block()
+		return b.build()
+}
+
+fun String.slug() = lowercase().replace(" ", "-")
+
+fun main() {
+		val q = query {
+				from("usuarios")
+				where("ativo = true")
+		}
+
+		println(q)
+		println("Kotlin Avancado".slug())
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>JETBRAINS. <strong>Coroutines Guide</strong>. Disponível em: &lt;https://kotlinlang.org/docs/coroutines-overview.html&gt;. Acesso em: 2026.</li>
+						<li>JETBRAINS. <strong>Generics and Inline Functions</strong>. Disponível em: &lt;https://kotlinlang.org/docs/generics.html&gt;. Acesso em: 2026.</li>
+						<li>JETBRAINS. <strong>Type-Safe Builders</strong>. Disponível em: &lt;https://kotlinlang.org/docs/type-safe-builders.html&gt;. Acesso em: 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+					<li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O nível avançado de Kotlin aparece quando você combina modelagem de domínio forte com concorrência estruturada. Isso reduz complexidade acidental e melhora previsibilidade em sistemas grandes.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

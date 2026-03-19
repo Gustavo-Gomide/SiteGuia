@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para embedded e IoT: AVR assembly para Arduino, ARM Cortex-M assembly, codigo de startup, ISR handlers, registradores de hardware, bare metal sem RTOS em assembly." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Embedded e IoT</h1>
+          <p>Em sistemas embarcados, assembly não é opcional — é às vezes o <em>único</em> caminho. O <strong>código de startup</strong> que inicializa a RAM, configura o stack pointer e chama <code>main()</code> precisa ser escrito em assembly. As <strong>ISRs</strong> (Interrupt Service Routines) de tempo-crítico (controle de motor, DAC de áudio, protocolo de comunicação bit-bang) precisam de timing exato em ciclos — impossível garantir com C.</p>
+        </div>
+        <p class="intro-highlight">
+          Microcontroladores com poucos kilobytes de Flash não têm luxo para overhead de framework. Um Arduino Uno (ATmega328P) tem apenas <strong>2 KB de RAM e 32 KB de Flash</strong>. Código assembly pode fazer em 50 bytes o que C geraria em 200 bytes — a diferença entre um programa que cabe e um que não cabe.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avr">AVR Assembly (Arduino / ATmega)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">AVR Assembly &mdash; Piscar LED no ATmega328P (Arduino Uno)</div>
+          <pre class="example"><span class="com">; AVR Assembly — ATmega328P (Arduino Uno)</span>
+<span class="com">; Assemblar: avr-as -mmcu=atmega328p blink.s -o blink.o</span>
+<span class="com">; Linkar:    avr-ld -m avr5 -Tdata 0x800100 blink.o -o blink.elf</span>
+<span class="com">; Upload:    avrdude -p m328p -c arduino -P /dev/ttyUSB0 -U flash:w:blink.hex</span>
+
+    .arch atmega328p
+
+<span class="com">; Endereços de registradores de hardware (I/O Memory)</span>
+<span class="at">.equ</span> DDRB,  <span class="num">0x24</span>     <span class="com">; Data Direction Register B</span>
+<span class="at">.equ</span> PORTB, <span class="num">0x25</span>     <span class="com">; Port B Output Register</span>
+<span class="at">.equ</span> PB5,   <span class="num">5</span>        <span class="com">; bit 5 = pino 13 do Arduino</span>
+
+    .section .vectors
+    .org 0x0000
+    rjmp reset_handler   <span class="com">; vetor de reset — primeiro código que executa</span>
+
+    .section .text
+reset_handler:
+    <span class="com">; Inicializar stack pointer (topo da SRAM)</span>
+    ldi  r28, lo8(RAMEND)   <span class="com">; YL = 0xFF</span>
+    ldi  r29, hi8(RAMEND)   <span class="com">; YH = 0x08</span>
+    out  SPH, r29           <span class="com">; Stack Pointer High</span>
+    out  SPL, r28           <span class="com">; Stack Pointer Low</span>
+
+    <span class="com">; Configurar PB5 como saída (bit 5 de DDRB = 1)</span>
+    sbi  DDRB, PB5          <span class="com">; Set Bit in I/O Register (1 instrução = 2 ciclos)</span>
+
+main_loop:
+    <span class="com">; Ligar LED</span>
+    sbi  PORTB, PB5         <span class="com">; PB5 = HIGH</span>
+    rcall delay_500ms
+
+    <span class="com">; Apagar LED</span>
+    cbi  PORTB, PB5         <span class="com">; Clear Bit — PB5 = LOW</span>
+    rcall delay_500ms
+
+    rjmp main_loop
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; delay_500ms: busy-wait de ~500ms a 16 MHz</span>
+<span class="com">;; 16 MHz / 5 ciclos_por_iter = 3.2M iterações = ~500ms</span>
+<span class="com">;;------------------------------------------------------------</span>
+delay_500ms:
+    ldi  r16, <span class="num">41</span>           <span class="com">; outer = 41</span>
+.outer:
+    ldi  r17, <span class="num">0</span>           <span class="com">; middle = 256</span>
+.middle:
+    ldi  r18, <span class="num">0</span>           <span class="com">; inner = 256</span>
+.inner:
+    nop                     <span class="com">; 1 ciclo</span>
+    dec  r18                <span class="com">; 1 ciclo</span>
+    brne .inner             <span class="com">; 2 ciclos (1 se não saltar)</span>
+    dec  r17
+    brne .middle
+    dec  r16
+    brne .outer
+    ret</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cortex-m">ARM Cortex-M Assembly (STM32)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ARM Cortex-M4 GAS &mdash; Startup e ISR</div>
+          <pre class="example"><span class="com">@ ARM Cortex-M4 Assembly (GAS, Thumb-2)</span>
+<span class="com">@ STM32F4xx — Startup Code</span>
+<span class="com">@ Compilar: arm-none-eabi-as -mcpu=cortex-m4 -mthumb startup.s -o startup.o</span>
+
+    .syntax unified
+    .cpu cortex-m4
+    .thumb
+
+<span class="com">@ ── Vetor de interrupções (Vector Table) ──────────────────</span>
+    .section .isr_vector, "a", %progbits
+    .word  _estack              <span class="com">@ endereço inicial do SP (topo da SRAM)</span>
+    .word  Reset_Handler        <span class="com">@ 1: Reset</span>
+    .word  NMI_Handler          <span class="com">@ 2: Non-Maskable Interrupt</span>
+    .word  HardFault_Handler    <span class="com">@ 3: Hard Fault</span>
+    .word  MemManage_Handler    <span class="com">@ 4: Memory Management Fault</span>
+    .word  BusFault_Handler     <span class="com">@ 5: Bus Fault</span>
+    .word  UsageFault_Handler   <span class="com">@ 6: Usage Fault</span>
+    .word  0, 0, 0, 0           <span class="com">@ reservados</span>
+    .word  SVC_Handler          <span class="com">@ 11: SVCall</span>
+    .word  DebugMon_Handler     <span class="com">@ 12: Debug Monitor</span>
+    .word  0                    <span class="com">@ reservado</span>
+    .word  PendSV_Handler       <span class="com">@ 14: PendSV</span>
+    .word  SysTick_Handler      <span class="com">@ 15: SysTick</span>
+    <span class="com">@ ... IRQs periféricos a partir de 16</span>
+    .word  TIM2_IRQHandler      <span class="com">@ 44: Timer 2</span>
+
+<span class="com">@ ── Reset Handler ─────────────────────────────────────────</span>
+    .section .text.Reset_Handler
+    .weak  Reset_Handler
+    .type  Reset_Handler, %function
+Reset_Handler:
+    <span class="com">@ Copiar .data de Flash para SRAM</span>
+    ldr  r0, =_sdata  <span class="com">@ destino: início de .data na SRAM</span>
+    ldr  r1, =_edata  <span class="com">@ fim de .data</span>
+    ldr  r2, =_sidata <span class="com">@ fonte: .data armazenado em Flash</span>
+    movs r3, #0
+.copy_data:
+    cmp  r0, r1
+    bge  .zero_bss
+    ldr  r4, [r2, r3]
+    str  r4, [r0, r3]
+    add  r3, r3, #4
+    b    .copy_data
+
+    <span class="com">@ Zerar .bss</span>
+.zero_bss:
+    ldr  r0, =_sbss
+    ldr  r1, =_ebss
+    movs r2, #0
+.zero_loop:
+    cmp  r0, r1
+    bge  .call_main
+    str  r2, [r0]
+    add  r0, r0, #4
+    b    .zero_loop
+
+.call_main:
+    bl   main         <span class="com">@ chamar main() do projeto C</span>
+    b    .            <span class="com">@ travar se main() retornar</span>
+
+<span class="com">@ ── Timer ISR — Cortex-M salva/restaura contexto automaticamente ─</span>
+    .section .text.TIM2_IRQHandler
+    .weak  TIM2_IRQHandler
+    .type  TIM2_IRQHandler, %function
+TIM2_IRQHandler:
+    <span class="com">@ Cortex-M empurra automaticamente: xPSR, PC, LR, R12, R3, R2, R1, R0</span>
+    <span class="com">@ (não precisamos salvar/restaurar esses)</span>
+    push  {r4-r7, lr}     <span class="com">@ salvar callee-saved + LR</span>
+
+    <span class="com">@ Limpar flag de interrupção do TIM2 (UIF em TIM2_SR)</span>
+    ldr  r0, =0x40000010  <span class="com">@ endereço TIM2_SR</span>
+    ldr  r1, [r0]
+    bic  r1, r1, #1       <span class="com">@ limpar bit UIF</span>
+    str  r1, [r0]
+
+    <span class="com">@ Lógica da ISR (mínima — nunca bloquear em ISR)</span>
+    bl   timer2_callback
+
+    pop  {r4-r7, pc}      <span class="com">@ restaurar e retornar (pop LR → PC = BX LR)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="registradores-hw">Acesso a Registradores de Hardware</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ARM Cortex-M &mdash; GPIO, UART e SPI em assembly</div>
+          <pre class="example"><span class="com">@ STM32F4 — Acesso direto a periféricos via endereços mapeados em memória</span>
+
+<span class="com">@ ── GPIO: piscar LED PA5 ─────────────────────────────────</span>
+<span class="com">@ Endereços base STM32F4:</span>
+<span class="at">.equ</span>  RCC_AHB1ENR,  <span class="num">0x40023830</span>  <span class="com">@ Clock enable para periféricos AHB1</span>
+<span class="at">.equ</span>  GPIOA_MODER,  <span class="num">0x40020000</span>  <span class="com">@ PA mode register</span>
+<span class="at">.equ</span>  GPIOA_ODR,   <span class="num">0x40020014</span>  <span class="com">@ PA output data register</span>
+<span class="at">.equ</span>  GPIOA_BSRR,  <span class="num">0x40020018</span>  <span class="com">@ PA bit set/reset (thread-safe, 1 write)</span>
+
+gpio_init_pa5:
+    <span class="com">@ 1. Habilitar clock do GPIOA (bit 0 de RCC_AHB1ENR)</span>
+    ldr  r0, =RCC_AHB1ENR
+    ldr  r1, [r0]
+    orr  r1, r1, #(1 << 0)    <span class="com">@ bit 0 = GPIOAEN</span>
+    str  r1, [r0]
+
+    <span class="com">@ 2. Configurar PA5 como saída (MODER5[1:0] = 01)</span>
+    ldr  r0, =GPIOA_MODER
+    ldr  r1, [r0]
+    bic  r1, r1, #(3 << 10)   <span class="com">@ limpar bits 11:10</span>
+    orr  r1, r1, #(1 << 10)   <span class="com">@ set bit 10 → output mode</span>
+    str  r1, [r0]
+    bx   lr
+
+gpio_toggle_pa5:
+    <span class="com">@ Togglear PA5 via XOR no ODR</span>
+    ldr  r0, =GPIOA_ODR
+    ldr  r1, [r0]
+    eor  r1, r1, #(1 << 5)
+    str  r1, [r0]
+    bx   lr
+
+gpio_set_pa5:
+    <span class="com">@ Set via BSRR (atômico — bits 0-15 = set, bits 16-31 = reset)</span>
+    ldr  r0, =GPIOA_BSRR
+    mov  r1, #(1 << 5)       <span class="com">@ bit 5 = set PA5</span>
+    str  r1, [r0]
+    bx   lr
+
+gpio_reset_pa5:
+    ldr  r0, =GPIOA_BSRR
+    mov  r1, #(1 << 21)      <span class="com">@ bit 16+5 = reset PA5</span>
+    str  r1, [r0]
+    bx   lr</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ATMEL (Microchip). <strong>AVR Instruction Set Manual</strong>. Application Note AVR1022. Disponível em: &lt;https://ww1.microchip.com/downloads/en/devicedoc/atmel-0856-avr-instruction-set-manual.pdf&gt;. Acesso em: 2025.</li>
+            <li>ARM. <strong>Cortex-M4 Technical Reference Manual</strong>. ARM DDI 0439B. Disponível em: &lt;https://developer.arm.com/documentation/ddi0439&gt;. Acesso em: 2025.</li>
+            <li>ST MICROELECTRONICS. <strong>STM32F4xx Reference Manual (RM0090)</strong>. Disponível em: &lt;https://www.st.com/resource/en/reference_manual/rm0090&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Dados e IA</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> No Cortex-M, o hardware salva automaticamente R0–R3, R12, LR, PC e xPSR ao entrar em interrupção — por isso a ISR em assembly só precisa salvar registradores adicionais que usa. O <strong>EXC_RETURN</strong> no LR ao final (<code>pop {pc}</code>) instrui o processador a restaurar o contexto e retornar ao código interrompido, trocando de modo privilegiado para não-privilegiado se necessário.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

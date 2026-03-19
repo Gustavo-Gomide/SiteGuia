@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="LuaJIT para Web: OpenResty, handlers ngx, roteamento, rate limit, cache e observabilidade." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>LuaJIT para Web</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="luajit-para-web">LuaJIT para Web</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone LuaJIT"><span data-svg="lua" aria-hidden="true"></span></div>
+          <h1>Edge e API de baixa latencia com OpenResty</h1>
+          <p>Use LuaJIT dentro do Nginx para autenticar, rotear, proteger e observar trafego em tempo real.</p>
+        </div>
+        <p class="intro-highlight">OpenResty permite escrever logica critica na borda da aplicacao, reduzindo hops e aumentando throughput sem perder legibilidade.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">Conceitos e arquitetura</h2>
+        <p>Em vez de tratar LuaJIT como "apenas script", pense nele como um motor de decisao no pipeline HTTP do Nginx. Cada fase da requisicao pode executar codigo Lua: autenticacao, roteamento, manipulacao de headers e resposta.</p>
+        <div class="panel">
+          <h3 class="panel-title">Fluxo simplificado</h3>
+          <svg viewBox="0 0 760 120" role="img" aria-label="Fluxo OpenResty" focusable="false">
+            <rect x="10" y="30" width="120" height="50" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+            <text x="70" y="60" text-anchor="middle">Cliente</text>
+            <path d="M130 55 L190 55" stroke="currentColor"></path>
+            <rect x="190" y="30" width="140" height="50" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+            <text x="260" y="60" text-anchor="middle">Nginx</text>
+            <path d="M330 55 L410 55" stroke="currentColor"></path>
+            <rect x="410" y="30" width="180" height="50" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+            <text x="500" y="60" text-anchor="middle">LuaJIT handlers</text>
+            <path d="M590 55 L670 55" stroke="currentColor"></path>
+            <rect x="670" y="30" width="80" height="50" rx="8" ry="8" fill="none" stroke="currentColor"></rect>
+            <text x="710" y="60" text-anchor="middle">Upstream</text>
+          </svg>
+        </div>
+        <table class="table">
+          <thead><tr><th>Fase</th><th>Objetivo</th><th>Trade-off</th></tr></thead>
+          <tbody>
+            <tr><td>rewrite/access</td><td>auth, ACL, rate limit</td><td>Baixa latencia, mas exige cuidado com bloqueios</td></tr>
+            <tr><td>content</td><td>resposta direta de API</td><td>Alta performance para handlers simples</td></tr>
+            <tr><td>log</td><td>telemetria e auditoria</td><td>Nao bloquear flush de logs</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="roteamento-handlers" class="section-title">Handlers e roteamento com ngx</h2>
+        <p>Uma estrategia comum e usar uma tabela de rotas com funcoes Lua. O handler decide rapidamente e responde sem passar por uma camada extra de app server.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">content_by_lua_block - roteador minimo</div>
+          <pre class="example"><span class="kw">local</span> routes = {
+  [<span class="str">"/health"</span>] = <span class="kw">function</span>()
+    ngx.header[<span class="str">"content-type"</span>] = <span class="str">"application/json"</span>
+    ngx.<span class="fn">say</span>(<span class="str">'{"ok":true}'</span>)
+  <span class="kw">end</span>,
+  [<span class="str">"/v1/ping"</span>] = <span class="kw">function</span>()
+    ngx.<span class="fn">say</span>(<span class="str">"pong"</span>)
+  <span class="kw">end</span>
+}
+
+<span class="kw">local</span> h = routes[ngx.var.uri]
+<span class="kw">if</span> h <span class="kw">then</span>
+  h()
+<span class="kw">else</span>
+  ngx.status = <span class="num">404</span>
+  ngx.<span class="fn">say</span>(<span class="str">"not found"</span>)
+<span class="kw">end</span></pre>
+        </div>
+        <p>Esse padrao e excelente para gateways e endpoints tecnicos. Para sistemas de dominio extenso, combine com separacao por modulos para evitar handlers gigantes.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="rate-limit-cache" class="section-title">Rate limit, cache e resiliencia</h2>
+        <p>Em producao, use estruturas compartilhadas (<code class="code-inline">lua_shared_dict</code>) para limites por IP/chave e cache de respostas curtas.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Rate limit simples por janela fixa</div>
+          <pre class="example"><span class="kw">local</span> dict = ngx.shared.ratelimit
+<span class="kw">local</span> key = ngx.var.binary_remote_addr
+<span class="kw">local</span> now = ngx.<span class="fn">time</span>()
+<span class="kw">local</span> bucket = key .. <span class="str">":"</span> .. tostring(now - (now % <span class="num">60</span>))
+<span class="kw">local</span> n, err = dict:<span class="fn">incr</span>(bucket, <span class="num">1</span>)
+<span class="kw">if</span> <span class="kw">not</span> n <span class="kw">then</span>
+  dict:<span class="fn">set</span>(bucket, <span class="num">1</span>, <span class="num">65</span>)
+  n = <span class="num">1</span>
+<span class="kw">end</span>
+<span class="kw">if</span> n &gt; <span class="num">120</span> <span class="kw">then</span>
+  ngx.status = <span class="num">429</span>
+  ngx.<span class="fn">say</span>(<span class="str">"too many requests"</span>)
+  <span class="kw">return</span> ngx.<span class="fn">exit</span>(<span class="num">429</span>)
+<span class="kw">end</span></pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Janela fixa e facil de operar, mas pode gerar burst no limite de virada do minuto. Para fairness maior, prefira token bucket.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="observabilidade" class="section-title">Observabilidade e operacao</h2>
+        <p>Sem metricas, ganhos de performance viram suposicao. Instrumente latencia p95, erros por rota, taxa de cache hit e saturacao de workers.</p>
+        <div class="grid-cards">
+          <div class="card"><strong>Logs estruturados</strong><p>Inclua request_id, rota e codigo HTTP para correlacao.</p></div>
+          <div class="card"><strong>Metricas</strong><p>Exporte counters e histograms para Prometheus/Grafana.</p></div>
+          <div class="card"><strong>Tracing</strong><p>Propague contexto para upstreams e filas.</p></div>
+          <div class="card"><strong>SLO</strong><p>Defina erro orcamentario antes de otimizar microdetalhes.</p></div>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Comparacao rapida</h3>
+          <table class="table">
+            <thead><tr><th>Cenario</th><th>OpenResty + LuaJIT</th><th>App server tradicional</th></tr></thead>
+            <tbody>
+              <tr><td>Gateway/API edge</td><td>Muito forte</td><td>Geralmente mais latencia</td></tr>
+              <tr><td>Dominio complexo</td><td>Bom com modularizacao</td><td>Mais frameworks prontos</td></tr>
+              <tr><td>Operacao global</td><td>Exige equipe com Nginx</td><td>Depende da stack</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>OPENRESTY INC. <a href="https://openresty.org/en/" target="_blank" rel="noopener">OpenResty Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>NGINX. <a href="https://nginx.org/en/docs/" target="_blank" rel="noopener">NGINX Official Documentation</a>. Acesso em: 12 mar. 2026.</li>
+          <li>PALL, M. <a href="https://luajit.org/" target="_blank" rel="noopener">LuaJIT Official Site</a>. Acesso em: 12 mar. 2026.</li>
+          <li>YICHUN ZHANG. <a href="https://github.com/openresty/lua-nginx-module" target="_blank" rel="noopener">lua-nginx-module</a>. Acesso em: 12 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Quando cada milissegundo importa, LuaJIT no edge transforma infraestrutura em vantagem competitiva.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/performance.html">LuaJIT - Performance</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/terminal_cli.html">LuaJIT - CLI e automacao</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/aplicacoes/banco_dados.html">LuaJIT - Banco de dados</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

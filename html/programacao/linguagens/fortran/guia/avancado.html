@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fortran Avançado: módulos, OOP com tipos derivados, ponteiros, DO CONCURRENT, OpenMP, MPI, coarrays e interoperabilidade com C." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — Avançado</h1>
+          <p>O Fortran moderno oferece OOP com tipos derivados extensíveis, ponteiros de procedimento para funções de ordem superior, DO CONCURRENT para paralelismo automático sem dependências, coarrays SPMD nativos, e interoperabilidade total com C via <code>iso_c_binding</code> — tornando-o uma linguagem completa para HPC moderno.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>DO CONCURRENT</strong> (Fortran 2008) é uma declaração para o compilador: as iterações não têm dependências e podem rodar em qualquer ordem ou em paralelo. O compilador pode vetorizar com SIMD, paralelizar com threads ou até compilar para GPU — sem que o programador precise especificar como.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="oop">OOP — Tipos Derivados e Herança</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos derivados com methods e herança (Fortran 2003)</div>
+          <pre class="example">module formas_mod
+    implicit none
+    private
+    public :: Forma, Circulo, Retangulo
+
+    integer, parameter :: dp = selected_real_kind(15, 307)
+    real(dp), parameter :: PI = 3.14159265358979323846_dp
+
+    <span class="com">! Tipo base abstrato</span>
+    type, abstract :: Forma
+        real(dp) :: cor = 0.0_dp
+    contains
+        procedure(area_iface), deferred :: area    <span class="com">! método abstrato</span>
+        procedure :: descrever
+    end type Forma
+
+    <span class="com">! Interface para método abstrato</span>
+    abstract interface
+        real(dp) function area_iface(self)
+            import :: Forma, dp
+            class(Forma), intent(in) :: self
+        end function
+    end interface
+
+    <span class="com">! Tipo derivado concreto — herda de Forma</span>
+    type, extends(Forma) :: Circulo
+        real(dp) :: raio
+    contains
+        procedure :: area => area_circulo
+    end type Circulo
+
+    type, extends(Forma) :: Retangulo
+        real(dp) :: largura, altura
+    contains
+        procedure :: area => area_retangulo
+    end type Retangulo
+
+contains
+
+    real(dp) function area_circulo(self) result(a)
+        class(Circulo), intent(in) :: self
+        a = PI * self%raio ** 2
+    end function area_circulo
+
+    real(dp) function area_retangulo(self) result(a)
+        class(Retangulo), intent(in) :: self
+        a = self%largura * self%altura
+    end function area_retangulo
+
+    subroutine descrever(self)
+        class(Forma), intent(in) :: self
+        print '(A, F12.4)', <span class="str">"Área = "</span>, self%area()
+    end subroutine descrever
+
+end module formas_mod
+
+program oop_demo
+    use formas_mod
+    implicit none
+    type(Circulo)    :: c
+    type(Retangulo)  :: r
+    class(Forma), allocatable :: f   <span class="com">! polimorfismo</span>
+
+    c = Circulo(cor=1.0_8, raio=5.0_8)
+    r = Retangulo(cor=2.0_8, largura=3.0_8, altura=4.0_8)
+
+    call c%descrever()    <span class="com">! Área = 78.5398</span>
+    call r%descrever()    <span class="com">! Área = 12.0000</span>
+
+    <span class="com">! Polimorfismo dinâmico</span>
+    allocate(Circulo :: f)
+    select type(f)
+        type is (Circulo)
+            f%raio = 3.0_8
+    end select
+    call f%descrever()
+
+end program oop_demo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="do-concurrent">DO CONCURRENT e Paralelismo Implícito</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">do concurrent com locality specifiers</div>
+          <pre class="example">program do_concurrent_ex
+    implicit none
+    integer, parameter :: N = 1000000
+    real :: a(N), b(N), c(N)
+    real :: local_var
+    integer :: i
+
+    a = 1.0; b = 2.0
+
+    <span class="com">! DO CONCURRENT — iterações independentes, compilador vetoriza/paraleliza</span>
+    do concurrent (i = 1:N)
+        c(i) = sqrt(a(i) ** 2 + b(i) ** 2)
+    end do
+
+    <span class="com">! Com locality specifiers (Fortran 2018)</span>
+    do concurrent (i = 1:N) local(local_var) shared(a, b, c)
+        local_var = a(i) + b(i)
+        c(i) = local_var * local_var
+    end do
+
+    <span class="com">! Múltiplas dimensões</span>
+    real :: mat(N, N)
+    integer :: j
+    do concurrent (i = 1:N, j = 1:N)
+        mat(i, j) = real(i) + real(j)
+    end do
+
+    print *, sum(c)
+
+end program do_concurrent_ex</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="openmp">OpenMP — Paralelismo com Threads</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Diretivas OpenMP para loops e seções paralelas</div>
+          <pre class="example">program openmp_ex
+    use omp_lib
+    implicit none
+    integer, parameter :: N = 10000000
+    real :: a(N), b(N), c(N)
+    integer :: i
+    real :: soma
+    double precision :: t_ini, t_fim
+
+    a = 1.0; b = 2.0
+
+    t_ini = omp_get_wtime()
+
+    <span class="com">!$omp parallel do schedule(static) shared(a, b, c)</span>
+    do i = 1, N
+        c(i) = a(i) * b(i) + sqrt(a(i))
+    end do
+    <span class="com">!$omp end parallel do</span>
+
+    t_fim = omp_get_wtime()
+    print '(A, F8.4, A)', <span class="str">"Tempo paralelo: "</span>, t_fim - t_ini, <span class="str">" s"</span>
+
+    <span class="com">! Redução paralela</span>
+    soma = 0.0
+    <span class="com">!$omp parallel do reduction(+:soma)</span>
+    do i = 1, N
+        soma = soma + c(i)
+    end do
+    <span class="com">!$omp end parallel do</span>
+    print *, <span class="str">"Soma ="</span>, soma
+
+    <span class="com">! Informações OpenMP</span>
+    print *, <span class="str">"Threads disponíveis:"</span>, omp_get_max_threads()
+
+    <span class="com">! Compilar: gfortran -O3 -fopenmp openmp_ex.f90 -o openmp_ex</span>
+    <span class="com">! Executar: OMP_NUM_THREADS=8 ./openmp_ex</span>
+
+end program openmp_ex</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="c-interop">Interoperabilidade com C (iso_c_binding)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Chamar funções C de Fortran e vice-versa</div>
+          <pre class="example"><span class="com">! Módulo de interface para funções C</span>
+module c_interface
+    use iso_c_binding
+    implicit none
+
+    <span class="com">! Interface para função C: int strlen(const char *s)</span>
+    interface
+        function c_strlen(s) bind(C, name="strlen") result(n)
+            use iso_c_binding
+            type(c_ptr),    value :: s
+            integer(c_size_t)    :: n
+        end function c_strlen
+
+        <span class="com">! void *malloc(size_t size)</span>
+        function c_malloc(size) bind(C, name="malloc") result(ptr)
+            use iso_c_binding
+            integer(c_size_t), value :: size
+            type(c_ptr)              :: ptr
+        end function c_malloc
+
+        <span class="com">! void free(void *ptr)</span>
+        subroutine c_free(ptr) bind(C, name="free")
+            use iso_c_binding
+            type(c_ptr), value :: ptr
+        end subroutine c_free
+    end interface
+
+end module c_interface
+
+<span class="com">! Exportar subrotina Fortran para ser chamada em C</span>
+subroutine calcular_norma(v, n, resultado) bind(C, name="calcular_norma")
+    use iso_c_binding
+    implicit none
+    integer(c_int), value    :: n
+    real(c_double), intent(in)  :: v(n)
+    real(c_double), intent(out) :: resultado
+    integer :: i
+
+    resultado = 0.0_c_double
+    do i = 1, n
+        resultado = resultado + v(i) ** 2
+    end do
+    resultado = sqrt(resultado)
+end subroutine calcular_norma
+
+<span class="com">! Tipos C correspondentes em Fortran:</span>
+<span class="com">! int       → integer(c_int)</span>
+<span class="com">! long      → integer(c_long)</span>
+<span class="com">! float     → real(c_float)</span>
+<span class="com">! double    → real(c_double)</span>
+<span class="com">! char*     → character(kind=c_char)</span>
+<span class="com">! void*     → type(c_ptr)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>METCALF, M.; REID, J.; COHEN, M. <strong>Modern Fortran Explained</strong>. 5. ed. Oxford University Press, 2018.</li>
+            <li>OpenMP Architecture Review Board. <strong>OpenMP Application Programming Interface</strong>. v5.2, 2021.</li>
+            <li>ISO/IEC 1539-1:2018. <strong>Fortran 2018 — iso_c_binding</strong>. Seção 18.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ferramentas e Ecossistema</a></li>
+          <li><a href="../aplicacoes/hpc.html"><span data-svg="seta-direita" aria-hidden="true"></span> HPC e Supercomputação</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A interoperabilidade com C via <code>iso_c_binding</code> não é apenas um detalhe técnico — é a ponte que faz o ecossistema HPC inteiro funcionar: MPI é uma biblioteca C que Fortran chama nativamente, CUDA kernels escritos em C são orquestrados por código Fortran, e BLAS/LAPACK (escritos em Fortran) são chamados por Python, R e Julia através dessa mesma interface.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

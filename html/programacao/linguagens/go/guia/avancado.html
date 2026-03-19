@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Go Avançado: goroutines, channels, select, context, generics, reflection e profiling." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Avançado</h1>
+          <p>O nível avançado de Go cobre o modelo de concorrência completo (goroutines, channels bufferizados, select e sync), o pacote context para cancelamento e prazos, generics com constraints (Go 1.18+), reflexão com <code>reflect</code>, profiling com pprof e as garantias do memory model de Go.</p>
+        </div>
+        <p class="intro-highlight">
+          O mantra de Go para concorrência é <em>"Do not communicate by sharing memory; share memory by communicating."</em> Em vez de proteger dados compartilhados com mutexes o tempo todo, canais transformam a comunicação entre goroutines na única forma de acesso — o dado pertence a uma goroutine de cada vez, passado pelo canal. Simples de raciocinar, difícil de errar.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="goroutines-channels">Goroutines e Channels</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Goroutines, channels buferizados e WaitGroup</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="com">// Padrão fan-out: distribuir trabalho entre N goroutines</span>
+<span class="kw">func</span> <span class="fn">worker</span>(id int, jobs &lt;-chan int, results chan&lt;- int, wg *sync.WaitGroup) {
+    defer wg.Done()
+    <span class="kw">for</span> j := <span class="kw">range</span> jobs {
+        <span class="com">// simula trabalho</span>
+        time.Sleep(10 * time.Millisecond)
+        results &lt;- j * j
+    }
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// Channel buferizado — não bloqueia até encher</span>
+    jobs    := make(chan int, 10)
+    results := make(chan int, 10)
+    <span class="kw">var</span> wg sync.WaitGroup
+
+    <span class="com">// Lançar 3 workers</span>
+    <span class="kw">for</span> w := 1; w &lt;= 3; w++ {
+        wg.Add(1)
+        <span class="kw">go</span> worker(w, jobs, results, &amp;wg)
+    }
+
+    <span class="com">// Enviar 9 tarefas</span>
+    <span class="kw">for</span> j := 1; j &lt;= 9; j++ {
+        jobs &lt;- j
+    }
+    close(jobs)   <span class="com">// fecha: workers param de receber</span>
+
+    <span class="com">// Esperar workers e fechar results</span>
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        wg.Wait()
+        close(results)
+    }()
+
+    <span class="com">// Coletar resultados</span>
+    <span class="kw">for</span> r := <span class="kw">range</span> results {
+        fmt.Println(r)
+    }
+
+    <span class="com">// select — multiplexar channels (timeout, cancelamento)</span>
+    ch1 := make(chan string, 1)
+    ch2 := make(chan string, 1)
+    <span class="kw">go</span> <span class="kw">func</span>() { time.Sleep(50*time.Millisecond); ch1 &lt;- <span class="str">"um"</span> }()
+    <span class="kw">go</span> <span class="kw">func</span>() { time.Sleep(30*time.Millisecond); ch2 &lt;- <span class="str">"dois"</span> }()
+
+    <span class="kw">for</span> i := 0; i &lt; 2; i++ {
+        <span class="kw">select</span> {
+        <span class="kw">case</span> msg := &lt;-ch1:
+            fmt.Println(<span class="str">"ch1:"</span>, msg)
+        <span class="kw">case</span> msg := &lt;-ch2:
+            fmt.Println(<span class="str">"ch2:"</span>, msg)
+        <span class="kw">case</span> &lt;-time.After(100 * time.Millisecond):
+            fmt.Println(<span class="str">"timeout"</span>)
+        }
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="context">Context — Cancelamento e Prazos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">context.WithCancel, WithTimeout e propagação</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+    <span class="str">"time"</span>
+)
+
+<span class="com">// Função que respeita cancelamento</span>
+<span class="kw">func</span> <span class="fn">buscarDados</span>(ctx context.Context, url string) (string, error) {
+    <span class="com">// simula trabalho que pode ser cancelado</span>
+    ch := make(chan string, 1)
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        time.Sleep(200 * time.Millisecond)
+        ch &lt;- <span class="str">"dados de "</span> + url
+    }()
+
+    <span class="kw">select</span> {
+    <span class="kw">case</span> resultado := &lt;-ch:
+        <span class="kw">return</span> resultado, nil
+    <span class="kw">case</span> &lt;-ctx.Done():
+        <span class="kw">return</span> <span class="str">""</span>, ctx.Err()   <span class="com">// context.DeadlineExceeded ou Canceled</span>
+    }
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// WithTimeout — cancela após 150ms</span>
+    ctx, cancel := context.WithTimeout(context.Background(), 150*time.Millisecond)
+    defer cancel()   <span class="com">// sempre chamar cancel para liberar recursos</span>
+
+    dados, err := buscarDados(ctx, <span class="str">"https://api.exemplo.com"</span>)
+    <span class="kw">if</span> err != nil {
+        fmt.Println(<span class="str">"Erro:"</span>, err)   <span class="com">// context deadline exceeded</span>
+    } <span class="kw">else</span> {
+        fmt.Println(dados)
+    }
+
+    <span class="com">// WithValue — propagar valores (request ID, user info)</span>
+    type ctxKey string
+    <span class="kw">const</span> reqIDKey ctxKey = <span class="str">"requestID"</span>
+
+    ctx2 := context.WithValue(context.Background(), reqIDKey, <span class="str">"abc-123"</span>)
+    reqID := ctx2.Value(reqIDKey).(string)
+    fmt.Println(<span class="str">"Request ID:"</span>, reqID)
+
+    <span class="com">// WithCancel — cancelamento manual</span>
+    ctx3, cancel3 := context.WithCancel(context.Background())
+    <span class="kw">go</span> <span class="kw">func</span>() {
+        time.Sleep(50 * time.Millisecond)
+        cancel3()   <span class="com">// cancela após 50ms</span>
+    }()
+
+    _, err3 := buscarDados(ctx3, <span class="str">"https://lento.com"</span>)
+    fmt.Println(<span class="str">"ctx3 err:"</span>, err3)   <span class="com">// context canceled</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sync-mutex">sync — Mutex, RWMutex e atomic</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Proteger estado compartilhado quando channels não bastam</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"sync"</span>
+    <span class="str">"sync/atomic"</span>
+)
+
+<span class="com">// Cache thread-safe com RWMutex</span>
+<span class="kw">type</span> Cache <span class="kw">struct</span> {
+    mu   sync.RWMutex
+    data map[string]string
+}
+
+<span class="kw">func</span> (c *Cache) <span class="fn">Get</span>(key string) (string, bool) {
+    c.mu.RLock()           <span class="com">// múltiplos leitores simultâneos</span>
+    defer c.mu.RUnlock()
+    v, ok := c.data[key]
+    <span class="kw">return</span> v, ok
+}
+
+<span class="kw">func</span> (c *Cache) <span class="fn">Set</span>(key, value string) {
+    c.mu.Lock()            <span class="com">// exclusão mútua para escrita</span>
+    defer c.mu.Unlock()
+    c.data[key] = value
+}
+
+<span class="com">// sync.Once — executar uma vez (singleton, inicialização lazy)</span>
+<span class="kw">var</span> (
+    instancia *Cache
+    once      sync.Once
+)
+
+<span class="kw">func</span> <span class="fn">getCache</span>() *Cache {
+    once.Do(<span class="kw">func</span>() {
+        instancia = &amp;Cache{data: make(map[string]string)}
+    })
+    <span class="kw">return</span> instancia
+}
+
+<span class="com">// atomic — operações atômicas sem mutex (contadores)</span>
+<span class="kw">var</span> contador atomic.Int64
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    c := getCache()
+    c.Set(<span class="str">"nome"</span>, <span class="str">"Go"</span>)
+    v, _ := c.Get(<span class="str">"nome"</span>)
+    fmt.Println(v)
+
+    <span class="com">// sync.Map — map thread-safe para reads frequentes</span>
+    <span class="kw">var</span> sm sync.Map
+    sm.Store(<span class="str">"chave"</span>, 42)
+    val, _ := sm.Load(<span class="str">"chave"</span>)
+    fmt.Println(val.(int))
+
+    <span class="com">// atomic counter</span>
+    <span class="kw">var</span> wg sync.WaitGroup
+    <span class="kw">for</span> i := 0; i &lt; 1000; i++ {
+        wg.Add(1)
+        <span class="kw">go</span> <span class="kw">func</span>() {
+            defer wg.Done()
+            contador.Add(1)
+        }()
+    }
+    wg.Wait()
+    fmt.Println(<span class="str">"Contador:"</span>, contador.Load())   <span class="com">// sempre 1000</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generics">Generics (Go 1.18+)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Type parameters, constraints e funções genéricas</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"cmp"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="com">// Constraint: qualquer tipo numérico</span>
+<span class="kw">type</span> Numero <span class="kw">interface</span> {
+    ~int | ~int8 | ~int16 | ~int32 | ~int64 |
+    ~float32 | ~float64
+}
+
+<span class="com">// Função genérica</span>
+<span class="kw">func</span> <span class="fn">Soma</span>[T Numero](nums []T) T {
+    <span class="kw">var</span> total T
+    <span class="kw">for</span> _, n := <span class="kw">range</span> nums {
+        total += n
+    }
+    <span class="kw">return</span> total
+}
+
+<span class="com">// Map e Filter genéricos</span>
+<span class="kw">func</span> <span class="fn">MapFn</span>[T, U any](slice []T, f <span class="kw">func</span>(T) U) []U {
+    resultado := make([]U, len(slice))
+    <span class="kw">for</span> i, v := <span class="kw">range</span> slice {
+        resultado[i] = f(v)
+    }
+    <span class="kw">return</span> resultado
+}
+
+<span class="kw">func</span> <span class="fn">Filter</span>[T any](slice []T, pred <span class="kw">func</span>(T) bool) []T {
+    <span class="kw">var</span> res []T
+    <span class="kw">for</span> _, v := <span class="kw">range</span> slice {
+        <span class="kw">if</span> pred(v) {
+            res = append(res, v)
+        }
+    }
+    <span class="kw">return</span> res
+}
+
+<span class="com">// Struct genérica</span>
+<span class="kw">type</span> Par[A, B any] <span class="kw">struct</span> {
+    Primeiro A
+    Segundo  B
+}
+
+<span class="com">// cmp.Ordered — qualquer tipo ordenável</span>
+<span class="kw">func</span> <span class="fn">Min</span>[T cmp.Ordered](a, b T) T {
+    <span class="kw">if</span> a &lt; b { <span class="kw">return</span> a }
+    <span class="kw">return</span> b
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    fmt.Println(Soma([]int{1, 2, 3, 4, 5}))       <span class="com">// 15</span>
+    fmt.Println(Soma([]float64{1.1, 2.2, 3.3}))   <span class="com">// 6.6</span>
+
+    dobrados := MapFn([]int{1,2,3}, <span class="kw">func</span>(n int) int { <span class="kw">return</span> n * 2 })
+    fmt.Println(dobrados)   <span class="com">// [2 4 6]</span>
+
+    pares := Filter([]int{1,2,3,4,5,6}, <span class="kw">func</span>(n int) bool { <span class="kw">return</span> n%2==0 })
+    fmt.Println(pares)      <span class="com">// [2 4 6]</span>
+
+    p := Par[string, int]{Primeiro: <span class="str">"um"</span>, Segundo: 1}
+    fmt.Println(p)
+
+    fmt.Println(Min(3, 7))        <span class="com">// 3</span>
+    fmt.Println(Min(<span class="str">"a"</span>, <span class="str">"b"</span>))   <span class="com">// a</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="profiling">pprof — Profiling de Desempenho</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CPU, memória, goroutines — análise de gargalo</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"os"</span>
+    <span class="str">"runtime/pprof"</span>
+)
+
+<span class="com">// CPU profiling em qualquer programa</span>
+f, _ := os.Create(<span class="str">"cpu.pprof"</span>)
+pprof.StartCPUProfile(f)
+defer pprof.StopCPUProfile()
+
+<span class="com">// ... seu código aqui ...</span>
+
+<span class="com">// Memory profiling</span>
+mf, _ := os.Create(<span class="str">"mem.pprof"</span>)
+defer func() {
+    pprof.WriteHeapProfile(mf)
+    mf.Close()
+}()
+
+<span class="com">// Para servers: adicionar endpoint /debug/pprof</span>
+<span class="com">// import _ "net/http/pprof"  — importar por side effect</span>
+<span class="com">// go tool pprof http://localhost:6060/debug/pprof/profile?seconds=30</span>
+
+<span class="com">// Analisar resultado</span>
+<span class="com">// go tool pprof cpu.pprof</span>
+<span class="com">//   (pprof) top10          — top 10 funções por CPU</span>
+<span class="com">//   (pprof) web            — visualização em browser (SVG)</span>
+<span class="com">//   (pprof) list NomeFuncao — mostra linhas com custo</span>
+
+<span class="com">// go test -bench=. -benchmem -cpuprofile=cpu.out</span>
+<span class="com">// go tool pprof cpu.out</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>The Go Memory Model</strong>. Disponível em: &lt;https://go.dev/ref/mem&gt;. Acesso em: 2026.</li>
+            <li>GO TEAM. <strong>Frequently Asked Questions — Concurrency</strong>. Disponível em: &lt;https://go.dev/doc/faq&gt;. Acesso em: 2026.</li>
+            <li>DONOVAN, A. A. A.; KERNIGHAN, B. W. <strong>The Go Programming Language</strong>. Capítulo 8: Goroutines e Channels. Addison-Wesley, 2015.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling Go</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Go usa <strong>goroutines multiplexadas em threads do OS pelo runtime</strong> (scheduler M:N). Um servidor Go pode manter dezenas de milhares de goroutines simultâneas com apenas alguns MBs de stack — cada goroutine começa com 2KB e cresce conforme necessário. Um thread Java ou Python consome 1MB de stack e requer um thread OS. Por isso APIs Go frequentemente lidam com 100.000+ conexões simultâneas em hardware modesto.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

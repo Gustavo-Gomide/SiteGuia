@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Sharding: escala horizontal de bancos de dados, shard key, router e complexidade de JOINs distribuídos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Sharding | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Sharding &mdash; Escala Horizontal</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Sharding &mdash; Escala Horizontal</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Sharding &mdash; Dividir para Conquistar</h1>
+          <p>Distribuindo dados entre multiplos servidores quando um servidor nao e mais suficiente.</p>
+        </div>
+        <p class="intro-highlight">
+          Em 2010, o Instagram enfrentou seu primeiro gargalo: um unico servidor PostgreSQL com
+          250 mil usuarios cadastrados. Seis meses depois, eram 14 milhoes. A solucao foi sharding &mdash;
+          dividir a tabela de usuarios em dezenas de shards independentes. Cada foto, cada follow,
+          cada like roteado automaticamente para o servidor correto. Sharding e a tecnica que permite
+          escalar bancos de dados para <strong>bilhoes de registros</strong> quando todas as outras
+          opcoes ja foram esgotadas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 1. SCALE UP VS SCALE OUT -->
+      <section>
+        <h2 id="escala" class="section-title">1. Scale Up vs. Scale Out</h2>
+        <p>
+          Antes de recorrer ao sharding, entenda as duas estrategias de crescimento e quando cada
+          uma faz sentido.
+        </p>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dimensao</th>
+                  <th>Scale Up (Vertical)</th>
+                  <th>Scale Out / Sharding (Horizontal)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Como funciona</strong></td>
+                  <td>Troca o servidor por um mais poderoso (mais RAM, CPU, SSD NVMe)</td>
+                  <td>Adiciona mais servidores e divide os dados entre eles</td>
+                </tr>
+                <tr>
+                  <td><strong>Limite</strong></td>
+                  <td>Teto fisico e economico (servidor de 4 TB RAM custa > R$ 5 milhoes)</td>
+                  <td>Quase ilimitado &mdash; adicione quantos shards quiser</td>
+                </tr>
+                <tr>
+                  <td><strong>Complexidade</strong></td>
+                  <td>Baixissima &mdash; o banco funciona normalmente</td>
+                  <td>Altissima &mdash; JOINs, transacoes e resharding sao problemas novos</td>
+                </tr>
+                <tr>
+                  <td><strong>Downtime</strong></td>
+                  <td>Necessario para trocar hardware</td>
+                  <td>Adicionar shards pode ser feito com zero downtime (com suporte do sistema)</td>
+                </tr>
+                <tr>
+                  <td><strong>Quando usar</strong></td>
+                  <td>Ate ~10 TB de dados e ~100k queries/s</td>
+                  <td>Apos esgotar Scale Up, particao, indices e caching</td>
+                </tr>
+                <tr>
+                  <td><strong>Exemplos</strong></td>
+                  <td>RDS r6g.16xlarge (AWS), base de dados de ERP corporativo</td>
+                  <td>Instagram, Discord, Shopify &mdash; bilhoes de registros</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Sharding nao substitui Replicacao:</strong> replicacao copia os mesmos dados para
+            multiplos servidores (para leitura e alta disponibilidade). Sharding divide os dados
+            &mdash; cada servidor tem um subconjunto unico. Em producao de grande escala, ambas as
+            tecnicas sao usadas simultaneamente: cada shard tem suas proprias replicas.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 2. COMO FUNCIONA O SHARDING -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona o Sharding</h2>
+        <p>
+          O sistema de sharding tem tres componentes: o <strong>Router</strong> que recebe as queries,
+          a <strong>logica de roteamento</strong> que determina qual shard contem os dados, e os
+          <strong>shards</strong> em si (servidores independentes com subconjunto dos dados).
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">diagrama &mdash; fluxo de uma query em ambiente shardado</div>
+          <pre class="example"><span class="com">-- Aplicacao envia query com shard key</span>
+App  &rarr;  Router (mongos / Vitess / middleware)
+
+                    Router consulta mapa de shards
+                         |
+          +--------------+--------------+
+          |              |              |
+       Shard A        Shard B        Shard C
+    (users 0-333)  (users 334-666)  (users 667-999)
+     servidor-1     servidor-2      servidor-3
+
+<span class="com">-- SELECT * FROM users WHERE id = 1500</span>
+<span class="com">-- Router: 1500 % 3 = 0  →  Shard A (servidor-1)</span>
+<span class="com">-- Consulta vai APENAS para servidor-1. Servidores 2 e 3 nao sao tocados.</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Hash Sharding</h3>
+            <p>
+              A shard key passa por uma funcao hash (<code class="code-inline">id % N</code> ou
+              consistent hashing). Garante <strong>distribuicao uniforme</strong> dos dados. Ideal
+              para IDs numericos ou UUIDs. Problema: range queries viram full scatter (vao a todos
+              os shards).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Range Sharding</h3>
+            <p>
+              Os dados sao divididos por intervalos da shard key (A-I, J-Q, R-Z ou datas por ano).
+              Excelente para <strong>range queries</strong> (buscar pedidos de janeiro a marco em
+              um unico shard). Risco: hotspot se um intervalo receber muito mais dados que outros.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Directory-Based Sharding</h3>
+            <p>
+              Um servico separado mantem um mapa explicito de qual registro pertence a qual shard.
+              Oferece <strong>maximo de flexibilidade</strong> para mover dados entre shards sem
+              reescrever as regras. Custo: o servico de diretorio vira um ponto unico de falha.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 3. A LOGICA DO CORTE -->
+      <section>
+        <h2 id="shard-key" class="section-title">3. A Logica do Corte &mdash; Escolhendo a Shard Key</h2>
+        <p>
+          A shard key e a decisao mais critica e mais permanente em um sistema shardado. Uma escolha
+          errada e quase impossivel de reverter sem reescrever o sistema inteiro.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">diagrama &mdash; hash mod vs. consistent hashing</div>
+          <pre class="example"><span class="com">-- Hash Simples: shard = id % N_shards</span>
+user_id = 1500, shards = 3:  1500 % 3 = 0  →  Shard A
+user_id = 1501, shards = 3:  1501 % 3 = 1  →  Shard B
+user_id = 1502, shards = 3:  1502 % 3 = 2  →  Shard C
+
+<span class="com">-- PROBLEMA ao adicionar shard: N muda de 3 para 4</span>
+<span class="com">-- user_id=1500: 1500 % 4 = 0  →  ok</span>
+<span class="com">-- user_id=1501: 1501 % 4 = 1  →  ok</span>
+<span class="com">-- user_id=1502: 1502 % 4 = 2  →  ok</span>
+<span class="com">-- user_id=1503: 1503 % 4 = 3  →  NOVO SHARD (dado estava no shard 0!)</span>
+<span class="com">-- Adicionar um shard com hash simples invalida 75% dos mapeamentos!</span>
+
+<span class="com">-- Consistent Hashing: resolve o problema</span>
+<span class="com">-- Organiza shards em um anel logico (0 a 2^32)</span>
+<span class="com">-- Adicionar novo shard move apenas 1/N dos dados (em vez de quase todos)</span>
+<span class="com">-- Usado por DynamoDB, Cassandra, Riak, Redis Cluster</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Boas Shard Keys</h3>
+            <ul>
+              <li><strong>user_id</strong>: distribuicao uniforme, isolamento de tenant natural</li>
+              <li><strong>tenant_id</strong>: ideal para SaaS multi-tenant (cada empresa em um shard)</li>
+              <li><strong>UUID v4</strong>: alta cardinalidade, distribuicao aleatoria uniforme</li>
+              <li><strong>hash(email)</strong>: uniforme e evita hotspot de IDs sequenciais</li>
+            </ul>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Mas Shard Keys &mdash; Exemplos de Erros Reais</h3>
+            <ul>
+              <li><strong>timestamp</strong>: todos os writes vao para o shard mais recente (hotspot)</li>
+              <li><strong>status</strong> (ativo/inativo): apenas 2 valores &mdash; impossivel distribuir</li>
+              <li><strong>pais</strong>: Brasil pode ter 10x mais usuarios que Bolivia (desequilibrio)</li>
+              <li><strong>ID sequencial sem hash</strong>: writes sempre no ultimo shard (hotspot)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 4. O PROBLEMA DO JOIN DISTRIBUIDO -->
+      <section>
+        <h2 id="join-distribuido" class="section-title">4. O Pesadelo do JOIN Distribuído</h2>
+        <p>
+          A operacao mais natural em SQL &mdash; o JOIN &mdash; se torna o problema mais complicado em
+          reambientes shardados. Entender essa limitacao e fundamental antes de decidir pelo sharding.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">sql &mdash; um JOIN simples se torna um problema distribuido</div>
+          <pre class="example"><span class="com">-- Em banco monolitico: simples e eficiente</span>
+<span class="kw">SELECT</span> u.nome, COUNT(p.id) <span class="kw">AS</span> total_pedidos
+<span class="kw">FROM</span> users u
+<span class="kw">JOIN</span> pedidos p <span class="kw">ON</span> u.id = p.user_id
+<span class="kw">WHERE</span> u.id = <span class="num">1500</span>;
+
+<span class="com">-- Com sharding por user_id:</span>
+<span class="com">-- users onde id=1500  →  Shard A (servidor-1)</span>
+<span class="com">-- pedidos onde user_id=1500  →  tambem Shard A (se shardado pela mesma key)</span>
+<span class="com">-- Funciona! Ambas as tabelas estao no mesmo shard.</span>
+
+<span class="com">-- PROBLEMA: JOIN sem a shard key:</span>
+<span class="kw">SELECT</span> u.nome, SUM(p.valor) <span class="kw">AS</span> total
+<span class="kw">FROM</span> users u
+<span class="kw">JOIN</span> pedidos p <span class="kw">ON</span> u.id = p.user_id
+<span class="kw">WHERE</span> p.status = <span class="str">'pendente'</span>;  <span class="com">-- sem filtro por user_id!</span>
+
+<span class="com">-- O sistema precisa consultar TODOS os shards em paralelo,</span>
+<span class="com">-- juntar os resultados em memoria na aplicacao,</span>
+<span class="com">-- e retornar o resultado final. Latencia x N shards.</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Alternativas antes do Sharding</h3>
+            <ul>
+              <li><strong>Indices compostos e parciais</strong>: eliminam 90% dos problemas de leitura</li>
+              <li><strong>Particionamento local</strong>: mesma maquina, muito mais veloz</li>
+              <li><strong>Read Replicas</strong>: escala leitura sem dividir dados</li>
+              <li><strong>Caching (Redis)</strong>: queries frequentes servidas sem tocar o banco</li>
+              <li><strong>Scale Up</strong>: dobrar RAM frequentemente resolve por anos</li>
+            </ul>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Sinais de Que Voce Precisa de Sharding</h3>
+            <ul>
+              <li>Dataset acima de 10-50 TB que nao cabe em um unico servidor</li>
+              <li>Acima de 100.000 writes por segundo no banco principal</li>
+              <li>Scale Up chegou ao teto de hardware disponivel e custo-beneficio</li>
+              <li>Requisito regulatorio de isolamento geografico de dados (GDPR)</li>
+              <li>Particionamento e indices ja foram otimizados ao maximo</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 5. QUANDO SHARDEAR -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Shardear</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Use Sharding Quando
+            </h3>
+            <ul>
+              <li>Dataset nao cabe em um unico servidor mesmo com Scale Up</li>
+              <li>Escala de escrita onde um unico no nao aguenta (redes sociais, IoT)</li>
+              <li>Isolamento geografico obrigatorio por lei (dados brasileiros no Brasil)</li>
+              <li>Multi-tenancy com isolamento forte entre clientes enterprise</li>
+              <li>Voce tem equipe de infraestrutura dedicada para gerenciar a complexidade</li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Sharding e Natural Para
+            </h3>
+            <ul>
+              <li>Redes sociais: cada usuario e seus dados no mesmo shard</li>
+              <li>E-commerce de alta escala: pedidos shardados por seller_id</li>
+              <li>Sistemas de mensagens: conversas shardadas por conversation_id</li>
+              <li>Jogos online: partidas e jogadores shardados por regiao</li>
+              <li>IoT: series temporais shardadas por device_id</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Nao Shardear Quando
+            </h3>
+            <ul>
+              <li>Dataset cabe confortavelmente em um servidor com margem de crescimento</li>
+              <li>Aplicacao faz muitos JOINs entre tabelas que seriam divididas em shards diferentes</li>
+              <li>Equipe pequena sem experiencia em sistemas distribuidos</li>
+              <li>Indices e particao local resolvem o problema de performance</li>
+              <li>O sistema precisa de transacoes ACID que cruzem multiplas entidades</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Sharding Complica Muito
+            </h3>
+            <ul>
+              <li>Transacoes distribuidas (2PC vira necessario, latencia explode)</li>
+              <li>Resharding ao adicionar servidores (mover dados com zero downtime e complexo)</li>
+              <li>Queries globais sem shard key (full scatter scan em todos os shards)</li>
+              <li>Debugging: um erro pode estar em qualquer um dos N servidores</li>
+              <li>Backup e disaster recovery multiplicados por N shards</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 6. TOPICOS AVANCADOS -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Vitess &mdash; Sharding para MySQL na Escala do YouTube</h3>
+            <p>
+              Criado pelo YouTube e hoje usado pelo Slack, GitHub e PlanetScale. O Vitess adiciona uma
+              camada de roteamento transparente sobre MySQL, gerenciando resharding online, failover
+              automatico e connection pooling. O MySQL nao sabe que esta sendo shardado.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Citus &mdash; PostgreSQL Distribuido</h3>
+            <p>
+              Extensao open-source que transforma PostgreSQL em um banco distribuido. Os dados sao
+              distribuidos como <em>shards</em> entre workers enquanto um no coordenador recebe
+              todas as queries e as paraleliza. A Microsoft oferece Citus como servico gerenciado
+              no Azure (Hyperscale).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>MongoDB Sharding &mdash; Mongos como Router</h3>
+            <p>
+              MongoDB tem sharding nativo. O processo <em>mongos</em> e o router que recebe queries
+              dos clientes e as encaminha para o shard correto com base no shard key definido por
+              colecao. Config Servers armazenam os metadados do mapeamento de chunks para shards.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>CockroachDB &mdash; Sharding Automatico e Transparente</h3>
+            <p>
+              Banco de dados distribuido com SQL nativo que faz sharding automaticamente sem que o
+              desenvolvedor precise configurar nada. Os dados sao divididos em <em>ranges</em> de
+              512 MB que sao movidos entre nos automaticamente. Implementa consenso Raft para
+              consistencia forte mesmo em falhas parciais.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>O serio problema dos Cross-Shard JOINs.</strong> Qualquer query que nao inclua a
+            shard key no WHERE vira um <em>scatter-gather</em>: o router envia a query para TODOS
+            os shards em paralelo, coleta os resultados e os une. Para relatórios analiticos e
+            aggregations globais, isso pode ser 10-100x mais lento que um banco monolitico com
+            indices corretos. Considere um data warehouse separado (BigQuery, Redshift, Snowflake)
+            para queries analiticas em sistemas shardados.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 7. ECOSSISTEMA E FERRAMENTAS -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Vitess</h3>
+            <p>
+              Camada de sharding para MySQL com resharding online, failover automatico e connection
+              pooling. Open-source, CNCF graduated. Usado em producao pelo YouTube desde 2011 e
+              pelo Slack, GitHub e Square. Oferecido como servico gerenciado pelo PlanetScale.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Citus (Microsoft)</h3>
+            <p>
+              Extensao PostgreSQL que distribui tabelas em shards entre workers. Suporta queries
+              SQL completas, incluindo JOINs distribuidos (com overhead). Disponivel como
+              <em>Azure Cosmos DB for PostgreSQL</em> (antigo Hyperscale Citus) totalmente gerenciado.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>MongoDB Atlas Sharding</h3>
+            <p>
+              Sharding nativo do MongoDB com interface visual no Atlas. Permite escolher shard key
+              por colecao, monitorar distribuicao de chunks e fazer resharding com zero downtime
+              na versao 6.0+. Compound shard keys (multi-campo) permitem evitar hotspots.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>PlanetScale</h3>
+            <p>
+              Banco MySQL gerenciado em cloud com Vitess como backend. Sharding horizontal
+              transparente, deployments sem schema lock, e branching de banco de dados similar
+              ao Git. Usado por Booking.com, Figma e Square para escala de bilhoes de linhas.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>CockroachDB</h3>
+            <p>
+              Banco distribuido com sharding completamente automatico. O desenvolvedor trabalha
+              com SQL padrão sem se preocupar com shard keys. Forte consistencia via Raft e
+              distribuicao geografica nativa. Versao community open-source disponivel.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Amazon Aurora + DynamoDB</h3>
+            <p>
+              Aurora oferece storage distribuido ate 128 TB sem sharding de aplicacao. Para
+              ultrapasse disso, DynamoDB implementa consistent hashing nativo com particionamento
+              automatico transparente &mdash; praticamente infinito &mdash; com throughput provisionado
+              por tabela.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>
+              KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>.
+              Sebastopol: O&rsquo;Reilly Media, 2017.
+              Cap. 6: Partitioning (Sharding) &mdash; estrategias, rebalancing e routing.
+            </li>
+            <li>
+              MONGODB DOCUMENTATION. <strong>Sharding &mdash; MongoDB Manual</strong>.
+              Disponivel em:
+              <a href="https://www.mongodb.com/docs/manual/sharding/" target="_blank" rel="noopener">mongodb.com/docs/manual/sharding</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              VITESS. <strong>Vitess Documentation: Sharding for MySQL</strong>.
+              Disponivel em:
+              <a href="https://vitess.io/docs/" target="_blank" rel="noopener">vitess.io/docs</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              CITUS DATA. <strong>Citus: Distributed PostgreSQL Documentation</strong>.
+              Disponivel em:
+              <a href="https://docs.citusdata.com/" target="_blank" rel="noopener">docs.citusdata.com</a>.
+              Acesso em: 2025.
+            </li>
+            <li>
+              DECANDIA, Giuseppe et al. <strong>Dynamo: Amazon&rsquo;s Highly Available Key-Value Store</strong>.
+              ACM SOSP, 2007.
+              Disponivel em:
+              <a href="https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf" target="_blank" rel="noopener">allthingsdistributed.com</a>.
+              Acesso em: 2025.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando os topicos avancados de banco de dados:</p>
+        <ul class="link-list">
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/particionamento.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Particionamento &mdash; alternativa ao sharding no mesmo servidor
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/replicacao.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Replicacao &mdash; copias e alta disponibilidade
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/otimizacao_de_consultas.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Otimizacao de Consultas &mdash; faca mais antes de distribuir
+            </a>
+          </li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Don&rsquo;t shard until you need to shard." &mdash; Principio de Design de Sistemas Distribuidos
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

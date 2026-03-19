@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="CMake: guia completo sobre o sistema de build multiplataforma para C/C++ — CMakeLists.txt, targets, find_package e Modern CMake." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>CMake | Ferramentas de Build | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>CMake</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">CMake — Build System Multiplataforma</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">CMake</h1>
+          <p class="page-subtitle">O padrão de facto para projetos C/C++ — gera Makefiles, projetos Visual Studio, Ninja e outros a partir de uma única configuração</p>
+        </div>
+        <p class="intro-highlight">
+          CMake não compila código diretamente. É um <strong>meta-build system</strong>: lê o arquivo <code class="code-inline">CMakeLists.txt</code> e gera os arquivos de build nativos do ambiente alvo (Makefile no Linux, <code class="code-inline">.vcxproj</code> no Windows, etc.). Isso permite que um mesmo projeto seja construído em qualquer plataforma sem modificação.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="por-que" class="section-title">Por que usar CMake?</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Vantagens</h3>
+            <ul>
+              <li><strong>Portabilidade</strong> — mesmo projeto compila no Linux, macOS e Windows</li>
+              <li><strong>Integração com IDEs</strong> — VSCode, CLion, Visual Studio leem CMake nativamente</li>
+              <li><strong>Gerenciamento de dependências</strong> — <code class="code-inline">find_package()</code> localiza bibliotecas; FetchContent baixa automaticamente</li>
+              <li><strong>Builds out-of-source</strong> — artefatos em pasta separada, repositório limpo</li>
+              <li><strong>Modern CMake (v3+)</strong> — modelo baseado em <em>targets</em> e propriedades de visibilidade</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Contexto Histórico</h3>
+            <p>O CMake foi criado em 1999 pelo <strong>Kitware</strong> para o projeto <strong>ITK</strong>, financiado pelo NIH. A versão 3.0 (2014) introduziu o paradigma <em>Modern CMake</em>, baseado em targets com propriedades de visibilidade (<code class="code-inline">PUBLIC</code>, <code class="code-inline">PRIVATE</code>, <code class="code-inline">INTERFACE</code>).</p>
+            <p class="note">CMake é hoje o sistema de build mais usado em projetos C++ open-source. É o padrão do ecossistema CLion, VSCode C++ Extension e vcpkg.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="workflow" class="section-title">Workflow CMake</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Fluxo de uso — Terminal</div>
+          <pre class="code-block"><span class="com"># 1. Criar diretório de build (out-of-source)</span>
+<span class="kw">mkdir</span> build &amp;&amp; <span class="kw">cd</span> build
+
+<span class="com"># 2. Configurar — gera o sistema de build nativo</span>
+<span class="kw">cmake</span> .. -DCMAKE_BUILD_TYPE=Release
+
+<span class="com"># 3. Compilar</span>
+<span class="kw">cmake</span> --build . --parallel 4
+
+<span class="com"># 4. Instalar (opcional)</span>
+<span class="kw">cmake</span> --install . --prefix /usr/local
+
+<span class="com"># Com Ninja (mais rápido que Make)</span>
+<span class="kw">cmake</span> .. -G Ninja -DCMAKE_BUILD_TYPE=Debug
+<span class="kw">ninja</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="cmakelists" class="section-title">CMakeLists.txt — Estrutura Completa</h2>
+        <div class="ide-box">
+          <div class="ide-header">
+            <div class="ide-dots">
+              <span class="ide-dot ide-dot--red"></span>
+              <span class="ide-dot ide-dot--yellow"></span>
+              <span class="ide-dot ide-dot--green"></span>
+            </div>
+            CMakeLists.txt
+          </div>
+          <div class="ide-content">
+            <pre class="code-block">cmake_minimum_required(VERSION 3.21)
+project(MeuProjeto VERSION 1.0.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+<span class="com"># Biblioteca estática</span>
+add_library(minha_lib STATIC src/utils.cpp src/parser.cpp)
+target_include_directories(minha_lib
+    PUBLIC  include/
+    PRIVATE src/internal/
+)
+target_compile_options(minha_lib PRIVATE -Wall -Wextra)
+
+<span class="com"># Executável</span>
+add_executable(programa main.cpp)
+target_link_libraries(programa PRIVATE minha_lib)
+
+<span class="com"># Dependência externa</span>
+find_package(OpenSSL REQUIRED)
+target_link_libraries(programa PRIVATE OpenSSL::SSL)
+
+<span class="com"># FetchContent — baixa automaticamente</span>
+include(FetchContent)
+FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.14.0
+)
+FetchContent_MakeAvailable(googletest)
+
+<span class="com"># Testes</span>
+enable_testing()
+add_executable(testes tests/test_utils.cpp)
+target_link_libraries(testes PRIVATE minha_lib GTest::gtest_main)
+add_test(NAME testes COMMAND testes)
+
+<span class="com"># Instalação</span>
+install(TARGETS programa DESTINATION bin)
+install(DIRECTORY include/ DESTINATION include)</pre>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="modern-cmake" class="section-title">Modern CMake — Targets e Visibilidade</h2>
+        <p>O paradigma do <strong>Modern CMake</strong> (v3.0+) substitui variáveis globais por propriedades de targets com <strong>visibilidade explícita</strong>:</p>
+        <div class="exemplo-completo estatistica">
+          <h3 class="panel-title">Visibilidade de Propriedades</h3>
+          <div class="grid-completo">
+            <div class="carta-visual"><strong>PRIVATE</strong><p class="note">Aplica somente a este target. Não vaza para quem linkar.</p></div>
+            <div class="carta-visual"><strong>PUBLIC</strong><p class="note">Aplica a este target E é propagado para quem linkar com ele.</p></div>
+            <div class="carta-visual"><strong>INTERFACE</strong><p class="note">Aplica <em>somente</em> a quem linkar — não ao próprio. Usado em header-only libs.</p></div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="variaveis" class="section-title">Variáveis CMake Importantes</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead><tr><th>Variável</th><th>Descrição</th><th>Valores Comuns</th></tr></thead>
+            <tbody>
+              <tr><td><code class="code-inline">CMAKE_BUILD_TYPE</code></td><td>Tipo de build</td><td>Debug, Release, RelWithDebInfo</td></tr>
+              <tr><td><code class="code-inline">CMAKE_CXX_STANDARD</code></td><td>Versão do padrão C++</td><td>11, 14, 17, 20, 23</td></tr>
+              <tr><td><code class="code-inline">CMAKE_INSTALL_PREFIX</code></td><td>Prefixo de instalação</td><td>/usr/local</td></tr>
+              <tr><td><code class="code-inline">BUILD_SHARED_LIBS</code></td><td>Libs estáticas ou dinâmicas</td><td>ON, OFF</td></tr>
+              <tr><td><code class="code-inline">CMAKE_EXPORT_COMPILE_COMMANDS</code></td><td>Gera compile_commands.json para LSP</td><td>ON</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CMake Documentation. <a href="https://cmake.org/documentation/" target="_blank" rel="noopener">cmake.org/documentation</a></li>
+            <li>SCOTT, Craig. <strong>Professional CMake: A Practical Guide</strong>. 14th ed. Crascit, 2023.</li>
+            <li>GABER, Rafał. <strong>Modern CMake for C++</strong>. Packt Publishing, 2022.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Veja também: <a href="/html/ferramentas_e_praticas/ferramentas_build/make.html">Make</a> e <a href="/html/ferramentas_e_praticas/ferramentas_build/gradle.html">Gradle</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "CMake é a lingua franca do C++ moderno. Quem o domina pode compilar seu projeto em qualquer ambiente, com qualquer toolchain."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

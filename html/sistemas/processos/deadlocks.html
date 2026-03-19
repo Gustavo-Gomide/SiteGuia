@@ -1,0 +1,243 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Deadlocks em sistemas operacionais: condições de Coffman, grafo de alocação de recursos, detecção, prevenção e recuperação." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Deadlocks | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Deadlocks</h1>
+            <p class="page-subtitle">Impasse circular entre processos: condições de Coffman, grafos de alocação, estratégias de prevenção e recuperação.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>deadlock</strong> ocorre quando dois ou mais processos estão bloqueados indefinidamente, cada um esperando por um recurso mantido pelo outro. Em sistemas de produção o custo é real: o processo trava silenciosamente, serviços param de responder e a única saída é reiniciar — perdendo estado e transações em andamento.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CONDIÇÕES DE COFFMAN ═══════════════════ -->
+      <section id="coffman">
+        <h2>Condições de Coffman</h2>
+        <p>As quatro condições são <strong>necessárias e suficientes</strong> para que um deadlock ocorra. Quebrar qualquer uma delas previne o deadlock:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Condição</th><th>Definição</th><th>Como quebrar</th><th>Custo da quebra</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Exclusão Mútua</strong></td>
+                <td>Pelo menos um recurso é não-compartilhável — apenas um processo o usa por vez</td>
+                <td>Tornar recursos compartilháveis (ex.: read-only, spooling de impressora)</td>
+                <td>Nem sempre possível (ex.: arquivo para escrita)</td>
+              </tr>
+              <tr>
+                <td><strong>Hold and Wait</strong></td>
+                <td>Processo mantém pelo menos um recurso e espera por recursos adicionais mantidos por outros</td>
+                <td>Exigir que processos requisitem todos os recursos de uma vez antes de iniciar; ou liberar todos antes de pedir novos</td>
+                <td>Baixa utilização de recursos; possível starvation</td>
+              </tr>
+              <tr>
+                <td><strong>No Preemption</strong></td>
+                <td>Recursos não podem ser tomados à força de um processo</td>
+                <td>Permitir preempção — se processo não obtém todos recursos, libera os que tem</td>
+                <td>Só funciona para recursos cujo estado pode ser salvo (CPU, memória); impraticável para locks de BD</td>
+              </tr>
+              <tr>
+                <td><strong>Circular Wait</strong></td>
+                <td>Existe uma cadeia circular de processos, cada um esperando recurso do próximo</td>
+                <td>Impor ordenação total sobre todos os tipos de recurso; processos sempre adquirem na ordem crescente</td>
+                <td>Restringe ordem de codificação; mais prático com lock ordering</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — GRAFO + EXEMPLO ═══════════════════ -->
+      <section id="grafo">
+        <h2>Grafo de Alocação de Recursos</h2>
+        <p>No grafo de alocação, processos são representados por círculos e recursos por quadrados. Uma aresta de processo para recurso indica <em>requisição</em>; de recurso para processo indica <em>alocação</em>. Um ciclo nesse grafo indica possível deadlock — se cada recurso tem uma única instância, o ciclo garante deadlock.</p>
+
+        <p>O código abaixo reproduz o cenário clássico de deadlock com dois mutexes e duas threads:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — deadlock clássico com dois mutexes</div>
+          <pre class="code-block">#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+
+pthread_mutex_t m1 = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t m2 = PTHREAD_MUTEX_INITIALIZER;
+
+/* Thread A: adquire m1 depois m2 */
+void *thread_a(void *arg) {
+    pthread_mutex_lock(&amp;m1);
+    printf("A: adquiriu m1, tentando m2...\n");
+    sleep(1);                    /* cede tempo para thread B adquirir m2 */
+    pthread_mutex_lock(&amp;m2);   /* BLOQUEIA AQUI — m2 está com B */
+    printf("A: adquiriu m2 (nunca impresso)\n");
+    pthread_mutex_unlock(&amp;m2);
+    pthread_mutex_unlock(&amp;m1);
+    return NULL;
+}
+
+/* Thread B: adquire m2 depois m1 — ORDEM INVERSA → DEADLOCK */
+void *thread_b(void *arg) {
+    pthread_mutex_lock(&amp;m2);
+    printf("B: adquiriu m2, tentando m1...\n");
+    sleep(1);
+    pthread_mutex_lock(&amp;m1);   /* BLOQUEIA AQUI — m1 está com A */
+    printf("B: adquiriu m1 (nunca impresso)\n");
+    pthread_mutex_unlock(&amp;m1);
+    pthread_mutex_unlock(&amp;m2);
+    return NULL;
+}
+
+int main(void) {
+    pthread_t ta, tb;
+    pthread_create(&amp;ta, NULL, thread_a, NULL);
+    pthread_create(&amp;tb, NULL, thread_b, NULL);
+    pthread_join(ta, NULL);   /* programa trava aqui forever */
+    pthread_join(tb, NULL);
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ESTRATÉGIAS ═══════════════════ -->
+      <section id="estrategias">
+        <h2>Estratégias de Tratamento</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Estratégia</th><th>Abordagem</th><th>Prós</th><th>Contras</th><th>Custo runtime</th><th>Onde usado</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Prevenção</strong></td>
+                <td>Garantir que pelo menos uma condição de Coffman nunca seja satisfeita</td>
+                <td>Deadlock impossível por construção</td>
+                <td>Pode desperdiçar recursos; lock ordering pode ser difícil de manter</td>
+                <td>Zero (decisão de design)</td>
+                <td>Sistemas embarcados, drivers, sistemas críticos</td>
+              </tr>
+              <tr>
+                <td><strong>Evasão (Banqueiro)</strong></td>
+                <td>Verificar antes de cada alocação se o sistema permanece em estado seguro</td>
+                <td>Usa recursos eficientemente; deadlock nunca ocorre</td>
+                <td>Requer declaração prévia de demanda máxima; O(n²) por alocação</td>
+                <td>Alto (verificação constante)</td>
+                <td>Sistemas de tempo real com requisitos bem definidos</td>
+              </tr>
+              <tr>
+                <td><strong>Detecção e Recuperação</strong></td>
+                <td>Permitir deadlock, detectar periodicamente com grafo, resolver terminando processos</td>
+                <td>Maior utilização de recursos no estado normal</td>
+                <td>Custo da detecção; perda de trabalho ao terminar processos</td>
+                <td>Periódico (varredura do grafo)</td>
+                <td>BDs (lock manager detecta ciclos), alguns SOs</td>
+              </tr>
+              <tr>
+                <td><strong>Ignorar (Avestruz)</strong></td>
+                <td>Fingir que deadlock não existe e reiniciar quando ocorrer</td>
+                <td>Zero overhead; implementação simples</td>
+                <td>Possível perda de dados; não adequado para sistemas críticos</td>
+                <td>Zero</td>
+                <td>Unix/Linux tradicionais para alguns recursos do kernel</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — ALGORITMO DO BANQUEIRO ═══════════════════ -->
+      <section id="banqueiro">
+        <h2>Algoritmo do Banqueiro</h2>
+        <p>Proposto por Dijkstra em 1965, o Algoritmo do Banqueiro determina se conceder uma requisição de recurso mantém o sistema em <strong>estado seguro</strong> — aquele em que existe pelo menos uma sequência de execução que permite todos os processos terminarem:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pseudocode — Algoritmo do Banqueiro (verificação de estado seguro)</div>
+          <pre class="code-block">/* Dados:
+   n = número de processos
+   m = tipos de recurso
+   Available[m]       = instâncias disponíveis de cada recurso
+   Max[n][m]          = demanda máxima de cada processo
+   Allocation[n][m]   = recursos atualmente alocados
+   Need[i][j]         = Max[i][j] - Allocation[i][j]
+*/
+
+function estado_seguro(Available, Need, Allocation):
+    Work    = cópia de Available
+    Finish  = [false] * n           /* nenhum processo terminou ainda */
+    sequencia_segura = []
+
+    loop:
+        /* Encontrar processo que pode terminar com recursos disponíveis */
+        encontrou = false
+        para i de 0 a n-1:
+            se Finish[i] == false e Need[i] &lt;= Work:
+                Work     += Allocation[i]  /* processo termina, libera recursos */
+                Finish[i]  = true
+                sequencia_segura.append(i)
+                encontrou  = true
+
+        se não encontrou:
+            sair do loop
+
+    se todos Finish[i] == true:
+        retornar SEGURO, sequencia_segura
+    senão:
+        retornar INSEGURO   /* deadlock potencial */
+
+/* Por que SOs gerais não usam o Banqueiro:
+   1. Processos raramente declaram demanda máxima antecipadamente
+   2. Número de processos e tipos de recurso variam dinamicamente
+   3. Overhead O(n²) por requisição é inaceitável em sistemas de propósito geral */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja técnicas práticas de prevenção em
+          <a href="/html/sistemas/processos/prevencao_deadlock.html">Prevenção de Deadlocks</a> e
+          <a href="/html/sistemas/processos/sincronizacao.html">Sincronização de Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Deadlocks são como acidentes de trânsito em cruzamento sem semáforo — inevitáveis sem regras claras de precedência."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

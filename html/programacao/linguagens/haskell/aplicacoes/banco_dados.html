@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Como usar Haskell com bancos de dados relacionais e NoSQL, do básico ao avançado." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Haskell para Banco de Dados | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Haskell para Banco de Dados</strong></p>
+			</div>
+
+			<section>
+				<h2 id="hero" class="section-title">Visao Geral</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon" role="img" aria-label="Logo do Site Guia"></div>
+					<span data-svg="haskell" aria-hidden="true"></span>
+					<h1>Aplicacoes de Haskell em Persistencia de Dados</h1>
+					<p>Tipos fortes, consultas seguras e pipelines previsiveis para dados criticos.</p>
+				</div>
+				<p class="intro-highlight">
+					Haskell reduz classes inteiras de erros de banco de dados ao mover verificacoes para o compilador,
+					especialmente em consultas, mapeamento de entidades e composicao de transacoes.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="conceitos" class="section-title">Conceitos Fundamentais</h2>
+				<p>
+					Pense em um banco de dados como um cartorio: voce quer registros corretos, historico consistente e
+					regras claras para cada operacao. Em Haskell, tipos como <strong>Maybe</strong>, <strong>Either</strong>
+					e novos tipos de dominio ajudam a representar essas regras sem ambiguidades.
+				</p>
+				<p>
+					Bibliotecas como <strong>persistent</strong>, <strong>esqueleto</strong>, <strong>beam</strong> e
+					<strong>hasql</strong> permitem ir de um ORM tradicional a um estilo mais proximo de SQL tipado.
+				</p>
+				<div class="callout">
+					<p><span data-svg="info" aria-hidden="true"></span> Em sistemas regulados, tipagem forte ajuda auditoria e rastreabilidade de dados.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="como-funciona" class="section-title">Como Funciona na Pratica</h2>
+				<p>O fluxo mais comum em aplicacoes web e APIs com Haskell envolve quatro etapas:</p>
+				<div class="grid grid--2">
+					<div class="card"><p><strong>1.</strong> Definir esquema e migracoes.</p></div>
+					<div class="card"><p><strong>2.</strong> Mapear entidades para tipos de dominio.</p></div>
+					<div class="card"><p><strong>3.</strong> Executar consultas com seguranca de tipos.</p></div>
+					<div class="card"><p><strong>4.</strong> Tratar erros com composicao funcional.</p></div>
+				</div>
+				<pre class="example"><code><span class="com">-- Modelo com Persistent + PostgreSQL</span>
+<span class="kw">share</span> [mkPersist sqlSettings, mkMigrate <span class="str">"migrateAll"</span>] [persistLowerCase|
+Usuario
+	nome <span class="fn">Text</span>
+	email <span class="fn">Text</span>
+	UniqueEmail email
+	deriving <span class="fn">Show</span>
+|]
+
+<span class="kw">buscarPorEmail</span> :: <span class="fn">Text</span> -> <span class="fn">SqlPersistT</span> <span class="fn">IO</span> (<span class="fn">Maybe</span> (<span class="fn">Entity</span> Usuario))
+<span class="fn">buscarPorEmail</span> e = <span class="fn">getBy</span> (<span class="fn">UniqueEmail</span> e)</code></pre>
+				<p>
+					O compilador garante que o campo usado na busca e o tipo esperado estao alinhados com o esquema declarado.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="tipos-abordagens" class="section-title">Abordagens e Ferramentas</h2>
+				<div class="panel">
+					<h3 class="panel-title">ORM e DSLs Tipadas</h3>
+					<p><strong>persistent/esqueleto</strong>: produtividade alta para CRUD e migracoes.</p>
+					<p><strong>beam</strong>: DSL SQL tipada com composicao declarativa.</p>
+				</div>
+				<div class="panel">
+					<h3 class="panel-title">Acesso de Baixo Nivel e Performance</h3>
+					<p><strong>hasql</strong>: foco em PostgreSQL com codecs e controle de execucao.</p>
+					<p><strong>postgresql-simple</strong>: SQL explicito, leve e direto.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="uso-pratico" class="section-title">Uso Pratico com Codigo</h2>
+				<pre class="example"><code><span class="com">-- Consulta parametrizada com postgresql-simple</span>
+<span class="kw">buscarAtivos</span> :: <span class="fn">Connection</span> -> <span class="fn">IO</span> [UsuarioDTO]
+<span class="fn">buscarAtivos</span> conn =
+	<span class="fn">query_</span> conn <span class="str">"SELECT nome, email FROM usuarios WHERE ativo = true"</span>
+
+<span class="com">-- Com tratamento explicito de erro no dominio</span>
+<span class="kw">salvarUsuario</span> :: NovoUsuario -> <span class="fn">AppM</span> (<span class="fn">Either</span> ErroDominio UsuarioId)
+<span class="fn">salvarUsuario</span> novo = <span class="kw">do</span>
+	validado &lt;- <span class="fn">validarNovoUsuario</span> novo
+	<span class="kw">case</span> validado <span class="kw">of</span>
+		<span class="fn">Left</span> err -> <span class="fn">pure</span> (<span class="fn">Left</span> err)
+		<span class="fn">Right</span> ok -> <span class="fn">persistir</span> ok</code></pre>
+				<p>
+					Aqui, regras de negocio e persistencia ficam separadas, facilitando testes e manutencao.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="casos-de-uso" class="section-title">Quando Usar e Quando Evitar</h2>
+				<div class="grid grid--2">
+					<div class="card">
+						<h3>Use Haskell</h3>
+						<p>Financeiro, health tech, compliance e qualquer dominio com regras criticas e auditoria rigorosa.</p>
+					</div>
+					<div class="card">
+						<h3>Evite Haskell</h3>
+						<p>Times sem experiencia funcional e projetos que exigem entrega imediata sem curva de aprendizado.</p>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="avancado" class="section-title">Topicos Avancados</h2>
+				<div class="panel">
+					<h3 class="panel-title">Transacoes, Concorrencia e Idempotencia</h3>
+					<p>
+						Combine transacoes SQL com comandos idempotentes para evitar duplicidade em retries.
+						Use chaves naturais ou tokens unicos para garantias fortes em cenarios distribuidos.
+					</p>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Cuidado com lazy evaluation em consultas grandes: force avaliacao quando necessario para evitar uso excessivo de memoria.</p>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="comparacao" class="section-title">Comparacao com Outras Pilhas</h2>
+				<p>
+					Em relacao a stacks dinamicas, Haskell oferece mais seguranca em tempo de compilacao.
+					Em relacao a linguagens OO estaticas, a composicao funcional costuma simplificar pipelines de dados.
+				</p>
+				<p>
+					O trade-off principal e a curva de aprendizado e o tamanho do ecossistema para nichos muito especificos.
+				</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="arquitetura-bd" class="section-title">Arquitetura Recomendada, Limites e Trade-offs</h2>
+				<p>Para sistemas de dados criticos, uma arquitetura eficiente em Haskell separa: validacao de dominio (pura), repositorio (SQL/driver), transacoes e observabilidade. Essa estrutura reduz acoplamento e facilita evolucao de schema sem quebrar regras de negocio.</p>
+				<div class="grid grid--2">
+					<div class="panel">
+						<h3 class="panel-title">Quando usar com prioridade</h3>
+						<ul>
+							<li>Dominios com compliance e auditoria forte.</li>
+							<li>Sistemas com alta taxa de incidentes por inconsistencias de dados.</li>
+							<li>Times que valorizam testes de propriedade e contratos.</li>
+						</ul>
+					</div>
+					<div class="panel">
+						<h3 class="panel-title">Limitacoes praticas</h3>
+						<ul>
+							<li>Curva inicial para equipe sem base funcional.</li>
+							<li>Menor disponibilidade de profissionais no mercado.</li>
+							<li>Integrações podem exigir mais codigo de adaptacao.</li>
+						</ul>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 id="referencias" class="section-title">Referencias</h2>
+				<ul class="link-list">
+					<li><a class="link-card" href="https://www.haskell.org/" target="_blank" rel="noopener noreferrer">HASKELL. Haskell Language.</a></li>
+					<li><a class="link-card" href="https://www.postgresql.org/docs/" target="_blank" rel="noopener noreferrer">POSTGRESQL GLOBAL DEVELOPMENT GROUP. PostgreSQL Documentation.</a></li>
+					<li><a class="link-card" href="https://hackage.haskell.org/package/persistent" target="_blank" rel="noopener noreferrer">HACKAGE. persistent package.</a></li>
+					<li><a class="link-card" href="https://hackage.haskell.org/package/beam-core" target="_blank" rel="noopener noreferrer">HACKAGE. beam-core package.</a></li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<p><span data-svg="estrela" aria-hidden="true"></span> Dominar persistencia em Haskell significa transformar banco de dados em parte confiavel da arquitetura, nao em fonte de surpresas.</p>
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/haskell/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks em Haskell</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/haskell/aplicacoes/mobile.html">Haskell em Mobile</a></li>
+				</ul>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

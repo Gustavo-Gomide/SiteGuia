@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Perl no terminal e CLI: Getopt::Long, Term::ReadLine, backtick e system(), pipes, Term::ANSIColor, geração de relatórios e manipulação de arquivos e diretórios." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Perl — Terminal &amp; CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Perl &mdash; Terminal &amp; CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="perl" aria-hidden="true"></span></div>
+          <h1>Perl no Terminal e CLI</h1>
+          <p>Ferramentas de linha de comando profissionais: parsing de argumentos, entrada interativa, cores, relatórios e integração com o sistema operacional.</p>
+        </div>
+        <p class="intro-highlight">
+          Perl é uma linguagem de terminal por natureza — nasce no Unix, conhece o shell, manipula pipes e lê arquivos com elegância. Com módulos como Getopt::Long e Term::ANSIColor, você constrói ferramentas CLI de qualidade profissional em poucas dezenas de linhas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="getopt">Getopt::Long e Getopt::Std</h2>
+        <p>
+          <strong>Getopt::Long</strong> processa argumentos de linha de comando com suporte a flags longas (<code class="code-inline">--verbose</code>), curtas (<code class="code-inline">-v</code>), opções com valor (<code class="code-inline">--arquivo=dados.txt</code>) e validação de tipos. É mais completo que <strong>Getopt::Std</strong> (apenas flags curtas de um caractere).
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ferramenta.pl — CLI completa</div>
+          <pre class="example"><span class="com">#!/usr/bin/env perl</span>
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Getopt::Long</span> <span class="str">qw(GetOptions HelpMessage)</span>;
+<span class="kw">use</span> <span class="tp">Pod::Usage</span>;
+
+<span class="com"># Valores padrão</span>
+<span class="kw">my</span> <span class="tp">%opts</span> = (
+    verbose  =&gt; <span class="num">0</span>,
+    output   =&gt; <span class="str">'stdout'</span>,
+    max      =&gt; <span class="num">100</span>,
+    formatos =&gt; [],
+);
+
+<span class="fn">GetOptions</span>(
+    <span class="str">'verbose|v'</span>       =&gt; \<span class="tp">$opts</span>{verbose},     <span class="com"># flag booleana</span>
+    <span class="str">'output|o=s'</span>      =&gt; \<span class="tp">$opts</span>{output},     <span class="com"># string obrigatória</span>
+    <span class="str">'max|m=i'</span>         =&gt; \<span class="tp">$opts</span>{max},        <span class="com"># inteiro</span>
+    <span class="str">'formato|f=s@'</span>    =&gt; <span class="tp">$opts</span>{formatos},    <span class="com"># string repetível (array)</span>
+    <span class="str">'help|h'</span>          =&gt; <span class="kw">sub</span> { <span class="fn">pod2usage</span>(<span class="num">1</span>) }, <span class="com"># exibe ajuda e sai</span>
+    <span class="str">'man'</span>             =&gt; <span class="kw">sub</span> { <span class="fn">pod2usage</span>(-exitval =&gt; <span class="num">0</span>, -verbose =&gt; <span class="num">2</span>) },
+) <span class="kw">or</span> <span class="fn">pod2usage</span>(<span class="num">2</span>);  <span class="com"># erro de parsing: exibe uso</span>
+
+<span class="com"># Argumentos posicionais restantes em @ARGV</span>
+<span class="fn">die</span> <span class="str">"Forneça ao menos um arquivo\n"</span> <span class="kw">unless</span> <span class="tp">@ARGV</span>;
+
+<span class="fn">say</span> <span class="str">"Modo verbose: sim"</span> <span class="kw">if</span> <span class="tp">$opts</span>{verbose};
+<span class="fn">say</span> <span class="str">"Output: $opts{output}"</span>;
+<span class="fn">say</span> <span class="str">"Máximo: $opts{max}"</span>;
+<span class="fn">say</span> <span class="str">"Formatos: "</span> . <span class="fn">join</span>(<span class="str">", "</span>, <span class="tp">@{$opts</span>{formatos}})
+    <span class="kw">if</span> <span class="tp">@{$opts</span>{formatos}};
+<span class="fn">say</span> <span class="str">"Arquivos: "</span> . <span class="fn">join</span>(<span class="str">", "</span>, <span class="tp">@ARGV</span>);
+
+<span class="com">=head1 NOME</span>
+
+<span class="com">ferramenta.pl - Processa arquivos</span>
+
+<span class="com">=head1 SYNOPSIS</span>
+
+<span class="com">  ferramenta.pl [opções] arquivo1 arquivo2 ...</span>
+
+<span class="com">  -v, --verbose       Modo detalhado</span>
+<span class="com">  -o, --output=DEST   Destino da saída (padrão: stdout)</span>
+<span class="com">  -m, --max=N         Número máximo de linhas (padrão: 100)</span>
+<span class="com">  -f, --formato=FMT   Formato (pode repetir)</span>
+<span class="com">  -h, --help          Esta ajuda</span>
+<span class="com">      --man           Manual completo</span>
+
+<span class="com">=cut</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="readline">Term::ReadLine: Entrada Interativa</h2>
+        <p>
+          <strong>Term::ReadLine</strong> fornece um prompt interativo com histórico de comandos, edição de linha (Ctrl-A, Ctrl-E, seta para cima/baixo) e autocompletar — essencial para ferramentas REPL ou wizards de configuração.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">readline_interativo.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Term::ReadLine</span>;
+
+<span class="kw">my</span> <span class="tp">$rl</span> = <span class="tp">Term::ReadLine</span>-&gt;<span class="fn">new</span>(<span class="str">"MinhaCLI"</span>);
+<span class="kw">my</span> <span class="tp">$OUT</span> = <span class="tp">$rl</span>-&gt;<span class="fn">OUT</span> // \*STDOUT;
+
+<span class="com"># Configurar autocompletar</span>
+<span class="kw">my</span> <span class="tp">@comandos</span> = <span class="str">qw(sair ajuda listar processar exportar importar)</span>;
+<span class="tp">$rl</span>-&gt;<span class="fn">Attribs</span>-&gt;{completion_function} = <span class="kw">sub</span> {
+    <span class="kw">my</span> (<span class="tp">$text</span>) = <span class="tp">@_</span>;
+    <span class="kw">return</span> <span class="fn">grep</span> { <span class="str">/^\Q$text\E/i } @<span class="tp">comandos</span>;
+};
+
+<span class="fn">say</span> <span class="tp">$OUT</span> <span class="str">"Bem-vindo à MinhaCLI. Digite 'ajuda' ou 'sair'."</span>;
+
+<span class="kw">while</span> (<span class="kw">defined</span>(<span class="kw">my</span> <span class="tp">$entrada</span> = <span class="tp">$rl</span>-&gt;<span class="fn">readline</span>(<span class="str">"minhacli&gt; "</span>))) {
+    <span class="fn">chomp</span> <span class="tp">$entrada</span>;
+    <span class="kw">next</span> <span class="kw">unless</span> <span class="tp">$entrada</span> =~ <span class="str">/\S/</span>;  <span class="com"># ignora linhas vazias</span>
+    
+    <span class="tp">$rl</span>-&gt;<span class="fn">addhistory</span>(<span class="tp">$entrada</span>);  <span class="com"># adiciona ao histórico</span>
+    
+    <span class="kw">if</span> (<span class="tp">$entrada</span> =~ <span class="str">/^sair$/i</span>) {
+        <span class="fn">say</span> <span class="tp">$OUT</span> <span class="str">"Até logo!"</span>;
+        <span class="kw">last</span>;
+    } <span class="kw">elsif</span> (<span class="tp">$entrada</span> =~ <span class="str">/^ajuda$/i</span>) {
+        <span class="fn">say</span> <span class="tp">$OUT</span> <span class="str">"Comandos: "</span> . <span class="fn">join</span>(<span class="str">", "</span>, <span class="tp">@comandos</span>);
+    } <span class="kw">elsif</span> (<span class="tp">$entrada</span> =~ <span class="str">/^processar\s+(\S+)/i</span>) {
+        <span class="fn">say</span> <span class="tp">$OUT</span> <span class="str">"Processando: $1"</span>;
+    } <span class="kw">else</span> {
+        <span class="fn">say</span> <span class="tp">$OUT</span> <span class="str">"Comando desconhecido: $entrada"</span>;
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="system-backtick">Executar Comandos: Backtick, system() e Pipes</h2>
+        <p>
+          Perl tem três formas principais de executar comandos do sistema operacional, cada uma com características diferentes para captura de saída, controle de fluxo e interação bidirecional.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">execucao_sistema.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span> <span class="str">qw(open)</span>;
+
+<span class="com"># 1. Backticks `...` — captura a saída como string</span>
+<span class="kw">my</span> <span class="tp">$data</span>  = `date`;
+<span class="fn">chomp</span> <span class="tp">$data</span>;
+<span class="fn">say</span> <span class="str">"Data: $data"</span>;
+
+<span class="com"># qx{} — equivalente a backticks, mais legível</span>
+<span class="kw">my</span> <span class="tp">@arquivos</span> = <span class="kw">qx</span>{ls -la /tmp/*.log 2&gt;/dev/null};
+<span class="fn">chomp</span> <span class="tp">@arquivos</span>;
+<span class="fn">say</span> <span class="str">"Logs em /tmp: "</span> . <span class="fn">scalar</span> <span class="tp">@arquivos</span>;
+
+<span class="com"># $? — status de saída do último comando (shift 8 bits)</span>
+<span class="kw">my</span> <span class="tp">$exit_code</span> = <span class="tp">$?</span> &gt;&gt; <span class="num">8</span>;
+
+<span class="com"># 2. system() — executa e retorna código de saída</span>
+<span class="com">#    Herda stdout/stderr do processo pai (aparece na tela)</span>
+<span class="kw">my</span> <span class="tp">$ret</span> = <span class="fn">system</span>(<span class="str">"gzip /tmp/arquivo.log"</span>);
+<span class="kw">if</span> (<span class="tp">$ret</span> != <span class="num">0</span>) {
+    <span class="fn">warn</span> <span class="str">"Falha: gzip retornou $ret\n"</span>;
+}
+
+<span class="com"># system() com lista — MAIS SEGURO: sem shell, sem injeção</span>
+<span class="fn">system</span>(<span class="str">"rsync"</span>, <span class="str">"-avz"</span>, <span class="str">"/origem/"</span>, <span class="str">"usuario\@server:/destino/"</span>);
+
+<span class="com"># 3. open() com pipe — comunicação bidirecional</span>
+<span class="com"># Leitura: captura linha por linha (memória eficiente)</span>
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$ps</span>, <span class="str">'-|'</span>, <span class="str">'ps'</span>, <span class="str">'aux'</span>;   <span class="com"># sem shell</span>
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$linha</span> = &lt;<span class="tp">$ps</span>&gt;) {
+    <span class="fn">say</span> <span class="tp">$linha</span> <span class="kw">if</span> <span class="tp">$linha</span> =~ <span class="str">/perl/i</span>;
+}
+<span class="kw">close</span> <span class="tp">$ps</span>;
+
+<span class="com"># Escrita em pipe — enviar dados para um programa</span>
+<span class="kw">open</span> <span class="kw">my</span> <span class="tp">$mail</span>, <span class="str">'|-'</span>, <span class="str">'sendmail'</span>, <span class="str">'-t'</span>;
+<span class="fn">print</span> <span class="tp">$mail</span> <span class="str">"To: admin\@empresa.com\n"</span>;
+<span class="fn">print</span> <span class="tp">$mail</span> <span class="str">"Subject: Aviso automático\n\n"</span>;
+<span class="fn">print</span> <span class="tp">$mail</span> <span class="str">"Script executado com sucesso.\n"</span>;
+<span class="kw">close</span> <span class="tp">$mail</span>;
+
+<span class="com"># IPC::Open3 — stdin + stdout + stderr independentes</span>
+<span class="kw">use</span> <span class="tp">IPC::Open3</span>;
+<span class="kw">my</span> (<span class="tp">$in</span>, <span class="tp">$out</span>, <span class="tp">$err</span>);
+<span class="kw">my</span> <span class="tp">$pid</span> = <span class="fn">open3</span>(<span class="tp">$in</span>, <span class="tp">$out</span>, <span class="tp">$err</span>, <span class="str">"comando_interativo"</span>);
+<span class="fn">print</span> <span class="tp">$in</span> <span class="str">"entrada para o processo\n"</span>;
+<span class="kw">close</span> <span class="tp">$in</span>;
+<span class="kw">my</span> <span class="tp">@saida</span> = &lt;<span class="tp">$out</span>&gt;;
+<span class="fn">waitpid</span>(<span class="tp">$pid</span>, <span class="num">0</span>);</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> <strong>Nunca interpole variáveis de usuário em backticks ou <code>system("...")</code> com string.</strong> Use a forma de lista de <code>system()</code> ou sanitize rigorosamente com <code>String::ShellQuote</code>. Isso previne ataques de <em>command injection</em>.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ansicolor">Term::ANSIColor: Saída Colorida</h2>
+        <p>
+          <strong>Term::ANSIColor</strong> adiciona cores ANSI à saída do terminal, melhorando a legibilidade de relatórios, mensagens de erro e dashboards.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">colorido.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">Term::ANSIColor</span> <span class="str">qw(:constants colored)</span>;
+
+<span class="com"># colored() — envolve texto com a cor especificada</span>
+<span class="fn">print</span> <span class="fn">colored</span>(<span class="str">"ERRO"</span>,    <span class="str">"bold red"</span>),     <span class="str">": arquivo não encontrado\n"</span>;
+<span class="fn">print</span> <span class="fn">colored</span>(<span class="str">"AVISO"</span>,   <span class="str">"bold yellow"</span>),  <span class="str">": disco acima de 80%\n"</span>;
+<span class="fn">print</span> <span class="fn">colored</span>(<span class="str">"OK"</span>,      <span class="str">"bold green"</span>),   <span class="str">": serviço rodando\n"</span>;
+<span class="fn">print</span> <span class="fn">colored</span>(<span class="str">"INFO"</span>,    <span class="str">"bold cyan"</span>),    <span class="str">": versão 2.0.1\n"</span>;
+
+<span class="com"># Constantes importadas com :constants</span>
+<span class="fn">print</span> <span class="tp">BOLD</span>, <span class="tp">BLUE</span>, <span class="str">"Cabeçalho importante"</span>, <span class="tp">RESET</span>, <span class="str">"\n"</span>;
+
+<span class="com"># Desabilitar cores quando não é terminal (ex: pipe para arquivo)</span>
+<span class="kw">use</span> <span class="tp">Term::ANSIColor</span> <span class="str">qw(colorstrip)</span>;
+<span class="kw">my</span> <span class="tp">$sem_cor</span> = <span class="fn">colorstrip</span>(<span class="fn">colored</span>(<span class="str">"texto"</span>, <span class="str">"red"</span>));
+
+<span class="com"># Verificar se o terminal suporta cores</span>
+<span class="kw">if</span> (-t <span class="tp">STDOUT</span>) {   <span class="com"># -t: filetest "is tty"</span>
+    <span class="tp">$ENV</span>{ANSI_COLORS_DISABLED} = <span class="num">0</span>;
+} <span class="kw">else</span> {
+    <span class="tp">$ENV</span>{ANSI_COLORS_DISABLED} = <span class="num">1</span>;  <span class="com"># desativa em pipe/arquivo</span>
+}
+
+<span class="com"># Função helper para mensagens padronizadas</span>
+<span class="kw">sub</span> <span class="tp">log_ok</span>    { <span class="fn">say</span> <span class="fn">colored</span>(<span class="str">"[ OK ]"</span>, <span class="str">"bold green"</span>)  . <span class="str">" @_"</span> }
+<span class="kw">sub</span> <span class="tp">log_erro</span>  { <span class="fn">say</span> <span class="fn">colored</span>(<span class="str">"[ERRO]"</span>, <span class="str">"bold red"</span>)    . <span class="str">" @_"</span> }
+<span class="kw">sub</span> <span class="tp">log_info</span>  { <span class="fn">say</span> <span class="fn">colored</span>(<span class="str">"[INFO]"</span>, <span class="str">"cyan"</span>)         . <span class="str">" @_"</span> }
+
+<span class="fn">log_ok</span>(<span class="str">"Deploy concluído"</span>);
+<span class="fn">log_info</span>(<span class="str">"3 serviços reiniciados"</span>);
+<span class="fn">log_erro</span>(<span class="str">"Banco de dados inacessível"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="relatorios">Geração de Relatórios Tabulares</h2>
+        <p>
+          Perl oferece duas formas principais de formatar relatórios tabulares: <code class="code-inline">printf</code>/<code class="code-inline">sprintf</code> com especificadores de largura, e o sistema <code class="code-inline">format</code>/<code class="code-inline">write</code> — uma sintaxe de template legado, mas ainda poderosa para relatórios fixos.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">relatorio.pl — com printf</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">POSIX</span> <span class="str">qw(strftime)</span>;
+
+<span class="kw">my</span> <span class="tp">@dados</span> = (
+    { nome =&gt; <span class="str">"Servidor Web"</span>,  status =&gt; <span class="str">"online"</span>,  cpu =&gt; <span class="num">23.5</span>, mem =&gt; <span class="num">45.2</span> },
+    { nome =&gt; <span class="str">"Banco de Dados"</span>, status =&gt; <span class="str">"online"</span>,  cpu =&gt; <span class="num">67.1</span>, mem =&gt; <span class="num">78.9</span> },
+    { nome =&gt; <span class="str">"Cache Redis"</span>,    status =&gt; <span class="str">"offline"</span>, cpu =&gt;  <span class="num">0.0</span>, mem =&gt;  <span class="num">0.0</span> },
+    { nome =&gt; <span class="str">"API Gateway"</span>,    status =&gt; <span class="str">"online"</span>,  cpu =&gt; <span class="num">12.3</span>, mem =&gt; <span class="num">30.1</span> },
+);
+
+<span class="kw">my</span> <span class="tp">$titulo</span> = <span class="str">"Relatório de Status dos Serviços"</span>;
+<span class="kw">my</span> <span class="tp">$data</span>   = <span class="fn">strftime</span>(<span class="str">"%d/%m/%Y %H:%M"</span>, <span class="fn">localtime</span>);
+<span class="kw">my</span> <span class="tp">$sep</span>    = <span class="str">"=" x <span class="num">60</span></span>;
+
+<span class="fn">printf</span> <span class="str">"\n%s\n"</span>,         <span class="tp">$sep</span>;
+<span class="fn">printf</span> <span class="str">"  %-38s %s\n"</span>,   <span class="tp">$titulo</span>, <span class="tp">$data</span>;
+<span class="fn">printf</span> <span class="str">"%s\n"</span>,           <span class="tp">$sep</span>;
+<span class="fn">printf</span> <span class="str">"  %-20s %-8s  %6s  %6s\n"</span>, <span class="str">"Serviço"</span>, <span class="str">"Status"</span>, <span class="str">"CPU%"</span>, <span class="str">"Mem%"</span>;
+<span class="fn">printf</span> <span class="str">"  %s\n"</span>, <span class="str">"-" x 50</span>;
+
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$s</span> (<span class="tp">@dados</span>) {
+    <span class="kw">my</span> <span class="tp">$alerta</span> = <span class="tp">$s</span>-&gt;{cpu} &gt; <span class="num">60</span> ? <span class="str">" (!)"</span> : <span class="str">""</span>;
+    <span class="fn">printf</span> <span class="str">"  %-20s %-8s  %5.1f  %5.1f%s\n"</span>,
+        <span class="tp">$s</span>-&gt;{nome}, <span class="tp">$s</span>-&gt;{status}, <span class="tp">$s</span>-&gt;{cpu}, <span class="tp">$s</span>-&gt;{mem}, <span class="tp">$alerta</span>;
+}
+<span class="fn">printf</span> <span class="str">"%s\n\n"</span>, <span class="tp">$sep</span>;
+
+<span class="com"># Sumário</span>
+<span class="kw">my</span> <span class="tp">$online</span>  = <span class="fn">grep</span> { <span class="tp">$_</span>-&gt;{status} eq <span class="str">"online"</span>  } <span class="tp">@dados</span>;
+<span class="kw">my</span> <span class="tp">$offline</span> = <span class="fn">grep</span> { <span class="tp">$_</span>-&gt;{status} eq <span class="str">"offline"</span> } <span class="tp">@dados</span>;
+<span class="fn">printf</span> <span class="str">"  Online: %d  |  Offline: %d\n\n"</span>, <span class="tp">$online</span>, <span class="tp">$offline</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquivos-diretorios">Arquivos, Diretórios e File::Path</h2>
+        <p>
+          Perl tem filetest operators —<code class="code-inline">-e</code>, <code class="code-inline">-f</code>, <code class="code-inline">-d</code>, <code class="code-inline">-r</code>, <code class="code-inline">-s</code> etc. — que inspecionam propriedades de arquivos sem comandos externos. Módulos como <strong>File::Path</strong>, <strong>File::Copy</strong> e <strong>File::Basename</strong> completam o toolkit portável.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">filesystem.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">autodie</span>;
+<span class="kw">use</span> <span class="tp">File::Path</span>    <span class="str">qw(make_path remove_tree)</span>;
+<span class="kw">use</span> <span class="tp">File::Copy</span>    <span class="str">qw(copy move)</span>;
+<span class="kw">use</span> <span class="tp">File::Basename</span> <span class="str">qw(basename dirname)</span>;
+<span class="kw">use</span> <span class="tp">File::Spec</span>;
+<span class="kw">use</span> <span class="tp">POSIX</span> <span class="str">qw(strftime)</span>;
+
+<span class="kw">my</span> <span class="tp">$arquivo</span> = <span class="str">"/var/log/app.log"</span>;
+
+<span class="com"># Filetest operators</span>
+<span class="fn">say</span> <span class="str">"Existe"</span>        <span class="kw">if</span> -e <span class="tp">$arquivo</span>;   <span class="com"># exists</span>
+<span class="fn">say</span> <span class="str">"É arquivo"</span>    <span class="kw">if</span> -f <span class="tp">$arquivo</span>;   <span class="com"># regular file</span>
+<span class="fn">say</span> <span class="str">"É diretório"</span>  <span class="kw">if</span> -d <span class="tp">$arquivo</span>;   <span class="com"># directory</span>
+<span class="fn">say</span> <span class="str">"Legível"</span>       <span class="kw">if</span> -r <span class="tp">$arquivo</span>;   <span class="com"># readable</span>
+<span class="fn">say</span> <span class="str">"Gravável"</span>      <span class="kw">if</span> -w <span class="tp">$arquivo</span>;   <span class="com"># writable</span>
+<span class="fn">say</span> <span class="str">"Executável"</span>   <span class="kw">if</span> -x <span class="tp">$arquivo</span>;   <span class="com"># executable</span>
+<span class="fn">printf</span> <span class="str">"Tamanho: %d bytes\n"</span>, -s <span class="tp">$arquivo</span> // <span class="num">0</span>;
+
+<span class="com"># Informações do inode (stat)</span>
+<span class="kw">my</span> (<span class="tp">$dev</span>,<span class="tp">$ino</span>,<span class="tp">$mode</span>,<span class="tp">$nlink</span>,<span class="tp">$uid</span>,<span class="tp">$gid</span>,<span class="tp">$rdev</span>,<span class="tp">$size</span>,
+    <span class="tp">$atime</span>,<span class="tp">$mtime</span>,<span class="tp">$ctime</span>) = <span class="fn">stat</span>(<span class="tp">$arquivo</span>);
+<span class="fn">say</span> <span class="str">"Modificado: "</span> . <span class="fn">strftime</span>(<span class="str">"%d/%m/%Y %H:%M"</span>, <span class="fn">localtime</span>(<span class="tp">$mtime</span>));
+
+<span class="com"># Decomposição de caminho</span>
+<span class="fn">say</span> <span class="fn">basename</span>(<span class="tp">$arquivo</span>);          <span class="com"># app.log</span>
+<span class="fn">say</span> <span class="fn">dirname</span>(<span class="tp">$arquivo</span>);           <span class="com"># /var/log</span>
+<span class="fn">say</span> <span class="fn">basename</span>(<span class="tp">$arquivo</span>, <span class="str">'.log'</span>);  <span class="com"># app (sem extensão)</span>
+
+<span class="com"># Criar estrutura de diretórios (equivale a mkdir -p)</span>
+<span class="fn">make_path</span>(<span class="str">'/tmp/app/uploads/2024'</span>);
+
+<span class="com"># Copiar e mover</span>
+<span class="fn">copy</span>(<span class="tp">$arquivo</span>, <span class="str">'/tmp/app.log.bak'</span>);
+<span class="fn">move</span>(<span class="str">'/tmp/app.log.bak'</span>, <span class="str">'/tmp/bak/'</span>);
+
+<span class="com"># Caminho portável (Windows/Unix)</span>
+<span class="kw">my</span> <span class="tp">$path</span> = <span class="tp">File::Spec</span>-&gt;<span class="fn">catfile</span>(<span class="str">'base'</span>, <span class="str">'sub'</span>, <span class="str">'arquivo.txt'</span>);
+
+<span class="com"># Listar diretório com glob</span>
+<span class="kw">my</span> <span class="tp">@logs</span> = <span class="fn">glob</span>(<span class="str">"/var/log/*.log"</span>);
+<span class="fn">say</span> <span class="str">"$_ (" . (-s $_) . " bytes)"</span> <span class="kw">for</span> <span class="tp">@logs</span>;</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>WALL, Larry; CHRISTIANSEN, Tom; ORWANT, Jon. <strong>Programming Perl</strong>. 4. ed. O'Reilly Media, 2000. Capítulo 16 (processos) e Capítulo 9 (fileio).</li>
+            <li>PERL FOUNDATION. <strong>Getopt::Long — Extended processing of command line options</strong>. Perldoc. Disponível em: <a href="https://perldoc.perl.org/Getopt::Long" target="_blank" rel="noopener">https://perldoc.perl.org/Getopt::Long</a></li>
+            <li>PERL FOUNDATION. <strong>perlop — Perl operators and precedence</strong>. Disponível em: <a href="https://perldoc.perl.org/perlop" target="_blank" rel="noopener">https://perldoc.perl.org/perlop</a></li>
+            <li>PERL FOUNDATION. <strong>perlipc — Perl interprocess communication</strong>. Disponível em: <a href="https://perldoc.perl.org/perlipc" target="_blank" rel="noopener">https://perldoc.perl.org/perlipc</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/automacao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Automação</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Web com Mojolicious</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Avançado</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A preguiça de fazer uma ferramenta boa agora poupa horas de trabalho manual depois." — Larry Wall, sobre as virtudes do programador
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

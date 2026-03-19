@@ -1,0 +1,269 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="description" content="LSTM (Long Short-Term Memory): Entenda como funcionam os portões de esquecimento, entrada e saída para resolver o problema de memória das RNNs.">
+    
+    <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/card.css" />
+    
+    <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+    <link rel="preload" href="/js/main.js" as="script" />
+    <script src="/js/main.js" defer></script>
+    <title>LSTM | Site Guia</title>
+    
+    <!--
+        .theory-header {
+            /* Purple to Indigo Gradient */
+            background: linear-gradient(135deg, #6d28d9 0%, #4338ca 100%);
+            padding: 40px;
+            border-radius: 12px;
+            text-align: center;
+            border-bottom: 4px solid #8b5cf6;
+            margin-bottom: 30px;
+            color: white;
+            box-shadow: 0 4px 15px rgba(109, 40, 217, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .lstm-icon { 
+            font-size: 4rem; margin-bottom: 10px; display: block; 
+            filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.8));
+        }
+
+        /* Container do Diagrama */
+        .lstm-container {
+            background: #0f172a;
+            border: 1px solid #6d28d9;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px auto;
+            position: relative;
+            width: 100%;
+            max-width: 700px;
+            aspect-ratio: 16/9;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* Linhas de Fluxo */
+        .flow-line { fill: none; stroke: #94a3b8; stroke-width: 2; stroke-linecap: round; }
+        .cell-state-line { stroke: #fbbf24; stroke-width: 4; } /* A Esteira Rolante (Dourada) */
+
+        /* Operações Matemáticas (Nós) */
+        .op-node { fill: #1e293b; stroke: #cbd5e1; stroke-width: 1; rx: 4; }
+        .op-text { fill: #fff; font-size: 10px; font-weight: bold; text-anchor: middle; font-family: sans-serif; }
+        
+        /* Portões (Gates) */
+        .gate-box { 
+            fill: #4c1d95; stroke: #8b5cf6; stroke-width: 2; 
+            filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.3));
+        }
+        .gate-label { fill: #d8b4fe; font-size: 10px; text-anchor: middle; }
+
+        /* Animação do Fluxo de Informação */
+        .info-particle {
+            fill: #fbbf24; r: 3;
+            filter: drop-shadow(0 0 4px #fbbf24);
+        }
+
+        /* Partícula de Esquecimento (Vermelha) */
+        .forget-particle { fill: #ef4444; }
+
+        /* Animação Cell State (Constante) */
+        .anim-cell-state { animation: flowRight 4s linear infinite; }
+        @keyframes flowRight {
+            0% { offset-distance: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { offset-distance: 100%; opacity: 0; }
+        }
+
+        /* Cards dos Portões */
+        .gates-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px; margin-top: 20px;
+        }
+        .gate-card {
+            background: #172554; padding: 15px; border-radius: 8px; border-top: 3px solid;
+            position: relative; overflow: hidden;
+        }
+        .gate-card h4 { margin-top: 0; display: flex; align-items: center; justify-content: space-between; }
+
+        /* Cores Específicas */
+        .g-forget { border-color: #ef4444; } /* Vermelho */
+        .g-input { border-color: #10b981; }  /* Verde */
+        .g-output { border-color: #3b82f6; } /* Azul */
+
+        /* Code Block */
+        .code-block {
+            font-family: 'Consolas', monospace;
+            background: #020617;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #4338ca;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+        .kw { color: #a78bfa; } 
+        .func { color: #818cf8; } 
+        .com { color: #64748b; font-style: italic; }
+
+    -->
+</head>
+<body>
+
+    <div class="nav-overlay"></div>
+    <div class="nav-interno-overlay"></div>
+    <button class="menu-toggle"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+    <button class="menu-interno-toggle"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+
+    <div data-include="/html/Site/partials/header.html"></div>
+
+    <main class="main-content">
+        <div class="content-area animacao-entrada">
+            <div class="Colored_border_anim_card_box"><p><strong>LSTM</strong></p></div>
+            <h2 class="section-title">Visao Geral</h2>
+
+            <div class="theory-header">
+                <span class="lstm-icon">🔐</span>
+                <h1 class="m-0">LSTM</h1>
+                <p class="m-0 opacity-90">Long Short-Term Memory: A cura para a amnésia das redes neurais.</p>
+            </div>
+
+            <section id="cellstate" class="mt-4">
+                <h2 id="h2-intro">1. A Superestrada da Informação</h2>
+                <div class="card-standard">
+                    <p>O segredo da LSTM é o <strong>Cell State</strong> (Estado da Célula). Imagine uma esteira rolante que atravessa toda a rede.</p>
+                    <p class="mt-2 text-gray-300">
+                        A informação pode viajar por essa esteira praticamente inalterada. Isso permite que a rede "lembre" de algo que aconteceu há 1000 passos atrás (como o gênero do sujeito em um texto longo) sem que o sinal se perca.
+                    </p>
+                </div>
+            </section>
+
+            <section id="visualizacao" class="mt-5">
+                <h2 id="h2-viz">2. Por dentro da Célula</h2>
+                <p>Observe como a linha superior (Dourada) flui direto, sofrendo apenas pequenas intervenções dos portões inferiores.</p>
+
+                <div class="lstm-container">
+                    <svg width="100%" height="100%" viewBox="0 0 700 350">
+                        
+                        <text x="100" y="320" fill="#94a3b8" font-size="12" text-anchor="middle">Input (xt)</text>
+                        <text x="40" y="250" fill="#94a3b8" font-size="12" text-anchor="middle">Prev Hidden (h-1)</text>
+
+                        <line x1="0" y1="50" x2="700" y2="50" class="cell-state-line" />
+                        <text x="50" y="35" fill="#fbbf24" font-size="12">Cell State (Ct-1)</text>
+
+                        <circle r="4" class="info-particle anim-cell-state">
+                            <animateMotion path="M 0 50 L 700 50" dur="5s" repeatCount="indefinite" />
+                        </circle>
+
+                        <path d="M 100 300 L 100 250 L 150 250" class="flow-line" />
+                        <path d="M 50 250 L 150 250" class="flow-line" />
+
+                        <line x1="150" y1="250" x2="550" y2="250" class="flow-line" />
+                        
+                        <line x1="200" y1="250" x2="200" y2="180" class="flow-line" />
+                        <rect x="180" y="140" width="40" height="30" class="gate-box" />
+                        <text x="200" y="160" class="op-text">σ</text>
+                        <text x="200" y="130" class="gate-label" fill="#ef4444">Forget</text>
+                        
+                        <line x1="200" y1="140" x2="200" y2="65" class="flow-line" />
+                        <circle cx="200" cy="50" r="10" class="op-node" />
+                        <text x="200" y="54" class="op-text">×</text>
+
+                        <line x1="350" y1="250" x2="350" y2="180" class="flow-line" />
+                        <rect x="310" y="140" width="40" height="30" class="gate-box" /> <text x="330" y="160" class="op-text">σ</text>
+                        
+                        <rect x="370" y="140" width="40" height="30" class="gate-box" /> <text x="390" y="160" class="op-text">tanh</text>
+                        <text x="360" y="130" class="gate-label" fill="#10b981">Input</text>
+
+                        <circle cx="360" cy="100" r="8" class="op-node" /> <text x="360" y="104" class="op-text">×</text>
+                        
+                        <line x1="360" y1="100" x2="360" y2="65" class="flow-line" />
+                        <circle cx="360" cy="50" r="10" class="op-node" /> <text x="360" y="54" class="op-text">+</text>
+
+                        <line x1="550" y1="250" x2="550" y2="180" class="flow-line" />
+                        <rect x="530" y="140" width="40" height="30" class="gate-box" />
+                        <text x="550" y="160" class="op-text">σ</text>
+                        <text x="550" y="130" class="gate-label" fill="#3b82f6">Output</text>
+
+                        <path d="M 450 50 Q 480 100 550 100" class="flow-line" />
+                        <rect x="530" y="80" width="40" height="20" class="gate-box" /> <text x="550" y="95" class="op-text">tanh</text>
+
+                        <circle cx="550" cy="115" r="8" class="op-node" /> <text x="550" y="119" class="op-text">×</text>
+
+                        <line x1="550" y1="125" x2="550" y2="300" class="flow-line" />
+                        <text x="550" y="320" fill="#fff" font-size="12" text-anchor="middle">Next Hidden (ht)</text>
+
+                    </svg>
+                </div>
+            </section>
+
+            <section id="gates" class="mt-5">
+                <h2 id="h2-gates">3. As Três Válvulas</h2>
+                <div class="gates-grid">
+                    
+                    <div class="gate-card g-forget">
+                        <h4 class="text-red-400">1. Forget Gate (Esquecimento)</h4>
+                        <p class="text-sm text-gray-400 mt-2">
+                            Decide o que jogar fora da memória antiga.
+                            <br>Ex: "O sujeito da frase mudou, esqueça o gênero antigo."
+                        </p>
+                        <div class="mt-2 text-xs font-mono bg-black p-1 rounded text-red-300">ft = σ(Wf • [h, x])</div>
+                    </div>
+
+                    <div class="gate-card g-input">
+                        <h4 class="text-emerald-400">2. Input Gate (Entrada)</h4>
+                        <p class="text-sm text-gray-400 mt-2">
+                            Decide o que adicionar de novo à memória.
+                            <br>Ex: "Guardar a informação de que o novo sujeito é plural."
+                        </p>
+                        <div class="mt-2 text-xs font-mono bg-black p-1 rounded text-emerald-300">it = σ(Wi • [h, x])</div>
+                    </div>
+
+                    <div class="gate-card g-output">
+                        <h4 class="text-blue-400">3. Output Gate (Saída)</h4>
+                        <p class="text-sm text-gray-400 mt-2">
+                            Decide o que vamos entregar como resultado (Hidden State) agora, baseado na memória filtrada.
+                        </p>
+                        <div class="mt-2 text-xs font-mono bg-black p-1 rounded text-blue-300">ot = σ(Wo • [h, x])</div>
+                    </div>
+
+                </div>
+            </section>
+
+            <section id="codigo" class="mt-5 mb-4">
+                <h2 id="h2-code">4. Keras</h2>
+                <p>Usar uma LSTM é tão simples quanto usar uma RNN comum.</p>
+
+                <div class="code-block">
+                    <span class="kw">from</span> tensorflow.keras <span class="kw">import</span> layers<br><br>
+
+                    <span class="com"># return_sequences=True: Retorna output para cada passo (Seq2Seq)</span><br>
+                    <span class="com"># return_sequences=False: Retorna apenas o último output (Classificação)</span><br><br>
+                    
+                    layer = layers.<span class="func">LSTM</span>(<br>
+                        units=<span class="num">64</span>,<br>
+                        return_sequences=<span class="kw">True</span>,<br>
+                        input_shape=(<span class="num">100</span>, <span class="num">1</span>) <span class="com"># 100 timesteps</span><br>
+                    )
+                </div>
+
+            </section>
+
+            <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>HOCHREITER, Sepp; SCHMIDHUBER, Jurgen. <strong>Long Short-Term Memory</strong>. 1997.</li><li>GOODFELLOW, Ian; BENGIO, Yoshua; COURVILLE, Aaron. <strong>Deep Learning</strong>. MIT Press, 2016.</li><li>GERON, Aurelien. <strong>Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow</strong>. O'Reilly, 2022.</li></ul></div></section>
+            <div class="callout"><p>LSTM melhora memoria de longo prazo em sequencias comparado a RNNs simples.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Portas de memoria ajudam a manter contexto em sequencias longas.</p></div>
+        </div>
+    </main>
+
+    <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

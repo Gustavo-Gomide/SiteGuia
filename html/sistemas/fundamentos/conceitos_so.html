@@ -1,0 +1,228 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Conceitos fundamentais de sistemas operacionais: kernel, espaço de usuário, chamadas de sistema, modo protegido, interrupções e multiprogramação." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Conceitos de SO | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Conceitos de Sistemas Operacionais</h1>
+            <p class="page-subtitle">Kernel, espaço de usuário, syscalls, multiprogramação e interrupções</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um sistema operacional é o software responsável por abstrair o hardware e fornecer uma interface segura e previsível para os programas. Ele se divide em duas camadas fundamentais: o <code class="code-inline">kernel</code>, que executa com privilégio total sobre a máquina, e o <strong>espaço de usuário</strong>, onde os processos comuns residem sem acesso direto ao hardware. Essa separação é aplicada pelo próprio processador por meio dos <em>anéis de proteção</em>, garantindo que uma aplicação falha não possa comprometer o sistema inteiro.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — KERNEL E MODO PROTEGIDO ═══════════════════ -->
+      <section id="kernel-modo-protegido">
+        <h2 class="section-title">Kernel e Modo Protegido</h2>
+        <div class="section-divider"></div>
+        <p>A arquitetura x86 define quatro anéis de proteção (ring 0 a ring 3). Apenas o ring 0 tem acesso irrestrito a instruções privilegiadas, portas de I/O e gerenciamento de memória. O SO moderno tipicamente usa só ring 0 (kernel) e ring 3 (aplicações), deixando os ring 1 e 2 historicamente para drivers de alguns sistemas legados.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Nível</th>
+                <th>Nome</th>
+                <th>Pode fazer</th>
+                <th>Exemplos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Ring 0</td>
+                <td>Kernel Mode</td>
+                <td>Qualquer instrução; acesso direto a hardware, memória física, I/O</td>
+                <td>Kernel Linux, Windows NT Kernel</td>
+              </tr>
+              <tr>
+                <td>Ring 1</td>
+                <td>Driver Legacy</td>
+                <td>Instruções de E/S limitadas; sem acesso direto a memória física</td>
+                <td>Drivers antigos OS/2, VMware ring-1</td>
+              </tr>
+              <tr>
+                <td>Ring 2</td>
+                <td>Driver Legacy</td>
+                <td>Similar ao ring 1, maior restrição que ring 0</td>
+                <td>Raramente usado em SO modernos</td>
+              </tr>
+              <tr>
+                <td>Ring 3</td>
+                <td>User Mode</td>
+                <td>Instruções não-privilegiadas; precisa de syscall para acessar recursos</td>
+                <td>Todas as aplicações de usuário</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A <strong>proteção de memória</strong> é aplicada pela MMU (Memory Management Unit): cada processo enxerga apenas seu próprio espaço de endereçamento virtual. Tentativas de acesso fora desse espaço geram uma <em>page fault</em> ou <em>segmentation fault</em>, que o kernel captura e normalmente encerra o processo ofensor.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — SYSCALLS ═══════════════════ -->
+      <section id="syscalls">
+        <h2 class="section-title">Chamadas de Sistema (Syscalls)</h2>
+        <div class="section-divider"></div>
+        <p>Uma syscall é o mecanismo pelo qual um programa em ring 3 solicita um serviço ao kernel. O processador realiza um <em>trap</em> — transição controlada para ring 0 — via instrução <code class="code-inline">syscall</code> (x86-64) ou <code class="code-inline">int 0x80</code> (x86 legado). Após executar o serviço, o kernel retorna ao espaço do usuário restaurando o estado dos registradores.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Fluxo de uma chamada read() — pseudocódigo</div>
+          <pre class="code-block">/* Userspace */
+ssize_t n = read(fd, buf, 128);   // wrapper da libc
+
+// A libc faz:
+//   RAX = 0  (número da syscall read no Linux x86-64)
+//   RDI = fd
+//   RSI = buf
+//   RDX = 128
+//   syscall          ← trap para ring 0
+
+/* Kernel */
+// Salva registradores do processo
+// Despacha para sys_read() via tabela syscall_table[]
+// Copia dados do buffer do kernel para buf do usuário
+// Restaura registradores, retorna para ring 3
+
+/* De volta ao userspace */
+// RAX contém bytes lidos (ou -errno em caso de erro)</pre>
+        </div>
+        <p>A tabela abaixo lista as syscalls POSIX mais comuns e suas funções:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Syscall</th>
+                <th>Número (x86-64)</th>
+                <th>Descrição</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><code class="code-inline">read</code></td><td>0</td><td>Lê bytes de um descritor de arquivo</td></tr>
+              <tr><td><code class="code-inline">write</code></td><td>1</td><td>Escreve bytes em um descritor de arquivo</td></tr>
+              <tr><td><code class="code-inline">open</code></td><td>2</td><td>Abre ou cria um arquivo, retorna fd</td></tr>
+              <tr><td><code class="code-inline">fork</code></td><td>57</td><td>Cria processo filho duplicando o pai</td></tr>
+              <tr><td><code class="code-inline">execve</code></td><td>59</td><td>Substitui imagem do processo por novo programa</td></tr>
+              <tr><td><code class="code-inline">exit</code></td><td>60</td><td>Encerra o processo com código de saída</td></tr>
+              <tr><td><code class="code-inline">mmap</code></td><td>9</td><td>Mapeia arquivo ou memória anônima no espaço virtual</td></tr>
+              <tr><td><code class="code-inline">brk</code></td><td>12</td><td>Ajusta o final do segmento de dados (heap)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — MULTIPROGRAMAÇÃO ═══════════════════ -->
+      <section id="multiprogramacao">
+        <h2 class="section-title">Multiprogramação e Multitarefa</h2>
+        <div class="section-divider"></div>
+        <p><strong>Multiprogramação</strong> significa manter vários programas na memória ao mesmo tempo, aproveitando o tempo que um processo fica bloqueado em I/O para executar outro. <strong>Time-sharing</strong> vai além: divide o processador em fatias de tempo (<em>time slices</em>) e alterna entre processos tão rápido que o usuário percebe paralelismo. A diferença entre <strong>processo</strong> e <strong>thread</strong> é que um processo tem espaço de memória isolado, enquanto threads dentro do mesmo processo compartilham memória.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Modelo</th>
+                <th>Descrição</th>
+                <th>Preempção</th>
+                <th>Exemplos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Batch</td>
+                <td>Executa um job por vez até o fim</td>
+                <td>Nenhuma</td>
+                <td>IBM OS/360 Job Control</td>
+              </tr>
+              <tr>
+                <td>Multiprogramação</td>
+                <td>Vários jobs na memória; CPU troca ao bloquear</td>
+                <td>Por I/O block</td>
+                <td>CTSS, OS/MFT</td>
+              </tr>
+              <tr>
+                <td>Multitarefa Cooperativa</td>
+                <td>Processo voluntariamente cede a CPU</td>
+                <td>Voluntária</td>
+                <td>Windows 3.x, Mac OS 9</td>
+              </tr>
+              <tr>
+                <td>Multitarefa Preemptiva</td>
+                <td>Kernel interrompe processo ao fim do time slice</td>
+                <td>Por timer interrupt</td>
+                <td>Linux, Windows NT, macOS</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — INTERRUPÇÕES ═══════════════════ -->
+      <section id="interrupcoes">
+        <h2 class="section-title">Interrupções e Exceções</h2>
+        <div class="section-divider"></div>
+        <p>Interrupções são sinais assíncronos que suspendem a execução corrente e desviam o processador para uma rotina de tratamento (<em>Interrupt Service Routine</em> — ISR). O kernel mantém uma tabela de descritores de interrupção (<code class="code-inline">IDT</code> em x86) que mapeia cada número de vetor para o endereço da ISR correspondente.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Interrupções de Hardware</h3>
+            <p>Originadas por dispositivos físicos: teclado, disco, placa de rede, timer. São assíncronas em relação ao fluxo do programa. O controlador de interrupções (APIC) serializa e encaminha ao processador.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Interrupções de Software (Traps)</h3>
+            <p>Geradas intencionalmente por instruções como <code class="code-inline">int 0x80</code> ou <code class="code-inline">syscall</code>. São síncronas — acontecem exatamente no ponto onde a instrução é executada. Usadas para implementar chamadas de sistema.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Exceções</h3>
+            <p>Condições de erro detectadas pelo próprio processador: divisão por zero, acesso inválido à memória (page fault), instrução ilegal. O kernel decide se o processo pode se recuperar ou deve ser encerrado (sinal SIGSEGV, SIGFPE, etc.).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">IDT / IVT</h3>
+            <p>A <strong>Interrupt Descriptor Table</strong> (modo protegido) ou <strong>Interrupt Vector Table</strong> (modo real) contém até 256 entradas, cada uma apontando para uma ISR. O kernel preenche essa tabela durante a inicialização e protege suas entradas de modificação pelo userspace.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Para aprofundar, veja também
+          <a href="/html/sistemas/fundamentos/chamadas_sistema.html">Chamadas de Sistema</a> e
+          <a href="/html/sistemas/fundamentos/estrutura_so.html">Estrutura de SO</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O kernel é o único software que roda sem nenhuma proteção — por isso ele precisa ser o mais confiável de todos."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

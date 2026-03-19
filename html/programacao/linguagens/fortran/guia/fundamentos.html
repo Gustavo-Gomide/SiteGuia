@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do Fortran: tipos de dados, variáveis, operadores, controle de fluxo (DO, IF, SELECT CASE), I/O formatado e subprogramas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — Fundamentos</h1>
+          <p>Os fundamentos do Fortran moderno (Fortran 90+) incluem tipos numéricos de precisão selecionável, arrays com operações vetorizadas nativas, controle de fluxo estruturado, I/O formatado poderoso e subprogramas com interfaces explícitas — tudo com <code>implicit none</code> para eliminar erros de variáveis implícitas.</p>
+        </div>
+        <p class="intro-highlight">
+          O pior hábito herdado do FORTRAN antigo é omitir <code>implicit none</code>: qualquer variável começando com I–N era automaticamente integer, demais eram real. Isso causou o <strong>colapso da missão Mars Climate Orbiter em 1999</strong> — uma unidade em libra-força·segundo, outra em Newton·segundo. <code>implicit none</code> obriga declaração explícita e é não-negociável em Fortran moderno.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Tipos de Dados e KIND</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos numéricos com precisão controlada via KIND</div>
+          <pre class="example">program tipos_dados
+    use iso_fortran_env   <span class="com">! constantes portáveis de KIND</span>
+    implicit none
+
+    <span class="com">! Inteiros</span>
+    integer(int8)  :: i8  = 127_int8
+    integer(int16) :: i16 = 32767_int16
+    integer(int32) :: i32 = 2147483647_int32
+    integer(int64) :: i64 = 9223372036854775807_int64
+
+    <span class="com">! Reais</span>
+    real(real32) :: r32 = 3.14_real32   <span class="com">! single precision (4 bytes)</span>
+    real(real64) :: r64 = 3.14_real64   <span class="com">! double precision (8 bytes)</span>
+    real(real128):: r128 = 3.14_real128 <span class="com">! quad precision (se disponível)</span>
+
+    <span class="com">! Complexo</span>
+    complex(real64) :: c = (1.0_real64, -2.5_real64)
+
+    <span class="com">! Lógico</span>
+    logical :: verdade = .true.
+    logical :: falso   = .false.
+
+    <span class="com">! Caractere</span>
+    character(len=50) :: nome = <span class="str">"Fortran Moderno"</span>
+    character(len=:), allocatable :: dinamico
+
+    <span class="com">! Selecionar KIND portavelmente</span>
+    integer, parameter :: dp = selected_real_kind(15, 307)
+    real(dp) :: pi = 3.14159265358979323846_dp
+
+    print *, <span class="str">"Precisão dp:"</span>, precision(pi), <span class="str">"dígitos"</span>
+    print *, <span class="str">"Pi ="</span>, pi
+
+end program tipos_dados</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arrays">Arrays — Operações Vetorizadas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Arrays estáticos, dinâmicos e operações intrínsecas</div>
+          <pre class="example">program arrays_fortran
+    implicit none
+    integer, parameter :: N = 5
+    real :: a(N), b(N), c(N)
+    real, allocatable :: d(:), matriz(:,:)
+    integer :: i
+
+    <span class="com">! Inicialização de array</span>
+    a = [1.0, 2.0, 3.0, 4.0, 5.0]
+    b = [(real(i)*2.0, i=1,N)]   <span class="com">! array constructor com loop implícito</span>
+
+    <span class="com">! Operações vetorizadas — sem loop explícito</span>
+    c = a + b
+    c = a * b
+    c = sqrt(a)       <span class="com">! aplicada elemento a elemento</span>
+    c = a ** 2
+
+    <span class="com">! Slicing — porções do array</span>
+    print *, a(2:4)            <span class="com">! elementos 2, 3, 4</span>
+    print *, a(1:N:2)          <span class="com">! elementos 1, 3, 5 (stride 2)</span>
+    a(1:3) = 0.0               <span class="com">! atribuir porção</span>
+
+    <span class="com">! Funções intrínsecas de array</span>
+    print *, sum(a)            <span class="com">! soma todos</span>
+    print *, product(a)        <span class="com">! produto</span>
+    print *, maxval(a)         <span class="com">! máximo</span>
+    print *, minloc(a)         <span class="com">! índice do mínimo</span>
+    print *, size(a)           <span class="com">! tamanho</span>
+    print *, shape(a)          <span class="com">! forma (vetor de dimensões)</span>
+
+    <span class="com">! Array dinâmico</span>
+    allocate(d(10))
+    d = 0.0
+    d(5) = 42.0
+    deallocate(d)
+
+    <span class="com">! Matriz 2D</span>
+    allocate(matriz(3,4))
+    matriz = 0.0
+    matriz(1,:) = [1.0, 2.0, 3.0, 4.0]   <span class="com">! linha 1</span>
+    matriz(:,2) = [10.0, 20.0, 30.0]      <span class="com">! coluna 2</span>
+    print *, transpose(matriz)
+    deallocate(matriz)
+
+end program arrays_fortran</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="controle-fluxo">Controle de Fluxo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">DO, IF/THEN/ELSE, SELECT CASE e WHERE</div>
+          <pre class="example">program controle
+    implicit none
+    real :: x
+    integer :: i, n
+
+    x = 7.5
+    n = 10
+
+    <span class="com">! IF / THEN / ELSE</span>
+    if (x > 0.0) then
+        print *, <span class="str">"Positivo"</span>
+    else if (x < 0.0) then
+        print *, <span class="str">"Negativo"</span>
+    else
+        print *, <span class="str">"Zero"</span>
+    end if
+
+    <span class="com">! DO loop padrão (com stride)</span>
+    do i = 1, n
+        print *, i
+    end do
+
+    do i = 10, 1, -1   <span class="com">! decrescente, stride -1</span>
+        print *, i
+    end do
+
+    <span class="com">! DO WHILE</span>
+    i = 1
+    do while (i <= 5)
+        print *, i
+        i = i + 1
+    end do
+
+    <span class="com">! EXIT e CYCLE (equivalentes a break/continue)</span>
+    outer: do i = 1, 10
+        if (i == 3) cycle outer   <span class="com">! pula para próxima iteração</span>
+        if (i == 7) exit outer    <span class="com">! sai do loop</span>
+        print *, i
+    end do outer
+
+    <span class="com">! SELECT CASE</span>
+    select case (nint(x))
+        case (1:5)
+            print *, <span class="str">"Entre 1 e 5"</span>
+        case (6, 7, 8)
+            print *, <span class="str">"Entre 6 e 8"</span>
+        case default
+            print *, <span class="str">"Outro"</span>
+    end select
+
+    <span class="com">! WHERE — condicional vetorizada sobre arrays</span>
+    real :: v(5) = [1.0, -2.0, 3.0, -4.0, 5.0]
+    real :: resultado(5)
+    where (v > 0.0)
+        resultado = sqrt(v)     <span class="com">! sqrt só onde v > 0</span>
+    elsewhere
+        resultado = 0.0
+    end where
+    print *, resultado
+
+end program controle</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="subprogramas">Subprogramas — Funções e Subrotinas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Funções, subrotinas e interface explícita</div>
+          <pre class="example">module matematica
+    implicit none
+    private
+    public :: fatorial, soma_array, swap
+
+    integer, parameter :: dp = selected_real_kind(15, 307)
+
+contains
+
+    <span class="com">! Função — retorna valor</span>
+    pure integer function fatorial(n) result(f)
+        integer, intent(in) :: n  <span class="com">! intent: in/out/inout</span>
+        integer :: i
+        if (n < 0) error stop <span class="str">"fatorial negativo"</span>
+        f = 1
+        do i = 2, n
+            f = f * i
+        end do
+    end function fatorial
+
+    <span class="com">! Função elemental — aplicada elemento a elemento em arrays</span>
+    elemental real(dp) function soma_array(a, b)
+        real(dp), intent(in) :: a, b
+        soma_array = a + b
+    end function soma_array
+
+    <span class="com">! Subrotina — modifica argumentos via intent(out) / intent(inout)</span>
+    subroutine swap(a, b)
+        real, intent(inout) :: a, b
+        real :: temp
+        temp = a
+        a    = b
+        b    = temp
+    end subroutine swap
+
+end module matematica
+
+program principal
+    use matematica
+    implicit none
+    real :: x = 3.0, y = 7.0
+    real :: v(5) = [1.0, 2.0, 3.0, 4.0, 5.0]
+    real :: w(5) = [10.0, 20.0, 30.0, 40.0, 50.0]
+
+    print *, fatorial(10)
+    print *, soma_array(v, w)   <span class="com">! elemental: aplica a cada par</span>
+    call swap(x, y)
+    print *, x, y               <span class="com">! 7.0 3.0</span>
+
+end program principal</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="io">I/O Formatado</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Leitura e escrita em arquivos e console</div>
+          <pre class="example">program io_exemplo
+    implicit none
+    integer :: unit = 10, ios, i
+    real :: x
+    character(len=100) :: linha
+
+    <span class="com">! Escrita formatada no console (unit = *)</span>
+    write(*, '(A, F10.4)') <span class="str">"Valor: "</span>, 3.14159
+    write(*, '(I5, 3F8.2)') 42, 1.0, 2.0, 3.0
+    write(*, '(A, I0, A)') <span class="str">"Loop "</span>, 5, <span class="str">" vezes"</span>
+
+    <span class="com">! Descritores de formato</span>
+    <span class="com">! A   — caractere</span>
+    <span class="com">! I   — inteiro (I5 = campo de 5 dígitos)</span>
+    <span class="com">! F   — ponto flutuante (F10.4 = 10 chars, 4 decimais)</span>
+    <span class="com">! E   — notação científica (E12.4)</span>
+    <span class="com">! G   — F ou E dependendo do valor</span>
+    <span class="com">! X   — espaço (3X = 3 espaços)</span>
+    <span class="com">! /   — nova linha dentro do formato</span>
+
+    <span class="com">! Abrir e escrever arquivo</span>
+    open(unit=unit, file=<span class="str">"dados.txt"</span>, status=<span class="str">"replace"</span>, action=<span class="str">"write"</span>, &
+         iostat=ios)
+    if (ios /= 0) error stop <span class="str">"Erro ao abrir arquivo"</span>
+
+    do i = 1, 5
+        write(unit, '(I3, F12.6)') i, real(i) * 1.5
+    end do
+    close(unit)
+
+    <span class="com">! Ler arquivo</span>
+    open(unit=unit, file=<span class="str">"dados.txt"</span>, status=<span class="str">"old"</span>, action=<span class="str">"read"</span>)
+    do
+        read(unit, *, iostat=ios) i, x
+        if (ios /= 0) exit         <span class="com">! fim de arquivo ou erro</span>
+        print *, i, x
+    end do
+    close(unit)
+
+end program io_exemplo</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>METCALF, M.; REID, J.; COHEN, M. <strong>Modern Fortran Explained</strong>. 5. ed. Oxford University Press, 2018.</li>
+            <li>CHAPMAN, S. J. <strong>Fortran for Scientists and Engineers</strong>. 4. ed. McGraw-Hill, 2017.</li>
+            <li>GNU Project. <strong>GNU Fortran Compiler Documentation</strong>. Disponível em: &lt;https://gcc.gnu.org/onlinedocs/gfortran/&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fortran Avançado</a></li>
+          <li><a href="../aplicacoes/computacao_cientifica.html"><span data-svg="seta-direita" aria-hidden="true"></span> Computação Científica</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O sistema de <strong>intent</strong> do Fortran (<code>in</code>, <code>out</code>, <code>inout</code>) não é apenas documentação — o compilador usa essa informação para otimizações. Um argumento <code>intent(in)</code> não pode ser modificado, o que permite ao compilador passar por valor, colocar em registrador ou vetorizar com muito mais liberdade do que C onde tudo pode potencialmente ser um alias de ponteiro.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

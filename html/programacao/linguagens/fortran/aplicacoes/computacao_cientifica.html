@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fortran Computação Científica: integração numérica, EDOs com Runge-Kutta, FFT com FFTW, álgebra linear com LAPACK, leitura de NetCDF e análise de dados científicos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Fortran — Computação Científica | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Fortran &mdash; Computação Científica</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="fortran" aria-hidden="true"></span></div>
+          <h1>Fortran — Computação Científica</h1>
+          <p>Fortran é a língua materna da computação científica: modelos climáticos globais (ECMWF, WRF, NEMO), códigos de física de partículas (GEANT4 usa Fortran em seu núcleo), simulações CFD (OpenFOAM tem componentes Fortran), dinâmica molecular e astrofísica — todos têm Fortran no coração do cálculo intensivo.</p>
+        </div>
+        <p class="intro-highlight">
+          Um dos maiores segredos da ciência computacional: <strong>a maioria dos pacotes "Python para ciência"</strong> (SciPy, NumPy, Pandas) chama BLAS/LAPACK escritos em Fortran para as operações mais pesadas. Python é apenas a interface; o trabalho duro é feito por código Fortran compilado dos anos 1970–80 que foi otimizado por décadas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="integracao">Integração Numérica</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Métodos de integração: Simpson, Gauss-Legendre</div>
+          <pre class="example">module integracao_mod
+    implicit none
+    integer, parameter :: dp = selected_real_kind(15, 307)
+
+contains
+
+    <span class="com">! Regra de Simpson 1/3 composta</span>
+    real(dp) function simpson(f, a, b, n) result(integral)
+        procedure(real(dp)) :: f
+        real(dp), intent(in) :: a, b
+        integer,  intent(in) :: n      <span class="com">! n deve ser par</span>
+        real(dp) :: h, x
+        integer :: i
+
+        if (mod(n, 2) /= 0) error stop <span class="str">"n deve ser par"</span>
+        h = (b - a) / n
+        integral = f(a) + f(b)
+        do i = 1, n-1
+            x = a + i * h
+            if (mod(i, 2) == 0) then
+                integral = integral + 2.0_dp * f(x)
+            else
+                integral = integral + 4.0_dp * f(x)
+            end if
+        end do
+        integral = integral * h / 3.0_dp
+    end function simpson
+
+    <span class="com">! Quadratura Gaussiana (5 pontos)</span>
+    real(dp) function gauss5(f, a, b) result(integral)
+        procedure(real(dp)) :: f
+        real(dp), intent(in) :: a, b
+
+        <span class="com">! Abscissas e pesos de Gauss-Legendre 5 pontos</span>
+        real(dp), parameter :: x(5) = [ &
+            -0.9061798459386640_dp, -0.5384693101056831_dp, &
+             0.0_dp,                  0.5384693101056831_dp, &
+             0.9061798459386640_dp]
+        real(dp), parameter :: w(5) = [ &
+             0.2369268850561891_dp,  0.4786286704993665_dp, &
+             0.5688888888888889_dp,  0.4786286704993665_dp, &
+             0.2369268850561891_dp]
+        real(dp) :: mid, half
+        integer :: i
+
+        mid  = (a + b) * 0.5_dp
+        half = (b - a) * 0.5_dp
+        integral = 0.0_dp
+        do i = 1, 5
+            integral = integral + w(i) * f(mid + half * x(i))
+        end do
+        integral = integral * half
+    end function gauss5
+
+end module integracao_mod
+
+program demo_integracao
+    use integracao_mod
+    implicit none
+    real(dp) :: result1, result2
+    real(dp), parameter :: PI = 3.14159265358979323846_dp
+
+    <span class="com">! Integrar sin(x) de 0 a pi</span>
+    result1 = simpson(sin_wrapper, 0.0_dp, PI, 1000)
+    result2 = gauss5(sin_wrapper, 0.0_dp, PI)
+    print '(A, F18.14)', <span class="str">"Simpson (n=1000):"</span>, result1   <span class="com">! ≈ 2.0</span>
+    print '(A, F18.14)', <span class="str">"Gauss5:          "</span>, result2
+
+contains
+    real(dp) function sin_wrapper(x) result(y)
+        real(dp), intent(in) :: x
+        y = sin(x)
+    end function sin_wrapper
+end program demo_integracao</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ode">EDOs — Método Runge-Kutta RK4</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pêndulo simples com RK4</div>
+          <pre class="example">module ode_rk4
+    implicit none
+    integer, parameter :: dp = selected_real_kind(15, 307)
+
+contains
+
+    <span class="com">! RK4 para sistema de N EDOs: dy/dt = f(t, y)</span>
+    subroutine rk4_step(f, t, y, h, y_new, n)
+        integer,  intent(in) :: n
+        real(dp), intent(in) :: t, h, y(n)
+        real(dp), intent(out):: y_new(n)
+        interface
+            subroutine f(t, y, dydt, n)
+                import dp
+                integer,  intent(in)  :: n
+                real(dp), intent(in)  :: t, y(n)
+                real(dp), intent(out) :: dydt(n)
+            end subroutine f
+        end interface
+        real(dp) :: k1(n), k2(n), k3(n), k4(n)
+
+        call f(t,             y,             k1, n)
+        call f(t + h/2.0_dp, y + h*k1/2.0_dp, k2, n)
+        call f(t + h/2.0_dp, y + h*k2/2.0_dp, k3, n)
+        call f(t + h,        y + h*k3,         k4, n)
+
+        y_new = y + h * (k1 + 2.0_dp*k2 + 2.0_dp*k3 + k4) / 6.0_dp
+    end subroutine rk4_step
+
+end module ode_rk4
+
+program pendulo_simples
+    use ode_rk4
+    implicit none
+    integer, parameter :: N = 2
+    real(dp) :: t, h, y(N), y_new(N)
+    real(dp), parameter :: tf = 20.0_dp, g = 9.81_dp, L = 1.0_dp
+    integer :: unit = 20
+
+    <span class="com">! Condições iniciais: theta=0.5 rad, omega=0 rad/s</span>
+    y = [0.5_dp, 0.0_dp]; t = 0.0_dp; h = 0.001_dp
+
+    open(unit, file=<span class="str">"pendulo.csv"</span>, status=<span class="str">"replace"</span>)
+    write(unit, *) <span class="str">"t, theta, omega"</span>
+
+    do while (t <= tf)
+        call rk4_step(pendulo_ode, t, y, h, y_new, N)
+        y = y_new; t = t + h
+        if (mod(nint(t / h), 100) == 0) &
+            write(unit, '(3F12.6)') t, y(1), y(2)
+    end do
+    close(unit)
+    print *, <span class="str">"Dados salvos em pendulo.csv"</span>
+
+contains
+    subroutine pendulo_ode(t, y, dydt, n)
+        integer,  intent(in)  :: n
+        real(dp), intent(in)  :: t, y(n)
+        real(dp), intent(out) :: dydt(n)
+        dydt(1) = y(2)
+        dydt(2) = -(g/L) * sin(y(1))
+    end subroutine pendulo_ode
+
+end program pendulo_simples</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="algebra-linear">Álgebra Linear com LAPACK</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Mínimos quadrados e decomposição QR</div>
+          <pre class="example">program minimos_quadrados
+    implicit none
+    integer, parameter :: dp = kind(1.0d0)
+    integer, parameter :: M = 10, N = 3  <span class="com">! M pontos, N parâmetros</span>
+
+    <span class="com">! Ajustar: y = a*x^2 + b*x + c</span>
+    real(dp) :: A(M, N), b(M), coef(N)
+    real(dp) :: x_data(M), y_data(M)
+    real(dp) :: work(1000)
+    integer  :: info, i
+
+    <span class="com">! Dados de exemplo: y ≈ 2*x^2 - 3*x + 1 + ruído</span>
+    x_data = [(real(i-1, dp), i=1,M)]
+    y_data = [1.0_dp, 0.1_dp, 3.2_dp, 9.8_dp, 19.9_dp, &
+              34.2_dp, 53.1_dp, 75.8_dp, 103.0_dp, 134.9_dp]
+
+    <span class="com">! Construir matriz de Vandermonde</span>
+    do i = 1, M
+        A(i, 1) = x_data(i) ** 2
+        A(i, 2) = x_data(i)
+        A(i, 3) = 1.0_dp
+    end do
+    b = y_data
+
+    <span class="com">! DGELS — mínimos quadrados com QR (sobrescreve A e b)</span>
+    call dgels(<span class="str">'N'</span>, M, N, 1, A, M, b, M, work, 1000, info)
+
+    if (info == 0) then
+        coef = b(1:N)
+        print '(A, 3F10.4)', <span class="str">"Coeficientes [a b c]:"</span>, coef
+        print '(A, F10.4)', <span class="str">"Residual norm:"</span>, norm2(b(N+1:M))
+    else
+        print *, <span class="str">"Erro LAPACK:"</span>, info
+    end if
+
+end program minimos_quadrados</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PRESS, W. H. et al. <strong>Numerical Recipes in Fortran 90</strong>. 2. ed. Cambridge University Press, 1996.</li>
+            <li>GOLUB, G. H.; VAN LOAN, C. F. <strong>Matrix Computations</strong>. 4. ed. Johns Hopkins University Press, 2013.</li>
+            <li>HAIRER, E.; NØRSETT, S. P.; WANNER, G. <strong>Solving Ordinary Differential Equations I</strong>. 2. ed. Springer, 1993.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="hpc.html"><span data-svg="seta-direita" aria-hidden="true"></span> HPC e Supercomputação</a></li>
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fortran Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O método Runge-Kutta de 4ª ordem é o <strong>cavalo de batalha das EDOs</strong> científicas: erro local O(h⁵), simples de implementar, robusto para a maioria dos sistemas não-stiff. Para sistemas stiff (constantes de tempo muito diferentes — comum em química e circuitos elétricos), use métodos implícitos como BDF implementados em VODE, LSODA ou DASSL — todos escritos em Fortran.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java para GUI Desktop: JavaFX 21 com FXML, CSS, ObservableList, TableView, Task/Service para concorrencia, e Swing com SwingWorker." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java para GUI Desktop</h1>
+          <p>JavaFX 21 com FXML, injecao de controlador via <code>@FXML</code>, propriedades observaveis, TableView com editable cells, Task e Service para operacoes em background, CSS para estilizacao, e Swing para manutencao de sistemas legados.</p>
+        </div>
+        <p class="intro-highlight">
+          JavaFX e o toolkit moderno para aplicacoes desktop Java. Usa arquitetura MVC natural com FXML como view, separando completamente a logica da apresentacao. Rodavel standalone com JavaFX runtime empacotado via jpackage.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="javafx-basico">JavaFX — Application, Stage e Scene</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + JavaFX &mdash; Application com FXML e controlador injetado</div>
+          <pre class="example"><span class="com">// Ponto de entrada da aplicacao</span>
+<span class="kw">public class</span> <span class="tp">LojaApp</span> <span class="kw">extends</span> <span class="tp">Application</span> {
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">start</span>(<span class="tp">Stage</span> stage) <span class="kw">throws</span> <span class="tp">Exception</span> {
+    <span class="kw">var</span> fxmlLoader = <span class="kw">new</span> <span class="tp">FXMLLoader</span>(
+      <span class="fn">getClass</span>().<span class="fn">getResource</span>(<span class="str">"/views/principal.fxml"</span>));
+    <span class="tp">Parent</span> root = fxmlLoader.<span class="fn">load</span>();
+
+    <span class="kw">var</span> scene = <span class="kw">new</span> <span class="tp">Scene</span>(root, <span class="num">1280</span>, <span class="num">720</span>);
+    scene.<span class="fn">getStylesheets</span>().<span class="fn">add</span>(
+      <span class="fn">getClass</span>().<span class="fn">getResource</span>(<span class="str">"/css/tema.css"</span>).<span class="fn">toExternalForm</span>());
+
+    stage.<span class="fn">setTitle</span>(<span class="str">"Loja Desktop"</span>);
+    stage.<span class="fn">setScene</span>(scene);
+    stage.<span class="fn">setMinWidth</span>(<span class="num">800</span>);
+    stage.<span class="fn">setMinHeight</span>(<span class="num">600</span>);
+    stage.<span class="fn">show</span>();
+  }
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="tp">String</span>[] args) {
+    <span class="fn">launch</span>(args);
+  }
+}
+
+<span class="com">&lt;!-- /views/principal.fxml --&gt;
+&lt;BorderPane xmlns:fx="http://javafx.com/fxml"
+  fx:controller="com.loja.PrincipalController"&gt;
+  &lt;top&gt;
+    &lt;MenuBar&gt;
+      &lt;Menu text="Arquivo"&gt;
+        &lt;MenuItem text="Novo Produto" onAction="#abrirNovoProduto"/&gt;
+        &lt;SeparatorMenuItem/&gt;
+        &lt;MenuItem text="Sair" onAction="#fechar"/&gt;
+      &lt;/Menu&gt;
+    &lt;/MenuBar&gt;
+  &lt;/top&gt;
+  &lt;center&gt;
+    &lt;TableView fx:id="tabelaProdutos" VBox.vgrow="ALWAYS"&gt;
+      &lt;columns&gt;
+        &lt;TableColumn fx:id="colNome"   text="Nome"/&gt;
+        &lt;TableColumn fx:id="colPreco"  text="Preço"/&gt;
+        &lt;TableColumn fx:id="colEstoque" text="Estoque"/&gt;
+      &lt;/columns&gt;
+    &lt;/TableView&gt;
+  &lt;/center&gt;
+&lt;/BorderPane&gt;</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="javafx-controller">Controlador FXML e ObservableList</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + JavaFX &mdash; controlador com TableView, bindings e propriedades</div>
+          <pre class="example"><span class="kw">public class</span> <span class="tp">PrincipalController</span> <span class="kw">implements</span> <span class="tp">Initializable</span> {
+
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">TableView</span>&lt;<span class="tp">Produto</span>&gt;          tabelaProdutos;
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">TableColumn</span>&lt;<span class="tp">Produto</span>, <span class="tp">String</span>&gt;     colNome;
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">TableColumn</span>&lt;<span class="tp">Produto</span>, <span class="tp">BigDecimal</span>&gt; colPreco;
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">TableColumn</span>&lt;<span class="tp">Produto</span>, <span class="tp">Integer</span>&gt;   colEstoque;
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">TextField</span>                     campoBusca;
+  @<span class="at">FXML</span> <span class="kw">private</span> <span class="tp">Label</span>                         lblStatus;
+
+  <span class="kw">private final</span> <span class="tp">ObservableList</span>&lt;<span class="tp">Produto</span>&gt; produtos =
+    <span class="tp">FXCollections</span>.<span class="fn">observableArrayList</span>();
+  <span class="kw">private</span> <span class="tp">FilteredList</span>&lt;<span class="tp">Produto</span>&gt; produtosFiltrados;
+
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">initialize</span>(<span class="tp">URL</span> url, <span class="tp">ResourceBundle</span> rb) {
+    <span class="com">// Mapeia propriedades para as colunas</span>
+    colNome   .<span class="fn">setCellValueFactory</span>(<span class="kw">new</span> <span class="tp">PropertyValueFactory</span>&lt;&gt;(<span class="str">"nome"</span>));
+    colPreco  .<span class="fn">setCellValueFactory</span>(<span class="kw">new</span> <span class="tp">PropertyValueFactory</span>&lt;&gt;(<span class="str">"preco"</span>));
+    colEstoque.<span class="fn">setCellValueFactory</span>(<span class="kw">new</span> <span class="tp">PropertyValueFactory</span>&lt;&gt;(<span class="str">"estoque"</span>));
+
+    <span class="com">// Coluna de preco: celula customizada com formatacao BR</span>
+    colPreco.<span class="fn">setCellFactory</span>(col -> <span class="kw">new</span> <span class="tp">TableCell</span>&lt;&gt;() {
+      <span class="kw">private final</span> <span class="tp">NumberFormat</span> fmt =
+        <span class="tp">NumberFormat</span>.<span class="fn">getCurrencyInstance</span>(<span class="kw">new</span> <span class="tp">Locale</span>(<span class="str">"pt"</span>, <span class="str">"BR"</span>));
+      @<span class="at">Override</span>
+      <span class="kw">protected void</span> <span class="fn">updateItem</span>(<span class="tp">BigDecimal</span> item, <span class="kw">boolean</span> empty) {
+        <span class="kw">super</span>.<span class="fn">updateItem</span>(item, empty);
+        <span class="fn">setText</span>(empty || item == <span class="kw">null</span> ? <span class="kw">null</span> : fmt.<span class="fn">format</span>(item));
+      }
+    });
+
+    <span class="com">// Filtro em tempo real enquanto digita</span>
+    produtosFiltrados = <span class="kw">new</span> <span class="tp">FilteredList</span>&lt;&gt;(produtos, p -> <span class="kw">true</span>);
+    campoBusca.<span class="fn">textProperty</span>().<span class="fn">addListener</span>((obs, old, novo) -> {
+      produtosFiltrados.<span class="fn">setPredicate</span>(p ->
+        novo == <span class="kw">null</span> || novo.<span class="fn">isBlank</span>()
+          ? <span class="kw">true</span>
+          : p.<span class="fn">getNome</span>().<span class="fn">toLowerCase</span>().<span class="fn">contains</span>(novo.<span class="fn">toLowerCase</span>()));
+    });
+
+    <span class="kw">var</span> sortedList = <span class="kw">new</span> <span class="tp">SortedList</span>&lt;&gt;(produtosFiltrados);
+    sortedList.<span class="fn">comparatorProperty</span>().<span class="fn">bind</span>(tabelaProdutos.<span class="fn">comparatorProperty</span>());
+    tabelaProdutos.<span class="fn">setItems</span>(sortedList);
+
+    <span class="fn">carregarProdutos</span>();
+  }
+
+  <span class="at">@FXML</span>
+  <span class="kw">private void</span> <span class="fn">carregarProdutos</span>() {
+    <span class="com">// Task executa em thread separada, atualiza UI na JavaFX thread</span>
+    <span class="kw">var</span> task = <span class="kw">new</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt;() {
+      @<span class="at">Override</span>
+      <span class="kw">protected</span> <span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt; <span class="fn">call</span>() {
+        <span class="fn">updateMessage</span>(<span class="str">"Carregando produtos..."</span>);
+        <span class="kw">return</span> <span class="tp">ProdutoService</span>.<span class="fn">listarTodos</span>();
+      }
+    };
+
+    task.<span class="fn">setOnSucceeded</span>(e -> {
+      produtos.<span class="fn">setAll</span>(task.<span class="fn">getValue</span>());
+      lblStatus.<span class="fn">setText</span>(produtos.<span class="fn">size</span>() + <span class="str">" produtos carregados"</span>);
+    });
+    task.<span class="fn">setOnFailed</span>(e ->
+      lblStatus.<span class="fn">setText</span>(<span class="str">"Erro: "</span> + task.<span class="fn">getException</span>().<span class="fn">getMessage</span>()));
+
+    lblStatus.<span class="fn">textProperty</span>().<span class="fn">bind</span>(task.<span class="fn">messageProperty</span>());
+    <span class="kw">new</span> <span class="tp">Thread</span>(task, <span class="str">"carregar-produtos"</span>).<span class="fn">start</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="javafx-css">CSS e Temas no JavaFX</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CSS JavaFX &mdash; estilizacao de controles e tema escuro</div>
+          <pre class="example"><span class="com">/* /css/tema.css — JavaFX usa seletores proprios com prefixo .button, .table-view etc. */</span>
+
+.root {
+  -fx-font-family: <span class="str">"Segoe UI"</span>, sans-serif;
+  -fx-font-size: <span class="num">14</span>px;
+  -fx-base: <span class="num">#1e1e2e</span>;          <span class="com">/* variavel usada pelo Modena (tema padrao) */</span>
+  -fx-background: <span class="num">#181825</span>;
+  -fx-control-inner-background: <span class="num">#313244</span>;
+  -fx-text-fill: <span class="num">#cdd6f4</span>;
+}
+
+.button {
+  -fx-background-color: <span class="num">#89b4fa</span>;
+  -fx-text-fill: <span class="num">#1e1e2e</span>;
+  -fx-background-radius: <span class="num">6</span>px;
+  -fx-cursor: hand;
+}
+
+.button:hover {
+  -fx-background-color: <span class="num">#b4befe</span>;
+}
+
+.button:pressed {
+  -fx-scale-x: <span class="num">0.97</span>;
+  -fx-scale-y: <span class="num">0.97</span>;
+}
+
+.table-view {
+  -fx-background-color: <span class="num">#181825</span>;
+  -fx-table-cell-border-color: transparent;
+}
+
+.table-row-cell:odd {
+  -fx-background-color: <span class="num">#1e1e2e</span>;
+}
+
+.table-row-cell:selected {
+  -fx-background-color: <span class="num">#45475a</span>;
+}
+
+.text-field {
+  -fx-background-color: <span class="num">#313244</span>;
+  -fx-text-fill: <span class="num">#cdd6f4</span>;
+  -fx-background-radius: <span class="num">6</span>px;
+  -fx-border-color: <span class="num">#585b70</span>;
+  -fx-border-radius: <span class="num">6</span>px;
+}
+
+<span class="com">/* Pseudo-classe customizada: adicionar via node.pseudoClassStateChanged() */</span>
+.text-field:erro {
+  -fx-border-color: <span class="num">#f38ba8</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="swing">Swing — Manutencao de Sistemas Legados</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Swing &mdash; JFrame, SwingWorker e look-and-feel</div>
+          <pre class="example"><span class="kw">public class</span> <span class="tp">TelaPrincipalSwing</span> {
+
+  <span class="kw">public static void</span> <span class="fn">main</span>(<span class="tp">String</span>[] args) {
+    <span class="com">// SEMPRE iniciar Swing na EDT (Event Dispatch Thread)</span>
+    <span class="tp">SwingUtilities</span>.<span class="fn">invokeLater</span>(<span class="tp">TelaPrincipalSwing</span>::<span class="fn">criarUI</span>);
+  }
+
+  <span class="kw">private static void</span> <span class="fn">criarUI</span>() {
+    <span class="kw">try</span> {
+      <span class="com">// FlatLaf: look-and-feel moderno (import com.formdev.flatlaf.*)</span>
+      <span class="tp">FlatDarkLaf</span>.<span class="fn">setup</span>();
+    } <span class="kw">catch</span> (<span class="tp">Exception</span> e) {
+      <span class="tp">UIManager</span>.<span class="fn">put</span>(<span class="str">"Button.arc"</span>, <span class="num">8</span>);   <span class="com">// fallback</span>
+    }
+
+    <span class="kw">var</span> frame = <span class="kw">new</span> <span class="tp">JFrame</span>(<span class="str">"Loja Desktop"</span>);
+    frame.<span class="fn">setDefaultCloseOperation</span>(<span class="tp">JFrame</span>.<span class="tp">EXIT_ON_CLOSE</span>);
+    frame.<span class="fn">setSize</span>(<span class="num">900</span>, <span class="num">600</span>);
+
+    <span class="com">// Layout principal</span>
+    <span class="kw">var</span> painel = <span class="kw">new</span> <span class="tp">JPanel</span>(<span class="kw">new</span> <span class="tp">BorderLayout</span>(<span class="num">8</span>, <span class="num">8</span>));
+    painel.<span class="fn">setBorder</span>(<span class="tp">BorderFactory</span>.<span class="fn">createEmptyBorder</span>(<span class="num">8</span>, <span class="num">8</span>, <span class="num">8</span>, <span class="num">8</span>));
+
+    <span class="com">// Tabela</span>
+    <span class="kw">var</span> modelo = <span class="kw">new</span> <span class="tp">ProdutoTableModel</span>();
+    <span class="kw">var</span> tabela = <span class="kw">new</span> <span class="tp">JTable</span>(modelo);
+    tabela.<span class="fn">setRowHeight</span>(<span class="num">28</span>);
+    tabela.<span class="fn">getTableHeader</span>().<span class="fn">setReorderingAllowed</span>(<span class="kw">false</span>);
+    painel.<span class="fn">add</span>(<span class="kw">new</span> <span class="tp">JScrollPane</span>(tabela), <span class="tp">BorderLayout</span>.<span class="tp">CENTER</span>);
+
+    <span class="com">// Barra de botoes</span>
+    <span class="kw">var</span> barraBtn = <span class="kw">new</span> <span class="tp">JPanel</span>(<span class="kw">new</span> <span class="tp">FlowLayout</span>(<span class="tp">FlowLayout</span>.<span class="tp">LEFT</span>));
+    <span class="kw">var</span> btnCarregar = <span class="kw">new</span> <span class="tp">JButton</span>(<span class="str">"Carregar"</span>);
+    <span class="kw">var</span> progressBar = <span class="kw">new</span> <span class="tp">JProgressBar</span>();
+    progressBar.<span class="fn">setIndeterminate</span>(<span class="kw">false</span>);
+    barraBtn.<span class="fn">add</span>(btnCarregar);
+    barraBtn.<span class="fn">add</span>(progressBar);
+    painel.<span class="fn">add</span>(barraBtn, <span class="tp">BorderLayout</span>.<span class="tp">SOUTH</span>);
+
+    btnCarregar.<span class="fn">addActionListener</span>(e -> {
+      progressBar.<span class="fn">setIndeterminate</span>(<span class="kw">true</span>);
+      btnCarregar.<span class="fn">setEnabled</span>(<span class="kw">false</span>);
+
+      <span class="com">// SwingWorker — tarefa pesada em background, atualiza EDT ao concluir</span>
+      <span class="kw">new</span> <span class="tp">SwingWorker</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;, <span class="tp">Void</span>&gt;() {
+        @<span class="at">Override</span>
+        <span class="kw">protected</span> <span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt; <span class="fn">doInBackground</span>() {
+          <span class="kw">return</span> <span class="tp">ProdutoService</span>.<span class="fn">listarTodos</span>();   <span class="com">// fora da EDT</span>
+        }
+        @<span class="at">Override</span>
+        <span class="kw">protected void</span> <span class="fn">done</span>() {
+          <span class="kw">try</span> {
+            modelo.<span class="fn">setProdutos</span>(<span class="fn">get</span>());   <span class="com">// de volta na EDT</span>
+          } <span class="kw">catch</span> (<span class="tp">Exception</span> ex) {
+            <span class="tp">JOptionPane</span>.<span class="fn">showMessageDialog</span>(frame, <span class="str">"Erro: "</span> + ex.<span class="fn">getMessage</span>(),
+              <span class="str">"Erro"</span>, <span class="tp">JOptionPane</span>.<span class="tp">ERROR_MESSAGE</span>);
+          } <span class="kw">finally</span> {
+            progressBar.<span class="fn">setIndeterminate</span>(<span class="kw">false</span>);
+            btnCarregar.<span class="fn">setEnabled</span>(<span class="kw">true</span>);
+          }
+        }
+      }.<span class="fn">execute</span>();
+    });
+
+    frame.<span class="fn">add</span>(painel);
+    frame.<span class="fn">setLocationRelativeTo</span>(<span class="kw">null</span>);
+    frame.<span class="fn">setVisible</span>(<span class="kw">true</span>);
+  }
+}</pre>
+        </div>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3><span data-svg="check" aria-hidden="true"></span> JavaFX — Quando usar</h3>
+            <ul>
+              <li>Novos projetos desktop Java</li>
+              <li>Precisa de CSS e animacoes suaves</li>
+              <li>Binding bidirecional de propriedades</li>
+              <li>Charts e graficos nativos (LineChart, BarChart...)</li>
+              <li>WebView com Webkit embutido</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3><span data-svg="xmark" aria-hidden="true"></span> Swing — Quando ainda usar</h3>
+            <ul>
+              <li>Manutencao de sistema legado em Swing</li>
+              <li>IDE plugins (NetBeans, IntelliJ usam Swing)</li>
+              <li>Dependencias corporativas ja em Swing</li>
+              <li>Look-and-feel do SO mais integrado (via FlatLaf)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="packager">Empacotamento com jpackage</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; criar instalador nativo com jpackage (Java 14+)</div>
+          <pre class="example"><span class="com"># Windows: gera .exe ou .msi com JRE embutido
+jpackage \
+  --input target/ \
+  --name "Loja Desktop" \
+  --main-jar loja-desktop.jar \
+  --main-class com.loja.LojaApp \
+  --type msi \
+  --win-dir-chooser \
+  --win-shortcut \
+  --win-menu \
+  --app-version 1.0.0 \
+  --vendor "Minha Empresa" \
+  --icon src/main/resources/icon.ico \
+  --java-options "--add-opens javafx.graphics/com.sun.javafx.css=ALL-UNNAMED"
+
+# Linux: gera .deb ou .rpm
+jpackage --type deb --linux-shortcut ...
+
+# macOS: gera .dmg ou .pkg
+jpackage --type dmg --mac-package-name "Loja Desktop" ...</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ORACLE. <strong>JavaFX Documentation</strong>. Disponível em: &lt;https://openjfx.io/javadoc/21/&gt;. Acesso em: 2025.</li>
+            <li>ANDERSON, Dean; GRUNTZ, Dominik. <strong>Learn JavaFX 17</strong>. Apress, 2022.</li>
+            <li>FLATLAF. <strong>FlatLaf — Flat Look And Feel</strong>. Disponível em: &lt;https://www.formdev.com/flatlaf/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Embedded e IoT</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Jogos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Nunca execute operacoes lentas na EDT (Event Dispatch Thread) — isso trava a interface. Use sempre SwingWorker (Swing) ou Task/Service (JavaFX) para I/O, rede e banco de dados.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript avancado: template literal types, decorators TC39, branded types, variadic tuples e tipo satisfies." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript Avancado</h1>
+          <p>Template literal types, branded/opaque types, decorators TC39, variadic tuples, satisfies operator e patterns de type-level programming.</p>
+        </div>
+        <p class="intro-highlight">
+          O sistema de tipos do TypeScript e Turing-completo: e possivel computar transformacoes de tipos em tempo de compilacao. Template literal types, conditional types e recursive types permitem descrever APIs altamente expressivas sem nenhuma logica em runtime.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="template-literal">Template Literal Types</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Template literal types para rotas e eventos</div>
+          <pre class="example"><span class="com">// Construir tipos de string combinando unions</span>
+<span class="kw">type</span> <span class="tp">Metodo</span>  = <span class="str">"GET"</span> | <span class="str">"POST"</span> | <span class="str">"PUT"</span> | <span class="str">"DELETE"</span>;
+<span class="kw">type</span> <span class="tp">Recurso</span> = <span class="str">"usuarios"</span> | <span class="str">"posts"</span> | <span class="str">"comentarios"</span>;
+
+<span class="kw">type</span> <span class="tp">Rota</span> = <span class="str">`/${<span class="tp">Recurso</span>}`</span> | <span class="str">`/${<span class="tp">Recurso</span>}/${<span class="tp">string</span>}`</span>;
+<span class="com">// "/usuarios" | "/posts" | "/comentarios" | "/usuarios/${string}" | ...</span>
+
+<span class="com">// Tipos de evento derivados de modelo</span>
+<span class="kw">type</span> <span class="tp">EventosCRUD</span>&lt;T <span class="kw">extends</span> <span class="tp">string</span>&gt; =
+  | <span class="str">`${T}:criado`</span>
+  | <span class="str">`${T}:atualizado`</span>
+  | <span class="str">`${T}:deletado`</span>;
+
+<span class="kw">type</span> <span class="tp">Eventos</span> = <span class="tp">EventosCRUD</span>&lt;<span class="str">"usuario"</span>&gt; | <span class="tp">EventosCRUD</span>&lt;<span class="str">"post"</span>&gt;;
+<span class="com">// "usuario:criado" | "usuario:atualizado" | "usuario:deletado"</span>
+<span class="com">// | "post:criado" | "post:atualizado" | "post:deletado"</span>
+
+<span class="com">// Utility types de strings embutidos</span>
+<span class="kw">type</span> <span class="tp">U</span> = <span class="tp">Uppercase</span>&lt;<span class="str">"hello"</span>&gt;;         <span class="com">// "HELLO"</span>
+<span class="kw">type</span> <span class="tp">L</span> = <span class="tp">Lowercase</span>&lt;<span class="str">"WORLD"</span>&gt;;         <span class="com">// "world"</span>
+<span class="kw">type</span> <span class="tp">C</span> = <span class="tp">Capitalize</span>&lt;<span class="str">"hello"</span>&gt;;        <span class="com">// "Hello"</span>
+<span class="kw">type</span> <span class="tp">UC</span> = <span class="tp">Uncapitalize</span>&lt;<span class="str">"Hello"</span>&gt;;    <span class="com">// "hello"</span>
+
+<span class="com">// Construir getter tipado a partir de objeto</span>
+<span class="kw">type</span> <span class="tp">Getters</span>&lt;T&gt; = {
+  [K <span class="kw">in keyof</span> T <span class="kw">as</span> <span class="str">`get${Capitalize&lt;string &amp; K&gt;}`</span>]: () => T[K];
+};
+
+<span class="kw">interface</span> <span class="tp">Pessoa</span> { nome: <span class="tp">string</span>; idade: <span class="tp">number</span> }
+<span class="kw">type</span> <span class="tp">PessoaGetters</span> = <span class="tp">Getters</span>&lt;<span class="tp">Pessoa</span>&gt;;
+<span class="com">// { getNome: () =&gt; string; getIdade: () =&gt; number }</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="branded">Branded / Opaque Types</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Branded types para evitar confusao de primitivos</div>
+          <pre class="example"><span class="com">// Sem branded types: facil confundir IDs!</span>
+<span class="kw">function</span> <span class="fn">transferir</span>(de: <span class="tp">number</span>, para: <span class="tp">number</span>, valor: <span class="tp">number</span>) {}
+<span class="fn">transferir</span>(<span class="num">1001</span>, <span class="num">2002</span>, <span class="num">500</span>); <span class="com">// OK, mas e se inverter de/para?</span>
+
+<span class="com">// Com branded types: o compilador impede confusao</span>
+<span class="kw">declare const</span> <span class="tp">__brand</span>: unique symbol;
+<span class="kw">type</span> <span class="tp">Brand</span>&lt;T, B&gt; = T & { readonly [__brand]: B };
+
+<span class="kw">type</span> <span class="tp">ContaId</span> = <span class="tp">Brand</span>&lt;<span class="tp">number</span>, <span class="str">"ContaId"</span>&gt;;
+<span class="kw">type</span> <span class="tp">Centavos</span> = <span class="tp">Brand</span>&lt;<span class="tp">number</span>, <span class="str">"Centavos"</span>&gt;;
+
+<span class="kw">function</span> <span class="fn">contaId</span>(id: <span class="tp">number</span>): <span class="tp">ContaId</span>  { <span class="kw">return</span> id <span class="kw">as</span> <span class="tp">ContaId</span>; }
+<span class="kw">function</span> <span class="fn">centavos</span>(v: <span class="tp">number</span>): <span class="tp">Centavos</span> { <span class="kw">return</span> v <span class="kw">as</span> <span class="tp">Centavos</span>; }
+
+<span class="kw">function</span> <span class="fn">transferirSeguro</span>(de: <span class="tp">ContaId</span>, para: <span class="tp">ContaId</span>, valor: <span class="tp">Centavos</span>) {}
+
+<span class="kw">const</span> contaA = <span class="fn">contaId</span>(<span class="num">1001</span>);
+<span class="kw">const</span> contaB = <span class="fn">contaId</span>(<span class="num">2002</span>);
+<span class="kw">const</span> valor  = <span class="fn">centavos</span>(<span class="num">50000</span>);
+
+<span class="fn">transferirSeguro</span>(contaA, contaB, valor); <span class="com">// OK</span>
+<span class="com">// transferirSeguro(1001, 2002, 500); // ERRO: number nao e ContaId</span>
+<span class="com">// transferirSeguro(contaA, valor, contaB); // ERRO: ordem errada</span>
+
+<span class="com">// Outro uso: URL validada</span>
+<span class="kw">type</span> <span class="tp">UrlSegura</span> = <span class="tp">Brand</span>&lt;<span class="tp">string</span>, <span class="str">"UrlSegura"</span>&gt;;
+
+<span class="kw">function</span> <span class="fn">validarUrl</span>(input: <span class="tp">string</span>): <span class="tp">UrlSegura</span> {
+  <span class="kw">const</span> url = <span class="kw">new</span> <span class="tp">URL</span>(input); <span class="com">// lanca se invalida</span>
+  <span class="kw">if</span> (!url.href.<span class="fn">startsWith</span>(<span class="str">"https://"</span>)) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">"Precisa ser HTTPS"</span>);
+  <span class="kw">return</span> input <span class="kw">as</span> <span class="tp">UrlSegura</span>;
+}
+
+<span class="kw">function</span> <span class="fn">fetch</span>(url: <span class="tp">UrlSegura</span>) { <span class="com">/* aceita apenas URLs validadas */</span> }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="decorators">Decorators TC39 (TS 5.0+)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Decorators de classe, metodo e accessor</div>
+          <pre class="example"><span class="com">// tsconfig: "experimentalDecorators": false (nuevo TC39)</span>
+<span class="com">// Decorators TC39 nao precisam de experimentalDecorators</span>
+
+<span class="com">// Decorator de classe — registrar num mapa</span>
+<span class="kw">const</span> servicosRegistrados = <span class="kw">new</span> <span class="tp">Map</span>&lt;<span class="tp">string</span>, <span class="kw">new</span> (...args: <span class="tp">unknown</span>[]) => <span class="tp">unknown</span>&gt;();
+
+<span class="kw">function</span> <span class="fn">Servico</span>(nome: <span class="tp">string</span>) {
+  <span class="kw">return</span> <span class="kw">function</span>&lt;T <span class="kw">extends</span> <span class="kw">new</span> (...args: <span class="tp">unknown</span>[]) => <span class="tp">unknown</span>&gt;(
+    alvo: T, ctx: <span class="tp">ClassDecoratorContext</span>
+  ) {
+    servicosRegistrados.<span class="fn">set</span>(nome, alvo);
+    <span class="kw">return</span> alvo;
+  };
+}
+
+<span class="com">// Decorator de metodo — medidor de tempo</span>
+<span class="kw">function</span> <span class="fn">Medido</span>&lt;T&gt;(
+  metodo:  (this: T, ...args: <span class="tp">unknown</span>[]) => <span class="tp">unknown</span>,
+  ctx:     <span class="tp">ClassMethodDecoratorContext</span>
+) {
+  <span class="kw">return function</span>(this: T, ...args: <span class="tp">unknown</span>[]) {
+    <span class="kw">const</span> inicio = performance.now();
+    <span class="kw">const</span> res    = metodo.<span class="fn">apply</span>(this, args);
+    <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`${String(ctx.name)}: ${(performance.now() - inicio).toFixed(2)}ms`</span>);
+    <span class="kw">return</span> res;
+  };
+}
+
+<span class="com">// Decorator de campo — validacao</span>
+<span class="kw">function</span> <span class="fn">NaoVazio</span>&lt;T&gt;(
+  _alvo: <span class="kw">undefined</span>,
+  ctx: <span class="tp">ClassFieldDecoratorContext</span>&lt;T, <span class="tp">string</span>&gt;
+) {
+  <span class="kw">return function</span>(this: T, valor: <span class="tp">string</span>): <span class="tp">string</span> {
+    <span class="kw">if</span> (!valor.<span class="fn">trim</span>()) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`${String(ctx.name)} nao pode ser vazio`</span>);
+    <span class="kw">return</span> valor;
+  };
+}
+
+<span class="at">@Servico</span>(<span class="str">"UsuarioService"</span>)
+<span class="kw">class</span> <span class="tp">UsuarioService</span> {
+  <span class="at">@NaoVazio</span>
+  nome = <span class="str">"Alice"</span>;
+
+  <span class="at">@Medido</span>
+  <span class="fn">buscarTodos</span>() {
+    <span class="kw">return</span> [{ id: <span class="num">1</span>, nome: <span class="str">"Alice"</span> }];
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="satisfies">satisfies Operator e const type params</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript 5.x &mdash; satisfies e const type parameters</div>
+          <pre class="example"><span class="com">// satisfies: valida o tipo sem alargar (widening)</span>
+<span class="kw">type</span> <span class="tp">Config</span> = { host: <span class="tp">string</span>; port: <span class="tp">number</span>; debug?: <span class="tp">boolean</span> };
+
+<span class="kw">const</span> cfg = {
+  host:  <span class="str">"localhost"</span>,
+  port:  <span class="num">3000</span>,
+  debug: <span class="kw">true</span>,
+} <span class="kw">satisfies</span> <span class="tp">Config</span>;
+
+<span class="com">// cfg.host e string (nao string | undefined)</span>
+<span class="fn">console</span>.<span class="fn">log</span>(cfg.host.<span class="fn">toUpperCase</span>()); <span class="com">// OK, TS sabe que host e string</span>
+
+<span class="com">// Sem satisfies: seria widened para Config e host seria string</span>
+<span class="com">// Com as Config: perdemos acesso ao literal "localhost"</span>
+<span class="com">// satisfies e o meio-termo perfeito</span>
+
+<span class="com">// const type parameters (TS 5.0) — preservar literais sem as const</span>
+<span class="kw">function</span> <span class="fn">primeiroOu</span>&lt;<span class="kw">const</span> T <span class="kw">extends</span> <span class="tp">readonly unknown</span>[], D&gt;(arr: T, def: D) {
+  <span class="kw">return</span> arr.length > <span class="num">0</span> ? (arr[<span class="num">0</span>] <span class="kw">as</span> T[<span class="num">0</span>]) : def;
+}
+<span class="kw">const</span> resultado = <span class="fn">primeiroOu</span>([<span class="str">"a"</span>, <span class="str">"b"</span>], <span class="str">"z"</span> <span class="kw">as const</span>);
+<span class="com">// resultado: "a" (literal, nao string)</span>
+
+<span class="com">// NoInfer (TS 5.4) — evitar inferencia indesejada num parametro</span>
+<span class="kw">function</span> <span class="fn">criarEstado</span>&lt;T&gt;(inicial: T, valido: <span class="tp">NoInfer</span>&lt;T&gt;[]): T {
+  <span class="kw">if</span> (!valido.<span class="fn">includes</span>(inicial))
+    <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">"Estado inicial invalido"</span>);
+  <span class="kw">return</span> inicial;
+}
+<span class="fn">criarEstado</span>(<span class="str">"ativo"</span>, [<span class="str">"ativo"</span>, <span class="str">"inativo"</span>, <span class="str">"suspense"</span>]);
+<span class="com">// T inferido de "ativo" (1o param) — NoInfer impede re-inferencia de valido[]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>TypeScript 5.0 Release Notes</strong>. Disponível em: &lt;https://devblogs.microsoft.com/typescript/announcing-typescript-5-0/&gt;. Acesso em: 2025.</li>
+            <li>TOTAL TYPESCRIPT. POCOCK, M. <strong>Extreme Advanced TypeScript</strong>. Disponível em: &lt;https://www.totaltypescript.com/workshops/advanced-typescript&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript: Template Literal Types</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks para TypeScript</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling TypeScript</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Branded types tem custo zero em runtime — sao 100% apagados na compilacao, existindo apenas para o compilador</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e tooling TypeScript: tsx, Vite, Vitest, tsup, type-checking em CI e declarations." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>Ecossistema e Tooling TypeScript</h1>
+          <p>tsx e ts-node para desenvolvimento, tsup para bundling de bibliotecas, Vitest com tipagem, type-check em CI e publicar pacotes com declarations corretas.</p>
+        </div>
+        <p class="intro-highlight">
+          O maior custo de TypeScript e o passo de compilacao. Ferramentas modernas como tsx (esbuild) e Bun executam TS diretamente sem transpilacao observavel. tsup usa esbuild para gerar ESM + CJS em menos de 100ms com .d.ts automatico.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="executando">Executando TypeScript</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>tsc (oficial)</h3>
+            <p>Compilador oficial da Microsoft. Faz type-checking completo. Mais lento, mas o mais correto. Use em CI para <code>tsc --noEmit</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>tsx</h3>
+            <p>Executa arquivos .ts/.tsx via esbuild sem type-check. Ideal para scripts e desenvolvimento. <code>npx tsx src/index.ts</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Bun</h3>
+            <p>Runtime que executa TypeScript nativamente. Zero config. Performance muito superior ao Node.js em muitos benchmarks.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>ts-node</h3>
+            <p>O original, usa swc internamente na versao 10+. Mais configuravel. Use com <code>Node.js --loader ts-node/esm</code>.</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">package.json &mdash; Scripts de desenvolvimento e build</div>
+          <pre class="example">{
+  <span class="str">"name"</span>: <span class="str">"meu-pacote"</span>,
+  <span class="str">"version"</span>: <span class="str">"1.0.0"</span>,
+  <span class="str">"type"</span>: <span class="str">"module"</span>,
+  <span class="str">"main"</span>:    <span class="str">"./dist/index.cjs"</span>,
+  <span class="str">"module"</span>:  <span class="str">"./dist/index.js"</span>,
+  <span class="str">"types"</span>:   <span class="str">"./dist/index.d.ts"</span>,
+  <span class="str">"exports"</span>: {
+    <span class="str">"."</span>: {
+      <span class="str">"import"</span>: <span class="str">"./dist/index.js"</span>,
+      <span class="str">"require"</span>: <span class="str">"./dist/index.cjs"</span>,
+      <span class="str">"types"</span>: <span class="str">"./dist/index.d.ts"</span>
+    }
+  },
+  <span class="str">"scripts"</span>: {
+    <span class="str">"dev"</span>:    <span class="str">"tsx watch src/index.ts"</span>,
+    <span class="str">"build"</span>: <span class="str">"tsup src/index.ts --format esm,cjs --dts --clean"</span>,
+    <span class="str">"check"</span>: <span class="str">"tsc --noEmit"</span>,
+    <span class="str">"test"</span>:  <span class="str">"vitest run"</span>,
+    <span class="str">"ci"</span>:    <span class="str">"npm run check &amp;&amp; npm test"</span>
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="vitest">Vitest com TypeScript</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Vitest &mdash; Testes tipados com expectTypeOf</div>
+          <pre class="example"><span class="com">// src/__tests__/usuario.test.ts</span>
+<span class="kw">import</span> { describe, it, expect, expectTypeOf, vi, beforeEach } <span class="kw">from</span> <span class="str">"vitest"</span>;
+<span class="kw">import</span> { <span class="tp">UsuarioService</span> } <span class="kw">from</span> <span class="str">"../services/usuario.js"</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> <span class="tp">UsuarioSchema</span> = z.<span class="fn">object</span>({ id: z.<span class="fn">string</span>(), nome: z.<span class="fn">string</span>() });
+<span class="kw">type</span> <span class="tp">Usuario</span> = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">UsuarioSchema</span>&gt;;
+
+<span class="fn">describe</span>(<span class="str">"UsuarioService"</span>, () => {
+  <span class="kw">let</span> service: <span class="tp">UsuarioService</span>;
+
+  <span class="fn">beforeEach</span>(() => {
+    service = <span class="kw">new</span> <span class="tp">UsuarioService</span>();
+  });
+
+  <span class="fn">it</span>(<span class="str">"buscarPorId retorna usuario correto"</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> usuario = <span class="kw">await</span> service.<span class="fn">buscarPorId</span>(<span class="str">"1"</span>);
+    <span class="fn">expect</span>(usuario).<span class="fn">toBeDefined</span>();
+    <span class="fn">expect</span>(usuario?.nome).<span class="fn">toBe</span>(<span class="str">"Alice"</span>);
+
+    <span class="com">// Verificar tipo em tempo de compilacao (não em runtime)</span>
+    <span class="fn">expectTypeOf</span>(usuario).<span class="fn">toEqualTypeOf</span>&lt;<span class="tp">Usuario</span> | <span class="kw">null</span>&gt;();
+  });
+
+  <span class="fn">it</span>(<span class="str">"criar lanca erro com dados invalidos"</span>, <span class="kw">async</span> () => {
+    <span class="kw">await</span> <span class="fn">expect</span>(service.<span class="fn">criar</span>({ nome: <span class="str">""</span> })).<span class="fn">rejects</span>.<span class="fn">toThrow</span>();
+  });
+
+  <span class="com">// Mock de modulo</span>
+  <span class="fn">it</span>(<span class="str">"chama repositorio ao criar"</span>, <span class="kw">async</span> () => {
+    <span class="kw">const</span> spy = vi.<span class="fn">spyOn</span>(service[<span class="str">"repo"</span>], <span class="str">"salvar"</span>).<span class="fn">mockResolvedValue</span>({
+      id: <span class="str">"novo-id"</span>, nome: <span class="str">"Bob"</span>,
+    });
+    <span class="kw">await</span> service.<span class="fn">criar</span>({ nome: <span class="str">"Bob"</span> });
+    <span class="fn">expect</span>(spy).<span class="fn">toHaveBeenCalledOnce</span>();
+    <span class="fn">expect</span>(spy).<span class="fn">toHaveBeenCalledWith</span>({ nome: <span class="str">"Bob"</span> });
+  });
+});
+
+<span class="com">// vitest.config.ts</span>
+<span class="com">// import { defineConfig } from "vitest/config";</span>
+<span class="com">// export default defineConfig({</span>
+<span class="com">//   test: {</span>
+<span class="com">//     globals: true,</span>
+<span class="com">//     coverage: { provider: "v8", include: ["src/**"], exclude: ["**/*.d.ts"] },</span>
+<span class="com">//   },</span>
+<span class="com">// });</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ci">CI e Publicacao de Pacotes</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GitHub Actions &mdash; CI com type-check, testes e publish</div>
+          <pre class="example"><span class="com"># .github/workflows/ci.yml</span>
+name: CI
+<span class="kw">on</span>:
+  push:
+    branches: [main]
+  pull_request:
+
+<span class="kw">jobs</span>:
+  verificar:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - <span class="kw">uses</span>: actions/checkout@v4
+      - <span class="kw">uses</span>: actions/setup-node@v4
+        <span class="kw">with</span>:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - <span class="kw">run</span>: npm ci
+      - <span class="kw">run</span>: npm run check   <span class="com"># tsc --noEmit</span>
+      - <span class="kw">run</span>: npm run test --coverage
+      - <span class="kw">run</span>: npm run build  <span class="com"># tsup</span>
+
+  publicar:
+    needs: verificar
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write  <span class="com"># npm provenance</span>
+    steps:
+      - <span class="kw">uses</span>: actions/checkout@v4
+      - <span class="kw">uses</span>: actions/setup-node@v4
+        <span class="kw">with</span>:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - <span class="kw">run</span>: npm ci
+      - <span class="kw">run</span>: npm run build
+      - <span class="kw">run</span>: npm publish --provenance --access public
+        <span class="kw">env</span>:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>EGOIST. <strong>tsup — Bundle your TypeScript library with no config, powered by esbuild</strong>. Disponível em: &lt;https://tsup.egoist.dev/&gt;. Acesso em: 2025.</li>
+            <li>VITEST. <strong>Vitest — Blazing Fast Unit Test Framework</strong>. Disponível em: &lt;https://vitest.dev/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>tsc CLI Options</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/compiler-options.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas Praticas em Projetos TypeScript</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> tsc --noEmit em CI garante que nenhum erro de tipo entra em producao sem executar a compilacao real</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

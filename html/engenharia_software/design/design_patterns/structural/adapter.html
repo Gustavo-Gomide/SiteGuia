@@ -1,0 +1,163 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Adapter: padrão estrutural para fazer interfaces incompatíveis trabalharem juntas (""traduzindo"" chamadas)." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Adapter | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Traduzir a interface de um objeto para a que o cliente espera</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Adapter</h1>
+          <p class="page-subtitle">Estrutural — GoF — o mais usado para integrações</p>
+        </div>
+        <p class="intro-highlight">Adapter converte a interface de uma classe em outra que o cliente espera. É a solução clássica para integrar APIs externas ou legadas sem poluir o domínio com detalhes da implementação. Na Arquitetura Hexagonal, os adaptadores são exatamente isso.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="participantes" class="section-title">Participantes</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Target</strong></td>
+                <td>Interface que o cliente usa.</td>
+                <td><code>EmailGateway { enviar(para, assunto, corpo) }</code></td>
+              </tr>
+              <tr>
+                <td><strong>Adaptee</strong></td>
+                <td>Classe com interface incompativel (API externa, legada).</td>
+                <td><code>SendGrid { sendEmail(config) }</code></td>
+              </tr>
+              <tr>
+                <td><strong>Adapter</strong></td>
+                <td>Impl. Target; traduz chamadas para o Adaptee.</td>
+                <td><code>SendGridAdapter implements EmailGateway</code></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — adapter de email externo</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// TARGET — interface do domínio
+interface EmailGateway {
+  enviar(para: string, assunto: string, corpo: string): Promise&lt;void&gt;;
+}
+
+// ADAPTEE — SDK externo (interface que não controlamos)
+class SendGridClient {
+  async sendEmail(config: {
+    to: string;
+    subject: string;
+    htmlBody: string;
+    from: string;
+    apiKey: string;
+  }): Promise&lt;void&gt; {
+    // chamada real ao SendGrid
+  }
+}
+
+// ADAPTER — traduz o domínio para o SDK
+class SendGridAdapter implements EmailGateway {
+  constructor(
+    private client: SendGridClient,
+    private apiKey: string,
+    private remetente: string
+  ) {}
+
+  async enviar(para: string, assunto: string, corpo: string): Promise&lt;void&gt; {
+    await this.client.sendEmail({
+      to: para,
+      subject: assunto,
+      htmlBody: corpo,
+      from: this.remetente,
+      apiKey: this.apiKey,
+    });
+  }
+}
+
+// Domínio só conhece EmailGateway — trocar SendGrid por outro = nova classe Adapter</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Integraçêo de API externa, SDK legado, ou qualquer código com interface incompatível. Forma a base da Arquitetura Hexagonal.</p>
+          </div>
+          <div class="card">
+            <h3>Testabilidade</h3>
+            <p>Com Adapter, o domínio depende de interface. Testes usam um fake da interface, não da API real.</p>
+          </div>
+          <div class="card">
+            <h3>Isolamento de mudança</h3>
+            <p>Mudança na API externa afeta apenas o Adapter. O domínio e os testes ficam estáveis.</p>
+          </div>
+          <div class="card">
+            <h3>vs Facade</h3>
+            <p>Facade simplifica uma interface complexa. Adapter converte uma interface incompativel. Às vezes se combinam.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Adapter é o padrão central da <a href="/html/engenharia_software/design/arquitetura/hwexagonal.html">Arquitetura Hexagonal</a>. Veja também <a href="/html/engenharia_software/design/design_patterns/structural/facade.html">Facade</a> para simplificação de subsistemas complexos.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Adapter protege o domínio de detalhes externos. O domínio fala sua língua — o adaptador traduz para a língua da infraestrutura."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

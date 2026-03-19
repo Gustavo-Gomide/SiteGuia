@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang Atores e Concorrência: spawn, send/receive, links, monitors, registro de processos, OTP GenServer e Supervisor — modelo de atores completo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Atores e Concorrência | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Atores e Concorrência</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Atores e Concorrência</h1>
+          <p>O modelo de atores de Erlang é a implementação mais madura e testada em produção do paradigma: cada processo é um ator com mailbox privado, comunicação apenas por mensagens assíncronas, sem memória compartilhada. A BEAM schedula milhões destes atores em múltiplos núcleos com preempção cooperativa — nenhum processo pode monopolizar a CPU.</p>
+        </div>
+        <p class="intro-highlight">
+          A BEAM usa <strong>redução contável</strong> como unidade de preempção: a cada ~2000 reduções (chamadas de função), o scheduler ativa o próximo processo. Isso garante que um loop infinito em um processo não trava outros — diferente de threads do SO onde um processo pode monopolizar um core.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="spawn-send-receive">spawn, send ( ! ) e receive</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Criar processos e comunicar por mensagens</div>
+          <pre class="example"><span class="com">% Criar um processo — spawn retorna PID</span>
+Pid = spawn(fun() -&gt;
+    io:format(<span class="str">"Processo: ~p~n"</span>, [self()])
+end).
+
+<span class="com">% Spawn com módulo e função</span>
+Pid2 = spawn(meu_modulo, funcao, [Arg1, Arg2]).
+
+<span class="com">% Enviar mensagem — ! é o operador send</span>
+Pid ! {mensagem, <span class="str">"olá"</span>}.
+Pid ! ping.
+self() ! resposta.    <span class="com">% enviar para si mesmo</span>
+
+<span class="com">% receive — consumir mensagem da mailbox</span>
+receive
+    ping -&gt;
+        io:format(<span class="str">"Recebi ping~n"</span>);
+    {mensagem, Texto} -&gt;
+        io:format(<span class="str">"Mensagem: ~s~n"</span>, [Texto]);
+    _ -&gt;
+        io:format(<span class="str">"Mensagem desconhecida~n"</span>)
+after 5000 -&gt;            <span class="com">% timeout em ms</span>
+    io:format(<span class="str">"Timeout!~n"</span>)
+end.
+
+<span class="com">% Servidor eco — receive em loop</span>
+eco() -&gt;
+    receive
+        {De, Mensagem} -&gt;
+            De ! {resposta, Mensagem},
+            eco();
+        parar -&gt;
+            ok
+    end.
+
+<span class="com">% Uso:</span>
+EcoPid = spawn(fun eco/0).
+EcoPid ! {self(), <span class="str">"testando"</span>}.
+receive {resposta, R} -&gt; io:format(<span class="str">"Eco: ~s~n"</span>, [R]) end.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="links-monitors">Links, Monitors e Tratamento de Falhas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Detectar crashes com links e monitors</div>
+          <pre class="example"><span class="com">% spawn_link — se filho crasha, pai recebe EXIT signal</span>
+process_flag(trap_exit, true).  <span class="com">% capturar EXIT como mensagem</span>
+FilhoPid = spawn_link(fun() -&gt;
+    timer:sleep(1000),
+    exit(motivo_qualquer)      <span class="com">% crash intencional</span>
+end).
+
+receive
+    {'EXIT', FilhoPid, normal} -&gt;
+        io:format(<span class="str">"Filho terminou normalmente~n"</span>);
+    {'EXIT', FilhoPid, Motivo} -&gt;
+        io:format(<span class="str">"Filho crashou: ~p~n"</span>, [Motivo])
+end.
+
+<span class="com">% monitor — unidirecional, não propaga exit</span>
+Ref = erlang:monitor(process, AlgumPid).
+receive
+    {'DOWN', Ref, process, AlgumPid, normal} -&gt;
+        io:format(<span class="str">"Processo terminou~n"</span>);
+    {'DOWN', Ref, process, AlgumPid, Motivo} -&gt;
+        io:format(<span class="str">"Processo caiu: ~p~n"</span>, [Motivo])
+end.
+
+<span class="com">% Diferença: link bidirecional (ambos morrem), monitor unidirecional</span>
+
+<span class="com">% Registro de processos por nome</span>
+register(servidor_eco, spawn(fun eco/0)).
+servidor_eco ! {self(), <span class="str">"olá"</span>}.   <span class="com">% usar nome em vez de PID</span>
+whereis(servidor_eco).            <span class="com">% retorna PID ou undefined</span>
+unregister(servidor_eco).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gen-server">OTP gen_server — Servidor Genérico</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">gen_server completo com call, cast e info</div>
+          <pre class="example">-module(contador).
+-behaviour(gen_server).
+
+<span class="com">%% API pública</span>
+-export([start_link/0, incrementar/0, decrementar/1, valor/0]).
+<span class="com">%% Callbacks obrigatórios do gen_server</span>
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+<span class="com">%% --- API ---</span>
+start_link() -&gt;
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+incrementar() -&gt;
+    gen_server:cast(?MODULE, incrementar).   <span class="com">% assíncrono</span>
+
+decrementar(N) -&gt;
+    gen_server:cast(?MODULE, {decrementar, N}).
+
+valor() -&gt;
+    gen_server:call(?MODULE, valor).          <span class="com">% síncrono — aguarda resposta</span>
+
+<span class="com">%% --- Callbacks ---</span>
+init([]) -&gt;
+    {ok, 0}.   <span class="com">% estado inicial</span>
+
+handle_call(valor, _From, Estado) -&gt;
+    {reply, Estado, Estado};   <span class="com">% {reply, Resposta, NovoEstado}</span>
+handle_call(_Req, _From, Estado) -&gt;
+    {reply, {error, desconhecido}, Estado}.
+
+handle_cast(incrementar, Estado) -&gt;
+    {noreply, Estado + 1};     <span class="com">% {noreply, NovoEstado}</span>
+handle_cast({decrementar, N}, Estado) -&gt;
+    {noreply, Estado - N};
+handle_cast(_Msg, Estado) -&gt;
+    {noreply, Estado}.
+
+handle_info(timeout, Estado) -&gt;
+    io:format(<span class="str">"Timeout periódico, valor atual: ~p~n"</span>, [Estado]),
+    {noreply, Estado};
+handle_info(_Info, Estado) -&gt;
+    {noreply, Estado}.
+
+terminate(_Motivo, _Estado) -&gt; ok.
+code_change(_VersaoAntiga, Estado, _Extra) -&gt; {ok, Estado}.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="supervisor">OTP supervisor — Árvore de Supervisão</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">supervisor com estratégias de restart</div>
+          <pre class="example">-module(meu_app_sup).
+-behaviour(supervisor).
+-export([start_link/0, init/1]).
+
+start_link() -&gt;
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+init([]) -&gt;
+    <span class="com">%% SupFlags: estratégia, max_restarts, max_seconds</span>
+    SupFlags = #{
+        strategy  =&gt; one_for_one,  <span class="com">% reiniciar apenas o processo que crashou</span>
+        intensity =&gt; 10,           <span class="com">% máximo 10 restarts</span>
+        period    =&gt; 60            <span class="com">% em 60 segundos</span>
+    },
+
+    <span class="com">%% childSpec: id, start, restart, shutdown, type, modules</span>
+    Filhos = [
+        #{id       =&gt; contador,
+          start    =&gt; {contador, start_link, []},
+          restart  =&gt; permanent,   <span class="com">% sempre reiniciar</span>
+          shutdown =&gt; 5000,        <span class="com">% timeout para shutdown limpo</span>
+          type     =&gt; worker,
+          modules  =&gt; [contador]},
+
+        #{id       =&gt; cache,
+          start    =&gt; {cache_server, start_link, [#{max_size =&gt; 1000}]},
+          restart  =&gt; transient,   <span class="com">% reiniciar só se crash anormal</span>
+          shutdown =&gt; 5000,
+          type     =&gt; worker,
+          modules  =&gt; [cache_server]}
+    ],
+    {ok, {SupFlags, Filhos}}.
+
+<span class="com">%% Estratégias de restart:</span>
+<span class="com">%% one_for_one    — reinicia apenas o processo morto</span>
+<span class="com">%% one_for_all    — reinicia todos se qualquer um morrer</span>
+<span class="com">%% rest_for_one   — reinicia o morto e todos iniciados depois dele</span>
+<span class="com">%% simple_one_for_one — template para processos dinâmicos</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LOGAN, M.; MERRITT, E.; CARLSSON, R. <strong>Erlang and OTP in Action</strong>. Manning, 2010.</li>
+            <li>Erlang/OTP. <strong>OTP Design Principles</strong>. Disponível em: &lt;https://www.erlang.org/doc/design_principles/des_princ.html&gt;. Acesso em: 2026.</li>
+            <li>HEBERT, F. <strong>Learn You Some Erlang — Errors and Processes</strong>. No Starch Press, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> OTP Avançado e ETS</a></li>
+          <li><a href="../aplicacoes/alta_disponibilidade.html"><span data-svg="seta-direita" aria-hidden="true"></span> Alta Disponibilidade na Prática</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A filosofia <strong>"let it crash"</strong> parece contraintuitiva mas é mais robusta que tentar recuperar estado corrompido: um processo Erlang que crasha sai de um estado desconhecido, e o Supervisor reinicia do zero em estado limpo — garantido. Tratar _todos_ os erros possíveis em código defensivo é impossível; supervison é uma garantia incondicional.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

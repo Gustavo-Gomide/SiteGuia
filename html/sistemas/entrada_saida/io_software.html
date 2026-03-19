@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Camadas de software de I/O: device-independent I/O, buffering, caching, spooling, drivers e modelos de I/O (síncrono, assíncrono, não-bloqueante, io_uring)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>I/O — Software | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">I/O — Software</h1>
+            <p class="page-subtitle">Camadas de abstração, buffering, caching, page cache e modelos de I/O</p>
+          </div>
+        </div>
+        <p class="intro-highlight">O software de I/O organiza os dados entre hardware e aplicações com camadas de abstração que evitam que cada programa precise conhecer cada dispositivo. Buffering, caching, modelos assíncronos e a revolucionária interface io_uring definem como aplicações modernas exploram o máximo de desempenho de armazenamento e rede.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CAMADAS ═══════════════════ -->
+      <section id="camadas">
+        <h2>Camadas de Software de I/O</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Camada</th>
+                <th>Onde roda</th>
+                <th>Função</th>
+                <th>Exemplos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>User-space I/O</td><td>Espaço de usuário</td><td>Interface de alto nível: stdio (fread/fwrite), linguagens de alto nível, bibliotecas de rede</td><td>libc, Java NIO, Python io</td></tr>
+              <tr><td>Device-independent kernel I/O</td><td>Kernel (VFS, block layer)</td><td>Buffering, caching (page cache), nomeação de dispositivos, controle de acesso, escalonamento de I/O</td><td>VFS, block I/O layer, socket layer</td></tr>
+              <tr><td>Device Drivers</td><td>Kernel (módulos)</td><td>Traduz operações genéricas (read/write) em comandos específicos do hardware</td><td>ahci (SATA), nvme, e1000e (NIC Intel)</td></tr>
+              <tr><td>Interrupt Handlers</td><td>Kernel (context de interrupção)</td><td>Responde a IRQs do hardware; acorda processos bloqueados; gerencia DMA completion</td><td>ISRs de disco, NIC, USB</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — BUFFERING E CACHING ═══════════════════ -->
+      <section id="buffering">
+        <h2>Buffering e Caching</h2>
+        <p>Buffer e cache são conceitos distintos com objetivos diferentes: um <strong>buffer</strong> é uma área temporária para transferência de dados em trânsito (input está esperando a aplicação ler, ou output ainda não foi enviado ao dispositivo). Um <strong>cache</strong> é uma cópia de dados recentemente usados para evitar I/O repetido.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Page Cache do Linux</h3>
+            <p>O VFS mantém um cache de páginas (4 KB cada) dos arquivos lidos do disco. Leituras subsequentes do mesmo arquivo são servidas da RAM sem I/O. O kernel usa toda RAM disponível como page cache — por isso <code>free -h</code> mostra "available" alta mesmo com "free" baixo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Double Buffer</h3>
+            <p>Dois buffers alternam: enquanto o kernel preenche um (aguarda o disco), a aplicação lê o outro. Evita que aplicação e kernel bloqueiem uma à outra. Usado em streaming de vídeo e captura de áudio.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Circular Buffer</h3>
+            <p>Buffer em anel com ponteiros de leitura e escrita que avançam. Eficiente para produtores/consumidores a taxas diferentes. Usado em pipes Unix, buffers de log de kernel e filas de pacotes de rede.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — MODELOS DE I/O ═══════════════════ -->
+      <section id="modelos">
+        <h2>Modelos de I/O</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Modelo</th>
+                <th>Como funciona</th>
+                <th>Bloqueio</th>
+                <th>Caso de uso</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Bloqueante (padrão)</td><td>read() suspende o processo até os dados chegarem</td><td>Sim — processo dorme no estado TASK_INTERRUPTIBLE</td><td>Aplicações simples; um thread por conexão</td></tr>
+              <tr><td>Nao-bloqueante</td><td>Abre fd com O_NONBLOCK; read() retorna EAGAIN se sem dados</td><td>Nao — retorna imediatamente</td><td>Event loops; requer polling manual dos fds</td></tr>
+              <tr><td>Multiplexado (select/poll/epoll)</td><td>Processo monitora multiplos fds simultaneamente; bloqueia ate pelo menos um ficar pronto</td><td>Sim, mas unico bloqueio para N fds</td><td>Servidores com milhares de conexoes (nginx, Redis)</td></tr>
+              <tr><td>Assincrono POSIX (aio_read)</td><td>Submete operacao e recebe notificacao por sinal ou callback quando concluir</td><td>Nao</td><td>Servidor de arquivos, banco de dados legado</td></tr>
+              <tr><td>io_uring (Linux 5.1+)</td><td>Dois ring buffers compartilhados entre kernel e userspace; submete lote de operacoes sem syscall extra; coleta completions sem syscall</td><td>Nao</td><td>Storage de alta performance, io de rede (liburing, io_uring no Node.js)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — epoll básico (servidor com múltiplas conexões)</div>
+          <pre class="code-block">int epfd = epoll_create1(0);
+
+// Adicionar fd do servidor ao epoll
+struct epoll_event ev = { .events = EPOLLIN, .data.fd = server_fd };
+epoll_ctl(epfd, EPOLL_CTL_ADD, server_fd, &ev);
+
+struct epoll_event events[MAX_EVENTS];
+while (1) {
+    int n = epoll_wait(epfd, events, MAX_EVENTS, -1);  // bloqueia até evento
+    for (int i = 0; i < n; i++) {
+        if (events[i].data.fd == server_fd) {
+            int client_fd = accept(server_fd, NULL, NULL);
+            // adicionar client_fd ao epoll com EPOLLIN | EPOLLET
+        } else {
+            handle_client(events[i].data.fd);
+        }
+    }
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — PAGE CACHE E WRITE-BACK ═══════════════════ -->
+      <section id="page-cache">
+        <h2>Page Cache e Write-Back</h2>
+        <p>Toda leitura de arquivo passa pelo page cache. Escritas com <code>write()</code> padrão são <strong>buffered</strong>: o dado vai para o page cache e o kernel decide quando fazer flush para o disco (write-back). Isso melhora performance mas cria um risco: dados em cache são perdidos em caso de queda sem flush.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">fsync(fd)</h3>
+            <p>Força flush imediato de todos os dados e metadados do arquivo para o dispositivo. Retorna somente quando o hardware confirma a escrita. Usado por bancos de dados antes de confirmar uma transação.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">fdatasync(fd)</h3>
+            <p>Como fsync, mas flush apenas dos dados (não atualiza mtime/atime desnecessariamente). Ligeiramente mais rápido e suficiente para garantir integridade dos dados de usuário.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">O_DIRECT</h3>
+            <p>Bypassa completamente o page cache. Dados vão direto do buffer do usuário para o dispositivo (e vice-versa). Exige alinhamento de buffer e tamanho de transferência. Usado por bancos de dados que gerenciam seu próprio cache (PostgreSQL, MySQL InnoDB).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/entrada_saida/io_hardware.html">I/O — Hardware</a> e <a href="/html/sistemas/entrada_saida/spooling.html">Spooling</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"io_uring trouxe para o Linux o que programadores de alto desempenho esperavam há décadas: I/O assíncrono sem o custo de syscalls por operação."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java para Mobile: Android SDK com Jetpack, ViewModel, Room, Retrofit2, Jetpack Compose e publicacao na Google Play." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Mobile (Android) | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Mobile (Android)</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java para Android</h1>
+          <p>Android SDK com arquitetura MVVM usando ViewModel e LiveData, persistencia com Room 2.6, chamadas REST com Retrofit2 e OkHttp, introducao ao Jetpack Compose em Java/Kotlin interop, e boas praticas de ciclo de vida de Activity e Fragment.</p>
+        </div>
+        <p class="intro-highlight">
+          Embora Kotlin seja a linguagem oficial preferida pelo Google para Android desde 2019, Java ainda e totalmente suportado e comuns em projetos corporativos e legados. Todo o Jetpack funciona com Java.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura">Arquitetura MVVM com ViewModel</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Android Jetpack &mdash; ViewModel com LiveData e Repository</div>
+          <pre class="example"><span class="com">// Model — dados e logica de negocio</span>
+@<span class="at">Entity</span>(tableName = <span class="str">"produtos"</span>)
+<span class="kw">public class</span> <span class="tp">Produto</span> {
+  @<span class="at">PrimaryKey</span>(autoGenerate = <span class="kw">true</span>)
+  <span class="kw">public int</span>    id;
+  <span class="at">@NonNull</span>
+  <span class="kw">public</span> <span class="tp">String</span> nome;
+  <span class="kw">public double</span> preco;
+  <span class="kw">public int</span>    estoque;
+}
+
+<span class="com">// Repository — unica fonte de verdade</span>
+<span class="kw">public class</span> <span class="tp">ProdutoRepository</span> {
+  <span class="kw">private final</span> <span class="tp">ProdutoDao</span>       dao;
+  <span class="kw">private final</span> <span class="tp">ProdutoApiService</span> api;
+  <span class="kw">private final</span> <span class="tp">Executor</span>         io = <span class="tp">Executors</span>.<span class="fn">newSingleThreadExecutor</span>();
+
+  <span class="kw">public</span> <span class="tp">ProdutoRepository</span>(<span class="tp">Application</span> app) {
+    <span class="kw">var</span> db = <span class="tp">ProdutoDB</span>.<span class="fn">getInstance</span>(app);
+    dao = db.<span class="fn">produtoDao</span>();
+    api = <span class="kw">new</span> <span class="tp">Retrofit</span>.<span class="tp">Builder</span>()
+      .<span class="fn">baseUrl</span>(<span class="str">"https://loja.exemplo.com/"</span>)
+      .<span class="fn">addConverterFactory</span>(<span class="tp">GsonConverterFactory</span>.<span class="fn">create</span>())
+      .<span class="fn">build</span>()
+      .<span class="fn">create</span>(<span class="tp">ProdutoApiService</span>.<span class="kw">class</span>);
+  }
+
+  <span class="com">// LiveData do Room — observa mudancas automaticamente</span>
+  <span class="kw">public</span> <span class="tp">LiveData</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">getTodosOsProdutos</span>() {
+    <span class="kw">return</span> dao.<span class="fn">listarTodos</span>();
+  }
+
+  <span class="kw">public void</span> <span class="fn">sincronizarDoServidor</span>() {
+    io.<span class="fn">execute</span>(() -> {
+      <span class="kw">try</span> {
+        <span class="kw">var</span> resp = api.<span class="fn">listar</span>().<span class="fn">execute</span>();
+        <span class="kw">if</span> (resp.<span class="fn">isSuccessful</span>() && resp.<span class="fn">body</span>() != <span class="kw">null</span>) {
+          dao.<span class="fn">upsertTodos</span>(resp.<span class="fn">body</span>());
+        }
+      } <span class="kw">catch</span> (<span class="tp">Exception</span> e) {
+        <span class="tp">Log</span>.<span class="fn">e</span>(<span class="str">"Repo"</span>, <span class="str">"Sync falhou"</span>, e);
+      }
+    });
+  }
+}
+
+<span class="com">// ViewModel — sobrevive a rotacao de tela</span>
+<span class="kw">public class</span> <span class="tp">ProdutoViewModel</span> <span class="kw">extends</span> <span class="tp">AndroidViewModel</span> {
+
+  <span class="kw">private final</span> <span class="tp">ProdutoRepository</span>          repo;
+  <span class="kw">private final</span> <span class="tp">LiveData</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt;   produtos;
+  <span class="kw">private final</span> <span class="tp">MutableLiveData</span>&lt;<span class="tp">String</span>&gt;   statusMensagem = <span class="kw">new</span> <span class="tp">MutableLiveData</span>&lt;&gt;();
+
+  <span class="kw">public</span> <span class="tp">ProdutoViewModel</span>(<span class="at">@NonNull</span> <span class="tp">Application</span> app) {
+    <span class="kw">super</span>(app);
+    repo     = <span class="kw">new</span> <span class="tp">ProdutoRepository</span>(app);
+    produtos = repo.<span class="fn">getTodosOsProdutos</span>();
+  }
+
+  <span class="kw">public</span> <span class="tp">LiveData</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">getProdutos</span>()     { <span class="kw">return</span> produtos;       }
+  <span class="kw">public</span> <span class="tp">LiveData</span>&lt;<span class="tp">String</span>&gt;           <span class="fn">getStatus</span>()        { <span class="kw">return</span> statusMensagem; }
+
+  <span class="kw">public void</span> <span class="fn">sincronizar</span>() {
+    statusMensagem.<span class="fn">setValue</span>(<span class="str">"Sincronizando..."</span>);
+    repo.<span class="fn">sincronizarDoServidor</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="room">Room 2.6 — Banco de Dados Local</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Room &mdash; DAO, @Query e migrations</div>
+          <pre class="example"><span class="at">@Dao</span>
+<span class="kw">public interface</span> <span class="tp">ProdutoDao</span> {
+
+  <span class="at">@Query</span>(<span class="str">"SELECT * FROM produtos ORDER BY nome ASC"</span>)
+  <span class="tp">LiveData</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">listarTodos</span>();
+
+  <span class="at">@Query</span>(<span class="str">"SELECT * FROM produtos WHERE id = :id"</span>)
+  <span class="tp">Produto</span> <span class="fn">buscarPorId</span>(<span class="kw">int</span> id);
+
+  <span class="at">@Query</span>(<span class="str">"SELECT * FROM produtos WHERE nome LIKE '%' || :termo || '%'"</span>)
+  <span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt; <span class="fn">buscar</span>(<span class="tp">String</span> termo);
+
+  <span class="at">@Insert</span>(onConflict = <span class="tp">OnConflictStrategy</span>.<span class="tp">REPLACE</span>)
+  <span class="kw">long</span> <span class="fn">inserir</span>(<span class="tp">Produto</span> produto);
+
+  <span class="at">@Insert</span>(onConflict = <span class="tp">OnConflictStrategy</span>.<span class="tp">REPLACE</span>)
+  <span class="kw">void</span> <span class="fn">upsertTodos</span>(<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt; produtos);
+
+  <span class="at">@Update</span>
+  <span class="kw">void</span> <span class="fn">atualizar</span>(<span class="tp">Produto</span> produto);
+
+  <span class="at">@Delete</span>
+  <span class="kw">void</span> <span class="fn">remover</span>(<span class="tp">Produto</span> produto);
+
+  @<span class="at">Query</span>(<span class="str">"DELETE FROM produtos WHERE estoque = 0"</span>)
+  <span class="kw">int</span> <span class="fn">removerSemEstoque</span>();
+}
+
+@<span class="at">Database</span>(entities = { <span class="tp">Produto</span>.<span class="kw">class</span> }, version = <span class="num">2</span>, exportSchema = <span class="kw">true</span>)
+<span class="kw">public abstract class</span> <span class="tp">ProdutoDB</span> <span class="kw">extends</span> <span class="tp">RoomDatabase</span> {
+
+  <span class="kw">private static volatile</span> <span class="tp">ProdutoDB</span> INSTANCE;
+
+  <span class="kw">public abstract</span> <span class="tp">ProdutoDao</span> <span class="fn">produtoDao</span>();
+
+  <span class="kw">public static</span> <span class="tp">ProdutoDB</span> <span class="fn">getInstance</span>(<span class="at">@NonNull</span> <span class="tp">Context</span> ctx) {
+    <span class="kw">if</span> (INSTANCE == <span class="kw">null</span>) {
+      <span class="kw">synchronized</span> (<span class="tp">ProdutoDB</span>.<span class="kw">class</span>) {
+        <span class="kw">if</span> (INSTANCE == <span class="kw">null</span>) {
+          INSTANCE = <span class="tp">Room</span>.<span class="fn">databaseBuilder</span>(ctx.<span class="fn">getApplicationContext</span>(),
+              <span class="tp">ProdutoDB</span>.<span class="kw">class</span>, <span class="str">"loja.db"</span>)
+            .<span class="fn">addMigrations</span>(<span class="tp">MIGRATION_1_2</span>)
+            .<span class="fn">build</span>();
+        }
+      }
+    }
+    <span class="kw">return</span> INSTANCE;
+  }
+
+  <span class="com">// Migracao de v1 para v2: adicionou coluna estoque</span>
+  <span class="kw">static final</span> <span class="tp">Migration</span> MIGRATION_1_2 = <span class="kw">new</span> <span class="tp">Migration</span>(<span class="num">1</span>, <span class="num">2</span>) {
+    @<span class="at">Override</span>
+    <span class="kw">public void</span> <span class="fn">migrate</span>(@<span class="at">NonNull</span> <span class="tp">SupportSQLiteDatabase</span> db) {
+      db.<span class="fn">execSQL</span>(<span class="str">"ALTER TABLE produtos ADD COLUMN estoque INTEGER NOT NULL DEFAULT 0"</span>);
+    }
+  };
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="retrofit">Retrofit2 e OkHttp</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Retrofit2 &mdash; interface API, interceptor de autenticacao e Call</div>
+          <pre class="example"><span class="com">// Interface que descreve a API REST</span>
+<span class="kw">public interface</span> <span class="tp">ProdutoApiService</span> {
+
+  @<span class="at">GET</span>(<span class="str">"api/v1/produtos"</span>)
+  <span class="tp">Call</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">listar</span>(
+    @<span class="at">Query</span>(<span class="str">"page"</span>) <span class="kw">int</span> page,
+    @<span class="at">Query</span>(<span class="str">"size"</span>) <span class="kw">int</span> tamanho);
+
+  @<span class="at">GET</span>(<span class="str">"api/v1/produtos/{id}"</span>)
+  <span class="tp">Call</span>&lt;<span class="tp">Produto</span>&gt; <span class="fn">buscarPorId</span>(@<span class="at">Path</span>(<span class="str">"id"</span>) <span class="tp">String</span> id);
+
+  @<span class="at">POST</span>(<span class="str">"api/v1/produtos"</span>)
+  <span class="tp">Call</span>&lt;<span class="tp">Produto</span>&gt; <span class="fn">criar</span>(@<span class="at">Body</span> <span class="tp">CriarProdutoRequest</span> req);
+
+  @<span class="at">Multipart</span>
+  @<span class="at">POST</span>(<span class="str">"api/v1/produtos/{id}/imagem"</span>)
+  <span class="tp">Call</span>&lt;<span class="tp">Void</span>&gt; <span class="fn">enviarImagem</span>(
+    @<span class="at">Path</span>(<span class="str">"id"</span>) <span class="tp">String</span> id,
+    @<span class="at">Part</span>(<span class="str">"imagem"</span>) <span class="tp">MultipartBody</span>.<span class="tp">Part</span> imagem);
+}
+
+<span class="com">// Construcao com OkHttp + interceptors</span>
+<span class="kw">public class</span> <span class="tp">ApiClient</span> {
+
+  <span class="kw">public static</span> <span class="tp">ProdutoApiService</span> <span class="fn">criar</span>(<span class="tp">String</span> token) {
+    <span class="kw">var</span> okHttp = <span class="kw">new</span> <span class="tp">OkHttpClient</span>.<span class="tp">Builder</span>()
+      .<span class="fn">connectTimeout</span>(<span class="num">10</span>, <span class="tp">TimeUnit</span>.<span class="tp">SECONDS</span>)
+      .<span class="fn">readTimeout</span>(<span class="num">30</span>,    <span class="tp">TimeUnit</span>.<span class="tp">SECONDS</span>)
+      .<span class="fn">addInterceptor</span>(chain -> {
+        <span class="com">// Injeta token JWT em cada requisicao</span>
+        <span class="kw">var</span> req = chain.<span class="fn">request</span>().<span class="fn">newBuilder</span>()
+          .<span class="fn">header</span>(<span class="str">"Authorization"</span>, <span class="str">"Bearer "</span> + token)
+          .<span class="fn">build</span>();
+        <span class="kw">return</span> chain.<span class="fn">proceed</span>(req);
+      })
+      .<span class="fn">addNetworkInterceptor</span>(<span class="kw">new</span> <span class="tp">HttpLoggingInterceptor</span>()
+        .<span class="fn">setLevel</span>(<span class="tp">BuildConfig</span>.<span class="tp">DEBUG</span>
+          ? <span class="tp">HttpLoggingInterceptor</span>.<span class="tp">Level</span>.<span class="tp">BODY</span>
+          : <span class="tp">HttpLoggingInterceptor</span>.<span class="tp">Level</span>.<span class="tp">NONE</span>))
+      .<span class="fn">build</span>();
+
+    <span class="kw">return new</span> <span class="tp">Retrofit</span>.<span class="tp">Builder</span>()
+      .<span class="fn">baseUrl</span>(<span class="str">"https://loja.exemplo.com/"</span>)
+      .<span class="fn">client</span>(okHttp)
+      .<span class="fn">addConverterFactory</span>(<span class="tp">GsonConverterFactory</span>.<span class="fn">create</span>())
+      .<span class="fn">build</span>()
+      .<span class="fn">create</span>(<span class="tp">ProdutoApiService</span>.<span class="kw">class</span>);
+  }
+}
+
+<span class="com">// Chamada assincrona (no ViewModel)</span>
+api.<span class="fn">listar</span>(<span class="num">0</span>, <span class="num">20</span>).<span class="fn">enqueue</span>(<span class="kw">new</span> <span class="tp">Callback</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt;() {
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">onResponse</span>(<span class="at">@NonNull</span> <span class="tp">Call</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; call,
+      @<span class="at">NonNull</span> <span class="tp">Response</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; resp) {
+    <span class="kw">if</span> (resp.<span class="fn">isSuccessful</span>() && resp.<span class="fn">body</span>() != <span class="kw">null</span>) {
+      dao.<span class="fn">upsertTodos</span>(resp.<span class="fn">body</span>());
+    }
+  }
+  @<span class="at">Override</span>
+  <span class="kw">public void</span> <span class="fn">onFailure</span>(<span class="at">@NonNull</span> <span class="tp">Call</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; call, <span class="at">@NonNull</span> <span class="tp">Throwable</span> t) {
+    <span class="tp">Log</span>.<span class="fn">e</span>(<span class="str">"API"</span>, <span class="str">"Falha na chamada"</span>, t);
+  }
+});</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="activity">Activity, Fragment e Ciclo de Vida</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java + Android &mdash; Activity com ViewModel e observacao de LiveData</div>
+          <pre class="example"><span class="kw">public class</span> <span class="tp">ProdutosActivity</span> <span class="kw">extends</span> <span class="tp">AppCompatActivity</span> {
+
+  <span class="kw">private</span> <span class="tp">ActivityProdutosBinding</span> binding;
+  <span class="kw">private</span> <span class="tp">ProdutoViewModel</span>        viewModel;
+  <span class="kw">private</span> <span class="tp">ProdutoAdapter</span>          adapter;
+
+  @<span class="at">Override</span>
+  <span class="kw">protected void</span> <span class="fn">onCreate</span>(<span class="tp">Bundle</span> savedInstanceState) {
+    <span class="kw">super</span>.<span class="fn">onCreate</span>(savedInstanceState);
+    <span class="com">// View Binding — sem findViewById, null-safe</span>
+    binding = <span class="tp">ActivityProdutosBinding</span>.<span class="fn">inflate</span>(<span class="fn">getLayoutInflater</span>());
+    <span class="fn">setContentView</span>(binding.<span class="fn">getRoot</span>());
+
+    <span class="com">// ViewModel vinculado ao ciclo de vida da Activity</span>
+    viewModel = <span class="kw">new</span> <span class="tp">ViewModelProvider</span>(<span class="kw">this</span>).<span class="fn">get</span>(<span class="tp">ProdutoViewModel</span>.<span class="kw">class</span>);
+
+    <span class="com">// RecyclerView com DiffUtil</span>
+    adapter = <span class="kw">new</span> <span class="tp">ProdutoAdapter</span>(produto -> {
+      <span class="com">// Clique no item: abre tela de detalhe</span>
+      <span class="kw">var</span> intent = <span class="kw">new</span> <span class="tp">Intent</span>(<span class="kw">this</span>, <span class="tp">DetalheActivity</span>.<span class="kw">class</span>);
+      intent.<span class="fn">putExtra</span>(<span class="str">"produto_id"</span>, produto.<span class="fn">getId</span>());
+      <span class="fn">startActivity</span>(intent);
+    });
+    binding.recyclerProdutos.<span class="fn">setAdapter</span>(adapter);
+    binding.recyclerProdutos.<span class="fn">setLayoutManager</span>(<span class="kw">new</span> <span class="tp">LinearLayoutManager</span>(<span class="kw">this</span>));
+
+    <span class="com">// Observa LiveData — atualiza UI automaticamente</span>
+    viewModel.<span class="fn">getProdutos</span>().<span class="fn">observe</span>(<span class="kw">this</span>, adapter::<span class="fn">submitList</span>);
+    viewModel.<span class="fn">getStatus</span>().<span class="fn">observe</span>(<span class="kw">this</span>, msg ->
+      binding.txtStatus.<span class="fn">setText</span>(msg));
+
+    binding.fabSync.<span class="fn">setOnClickListener</span>(v -> viewModel.<span class="fn">sincronizar</span>());
+  }
+
+  @<span class="at">Override</span>
+  <span class="kw">protected void</span> <span class="fn">onDestroy</span>() {
+    <span class="kw">super</span>.<span class="fn">onDestroy</span>();
+    binding = <span class="kw">null</span>;   <span class="com">// evita memory leak se Activity for destruida</span>
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="publicacao">Publicacao na Google Play</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell + Gradle &mdash; assinar APK/AAB e enviar para Play Console</div>
+          <pre class="example"><span class="com">// build.gradle (app) — configuracao de assinatura</span>
+android {
+  signingConfigs {
+    release {
+      storeFile     file(System.getenv("KEYSTORE_PATH"))
+      storePassword System.getenv("KEYSTORE_PASS")     <span class="com">// nunca hardcode</span>
+      keyAlias      System.getenv("KEY_ALIAS")
+      keyPassword   System.getenv("KEY_PASS")
+    }
+  }
+  buildTypes {
+    release {
+      signingConfig       signingConfigs.release
+      minifyEnabled       true
+      shrinkResources     true
+      proguardFiles getDefaultProguardFile(<span class="str">'proguard-android-optimize.txt'</span>),
+                    <span class="str">'proguard-rules.pro'</span>
+    }
+  }
+}
+
+<span class="com"># Gerar AAB (formato preferido pela Play Store)</span>
+./gradlew bundleRelease
+
+<span class="com"># Gerar APK assinado</span>
+./gradlew assembleRelease</pre>
+        </div>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Jetpack Compose</h3>
+            <p>Kit de UI declarativo moderno do Android. Integra com Java via interop: <code>@Composable</code> e KTX sao Kotlin, mas ViewModels e Room em Java funcionam perfeitamente como camada de dados.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>WorkManager</h3>
+            <p>Tarefas em background garantidas (sobrevive a reinicializacao e ao app fechado). Ideal para sincronizacao periodica, upload de imagens em fila e notificacoes agendadas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Navigation Component</h3>
+            <p>Gerencia navegacao entre Fragments com back stack automatico. NavGraph define rotas em XML. safe-args plugin gera classes tipadas para passar argumentos entre destinos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Hilt (DI)</h3>
+            <p>Injecao de dependencias sobre Dagger2. <code>@AndroidEntryPoint</code> em Activity/Fragment; <code>@HiltViewModel</code> para ViewModels. Reduz boilerplate de Dagger e integra com ciclo de vida Android.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>Android Developers — Guide to App Architecture</strong>. Disponível em: &lt;https://developer.android.com/topic/architecture&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>Room Persistent Library</strong>. Disponível em: &lt;https://developer.android.com/training/data-storage/room&gt;. Acesso em: 2025.</li>
+            <li>SQUARE. <strong>Retrofit — Type-safe HTTP client for Android and Java</strong>. Disponível em: &lt;https://square.github.io/retrofit/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introducao ao Java</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Nunca faca operacoes de I/O (rede, banco, disco) na Main Thread do Android — o sistema mata o app com ANR (Application Not Responding) se a thread principal travar por mais de 5 segundos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

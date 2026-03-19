@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Broken Authentication: falhas em mecanismos de autenticação, session hijacking, credential stuffing, brute force e mitigações." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Broken Authentication | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Broken Authentication — Falhas de Autenticação</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que são Falhas de Autenticação?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Broken Authentication — Falhas de Autenticação</h1>
+          <p>Falhas em login, sessão e recuperação de senha — A07 do OWASP Top 10.</p>
+        </div>
+
+        <p class="intro-highlight">Broken Authentication (A07 no OWASP Top 10 2021) abrange qualquer fraqueza nos mecanismos de verificação de identidade: login, gerenciamento de sessão, recuperação de senha e autenticação multifator. Essas falhas permitem ao atacante assumir identidade de outros usuários — incluindo administradores.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ataques" class="section-title">Principais Ataques</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Brute Force</h3>
+            <p>Tentativa sistemática de senhas. Sem rate limiting ou bloqueio de conta, o atacante pode testar milhares de senhas por segundo.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# hydra — brute force de login:
+hydra -l admin -P /wordlists/rockyou.txt \
+  https-post-form "/login:user=^USER^&pass=^PASS^:Invalid credentials"</pre>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Credential Stuffing</h3>
+            <p>Uso de listas de usuário:senha vazados de outros serviços. Exploração de reutilização de senhas. Diferente de brute force — usa credenciais reais vazadas.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Password Spraying</h3>
+            <p>Testa uma senha comum (ex: <span class="code-inline">Senha2024!</span>) contra muitos usuários. Evita bloqueio por tentativas — 1 tentativa por conta.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Session Fixation</h3>
+            <p>Atacante força um session ID conhecido antes do login. Quando a vítima autentica, o atacante usa o mesmo ID para acessar a sessão.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="session" class="section-title">Falhas de Gerenciamento de Sessão</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Falha</th><th>Descrição</th><th>Impacto</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Session ID previsível</strong></td>
+                <td>IDs sequenciais ou com baixa entropia (ex: timestamp)</td>
+                <td>Atacante adivinha ID de outros usuários</td>
+              </tr>
+              <tr>
+                <td><strong>Não invalidar sessão no logout</strong></td>
+                <td>Token continua válido após logout</td>
+                <td>Tokens vazados ou capturados seguem funcionando</td>
+              </tr>
+              <tr>
+                <td><strong>Sessão sem expiração</strong></td>
+                <td>Tokens sem TTL ou com TTL muito longo</td>
+                <td>Janela de exploração ampla</td>
+              </tr>
+              <tr>
+                <td><strong>Session não regenerada pós-login</strong></td>
+                <td>Mesmo session ID antes e depois do login</td>
+                <td>Viabiliza session fixation</td>
+              </tr>
+              <tr>
+                <td><strong>Tokens em URL</strong></td>
+                <td>Session token no query string — URL em logs/referrer</td>
+                <td>Vazamento em logs HTTP / referrer headers</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="recuperacao" class="section-title">Fluxos Inseguros de Recuperação de Senha</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Perguntas de segurança</h3>
+            <p>Respostas são públicas (data de nascimento, nome de pet) ou facilmente enumeráveis. Nunca use como único fator de recuperação.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Token de reset previsível</h3>
+            <p>Links de reset com timestamp + email em MD5. Atacante consegue prever o token para qualquer conta.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Token de reset sem expiração</h3>
+            <p>Link de reset enviado por email que nunca expira. Um email comprometido meses depois ainda permite troca de senha.</p>
+          </div>
+          <div class="card card--success">
+            <h3>Padrão seguro de reset</h3>
+            <ul>
+              <li>Token aleatório, criptograficamente seguro (mínimo 128 bits)</li>
+              <li>Expiração curta (15–60 minutos)</li>
+              <li>Uso único — invalidar após uso</li>
+              <li>Invalidar tokens anteriores ao gerar novo</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="bypass-mfa" class="section-title">Bypass de MFA</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Técnicas comuns de bypass de MFA:
+
+1. Response Manipulation (interceptar com Burp):
+   POST /mfa/verify  { "code": "123456" }
+   Resposta: {"success": false}  → mudar para {"success": true}
+
+2. Skip do step de MFA:
+   Login: POST /auth/login → redireciona para /mfa
+   Acessar diretamente /dashboard sem passar por /mfa
+   Aplicação não valida se MFA foi completado
+
+3. Código de backup como vetor:
+   Códigos de backup armazenados em plaintext no servidor
+   Brute force de códigos de 8 dígitos sem rate limiting
+
+4. SIM Swapping (SMS MFA):
+   Engenharia social na operadora para transferir número
+   Compromete qualquer conta usando SMS como 2FA</pre>
+      </section>
+
+      <section>
+        <h2 id="mitigacoes" class="section-title">Mitigações</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Rate Limiting e Account Lockout</p>
+            <p>Limite tentativas de login (ex: 5 por conta por minuto). Implemente lockout progressivo com captcha. Monitore e alerte para picos de falhas.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">MFA robusto</p>
+            <p>Use TOTP (Google Authenticator, Authy) ou passkeys em vez de SMS. Valide o estado MFA no servidor a cada acesso a recursos protegidos.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Gestão de sessão segura</p>
+            <p>Regenerar session ID pós-login. Cookies <span class="code-inline">HttpOnly + Secure + SameSite</span>. Timeout de inatividade. Logout invalida server-side.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Verificação de credenciais vazadas</p>
+            <p>Integrar com Have I Been Pwned API no login ou cadastro para alertar/bloquear senhas comprovadamente vazadas.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Falhas de autenticação são frequentemente o caminho mais direto para comprometimento total de uma aplicação. Credential stuffing automatizado é responsável por bilhões de tentativas de login por dia na internet. Use MFA, monitore anomalias de login (geo-localização, device novo) e implemente detecção de comportamentos suspeitos.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A autenticação é o portão de entrada — uma vulnerabilidade aqui invalida todo o resto do sistema de segurança."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

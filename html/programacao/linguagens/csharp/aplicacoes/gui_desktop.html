@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para GUI Desktop: WPF com MVVM e data binding, WinForms moderno, .NET MAUI multi-plataforma, Avalonia UI cross-platform e SkiaSharp para rendering 2D." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para GUI e Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; GUI e Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para GUI e Desktop</h1>
+          <p>O ecossistema .NET oferece varias opcoes para GUI nativa: <strong>WPF</strong> (Windows Presentation Foundation) para aplicacoes Windows ricas com XAML e MVVM; <strong>WinForms</strong> para RAD Windows simples e moderno; <strong>.NET MAUI</strong> para apps multi-plataforma verdadeiros (iOS, Android, macOS, Windows) com um unico codebase C#; e <strong>Avalonia UI</strong> para UI cross-platform com XAML (incluindo Linux).</p>
+        </div>
+        <p class="intro-highlight">
+          WPF com o padrao MVVM (Model-View-ViewModel) continua sendo o padrao da industria para aplicacoes Windows enterprise com dados complexos. .NET MAUI e Avalonia UI sao a escolha moderna quando portabilidade entre plataformas e requisito.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wpf-mvvm">WPF — MVVM com INotifyPropertyChanged e Commands</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + WPF &mdash; ViewModel com ObservableProperty, RelayCommand e data binding</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Collections</span>.<span class="tp">ObjectModel</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">ComponentModel</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Windows</span>.<span class="tp">Input</span>;
+
+<span class="com">// Base ViewModel — INotifyPropertyChanged</span>
+<span class="kw">abstract class</span> <span class="tp">ViewModelBase</span> : <span class="tp">INotifyPropertyChanged</span>
+{
+  <span class="kw">public event</span> <span class="tp">PropertyChangedEventHandler</span>? PropertyChanged;
+  <span class="kw">protected void</span> <span class="fn">SetProperty</span>&lt;T&gt;(<span class="kw">ref</span> T campo, T valor, [<span class="tp">CallerMemberName</span>] <span class="kw">string</span>? prop = <span class="kw">null</span>)
+  {
+    <span class="kw">if</span> (<span class="tp">EqualityComparer</span>&lt;T&gt;.Default.<span class="fn">Equals</span>(campo, valor)) <span class="kw">return</span>;
+    campo = valor;
+    PropertyChanged?.Invoke(<span class="kw">this</span>, <span class="kw">new</span> <span class="tp">PropertyChangedEventArgs</span>(prop));
+  }
+}
+
+<span class="com">// RelayCommand — converte lambda em ICommand</span>
+<span class="kw">class</span> <span class="tp">RelayCommand</span>(<span class="tp">Action</span> execute, <span class="tp">Func</span>&lt;<span class="kw">bool</span>&gt;? canExecute = <span class="kw">null</span>) : <span class="tp">ICommand</span>
+{
+  <span class="kw">public event</span> <span class="tp">EventHandler</span>? CanExecuteChanged;
+  <span class="kw">public bool</span>   <span class="fn">CanExecute</span>(<span class="kw">object</span>? p) =&gt; canExecute?.Invoke() ?? <span class="kw">true</span>;
+  <span class="kw">public void</span>   <span class="fn">Execute</span>(<span class="kw">object</span>? p) =&gt; execute();
+  <span class="kw">public void</span>   <span class="fn">RaiseCanExecuteChanged</span>() =&gt;
+    CanExecuteChanged?.Invoke(<span class="kw">this</span>, <span class="tp">EventArgs</span>.Empty);
+}
+
+<span class="com">// ViewModel de lista de tarefas</span>
+<span class="kw">class</span> <span class="tp">TarefasViewModel</span> : <span class="tp">ViewModelBase</span>
+{
+  <span class="kw">private string</span> _novaTarefa = <span class="str">""</span>;
+  <span class="kw">public string</span> NovaTarefa
+  {
+    <span class="kw">get</span> =&gt; _novaTarefa;
+    <span class="kw">set</span> { <span class="fn">SetProperty</span>(<span class="kw">ref</span> _novaTarefa, value); <span class="fn">AdicionarCommand</span>.<span class="fn">RaiseCanExecuteChanged</span>(); }
+  }
+
+  <span class="kw">public</span> <span class="tp">ObservableCollection</span>&lt;<span class="tp">Tarefa</span>&gt; Tarefas { <span class="kw">get</span>; } = [];
+
+  <span class="kw">public</span> <span class="tp">RelayCommand</span> AdicionarCommand { <span class="kw">get</span>; }
+  <span class="kw">public</span> <span class="tp">RelayCommand</span>&lt;<span class="tp">Tarefa</span>&gt; RemoverCommand { <span class="kw">get</span>; }
+
+  <span class="kw">public</span> <span class="tp">TarefasViewModel</span>()
+  {
+    AdicionarCommand = <span class="kw">new</span>(<span class="fn">Adicionar</span>, () =&gt; !<span class="kw">string</span>.<span class="fn">IsNullOrWhiteSpace</span>(NovaTarefa));
+    RemoverCommand   = <span class="kw">new</span>(<span class="tp">Tarefa</span>? t =&gt; { <span class="kw">if</span> (t <span class="kw">is not null</span>) Tarefas.<span class="fn">Remove</span>(t); });
+  }
+
+  <span class="kw">private void</span> <span class="fn">Adicionar</span>()
+  {
+    Tarefas.<span class="fn">Add</span>(<span class="kw">new</span> <span class="tp">Tarefa</span>(NovaTarefa));
+    NovaTarefa = <span class="str">""</span>;
+  }
+}
+
+<span class="kw">record</span> <span class="tp">Tarefa</span>(<span class="kw">string</span> Titulo) : <span class="tp">ViewModelBase</span>
+{
+  <span class="kw">private bool</span> _concluida;
+  <span class="kw">public bool</span> Concluida { <span class="kw">get</span> =&gt; _concluida; <span class="kw">set</span> =&gt; <span class="fn">SetProperty</span>(<span class="kw">ref</span> _concluida, value); }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">XAML &mdash; View vinculada ao TarefasViewModel via DataContext</div>
+          <pre class="example"><span class="com">&lt;!-- MainWindow.xaml --&gt;</span>
+<span class="com">&lt;!-- &lt;Window x:Class="App.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"</span></span>
+<span class="com">         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"</span>
+<span class="com">         xmlns:vm="clr-namespace:App.ViewModels"</span>
+<span class="com">         Title="Tarefas" Height="400" Width="600"&gt; --&gt;</span>
+
+<span class="com">&lt;!-- DataContext no code-behind: DataContext = new TarefasViewModel(); --&gt;</span>
+
+<span class="com">&lt;!-- &lt;Grid Margin="10"&gt;</span>
+<span class="com">  &lt;Grid.RowDefinitions&gt;</span>
+<span class="com">    &lt;RowDefinition Height="Auto"/&gt;</span>
+<span class="com">    &lt;RowDefinition Height="*"/&gt;</span>
+<span class="com">  &lt;/Grid.RowDefinitions&gt;</span>
+
+<span class="com">  &lt;!-- Input de nova tarefa --&gt;</span>
+<span class="com">  &lt;StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10"&gt;</span>
+<span class="com">    &lt;TextBox Text="{Binding NovaTarefa, UpdateSourceTrigger=PropertyChanged}"</span>
+<span class="com">             Width="400" Margin="0,0,8,0"/&gt;</span>
+<span class="com">    &lt;Button Content="Adicionar" Command="{Binding AdicionarCommand}"/&gt;</span>
+<span class="com">  &lt;/StackPanel&gt;</span>
+
+<span class="com">  &lt;!-- Lista de tarefas --&gt;</span>
+<span class="com">  &lt;ListView Grid.Row="1" ItemsSource="{Binding Tarefas}"&gt;</span>
+<span class="com">    &lt;ListView.ItemTemplate&gt;</span>
+<span class="com">      &lt;DataTemplate&gt;</span>
+<span class="com">        &lt;StackPanel Orientation="Horizontal"&gt;</span>
+<span class="com">          &lt;CheckBox IsChecked="{Binding Concluida}" Margin="0,0,8,0"/&gt;</span>
+<span class="com">          &lt;TextBlock Text="{Binding Titulo}" VerticalAlignment="Center"</span>
+<span class="com">                     TextDecorations="{Binding Concluida, Converter={StaticResource BoolToStrike}}"/&gt;</span>
+<span class="com">          &lt;Button Content="X" CommandParameter="{Binding}"</span>
+<span class="com">                  Command="{Binding DataContext.RemoverCommand, RelativeSource={RelativeSource AncestorType=ListView}}"/&gt;</span>
+<span class="com">        &lt;/StackPanel&gt;</span>
+<span class="com">      &lt;/DataTemplate&gt;</span>
+<span class="com">    &lt;/ListView.ItemTemplate&gt;</span>
+<span class="com">  &lt;/ListView&gt;</span>
+<span class="com">&lt;/Grid&gt; --&gt;</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="maui">.NET MAUI — Multi-Plataforma com C#</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + .NET MAUI &mdash; ContentPage, Shell navigation, MVVM com CommunityToolkit</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">CommunityToolkit</span>.<span class="tp">Mvvm</span>.<span class="tp">ComponentModel</span>;
+<span class="kw">using</span> <span class="tp">CommunityToolkit</span>.<span class="tp">Mvvm</span>.<span class="tp">Input</span>;
+
+<span class="com">// ViewModel com source generator — elimina boilerplate</span>
+<span class="at">[ObservableObject]</span>
+<span class="kw">partial class</span> <span class="tp">ProdutosViewModel</span>
+{
+  <span class="at">[ObservableProperty]</span>
+  <span class="at">[NotifyCanExecuteChangedFor(nameof(BuscarCommand))]</span>
+  <span class="kw">private string</span> _filtro = <span class="str">""</span>;
+
+  <span class="at">[ObservableProperty]</span>
+  <span class="kw">private bool</span> _carregando;
+
+  <span class="kw">public</span> <span class="tp">ObservableCollection</span>&lt;<span class="tp">Produto</span>&gt; Produtos { <span class="kw">get</span>; } = [];
+
+  <span class="kw">private readonly</span> <span class="tp">IProdutoService</span> _service;
+  <span class="kw">public</span> <span class="tp">ProdutosViewModel</span>(<span class="tp">IProdutoService</span> service) =&gt; _service = service;
+
+  <span class="at">[RelayCommand(CanExecute = nameof(PodeBuscar))]</span>
+  <span class="kw">async</span> <span class="tp">Task</span> <span class="fn">BuscarAsync</span>()
+  {
+    Carregando = <span class="kw">true</span>;
+    <span class="kw">try</span>
+    {
+      <span class="kw">var</span> lista = <span class="kw">await</span> _service.<span class="fn">BuscarAsync</span>(Filtro);
+      Produtos.<span class="fn">Clear</span>();
+      <span class="kw">foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> lista) Produtos.<span class="fn">Add</span>(p);
+    }
+    <span class="kw">finally</span> { Carregando = <span class="kw">false</span>; }
+  }
+
+  <span class="kw">bool</span> <span class="fn">PodeBuscar</span>() =&gt; !<span class="kw">string</span>.<span class="fn">IsNullOrWhiteSpace</span>(Filtro);
+
+  <span class="at">[RelayCommand]</span>
+  <span class="kw">async</span> <span class="tp">Task</span> <span class="fn">AbrirDetalheAsync</span>(<span class="tp">Produto</span> produto) =&gt;
+    <span class="kw">await</span> <span class="tp">Shell</span>.Current.<span class="fn">GoToAsync</span>($<span class="str">"{nameof(DetalhePage)}?id={produto.Id}"</span>);
+}
+
+<span class="com">// Registro de DI e rotas no MauiProgram.cs</span>
+<span class="kw">var</span> builder = <span class="tp">MauiApp</span>.<span class="fn">CreateBuilder</span>();
+builder.<span class="fn">UseMauiApp</span>&lt;<span class="tp">App</span>&gt;()
+  .<span class="fn">ConfigureFonts</span>(f =&gt; f.<span class="fn">AddFont</span>(<span class="str">"Inter-Regular.ttf"</span>, <span class="str">"InterRegular"</span>));
+builder.Services
+  .<span class="fn">AddSingleton</span>&lt;<span class="tp">IProdutoService</span>, <span class="tp">ProdutoService</span>&gt;()
+  .<span class="fn">AddTransient</span>&lt;<span class="tp">ProdutosViewModel</span>&gt;()
+  .<span class="fn">AddTransient</span>&lt;<span class="tp">ProdutosPage</span>&gt;()
+  .<span class="fn">AddTransient</span>&lt;<span class="tp">DetalhePage</span>&gt;();
+
+<span class="tp">Routing</span>.<span class="fn">RegisterRoute</span>(<span class="kw">nameof</span>(<span class="tp">DetalhePage</span>), <span class="kw">typeof</span>(<span class="tp">DetalhePage</span>));
+<span class="kw">await</span> builder.<span class="fn">Build</span>().<span class="fn">RunAsync</span>();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avalonia">Avalonia UI — Cross-Platform (Windows/Linux/macOS)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Avalonia 11 &mdash; janela XAML, ViewModel e reactive bindings</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Avalonia</span>;
+<span class="kw">using</span> <span class="tp">Avalonia</span>.<span class="tp">Controls</span>;
+<span class="kw">using</span> <span class="tp">Avalonia</span>.<span class="tp">ReactiveUI</span>;
+<span class="kw">using</span> <span class="tp">ReactiveUI</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Reactive</span>;
+
+<span class="com">// ViewModel com ReactiveUI</span>
+<span class="kw">class</span> <span class="tp">ContadorViewModel</span> : <span class="tp">ReactiveObject</span>
+{
+  <span class="kw">private int</span> _contador;
+  <span class="kw">public int</span> Contador
+  {
+    <span class="kw">get</span> =&gt; _contador;
+    <span class="kw">set</span> =&gt; <span class="fn">this</span>.<span class="fn">RaiseAndSetIfChanged</span>(<span class="kw">ref</span> _contador, value);
+  }
+
+  <span class="kw">public</span> <span class="tp">ReactiveCommand</span>&lt;<span class="tp">Unit</span>, <span class="tp">Unit</span>&gt; IncrementarCommand { <span class="kw">get</span>; }
+  <span class="kw">public</span> <span class="tp">ReactiveCommand</span>&lt;<span class="tp">Unit</span>, <span class="tp">Unit</span>&gt; ResetarCommand    { <span class="kw">get</span>; }
+
+  <span class="kw">public</span> <span class="tp">ContadorViewModel</span>()
+  {
+    <span class="kw">var</span> podeResetar = <span class="kw">this</span>.<span class="fn">WhenAnyValue</span>(x =&gt; x.Contador, c =&gt; c &gt; <span class="num">0</span>);
+    IncrementarCommand = <span class="tp">ReactiveCommand</span>.<span class="fn">Create</span>(() =&gt; Contador++);
+    ResetarCommand     = <span class="tp">ReactiveCommand</span>.<span class="fn">Create</span>(() =&gt; Contador = <span class="num">0</span>, podeResetar);
+  }
+}
+
+<span class="com">// Window code-behind</span>
+<span class="kw">public class</span> <span class="tp">MainWindow</span> : <span class="tp">ReactiveWindow</span>&lt;<span class="tp">ContadorViewModel</span>&gt;
+{
+  <span class="kw">public</span> <span class="tp">MainWindow</span>()
+  {
+    <span class="fn">InitializeComponent</span>();
+    ViewModel = <span class="kw">new</span> <span class="tp">ContadorViewModel</span>();
+  }
+}
+
+<span class="com">// Program.cs — Avalonia bootstrap</span>
+<span class="tp">AppBuilder</span>.<span class="fn">Configure</span>&lt;<span class="tp">App</span>&gt;()
+  .<span class="fn">UsePlatformDetect</span>()
+  .<span class="fn">UseReactiveUI</span>()
+  .<span class="fn">StartWithClassicDesktopLifetime</span>(args);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Comparativo de Frameworks Desktop</h2>
+
+        <div class="panel">
+          <p class="panel-title">WPF vs WinForms vs .NET MAUI vs Avalonia</p>
+          <table class="table">
+            <thead>
+              <tr><th>Framework</th><th>Plataformas</th><th>UI Paradigma</th><th>Performance</th><th>Ideal para</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>WPF</td><td>Windows only</td><td>XAML + MVVM</td><td>Ótima (DirectX)</td><td>Apps enterprise Windows ricas</td></tr>
+              <tr><td>WinForms</td><td>Windows only</td><td>Code-behind RAD</td><td>Boa</td><td>Ferramentas internas, prototipagem</td></tr>
+              <tr><td>.NET MAUI</td><td>iOS, Android, Win, macOS</td><td>XAML + MVVM</td><td>Nativa por plataforma</td><td>Apps móveis + desktop multi-plataforma</td></tr>
+              <tr><td>Avalonia UI</td><td>Win, Linux, macOS, Web</td><td>XAML + ReactiveUI</td><td>Skia rendering</td><td>Desktop cross-platform + Linux</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>WPF — Windows Presentation Foundation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/desktop/wpf/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>.NET MAUI documentation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/maui/&gt;. Acesso em: 2025.</li>
+            <li>AVALONIA TEAM. <strong>Avalonia UI documentation</strong>. Disponível em: &lt;https://docs.avaloniaui.net/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Jogos</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Mobile</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> No MVVM, nunca acesse <code>Thread.CurrentThread.IsBackground</code> ou <code>Dispatcher</code> diretamente no ViewModel — use <code>IMainThreadDispatcher</code> (MAUI) ou <code>RxApp.MainThreadScheduler</code> (Avalonia/ReactiveUI) para garantir que atualizacoes de UI ocorram na thread correta sem acoplar o ViewModel a um framework especifico.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

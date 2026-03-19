@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para Embedded e IoT: .NET nanoFramework no ESP32/STM32, .NET IoT Libraries com Raspberry Pi, GPIO/I2C/SPI/UART, MQTT com MQTTnet, Azure IoT Hub e Windows IoT Core." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para Embedded e IoT</h1>
+          <p>C# pode rodar diretamente em microcontroladores via <strong>.NET nanoFramework</strong> (ESP32, STM32, NXP — firmware CLR minimalista sem SO), em dispositivos Linux embarcados como Raspberry Pi via <strong>.NET IoT Libraries</strong> com acesso nativo a GPIO, I2C, SPI e UART, e em gateways industriais conectados ao Azure IoT Hub via MQTT ou AMQP.</p>
+        </div>
+        <p class="intro-highlight">
+          .NET nanoFramework implementa um subconjunto do CLR em C++ que cabe em microcontroladores com 256 KB de Flash. Voce escreve, compila e depura no Visual Studio com o mesmo C# que usa em backend — sem aprender C/C++ embarcado para prototipagem.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nanoframework">.NET nanoFramework — C# em Microcontroladores</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + nanoFramework &mdash; GPIO, PWM, ADC e comunicacao I2C no ESP32</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">nanoFramework</span>.<span class="tp">Hardware</span>.<span class="tp">Esp32</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Device</span>.<span class="tp">Gpio</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Device</span>.<span class="tp">I2c</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Device</span>.<span class="tp">Pwm</span>;
+
+<span class="kw">class</span> <span class="tp">Program</span>
+{
+  <span class="kw">static void</span> <span class="fn">Main</span>()
+  {
+    <span class="com">// GPIO output — pisca LED na porta 2</span>
+    <span class="kw">using var</span> gpio = <span class="kw">new</span> <span class="tp">GpioController</span>();
+    gpio.<span class="fn">OpenPin</span>(<span class="num">2</span>, <span class="tp">PinMode</span>.Output);
+    <span class="kw">while</span> (<span class="kw">true</span>)
+    {
+      gpio.<span class="fn">Write</span>(<span class="num">2</span>, <span class="tp">PinValue</span>.High);
+      <span class="tp">Thread</span>.<span class="fn">Sleep</span>(<span class="num">500</span>);
+      gpio.<span class="fn">Write</span>(<span class="num">2</span>, <span class="tp">PinValue</span>.Low);
+      <span class="tp">Thread</span>.<span class="fn">Sleep</span>(<span class="num">500</span>);
+    }
+  }
+}
+
+<span class="com">// PWM — controle de servo motor</span>
+<span class="kw">using var</span> pwm = <span class="kw">new</span> <span class="tp">PwmChannel</span>(<span class="num">0</span>, <span class="num">0</span>, frequency: <span class="num">50</span>);  <span class="com">// 50 Hz para servo</span>
+pwm.<span class="fn">Start</span>();
+<span class="kw">for</span> (<span class="kw">double</span> dc = <span class="num">0.05</span>; dc &lt;= <span class="num">0.10</span>; dc += <span class="num">0.01</span>)    <span class="com">// 5% a 10% duty cycle = 0° a 180°</span>
+{
+  pwm.DutyCycle = dc;
+  <span class="tp">Thread</span>.<span class="fn">Sleep</span>(<span class="num">200</span>);
+}
+pwm.<span class="fn">Stop</span>();
+
+<span class="com">// I2C — leitura de sensor de temperatura BME280</span>
+<span class="kw">const int</span> BME280_ADDR = <span class="num">0x76</span>;
+<span class="kw">var</span> i2cConf = <span class="kw">new</span> <span class="tp">I2cConnectionSettings</span>(<span class="num">1</span>, BME280_ADDR);
+<span class="kw">using var</span> i2c = <span class="tp">I2cDevice</span>.<span class="fn">Create</span>(i2cConf);
+
+<span class="com">// Verificar chip_id (registro 0xD0)</span>
+<span class="tp">SpanByte</span> cmd     = <span class="kw">new byte</span>[] { <span class="num">0xD0</span> };
+<span class="tp">SpanByte</span> resposta = <span class="kw">new byte</span>[<span class="num">1</span>];
+i2c.<span class="fn">WriteRead</span>(cmd, resposta);
+<span class="tp">Debug</span>.<span class="fn">WriteLine</span>($<span class="str">"BME280 chip_id = 0x{resposta[0]:X2}"</span>); <span class="com">// deve ser 0x60</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + nanoFramework &mdash; Wi-Fi, HTTPS e JSON no ESP32</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">nanoFramework</span>.<span class="tp">Networking</span>;
+<span class="kw">using</span> <span class="tp">nanoFramework</span>.<span class="tp">Json</span>;
+
+<span class="com">// Conectar ao Wi-Fi</span>
+<span class="kw">var</span> success = <span class="tp">WifiNetworkHelper</span>.<span class="fn">ConnectDhcp</span>(<span class="str">"MinhaRede"</span>, <span class="str">"senha123"</span>,
+  requiresDateTime: <span class="kw">true</span>, token: <span class="kw">new</span> <span class="tp">CancellationTokenSource</span>(<span class="num">60_000</span>).Token);
+
+<span class="kw">if</span> (!success) { <span class="tp">Debug</span>.<span class="fn">WriteLine</span>(<span class="str">"Wi-Fi falhou"</span>); <span class="kw">return</span>; }
+
+<span class="com">// POST JSON para API (TLS 1.2)</span>
+<span class="kw">var</span> payload = <span class="tp">JsonConvert</span>.<span class="fn">SerializeObject</span>(<span class="kw">new</span> { temperatura = <span class="num">25.3f</span>, umidade = <span class="num">60</span> });
+<span class="kw">using var</span> req = (<span class="tp">HttpWebRequest</span>) <span class="tp">WebRequest</span>.<span class="fn">Create</span>(<span class="str">"https://api.exemplo.com/dados"</span>);
+req.Method      = <span class="str">"POST"</span>;
+req.ContentType = <span class="str">"application/json"</span>;
+req.<span class="fn">GetRequestStream</span>().<span class="fn">Write</span>(<span class="tp">Encoding</span>.UTF8.<span class="fn">GetBytes</span>(payload));
+
+<span class="kw">using var</span> resp = req.<span class="fn">GetResponse</span>();
+<span class="tp">Debug</span>.<span class="fn">WriteLine</span>(<span class="str">"Dados enviados com sucesso"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dotnet-iot">.NET IoT Libraries — Raspberry Pi e Linux Embarcado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + System.Device.Gpio / Iot.Device.Bindings &mdash; sensores, displays e servos</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Device</span>.<span class="tp">Gpio</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Device</span>.<span class="tp">I2c</span>;
+<span class="kw">using</span> <span class="tp">Iot</span>.<span class="tp">Device</span>.<span class="tp">Dht</span>;             <span class="com">// DHT11/DHT22</span>
+<span class="kw">using</span> <span class="tp">Iot</span>.<span class="tp">Device</span>.<span class="tp">Ssd1306</span>;        <span class="com">// display OLED 128x64</span>
+<span class="kw">using</span> <span class="tp">Iot</span>.<span class="tp">Device</span>.<span class="tp">Hcsr04</span>;         <span class="com">// sensor ultrassonico HC-SR04</span>
+<span class="kw">using</span> <span class="tp">UnitsNet</span>;
+
+<span class="com">// Leitura de temperatura e umidade com DHT22 (GPIO 4)</span>
+<span class="kw">using var</span> gpio = <span class="kw">new</span> <span class="tp">GpioController</span>(<span class="tp">PinNumberingScheme</span>.Board);
+<span class="kw">using var</span> dht  = <span class="kw">new</span> <span class="tp">Dht22</span>(<span class="num">4</span>, <span class="tp">PinNumberingScheme</span>.Board, gpio);
+
+<span class="kw">if</span> (dht.<span class="fn">TryReadHumidity</span>(<span class="kw">out var</span> hum) &amp;&amp; dht.<span class="fn">TryReadTemperature</span>(<span class="kw">out var</span> temp))
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Temp={temp.DegreesCelsius:F1}°C  Umidade={hum.Percent:F1}%"</span>);
+
+<span class="com">// Display OLED via I2C</span>
+<span class="kw">using var</span> i2c  = <span class="tp">I2cDevice</span>.<span class="fn">Create</span>(<span class="kw">new</span> <span class="tp">I2cConnectionSettings</span>(busId: <span class="num">1</span>, deviceAddress: <span class="num">0x3C</span>));
+<span class="kw">using var</span> oled = <span class="kw">new</span> <span class="tp">Ssd1306</span>(i2c, <span class="num">128</span>, <span class="num">64</span>);
+<span class="kw">var</span> img      = <span class="kw">new</span> <span class="tp">BitmapImage</span>(<span class="tp">PixelFormat</span>.Format1bppIndexed, <span class="num">128</span>, <span class="num">64</span>);
+<span class="kw">using var</span> canvas = <span class="tp">BitmapImage</span>.<span class="fn">CreateGraphics</span>(img);
+canvas.<span class="fn">DrawString</span>($<span class="str">"T={temp.DegreesCelsius:F1}C"</span>, <span class="kw">new</span> <span class="tp">PointF</span>(<span class="num">0</span>, <span class="num">0</span>));
+oled.<span class="fn">DrawBitmap</span>(img);
+oled.<span class="fn">Display</span>();
+
+<span class="com">// Sensor ultrassonico</span>
+<span class="kw">using var</span> sonar = <span class="kw">new</span> <span class="tp">Hcsr04</span>(triggerPin: <span class="num">23</span>, echoPin: <span class="num">24</span>);
+<span class="kw">if</span> (sonar.<span class="fn">TryGetDistance</span>(<span class="kw">out</span> <span class="tp">Length</span> dist))
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Distancia: {dist.Centimeters:F1} cm"</span>);
+
+<span class="com">// GPIO interrupt — botao com debounce</span>
+gpio.<span class="fn">OpenPin</span>(<span class="num">17</span>, <span class="tp">PinMode</span>.InputPullUp);
+gpio.<span class="fn">RegisterCallbackForPinValueChangedEvent</span>(<span class="num">17</span>,
+  <span class="tp">PinEventTypes</span>.Falling,
+  (_, e) =&gt; <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Botao pressionado no GPIO {e.PinNumber}"</span>));
+<span class="tp">Console</span>.<span class="fn">ReadLine</span>();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT com MQTTnet</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + MQTTnet &mdash; publicar telemetria e receber comandos com QoS e TLS</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">MQTTnet</span>;
+<span class="kw">using</span> <span class="tp">MQTTnet</span>.<span class="tp">Client</span>;
+<span class="kw">using</span> <span class="tp">MQTTnet</span>.<span class="tp">Protocol</span>;
+
+<span class="kw">var</span> factory = <span class="kw">new</span> <span class="tp">MqttFactory</span>();
+<span class="kw">using var</span> client  = factory.<span class="fn">CreateMqttClient</span>();
+
+<span class="kw">var</span> options = <span class="kw">new</span> <span class="tp">MqttClientOptionsBuilder</span>()
+  .<span class="fn">WithTcpServer</span>(<span class="str">"broker.hivemq.com"</span>, <span class="num">8883</span>)
+  .<span class="fn">WithClientId</span>(<span class="str">"dispositivo-001"</span>)
+  .<span class="fn">WithCredentials</span>(<span class="str">"usuario"</span>, <span class="str">"senha"</span>)
+  .<span class="fn">WithTlsOptions</span>(o =&gt; o.<span class="fn">UseTls</span>())
+  .<span class="fn">WithCleanSession</span>()
+  .<span class="fn">Build</span>();
+
+<span class="com">// Handler de mensagens recebidas</span>
+client.ApplicationMessageReceivedAsync += async e =&gt; {
+  <span class="kw">var</span> topico  = e.ApplicationMessage.Topic;
+  <span class="kw">var</span> payload = e.ApplicationMessage.<span class="fn">ConvertPayloadToString</span>();
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"[{topico}] {payload}"</span>);
+  <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">CompletedTask</span>;
+};
+
+<span class="com">// Reconexao automatica</span>
+client.DisconnectedAsync += async e =&gt; {
+  <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="tp">TimeSpan</span>.<span class="fn">FromSeconds</span>(<span class="num">5</span>));
+  <span class="kw">try</span> { <span class="kw">await</span> client.<span class="fn">ConnectAsync</span>(options); }
+  <span class="kw">catch</span> (<span class="tp">Exception</span> ex) { <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Reconexao falhou: {ex.Message}"</span>); }
+};
+
+<span class="kw">await</span> client.<span class="fn">ConnectAsync</span>(options, <span class="tp">CancellationToken</span>.None);
+
+<span class="com">// Subscrever topico de comandos</span>
+<span class="kw">var</span> subOpts = factory.<span class="fn">CreateSubscribeOptionsBuilder</span>()
+  .<span class="fn">WithTopicFilter</span>(f =&gt; f.<span class="fn">WithTopic</span>(<span class="str">"dispositivo/001/cmd"</span>).<span class="fn">WithAtLeastOnceQoS</span>())
+  .<span class="fn">Build</span>();
+<span class="kw">await</span> client.<span class="fn">SubscribeAsync</span>(subOpts);
+
+<span class="com">// Publicar telemetria a cada 5 segundos</span>
+<span class="kw">var</span> cts = <span class="kw">new</span> <span class="tp">CancellationTokenSource</span>();
+<span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Run</span>(<span class="kw">async</span> () =&gt; {
+  <span class="kw">while</span> (!cts.Token.IsCancellationRequested)
+  {
+    <span class="kw">var</span> payload = <span class="tp">JsonSerializer</span>.<span class="fn">Serialize</span>(<span class="kw">new</span> {
+      ts          = <span class="tp">DateTimeOffset</span>.UtcNow.ToUnixTimeSeconds(),
+      temperatura = <span class="num">22.5f</span> + <span class="tp">Random</span>.<span class="tp">Shared</span>.<span class="fn">NextSingle</span>() * <span class="num">2</span>,
+      umidade     = <span class="num">60</span> + <span class="tp">Random</span>.<span class="tp">Shared</span>.<span class="fn">Next</span>(-<span class="num">5</span>, <span class="num">5</span>)
+    });
+    <span class="kw">var</span> msg = <span class="kw">new</span> <span class="tp">MqttApplicationMessageBuilder</span>()
+      .<span class="fn">WithTopic</span>(<span class="str">"dispositivo/001/telemetria"</span>)
+      .<span class="fn">WithPayload</span>(payload)
+      .<span class="fn">WithQualityOfServiceLevel</span>(<span class="tp">MqttQualityOfServiceLevel</span>.AtLeastOnce)
+      .<span class="fn">WithRetainFlag</span>()
+      .<span class="fn">Build</span>();
+    <span class="kw">await</span> client.<span class="fn">PublishAsync</span>(msg);
+    <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">5000</span>, cts.Token);
+  }
+}, cts.Token);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="azure-iot">Azure IoT Hub — Dispositivo Gerenciado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Azure.IoT.Device &mdash; telemetria, Device Twin e metodos diretos</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Azure</span>.<span class="tp">Devices</span>.<span class="tp">Client</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Azure</span>.<span class="tp">Devices</span>.<span class="tp">Shared</span>;
+
+<span class="kw">const string</span> connStr = <span class="str">"HostName=meu-hub.azure-devices.net;DeviceId=dev001;SharedAccessKey=..."</span>;
+<span class="kw">using var</span> device = <span class="tp">DeviceClient</span>.<span class="fn">CreateFromConnectionString</span>(connStr, <span class="tp">TransportType</span>.Mqtt);
+<span class="kw">await</span> device.<span class="fn">OpenAsync</span>();
+
+<span class="com">// Enviar telemetria</span>
+<span class="kw">var</span> json = <span class="tp">JsonSerializer</span>.<span class="fn">Serialize</span>(<span class="kw">new</span> { temperatura = <span class="num">23.1</span>, bateria = <span class="num">87</span> });
+<span class="kw">var</span> msg  = <span class="kw">new</span> <span class="tp">Message</span>(<span class="tp">Encoding</span>.UTF8.<span class="fn">GetBytes</span>(json)) {
+  ContentType     = <span class="str">"application/json"</span>,
+  ContentEncoding = <span class="str">"utf-8"</span>
+};
+msg.Properties[<span class="str">"tipo"</span>] = <span class="str">"temperatura"</span>;
+<span class="kw">await</span> device.<span class="fn">SendEventAsync</span>(msg);
+
+<span class="com">// Device Twin — reportar propriedades</span>
+<span class="kw">var</span> reported = <span class="kw">new</span> <span class="tp">TwinCollection</span>();
+reported[<span class="str">"firmware"</span>] = <span class="str">"1.3.0"</span>;
+reported[<span class="str">"ultimaConexao"</span>] = <span class="tp">DateTimeOffset</span>.UtcNow;
+<span class="kw">await</span> device.<span class="fn">UpdateReportedPropertiesAsync</span>(reported);
+
+<span class="com">// Device Twin — receber desired properties</span>
+<span class="kw">await</span> device.<span class="fn">SetDesiredPropertyUpdateCallbackAsync</span>(<span class="kw">async</span> (twin, _) =&gt; {
+  <span class="kw">if</span> (twin.<span class="fn">Contains</span>(<span class="str">"intervaloLeitura"</span>))
+    <span class="tp">Console</span>.<span class="fn">WriteLine</span>($<span class="str">"Novo intervalo: {twin["intervaloLeitura"]} s"</span>);
+  <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">CompletedTask</span>;
+}, <span class="kw">null</span>);
+
+<span class="com">// Metodo direto — reiniciar dispositivo remotamente</span>
+<span class="kw">await</span> device.<span class="fn">SetMethodHandlerAsync</span>(<span class="str">"reiniciar"</span>, <span class="kw">async</span> (req, _) =&gt; {
+  <span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">"Reiniciando o dispositivo..."</span>);
+  _ = <span class="tp">Task</span>.<span class="fn">Run</span>(<span class="kw">async</span> () =&gt; { <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">2000</span>); <span class="tp">Environment</span>.<span class="fn">Exit</span>(<span class="num">0</span>); });
+  <span class="kw">return</span> <span class="kw">new</span> <span class="tp">MethodResponse</span>(<span class="tp">Encoding</span>.UTF8.<span class="fn">GetBytes</span>(<span class="str">"{\"status\":\"ok\"}"</span>), <span class="num">200</span>);
+}, <span class="kw">null</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>NANOFRAMEWORK TEAM. <strong>.NET nanoFramework documentation</strong>. Disponível em: &lt;https://docs.nanoframework.net/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>.NET IoT Libraries — System.Device.Gpio</strong>. Disponível em: &lt;https://github.com/dotnet/iot&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Azure IoT Hub — documentação do dispositivo</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/azure/iot-hub/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para GUI e Desktop</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para IA e Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O .NET nanoFramework usa um GC conservador e tem heap tipicamente limitado a 32–128 KB em MCUs. Prefira <code>SpanByte</code> e buffers de tamanho fixo em vez de alocacoes dinamicas frequentes para evitar fragmentacao de heap no dispositivo.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

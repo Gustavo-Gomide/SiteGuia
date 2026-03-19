@@ -1,0 +1,317 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Branch and Bound: poda por limite inferior para otimização combinatória, análise e exemplos práticos em Python — Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Branch and Bound | Site Guia</title>
+</head>
+<body>
+
+    <div class="nav-overlay"></div>
+    <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+
+    <div data-include="/html/Site/partials/header.html"></div>
+
+    <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Branch and Bound</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Branch and Bound</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Otimização com Poda por Limite Inferior</h1>
+          <p>Ramificar o espaço de busca, calcular bounds e descartar ramos sem potencial.</p>
+        </div>
+        <p class="intro-highlight">
+          Branch and Bound é uma busca exaustiva inteligente para problemas de otimização combinatória.
+          Para cada ramo calcula-se um <em>lower bound</em>; se esse limite já supera a melhor solução
+          conhecida, o ramo inteiro é descartado sem explorar nenhum descendente.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">O que é?</h2>
+        <p>
+          B&amp;B é uma enumeração <strong>implícita</strong>: em vez de gerar todos os candidatos (Força Bruta),
+          o algoritmo mantém a variável global <code class="code-inline">melhor_solução</code> e poda qualquer
+          ramo cujo lower bound já seja ≥ esse valor.
+        </p>
+        <p class="mt-2">
+          Formalizados por Lawler e Wood (1966) e Land e Doig (1960), os algoritmos de B&amp;B são hoje
+          a base de solvers de otimização inteira como CPLEX e Gurobi.
+          Aplicações clássicas: Caixeiro Viajante (<abbr title="Travelling Salesman Problem">TSP</abbr>),
+          Mochila 0/1 (Knapsack) e Alocação de Tarefas.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            B&amp;B <strong>não enuncia soluções explicitamente</strong>: o espaço de busca é podado de forma
+            implícita. Quanto mais apertado o <em>lower bound</em>, mais ramos são cortados
+            e mais eficiente é o algoritmo na prática.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+
+      <section>
+        <h2 id="visualizacao" class="section-title">Visualização — A Árvore com Poda</h2>
+        <p>
+          Objetivo: <strong>minimizar</strong> o custo. A melhor solução atual serve como
+          <em>Upper Bound</em> (UB). Qualquer ramo com Lower Bound (LB) ≥ UB é podado imediatamente.
+        </p>
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 540 305" role="img" aria-label="Árvore de Branch and Bound: ramo direito é podado porque seu limite inferior supera a melhor solução atual">
+            <defs>
+
+              <marker id="bb-ar" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                <polygon points="0 0, 9 3.5, 0 7" fill="var(--border)"/>
+              </marker>
+              <marker id="bb-ar-r" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+                <polygon points="0 0, 9 3.5, 0 7" fill="var(--danger)"/>
+              </marker>
+            </defs>
+            <!-- Linhas — antes dos nós -->
+            <line x1="270" y1="55" x2="155" y2="145" class="bb-path"  marker-end="url(#bb-ar)"/>
+            <line x1="270" y1="55" x2="385" y2="145" class="bb-prune" marker-end="url(#bb-ar-r)"/>
+            <line x1="155" y1="175" x2="92"  y2="245" class="bb-path"  marker-end="url(#bb-ar)"/>
+            <line x1="155" y1="175" x2="218" y2="245" class="bb-line"  marker-end="url(#bb-ar)"/>
+            <!-- Nós após linhas -->
+            <circle cx="270" cy="40"  r="28" class="bb-nd"/>
+            <text   x="270" y="37"   class="bb-lbl">Raiz</text>
+            <text   x="270" y="50"   class="bb-sub">UB = ∞</text>
+
+            <circle cx="155" cy="160" r="28" class="bb-nd"/>
+            <text   x="155" y="157"  class="bb-lbl">c/ A</text>
+            <text   x="155" y="170"  class="bb-sub">LB = 18</text>
+
+            <circle cx="385" cy="160" r="28" class="bb-bad"/>
+            <text   x="385" y="157"  class="bb-lbl bb-lbl-danger">s/ A</text>
+            <text   x="385" y="170"  class="bb-sub bb-sub-danger">LB = 30</text>
+
+            <circle cx="92"  cy="260" r="26" class="bb-sol"/>
+            <text   x="92"  y="257"  class="bb-lbl bb-lbl-ok">c/ B</text>
+            <text   x="92"  y="270"  class="bb-sub bb-sub-ok">Custo=25</text>
+
+            <circle cx="218" cy="260" r="26" class="bb-exp"/>
+            <text   x="218" y="257"  class="bb-lbl">s/ B</text>
+            <text   x="218" y="270"  class="bb-sub">LB=22</text>
+
+            <!-- Anotações -->
+            <text x="385" y="205" class="bb-ann">PODADO</text>
+            <text x="385" y="218" class="bb-ann">LB 30 ≥ UB 25</text>
+            <text x="92"  y="297" class="bb-ok">✓ Nova melhor</text>
+            <text x="218" y="297" class="bb-sub">Continua…</text>
+
+            <rect x="375" y="252" width="155" height="40" rx="6" class="bb-ub-box"/>
+            <text x="452" y="268" class="bb-ub-lbl">UB atual = 25</text>
+            <text x="452" y="281" class="bb-ub-sub">Todo LB ≥ 25 é podado</text>
+          </svg>
+        </div>
+        <p>
+          O ramo "s/ A" tinha LB = 30. Como 30 ≥ UB = 25, todo o subconjunto que
+          <em>não inclui o item A</em> é descartado sem ser enumerado.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="mecanica" class="section-title">Mecânica do Algoritmo</h2>
+        <div class="logic-grid">
+          <div>
+            <ol>
+              <li class="mb-2">
+                <strong>Ramificar (Branch):</strong> cada decisão binária (incluir/excluir,
+                girar esquerda/direita) cria dois filhos na árvore de estados.
+              </li>
+              <li class="mb-2">
+                <strong>Limitar (Bound):</strong> calcule um <em>lower bound</em> otimista —
+                "qual o melhor valor alcançável a partir daqui?". Tipicamente usa-se uma
+                relaxação do problema (ex.: mochila fracionária para o 0/1 Knapsack).
+              </li>
+              <li class="mb-2">
+                <strong>Podar (Prune):</strong> se LB ≥ <code class="code-inline">melhor_solução</code>,
+                descarte o nó e todos os seus descendentes.
+              </li>
+              <li>
+                <strong>Estratégia de Busca:</strong> <em>Best-First Search</em> com fila de
+                prioridade — expande primeiro os nós com menor bound (mais promissores).
+              </li>
+            </ol>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Backtracking vs B&amp;B</h3>
+            <div class="scroll-x">
+              <table>
+                <thead><tr><th>Backtracking</th><th>Branch &amp; Bound</th></tr></thead>
+                <tbody>
+                  <tr><td>DFS puro</td><td>Best-First (heap)</td></tr>
+                  <tr><td>Problemas de decisão</td><td>Problemas de <strong>otimização</strong></td></tr>
+                  <tr><td>Poda por invalidade</td><td>Poda por limite numérico</td></tr>
+                  <tr><td>Solução válida/inválida</td><td>Mantém <em>melhor_solução</em> global</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação — Knapsack 0/1</h2>
+        <p>
+          O Problema da Mochila 0/1: selecionar itens com peso e valor para
+          <strong>maximizar</strong> o valor total sem exceder a capacidade.
+          O <code class="code-inline">upper_bound</code> usa a relaxação fracionária como teto otimista.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">knapsack_bb.py</div>
+          <pre class="example"><span class="kw">import</span> heapq
+
+<span class="kw">def</span> <span class="tp">knapsack_bb</span>(pesos, valores, cap):
+    <span class="str">"""Knapsack 0/1 via Branch and Bound com Best-First Search."""</span>
+    n      = len(pesos)
+    melhor = [<span class="num">0</span>]   <span class="com"># melhor valor encontrado até agora</span>
+
+    <span class="kw">def</span> <span class="tp">upper_bound</span>(nivel, peso, valor):
+        <span class="str">"""Relaxação fracionária: limite superior otimista."""</span>
+        p, v = peso, valor
+        <span class="kw">for</span> i <span class="kw">in</span> range(nivel, n):
+            <span class="kw">if</span> p + pesos[i] <= cap:
+                p += pesos[i]; v += valores[i]
+            <span class="kw">else</span>:
+                v += (cap - p) / pesos[i] * valores[i]; <span class="kw">break</span>
+        <span class="kw">return</span> v
+
+    <span class="com"># Fila de prioridade: (-ub, nivel, peso, valor)</span>
+    fila = [(-upper_bound(<span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>), <span class="num">0</span>, <span class="num">0</span>, <span class="num">0</span>)]
+
+    <span class="kw">while</span> fila:
+        neg_ub, nivel, peso, valor = heapq.heappop(fila)
+        <span class="kw">if</span> -neg_ub <= melhor[<span class="num">0</span>]: <span class="kw">continue</span>   <span class="com"># PODA</span>
+        <span class="kw">if</span> nivel == n:
+            melhor[<span class="num">0</span>] = max(melhor[<span class="num">0</span>], valor); <span class="kw">continue</span>
+
+        <span class="com"># Ramificação 1 — INCLUIR item `nivel`</span>
+        np, nv = peso + pesos[nivel], valor + valores[nivel]
+        <span class="kw">if</span> np <= cap:
+            melhor[<span class="num">0</span>] = max(melhor[<span class="num">0</span>], nv)
+            ub1 = upper_bound(nivel + <span class="num">1</span>, np, nv)
+            <span class="kw">if</span> ub1 > melhor[<span class="num">0</span>]: heapq.heappush(fila, (-ub1, nivel+<span class="num">1</span>, np, nv))
+
+        <span class="com"># Ramificação 2 — EXCLUIR item `nivel`</span>
+        ub2 = upper_bound(nivel + <span class="num">1</span>, peso, valor)
+        <span class="kw">if</span> ub2 > melhor[<span class="num">0</span>]: heapq.heappush(fila, (-ub2, nivel+<span class="num">1</span>, peso, valor))
+
+    <span class="kw">return</span> melhor[<span class="num">0</span>]
+
+<span class="com"># pesos [2,3,4,5], valores [3,4,5,7], capacidade 10 → 12</span>
+print(knapsack_bb([<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>], [<span class="num">3</span>,<span class="num">4</span>,<span class="num">5</span>,<span class="num">7</span>], <span class="num">10</span>))  <span class="com"># 12</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Caso</th><th>Complexidade</th><th>Observação</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Pior caso (poda ineficaz)</td>
+                <td>O(2ᴺ)</td>
+                <td>Equivalente a Força Bruta — bound nunca descarta nada.</td>
+              </tr>
+              <tr>
+                <td>Caso típico</td>
+                <td>Muito menor que O(2ᴺ)</td>
+                <td>Qualidade do bound determina o speedup real.</td>
+              </tr>
+              <tr>
+                <td>TSP exato com B&amp;B</td>
+                <td>Subexponencial na prática</td>
+                <td>Resolve instâncias de N ≈ 100+ com bounds apertados.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>
+              LAND, A. H.; DOIG, A. G. An automatic method of solving discrete programming problems.
+              <strong>Econometrica</strong>, v. 28, n. 3, p. 497–520, 1960.
+              Primeira aplicação formal de Branch and Bound à programação inteira.
+            </li>
+            <li>
+              LAWLER, E. L.; WOOD, D. E. Branch-and-bound methods: a survey.
+              <strong>Operations Research</strong>, v. 14, n. 4, p. 699–719, 1966.
+              Artigo de survey que formalizou B&amp;B como paradigma geral.
+            </li>
+            <li>
+              CORMEN, Thomas H. et al. <strong>Introduction to Algorithms</strong>. 4. ed.
+              MIT Press, 2022. Cap. 35 discute algoritmos para problemas NP-difíceis e estratégias exatas.
+            </li>
+            <li>
+              SKIENA, Steven S. <strong>The Algorithm Design Manual</strong>. 3. ed.
+              Springer, 2020. Cap. 9.6: Branch and Bound para problemas combinatórios.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Em B&amp;B a qualidade do <em>bound</em> determina tudo: um bound fraco torna o algoritmo
+          tão lento quanto Força Bruta; um bound apertado resolve instâncias industriais em segundos.
+        </p>
+        <ul class="link-list">
+          <li>
+            <a href="/html/programacao/estruturas_dados/tecnicas/backtracking.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Backtracking — poda sem valor numérico
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/estruturas_dados/tecnicas/programacao_dinamica.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Programação Dinâmica — subestrutura ótima
+            </a>
+          </li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Branch and bound is the most powerful general tool for solving hard combinatorial
+          optimization problems in practice."
+          — Steven Skiena, The Algorithm Design Manual
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+    <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

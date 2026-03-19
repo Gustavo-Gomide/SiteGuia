@@ -1,0 +1,167 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Proxy: padrão estrutural que controla o acesso a um objeto (cache, lazy-load, segurança, logging)." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Proxy | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Substituto ou representante de outro objeto</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Proxy</h1>
+          <p class="page-subtitle">Estrutural — GoF</p>
+        </div>
+        <p class="intro-highlight">Proxy fornece um substituto que controla o acesso a outro objeto. Pode fazer isso para lazy loading, caching, controle de acesso, logging ou interseito de chamadas remotas. O cliente usa a mesma interface do objeto real.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos" class="section-title">Tipos de Proxy</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Objetivo</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Virtual Proxy</strong></td>
+                <td>Adia instanciação cara até a primeira chamada.</td>
+                <td>Imagem lazy-loaded, relatório sob demanda</td>
+              </tr>
+              <tr>
+                <td><strong>Cache Proxy</strong></td>
+                <td>Armazena resultado de chamadas custosas.</td>
+                <td>Cache de leitura de banco, memoização</td>
+              </tr>
+              <tr>
+                <td><strong>Protection Proxy</strong></td>
+                <td>Verifica permissões antes de delegar.</td>
+                <td>Autorização de recurso, ACL</td>
+              </tr>
+              <tr>
+                <td><strong>Remote Proxy</strong></td>
+                <td>Representa objeto em outro espaço de memória/rede.</td>
+                <td>RPC stub, gRPC client stub</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — Cache Proxy</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface ServicoTaxa {
+  calcularTaxa(produto: string): Promise&lt;number&gt;;
+}
+
+class ServicoTaxaExterno implements ServicoTaxa {
+  async calcularTaxa(produto: string): Promise&lt;number&gt; {
+    // chamada real a API externa (lenta)
+    return 0.12;
+  }
+}
+
+class ServicoTaxaComCache implements ServicoTaxa {
+  private cache = new Map&lt;string, { taxa: number; expira: number }&gt;();
+  private TTL_MS = 5 * 60 * 1000; // 5 minutos
+
+  constructor(private real: ServicoTaxa) {}
+
+  async calcularTaxa(produto: string): Promise&lt;number&gt; {
+    const agora = Date.now();
+    const cached = this.cache.get(produto);
+
+    if (cached && cached.expira > agora) {
+      return cached.taxa; // hit de cache
+    }
+
+    const taxa = await this.real.calcularTaxa(produto);
+    this.cache.set(produto, { taxa, expira: agora + this.TTL_MS });
+    return taxa;
+  }
+}
+
+// Uso — cliente não sabe que há um proxy
+const taxas: ServicoTaxa = new ServicoTaxaComCache(new ServicoTaxaExterno());
+await taxas.calcularTaxa('PROD-001'); // miss — chama real
+await taxas.calcularTaxa('PROD-001'); // hit — retorna do cache</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Precisa adicionar controle, cache, lazy loading ou logging sem alterar o objeto real ou os clientes.</p>
+          </div>
+          <div class="card">
+            <h3>vs Decorator</h3>
+            <p>Ambos envolvem um objeto com a mesma interface. Decorator adiciona comportamento; Proxy controla acesso. A fronteira é sutil.</p>
+          </div>
+          <div class="card">
+            <h3>Transparente</h3>
+            <p>O cliente não sabe que está usando um proxy. Isso é uma vantagem: adicionar proxy não requer mudança no cliente.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>O objeto não tem custo real de acesso. Proxy de caching sem medir o ganho real é prematura otimização.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Proxy e <a href="/html/engenharia_software/design/design_patterns/structural/decorator.html">Decorator</a> são estruturalmente similares. A diferença está na intenção: Proxy controla acesso; Decorator enriquece comportamento.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Proxy coloca-se no caminho entre cliente e objeto real — sem que o cliente saiba ou precise mudar."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+

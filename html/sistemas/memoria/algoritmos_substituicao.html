@@ -1,0 +1,250 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Algoritmos de substituição de páginas: OPT, FIFO, LRU, Clock (segunda chance), LFU — análise comparativa com exemplos numéricos de page faults." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Algoritmos de Substituição de Páginas | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Algoritmos de Substituição de Páginas</h1>
+            <p class="page-subtitle">Decidindo qual página despejar quando a RAM está cheia — OPT, FIFO, LRU, Clock e LFU</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Quando a RAM está cheia e uma nova página precisa ser carregada, o sistema operacional deve escolher qual página existente despejar para o swap. A escolha errada pode aumentar drasticamente a taxa de page faults, degradando o desempenho. A escolha certa mantém as páginas mais úteis na RAM.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="opt">
+        <h2>OPT — Algoritmo Ótimo</h2>
+        <p>O algoritmo ótimo, proposto por Bélády em 1966, substitui sempre a página que não será usada pelo maior período de tempo no futuro. É matematicamente provado ser ótimo — nenhum algoritmo pode ter menos page faults com o mesmo número de frames. Porém, é irrealizável na prática: exigiria conhecimento antecipado de todos os acessos futuros.</p>
+        <p>Sua utilidade é como referência teórica: comparar outros algoritmos com OPT revela o custo da falta de presciência.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">OPT — Exemplo Numérico (3 frames, sequência: 7 0 1 2 0 3 0 4 2 3 0 3 2)</div>
+          <pre class="code-block">
+Sequência de acessos: 7  0  1  2  0  3  0  4  2  3  0  3  2
+Frames               [3 frames disponíveis]
+
+Acesso  Frames       Fault?   Página Despejada
+  7     [7, -, -]      F      —
+  0     [7, 0, -]      F      —
+  1     [7, 0, 1]      F      —
+  2     [2, 0, 1]      F      Despeja 7 (próximo uso mais distante)
+  0     [2, 0, 1]      -      (já na RAM)
+  3     [2, 0, 3]      F      Despeja 1 (não será usada por mais tempo)
+  0     [2, 0, 3]      -
+  4     [4, 0, 3]      F      Despeja 2 (próximo uso em t=8, vs 0 em t=10 e 3 em t=9)
+  2     [4, 2, 3]      F      Despeja 0
+  3     [4, 2, 3]      -
+  0     [0, 2, 3]      F      Despeja 4 (nunca mais usada)
+  3     [0, 2, 3]      -
+  2     [0, 2, 3]      -
+
+Total de page faults: 6  (mínimo possível com 3 frames)</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="fifo">
+        <h2>FIFO e a Anomalia de Bélády</h2>
+        <p>FIFO (First In, First Out) substitui sempre a página que está na RAM há mais tempo — o mais simples possível de implementar (basta uma fila circular). Porém sofre de um problema grave: pode desperdiçar frames mantendo páginas muito usadas e despejando páginas frequentemente acessadas.</p>
+        <p>A <strong>Anomalia de Bélády</strong> é o fenômeno contraintuitivo onde adicionar <em>mais frames</em> com FIFO pode <em>aumentar</em> o número de page faults. É a única razão para o FIFO ser considerado inferior a LRU em quase todos os cenários práticos.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Anomalia de Bélády — FIFO com sequência: 1 2 3 4 1 2 5 1 2 3 4 5</div>
+          <pre class="code-block">
+Com 3 frames:
+Acesso: 1  2  3  4  1  2  5  1  2  3  4  5
+Frame1: 1  1  1  4  4  4  5  5  5  5  4  4
+Frame2: -  2  2  2  1  1  1  1  1  1  1  5
+Frame3: -  -  3  3  3  2  2  2  2  3  3  3
+Faults: F  F  F  F  F  F  F  -  -  F  F  -  = 9 page faults
+
+Com 4 frames (MAIS frames, MAS mais faults — Anomalia de Bélády!):
+Acesso: 1  2  3  4  1  2  5  1  2  3  4  5
+Frame1: 1  1  1  1  1  1  5  5  5  5  4  4
+Frame2: -  2  2  2  2  2  2  1  1  1  1  5
+Frame3: -  -  3  3  3  3  3  3  2  2  2  2
+Frame4: -  -  -  4  4  4  4  4  4  3  3  3
+Faults: F  F  F  F  -  -  F  F  F  F  F  F  = 10 page faults
+
+Resultado: 4 frames gerou 1 fault a mais que 3 frames!</pre>
+        </div>
+        <p>Algoritmos que nunca sofrem a anomalia de Bélády são chamados de <strong>"algoritmos de pilha"</strong> (stack algorithms) — LRU e OPT são exemplos. FIFO não é algoritmo de pilha.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="lru">
+        <h2>LRU — Least Recently Used</h2>
+        <p>LRU substitui a página menos recentemente usada — a que ficou mais tempo sem ser acessada. É uma boa aproximação do OPT baseada no princípio de localidade temporal: páginas usadas recentemente têm maior probabilidade de ser usadas novamente em breve.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Implementação</th>
+                <th>Descrição</th>
+                <th>Custo de Acesso</th>
+                <th>Custo de Substituição</th>
+                <th>Overhead de Memória</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Lista Encadeada Ordenada</td>
+                <td>Move página acessada para o início; fim = LRU</td>
+                <td>O(n) — percore lista</td>
+                <td>O(1) — remove o fim</td>
+                <td>Ponteiros por página</td>
+              </tr>
+              <tr>
+                <td>Contador por Página</td>
+                <td>Registrador de tempo por página; substitui menor valor</td>
+                <td>O(1) — atualiza contador</td>
+                <td>O(n) — busca mínimo</td>
+                <td>8 bytes por página</td>
+              </tr>
+              <tr>
+                <td>Stack de Páginas</td>
+                <td>Página acessada vai ao topo; fundo = LRU candidata</td>
+                <td>O(1) — move para topo</td>
+                <td>O(1) — remove o fundo</td>
+                <td>Ponteiros duplos</td>
+              </tr>
+              <tr>
+                <td>LRU por Hardware (ideal)</td>
+                <td>HW rastreia bit "accessed" por página na TLB</td>
+                <td>Custo zero (hardware)</td>
+                <td>Scan bits periodicamente</td>
+                <td>1 bit por PTE</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Na prática, implementação exata de LRU é cara para sistemas com milhões de páginas. Kernels modernos usam aproximações eficientes como o algoritmo Clock.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="clock-lfu">
+        <h2>Clock (Segunda Chance) e LFU</h2>
+        <p>O algoritmo <strong>Clock</strong> (também chamado de Segunda Chance) é a aproximação de LRU mais usada em kernels reais. É eficiente e aproveita o bit "Accessed" (A) que o hardware seta automaticamente em cada acesso à página.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Algoritmo Clock — Funcionamento</div>
+          <pre class="code-block">
+Estrutura: páginas dispostas em anel circular, ponteiro "mão do relógio"
+
+Para encontrar uma página para substituir:
+  while (true):
+    pagina_atual = frames[ponteiro]
+
+    if (pagina_atual.bit_R == 0):
+      // Candidata a substituição — não foi acessada desde última varredura
+      substituir(pagina_atual)
+      pages[ponteiro] = nova_pagina
+      nova_pagina.bit_R = 0
+      ponteiro = (ponteiro + 1) % total_frames
+      break
+
+    else:
+      // "Segunda chance" — foi acessada; limpa o bit e avança
+      pagina_atual.bit_R = 0
+      ponteiro = (ponteiro + 1) % total_frames
+
+Propriedades:
+  - O bit R é setado pelo hardware em cada acesso (leitura ou escrita)
+  - O kernel reseta o bit R na varredura
+  - Página com R=1 recebeu pelo menos um acesso desde a última varredura
+  - Aproxima LRU com custo O(1) amortizado</pre>
+        </div>
+        <p><strong>LFU (Least Frequently Used)</strong> substitui a página com menor frequência de acesso histórica. Problema: páginas muito usadas no passado mas não mais necessárias acumulam alto contador e nunca são despejadas. Solução: envelhecimento (aging) — dividir contadores por 2 periodicamente.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Algoritmo</th>
+                <th>Complexidade</th>
+                <th>Anomalia de Bélády</th>
+                <th>Qualidade</th>
+                <th>Onde Usado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>OPT</td>
+                <td>O(n) teórico</td>
+                <td>Nao</td>
+                <td>Ótima (referência)</td>
+                <td>Apenas referência teórica</td>
+              </tr>
+              <tr>
+                <td>FIFO</td>
+                <td>O(1)</td>
+                <td>Sim</td>
+                <td>Ruim</td>
+                <td>Raramente, sistemas muito simples</td>
+              </tr>
+              <tr>
+                <td>LRU</td>
+                <td>O(1) a O(n)</td>
+                <td>Nao</td>
+                <td>Muito boa</td>
+                <td>Databases (buffer pool), file systems</td>
+              </tr>
+              <tr>
+                <td>Clock</td>
+                <td>O(1) amortizado</td>
+                <td>Nao (aprox. LRU)</td>
+                <td>Boa</td>
+                <td>Linux kernel (page reclaim), BSD, macOS</td>
+              </tr>
+              <tr>
+                <td>LFU com Aging</td>
+                <td>O(log n)</td>
+                <td>Nao</td>
+                <td>Boa para cargas repetitivas</td>
+                <td>Redis (allkeys-lfu), caches CDN</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Entenda quando esses algoritmos entram em ação durante o <a href="/html/sistemas/memoria/memoria_virtual.html">ciclo de vida da memória virtual</a> e como a <a href="/html/sistemas/memoria/fragmentacao.html">fragmentação de memória</a> interage com a gestão de páginas.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"LRU é o compromisso perfeito entre realidade e teoria — não é ótimo, mas se beneficia da localidade temporal que todo programa real exibe."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

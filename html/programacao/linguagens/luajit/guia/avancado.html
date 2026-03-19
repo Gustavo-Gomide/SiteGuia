@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="LuaJIT avancado: leitura de traces, side exits, FFI em baixo nivel, gerenciamento de memoria e comparacoes de runtime." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT - Avancado | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>LuaJIT - Avancado</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">LuaJIT - Avancado</h2>
+        <div class="page-header">
+          <span data-svg="lua" aria-hidden="true"></span>
+          <h1>Engenharia de desempenho com tracing, FFI e controle de memoria</h1>
+          <p>Nesta camada, o foco nao e apenas "rodar rapido", mas manter performance estavel sob carga real de producao.</p>
+        </div>
+        <p class="intro-highlight">
+          O ganho avancado no LuaJIT vem de diagnosticar side exits, reduzir churn de alocacao e estabelecer contratos claros entre Lua e C.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="internals" class="section-title">Internals: recorder, guards, side exits e trace stitching</h2>
+        <p>
+          Um trace e uma trilha linear otimizada com premissas de tipo e fluxo. Quando uma premissa falha, o runtime executa
+          side exit e volta ao interpretador, podendo criar um trace secundario para aquele desvio. Em cenarios ideais, traces
+          secundarios se conectam ao principal (stitching), reduzindo custo de retorno ao bytecode.
+        </p>
+        <div class="panel">
+          <svg viewBox="0 0 860 240" role="img" aria-label="Trace principal com exits e stitching" class="w-full">
+            <rect x="24" y="94" width="185" height="62" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="56" y="132" fill="currentColor">Loop quente</text>
+            <rect x="260" y="94" width="190" height="62" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="296" y="132" fill="currentColor">Trace principal</text>
+            <rect x="502" y="94" width="168" height="62" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="525" y="132" fill="currentColor">Codigo nativo</text>
+            <rect x="704" y="18" width="132" height="48" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="726" y="47" fill="currentColor">Trace lateral</text>
+            <line x1="209" y1="124" x2="260" y2="124" stroke="currentColor"></line>
+            <line x1="450" y1="124" x2="502" y2="124" stroke="currentColor"></line>
+            <line x1="355" y1="94" x2="355" y2="52" stroke="currentColor"></line>
+            <line x1="670" y1="112" x2="704" y2="52" stroke="currentColor"></line>
+          </svg>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - instrumentacao de traces em laboratorio</div>
+          <pre class="example"><span class="kw">local</span> jit = <span class="kw">require</span>(<span class="str">"jit"</span>)
+<span class="kw">local</span> dump = <span class="kw">require</span>(<span class="str">"jit.dump"</span>)
+
+dump.<span class="fn">start</span>(<span class="str">"tib"</span>)
+jit.<span class="fn">on</span>()
+
+<span class="kw">local</span> acc = 0
+<span class="kw">for</span> i = 1, 2e6 <span class="kw">do</span>
+  <span class="kw">if</span> i % 8192 == 0 <span class="kw">then</span>
+    acc = acc + tonumber(<span class="str">"1"</span>) <span class="com">-- forca desvio raro</span>
+  <span class="kw">else</span>
+    acc = acc + i
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+print(acc)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ffi-profundo" class="section-title">FFI avancado: ABI, alinhamento e ciclo de vida de ponteiros</h2>
+        <p>
+          Em cenarios de alta performance, FFI permite manipular estruturas C complexas, mas isso traz riscos de ABI:
+          tamanho incorreto de struct, alinhamento invalido, callback coletado pelo GC e uso de ponteiro apos liberacao.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - callback ancorado e estrutura aninhada</div>
+          <pre class="example"><span class="kw">local</span> ffi = <span class="kw">require</span>(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+  <span class="kw">typedef</span> <span class="kw">struct</span> { <span class="kw">double</span> x; <span class="kw">double</span> y; } vec2;
+  <span class="kw">typedef</span> <span class="kw">struct</span> { vec2 p; vec2 v; } body;
+  <span class="kw">typedef</span> <span class="kw">int</span> (*step_cb)(body* b, <span class="kw">double</span> dt);
+]]
+
+<span class="kw">local</span> b = ffi.new(<span class="str">"body"</span>)
+b.p.x, b.p.y = 10.0, -5.0
+b.v.x, b.v.y = 1.25, 0.75
+
+<span class="kw">local</span> cb = ffi.cast(<span class="str">"step_cb"</span>, <span class="kw">function</span>(ptr, dt)
+  ptr.p.x = ptr.p.x + ptr.v.x * dt
+  ptr.p.y = ptr.p.y + ptr.v.y * dt
+  <span class="kw">return</span> 0
+<span class="kw">end</span>)
+
+_G.__ffi_step_anchor = cb <span class="com">-- evita coleta do callback</span>
+cb(b, 0.5)
+print(b.p.x, b.p.y)</pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Nunca exponha ponteiros para memoria temporaria quando a biblioteca C mantem referencia apos o retorno.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="cenarios-avancados" class="section-title">Casos de uso avancados e anti-padroes</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>Use</strong>
+            <p>Gateways de API com OpenResty, parsers binarios e algoritmos de inferencia numerica leve.</p>
+          </div>
+          <div class="card">
+            <strong>Use</strong>
+            <p>Pipelines com volume alto de eventos quando latencia por operacao importa.</p>
+          </div>
+          <div class="card">
+            <strong>Evite</strong>
+            <p>Microservicos dominados por I/O remoto lento, onde o gargalo principal nao esta na CPU.</p>
+          </div>
+          <div class="card">
+            <strong>Evite</strong>
+            <p>Hiper-polimorfismo em hot path: o JIT perde previsibilidade e a taxa de side exit cresce.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="otimizacao-gc" class="section-title">Otimizacoes avancadas: pressao de GC e layout de dados</h2>
+        <p>
+          Em sistemas de baixa latencia, alocacao transitiva costuma ser o primeiro inimigo. Pools de objetos,
+          buffers FFI reutilizaveis e reducao de closures no hot loop sao tecnicas de alto impacto.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - pool de objetos para reduzir churn</div>
+          <pre class="example"><span class="kw">local</span> pool = {}
+
+<span class="kw">local</span> <span class="kw">function</span> <span class="fn">acquire</span>()
+  <span class="kw">local</span> obj = pool[#pool]
+  <span class="kw">if</span> obj <span class="kw">then</span>
+    pool[#pool] = <span class="kw">nil</span>
+    <span class="kw">return</span> obj
+  <span class="kw">end</span>
+  <span class="kw">return</span> { a = 0, b = 0, c = 0 }
+<span class="kw">end</span>
+
+<span class="kw">local</span> <span class="kw">function</span> <span class="fn">release</span>(obj)
+  obj.a, obj.b, obj.c = 0, 0, 0
+  pool[#pool + 1] = obj
+<span class="kw">end</span>
+
+<span class="kw">for</span> i = 1, 1e6 <span class="kw">do</span>
+  <span class="kw">local</span> v = <span class="fn">acquire</span>()
+  v.a = i
+  <span class="fn">release</span>(v)
+<span class="kw">end</span></pre>
+        </div>
+        <div class="panel">
+          <p class="panel-title">Checklist de tuning avancado</p>
+          <ul>
+            <li>Contar side exits por endpoint ou rotina.</li>
+            <li>Medir pausas de GC antes e depois de cada otimizaao.</li>
+            <li>Isolar chamadas FFI em fronteiras pequenas e testaveis.</li>
+            <li>Separar claramente caminho quente de caminho administrativo.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparativo-runtime" class="section-title">Comparacao com runtimes proximos</h2>
+        <div class="panel">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Runtime</th>
+                <th>Vantagem principal</th>
+                <th>Ponto de atencao</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>LuaJIT</td>
+                <td>Tracing JIT maduro e FFI extremamente rapido</td>
+                <td>Base em Lua 5.1 com compatibilidade parcial a recursos mais novos</td>
+              </tr>
+              <tr>
+                <td>Lua 5.4</td>
+                <td>Linguagem atual sem complexidade de tracing</td>
+                <td>Nao traz aceleracao JIT por padrao</td>
+              </tr>
+              <tr>
+                <td>OpenResty (LuaJIT)</td>
+                <td>Alta escala para HTTP/event loop</td>
+                <td>Exige disciplina operacional no modelo nginx</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fontes" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li><a href="https://luajit.org/running.html" target="_blank" rel="noopener">PALL, Mike. LuaJIT Runtime Options. 2026.</a></li>
+            <li><a href="https://luajit.org/ext_ffi_semantics.html" target="_blank" rel="noopener">PALL, Mike. FFI Semantics. 2026.</a></li>
+            <li><a href="https://www.lua.org/work/doc/jucs05.pdf" target="_blank" rel="noopener">IERUSALIMSCHY, Roberto et al. The Implementation of Lua 5.0. J.UCS, 2005.</a></li>
+            <li><a href="https://openresty-reference.readthedocs.io/en/latest/LuaJIT/" target="_blank" rel="noopener">OpenResty Reference. LuaJIT Notes. 2026.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Dominio avancado em LuaJIT significa transformar diagnostico de runtime em decisoes de arquitetura, nao apenas em hacks de benchmark.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/fundamentos.html">LuaJIT - Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/projetos_boas_praticas.html">LuaJIT - Projetos e Boas Praticas</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

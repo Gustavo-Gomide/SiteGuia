@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e Boas Praticas em Dart: arquitetura de pacotes, Effective Dart, anti-padroes comuns, design patterns em Dart, Clean Architecture com Flutter e repositorio pattern." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Projetos e Boas Praticas em Dart | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Projetos e Boas Praticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Projetos e Boas Praticas em Dart</h1>
+          <p>Dart idiomatico segue o guia <strong>Effective Dart</strong> publicado pelo Google, que define convencoes de nomenclatura, uso de tipos, documentacao e design de APIs. Para projetos Flutter maiores, o padrao <strong>Clean Architecture</strong> com camadas de dominio, dados e apresentacao promove testabilidade e manutencao. Esta secao cobre arquitetura, padroes de design naturais em Dart e os erros mais comuns a evitar.</p>
+        </div>
+        <p class="intro-highlight">
+          A regra mais importante do Effective Dart: <em>dart analyze deve passar com zero warnings em modo strict</em>. Um codebase com warnings acumulados degradara rapidamente a qualidade e introduzira bugs silenciosos.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="effective-dart">Effective Dart — Convencoes Fundamentais</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Nomenclatura conforme Effective Dart</div>
+          <pre class="example"><span class="com">// CORRETO: UpperCamelCase para tipos</span>
+<span class="kw">class</span>    <span class="tp">ProdutoService</span>    {}
+<span class="kw">typedef</span>  <span class="tp">Predicado</span>&lt;<span class="tp">T</span>&gt; = <span class="tp">bool</span> <span class="tp">Function</span>(<span class="tp">T</span>);
+<span class="kw">enum</span>     <span class="tp">StatusPedido</span>     { pendente, aprovado, cancelado }
+
+<span class="com">// CORRETO: lowerCamelCase para variaveis, funcoes, parametros</span>
+<span class="tp">String</span>   nomeCompleto;
+<span class="kw">void</span>     <span class="fn">calcularTotal</span>() {}
+
+<span class="com">// CORRETO: lowercase_com_underscore para arquivos, pacotes, imports</span>
+<span class="kw">import</span>   <span class="str">'package:minha_lib/produto_service.dart'</span>;
+
+<span class="com">// CORRETO: _ para biblioteca privada (nao use __ duplo)</span>
+<span class="kw">class</span>  <span class="tp">_Cache</span>      {}
+<span class="kw">void</span>   <span class="fn">_parse</span>()    {}
+
+<span class="com">// ERRADO: usar SCREAMING_CAPS para constantes em Dart</span>
+<span class="com">// const TAXA_IMPOSTO = 0.1; // Java style — nao usar!</span>
+<span class="kw">const</span>  taxaImposto = <span class="num">0.1</span>;  <span class="com">// CORRETO em Dart</span>
+
+<span class="com">// CORRETO: doc comments com /// em vez de /**</span>
+<span class="com">/// Calcula o total com impostos inclusos.</span>
+<span class="com">///</span>
+<span class="com">/// Exemplo:</span>
+<span class="com">/// ```dart</span>
+<span class="com">/// final total = calcularComImposto(100.0);</span>
+<span class="com">/// ```</span>
+<span class="tp">double</span> <span class="fn">calcularComImposto</span>(<span class="tp">double</span> base) => base * (<span class="num">1</span> + taxaImposto);</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Design de APIs idiomaticas</div>
+          <pre class="example"><span class="com">// Preferir getters a metodos get*() sem parametros</span>
+<span class="kw">class</span> <span class="tp">Pedido</span> {
+  <span class="tp">List</span>&lt;<span class="tp">Item</span>&gt; <span class="kw">get</span> itens      => _itens.<span class="fn">toList</span>(); <span class="com">// imutavel externamente</span>
+  <span class="tp">bool</span>       <span class="kw">get</span> vazio      => _itens.<span class="fn">isEmpty</span>;
+  <span class="tp">int</span>        <span class="kw">get</span> quantidade => _itens.<span class="fn">length</span>;
+  <span class="tp">double</span>     <span class="kw">get</span> total     => _itens.<span class="fn">fold</span>(<span class="num">0</span>, (s, i) => s + i.subtotal);
+}
+
+<span class="com">// Preferir nomes descritivos aos tipos</span>
+<span class="com">// Ruim: List&lt;Usuario&gt; getAll() — redundante o 'get' com getter</span>
+<span class="com">// Bom:</span>
+<span class="kw">abstract class</span> <span class="tp">UsuarioRepository</span> {
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Usuario</span>&gt;&gt; <span class="fn">listar</span>();              <span class="com">// verbo descritivo</span>
+  <span class="tp">Future</span>&lt;<span class="tp">Usuario</span>?&gt; <span class="fn">buscarPorId</span>(<span class="tp">String</span> id);  <span class="com">// encontrar ou null</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt;     <span class="fn">salvar</span>(<span class="tp">Usuario</span> u);
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt;     <span class="fn">deletar</span>(<span class="tp">String</span> id);
+}
+
+<span class="com">// Usar parametros nomeados para melhorar legibilidade na chamada</span>
+<span class="com">// Ruim: calcular(10, true, 2, false)</span>
+<span class="com">// Bom:</span>
+<span class="tp">double</span> <span class="fn">calcular</span>({
+  <span class="kw">required</span> <span class="tp">double</span> valor,
+  <span class="tp">bool</span> incluirImposto = <span class="kw">false</span>,
+  <span class="tp">int</span>  parcelas      = <span class="num">1</span>,
+  <span class="tp">bool</span> arredondar    = <span class="kw">true</span>,
+}) { ... }
+
+<span class="fn">calcular</span>(valor: <span class="num">100</span>, incluirImposto: <span class="kw">true</span>, parcelas: <span class="num">3</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="clean-arch">Arquitetura: Clean Architecture com Dart</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Repository pattern com Result type (sem excecoes no dominio)</div>
+          <pre class="example"><span class="com">// lib/domain/entities/produto.dart — entidade pura (sem dependencias)</span>
+<span class="kw">class</span> <span class="tp">Produto</span> {
+  <span class="kw">final</span> <span class="tp">String</span> id, nome;
+  <span class="kw">final</span> <span class="tp">double</span> preco;
+  <span class="kw">const</span> <span class="tp">Produto</span>({<span class="kw">required</span> <span class="kw">this</span>.id, <span class="kw">required</span> <span class="kw">this</span>.nome, <span class="kw">required</span> <span class="kw">this</span>.preco});
+}
+
+<span class="com">// lib/domain/repositories/produto_repository.dart — contrato</span>
+<span class="kw">abstract interface class</span> <span class="tp">ProdutoRepository</span> {
+  <span class="tp">Future</span>&lt;<span class="tp">Result</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt;&gt; <span class="fn">listar</span>();
+  <span class="tp">Future</span>&lt;<span class="tp">Result</span>&lt;<span class="tp">Produto</span>&gt;&gt;       <span class="fn">buscarPorId</span>(<span class="tp">String</span> id);
+}
+
+<span class="com">// lib/domain/usecases/buscar_produto_usecase.dart</span>
+<span class="kw">class</span> <span class="tp">BuscarProdutoUseCase</span> {
+  <span class="kw">final</span> <span class="tp">ProdutoRepository</span> _repo;
+  <span class="kw">const</span> <span class="tp">BuscarProdutoUseCase</span>(<span class="kw">this</span>._repo);
+
+  <span class="tp">Future</span>&lt;<span class="tp">Result</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">execute</span>(<span class="tp">String</span> id) <span class="kw">async</span> {
+    <span class="kw">if</span> (id.<span class="fn">isEmpty</span>) <span class="kw">return</span> <span class="tp">Result</span>.<span class="fn">failure</span>(<span class="str">'ID invalido'</span>);
+    <span class="kw">return</span> _repo.<span class="fn">buscarPorId</span>(id);
+  }
+}
+
+<span class="com">// lib/data/repositories/produto_repository_impl.dart — implementacao</span>
+<span class="kw">class</span> <span class="tp">ProdutoRepositoryImpl</span> <span class="kw">implements</span> <span class="tp">ProdutoRepository</span> {
+  <span class="kw">final</span> <span class="tp">ProdutoRemoteDataSource</span> _remoto;
+  <span class="kw">final</span> <span class="tp">ProdutoLocalDataSource</span>  _local;
+
+  <span class="tp">ProdutoRepositoryImpl</span>(<span class="kw">this</span>._remoto, <span class="kw">this</span>._local);
+
+  <span class="kw">@override</span>
+  <span class="tp">Future</span>&lt;<span class="tp">Result</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">buscarPorId</span>(<span class="tp">String</span> id) <span class="kw">async</span> {
+    <span class="kw">try</span> {
+      <span class="kw">final</span> cached = <span class="kw">await</span> _local.<span class="fn">buscar</span>(id);
+      <span class="kw">if</span> (cached != <span class="kw">null</span>) <span class="kw">return</span> <span class="tp">Result</span>.<span class="fn">success</span>(cached);
+      <span class="kw">final</span> servidor = <span class="kw">await</span> _remoto.<span class="fn">buscar</span>(id);
+      <span class="kw">await</span> _local.<span class="fn">salvar</span>(servidor);
+      <span class="kw">return</span> <span class="tp">Result</span>.<span class="fn">success</span>(servidor);
+    } <span class="kw">on</span> <span class="tp">NotFoundException</span> {
+      <span class="kw">return</span> <span class="tp">Result</span>.<span class="fn">failure</span>(<span class="str">'Produto nao encontrado'</span>);
+    } <span class="kw">catch</span> (e) {
+      <span class="kw">return</span> <span class="tp">Result</span>.<span class="fn">failure</span>(<span class="str">'Erro de rede: $e'</span>);
+    }
+  }
+}
+
+<span class="com">// Result type simples (ou use package:fpdart/dartz)</span>
+<span class="kw">sealed class</span> <span class="tp">Result</span>&lt;<span class="tp">T</span>&gt; {
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">Result</span>.<span class="fn">success</span>(<span class="tp">T</span> value)      = <span class="tp">Success</span>&lt;<span class="tp">T</span>&gt;;
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">Result</span>.<span class="fn">failure</span>(<span class="tp">String</span> error) = <span class="tp">Failure</span>&lt;<span class="tp">T</span>&gt;;
+}
+<span class="kw">class</span> <span class="tp">Success</span>&lt;<span class="tp">T</span>&gt; <span class="kw">extends</span> <span class="tp">Result</span>&lt;<span class="tp">T</span>&gt; { <span class="kw">const</span> <span class="tp">Success</span>(<span class="kw">this</span>.value); <span class="kw">final</span> <span class="tp">T</span> value; }
+<span class="kw">class</span> <span class="tp">Failure</span>&lt;<span class="tp">T</span>&gt; <span class="kw">extends</span> <span class="tp">Result</span>&lt;<span class="tp">T</span>&gt; { <span class="kw">const</span> <span class="tp">Failure</span>(<span class="kw">this</span>.error); <span class="kw">final</span> <span class="tp">String</span> error; }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="antipadroes">Boas Praticas vs Anti-Padroes</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <strong><span data-svg="check" aria-hidden="true"></span> Boas Praticas</strong>
+            <ul>
+              <li>Usar <code>const</code> para construtores e expressoes imutaveis em compile-time</li>
+              <li>Preferir <code>final</code> para todos os campos e variaveis locais que nao sao reatribuidas</li>
+              <li>Declarar tipos de retorno em todas as funcoes publicas</li>
+              <li>Usar <code>sealed class</code> + exhaustive switch para modelar estados finitos</li>
+              <li>Fechar <code>StreamController</code> e cancelar <code>StreamSubscription</code> no dispose</li>
+              <li>Usar <code>Isolate.run()</code> para processamento CPU-intensivo</li>
+              <li>Escrever testes para toda logica de dominio (use cases, repositories)</li>
+              <li>Expor apenas interfaces (<code>abstract interface class</code>) para inversao de dependencia</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <strong><span data-svg="xmark" aria-hidden="true"></span> Anti-Padroes</strong>
+            <ul>
+              <li>Usar <code>dynamic</code> sem necessidade — perde null safety e checagem de tipos</li>
+              <li>Lancar excecoes como fluxo de controle normal — use <code>Result</code> ou <code>Option</code></li>
+              <li>Realizar I/O em construtores de classe — use async factory ou inicializacao lazy</li>
+              <li>Compartilhar estado mutavel entre Isolates — viola o modelo de memoria isolado</li>
+              <li>Esquecer <code>await</code> em Futures (<code>unawaited_futures</code> lint captura isso)</li>
+              <li>Usar strings como IDs de tipo em vez de generics typesafe</li>
+              <li>Criar classes <code>abstract</code> com apenas metodos estaticos — use funcoes top-level</li>
+              <li>Misturar logica de UI com logica de negocios no mesmo arquivo</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="design-patterns">Design Patterns em Dart</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Singleton, Factory, Observer e Command em Dart idiomatico</div>
+          <pre class="example"><span class="com">// Singleton — usando construtor factory com cache</span>
+<span class="kw">class</span> <span class="tp">ConfiguracaoApp</span> {
+  <span class="kw">static</span> <span class="kw">final</span> _instance = <span class="tp">ConfiguracaoApp</span>._();
+  <span class="tp">ConfiguracaoApp</span>._();
+  <span class="kw">factory</span> <span class="tp">ConfiguracaoApp</span>() => _instance;
+
+  <span class="tp">String</span> baseUrl = <span class="str">'https://api.producao.com'</span>;
+  <span class="tp">bool</span>   modoDebug = <span class="kw">false</span>;
+}
+
+<span class="com">// Factory Method — subtipo detereminado por data</span>
+<span class="kw">abstract class</span> <span class="tp">Notificacao</span> {
+  <span class="kw">void</span> <span class="fn">enviar</span>(<span class="tp">String</span> mensagem);
+
+  <span class="kw">factory</span> <span class="tp">Notificacao</span>(<span class="tp">String</span> canal) => <span class="kw">switch</span> (canal) {
+    <span class="str">'email'</span> => <span class="tp">_EmailNotificacao</span>(),
+    <span class="str">'push'</span>  => <span class="tp">_PushNotificacao</span>(),
+    <span class="str">'sms'</span>   => <span class="tp">_SmsNotificacao</span>(),
+    _       => <span class="kw">throw</span> <span class="tp">ArgumentError</span>(<span class="str">'Canal desconhecido: $canal'</span>),
+  };
+}
+
+<span class="com">// Observer via Stream (idiomatico Dart)</span>
+<span class="kw">class</span> <span class="tp">EventBus</span> {
+  <span class="kw">static</span> <span class="kw">final</span> _ctrl = <span class="tp">StreamController</span>&lt;<span class="tp">Object</span>&gt;.<span class="fn">broadcast</span>();
+  <span class="kw">static</span> <span class="tp">Stream</span>&lt;<span class="tp">T</span>&gt; <span class="fn">on</span>&lt;<span class="tp">T</span>&gt;() => _ctrl.stream.<span class="fn">whereType</span>&lt;<span class="tp">T</span>&gt;();
+  <span class="kw">static</span> <span class="kw">void</span> <span class="fn">emit</span>(<span class="tp">Object</span> event) => _ctrl.<span class="fn">add</span>(event);
+}
+
+<span class="com">// Uso: ouvir so PedidoCriado</span>
+<span class="tp">EventBus</span>.<span class="fn">on</span>&lt;<span class="tp">PedidoCriado</span>&gt;().<span class="fn">listen</span>((e) => print(<span class="str">'Pedido: ${e.id}'</span>));
+<span class="tp">EventBus</span>.<span class="fn">emit</span>(<span class="tp">PedidoCriado</span>(<span class="str">'123'</span>));
+
+<span class="com">// Builder pattern — Dart usa named parameters em vez de Builder</span>
+<span class="kw">final</span> req = <span class="tp">HttpRequest</span>(
+  url:    <span class="str">'https://api.com/dados'</span>,
+  method: <span class="tp">HttpMethod</span>.post,
+  headers: {<span class="str">'Authorization'</span>: <span class="str">'Bearer token'</span>},
+  timeout: <span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">30</span>),
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>Effective Dart</strong>. Disponível em: &lt;https://dart.dev/effective-dart&gt;. Acesso em: 2025.</li>
+            <li>VAN VLECK, B.; BRESLER, M. <strong>Flutter Architecture — Clean Architecture</strong>. Disponível em: &lt;https://docs.flutter.dev/app-architecture/guide&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>Dart language specification</strong>. Disponível em: &lt;https://dart.dev/guides/language/spec&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a href="../aplicacoes/mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart para Mobile com Flutter</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Sealed classes com exhaustive switch expressam regras de negocio complexas com muito mais seguranca do que strings ou enums simples — o compilador notifica imediatamente quando um novo estado nao e tratado.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

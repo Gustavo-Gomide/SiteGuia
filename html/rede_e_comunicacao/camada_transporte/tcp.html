@@ -1,0 +1,157 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TCP: cabeçalho, flags, handshake 3 vias, controle de fluxo, janela deslizante, controle de congestionamento e estados TCP." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TCP | Camada de Transporte | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Transporte</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">TCP &mdash; Transmission Control Protocol</h1>
+          <p class="page-subtitle">Entrega confiável, ordenada e sem erros de dados entre processos em rede</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>TCP</strong> (RFC 793) é o protocolo de transporte orientado a conexão. Garante que bytes chegam em ordem, sem duplicatas e sem perdas. Usa confirmações (ACK), retransmissão, janela deslizante e controle de congestionamento. É a base de HTTP(S), SSH, SMTP e a maioria das aplicações web.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="header" class="section-title">Cabeçalho TCP (mínimo 20 bytes)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>Cabeçalho TCP &mdash; RFC 793</span></div>
+          <pre class="code-block"> 0                   1                   2                   3
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|          Source Port          |       Destination Port        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                        Sequence Number                        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Acknowledgment Number                      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|  Data |           |U|A|P|R|S|F|                               |
+| Offset| Reserved  |R|C|S|S|Y|I|            Window             |
+|       |           |G|K|H|T|N|N|                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Checksum            |         Urgent Pointer        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Options                    |    Padding    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+</pre>
+        </div>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Campos principais</h3>
+            <ul>
+              <li><strong>Source/Destination Port (16b cada):</strong> identificam o processo remetente/destinatário</li>
+              <li><strong>Sequence Number (32b):</strong> número do primeiro byte neste segmento; permite reordenamento</li>
+              <li><strong>Acknowledgment Number (32b):</strong> próximo byte esperado (ACK cumulativo)</li>
+              <li><strong>Data Offset (4b):</strong> tamanho do header em words de 32 bits (mínimo 5 = 20B)</li>
+              <li><strong>Window (16b):</strong> tamanho da janela de recepção; controle de fluxo; ampliado com Window Scaling option (RFC 7323)</li>
+              <li><strong>Checksum (16b):</strong> integridade do header + dados + pseudo-header IP</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Flags TCP (control bits)</h3>
+            <ul>
+              <li><strong>SYN:</strong> synchronize; inicia conexão; consumido no ISN (Initial Sequence Number)</li>
+              <li><strong>ACK:</strong> acknowledgment number é válido</li>
+              <li><strong>FIN:</strong> remetente não tem mais dados; inicia encerramento gracioso</li>
+              <li><strong>RST:</strong> reset abrupto da conexão; nenhum FIN/ACK</li>
+              <li><strong>PSH:</strong> push; receptor deve passar dados à aplicação imediatamente (sem buffer)</li>
+              <li><strong>URG:</strong> dado urgente; apontado por Urgent Pointer (raro na prática)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="handshake" class="section-title">Handshake 3 Vias e Encerramento</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Estabelecimento (3-way handshake)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Abertura de conexão TCP</span></div>
+              <pre class="code-block">Cliente                          Servidor
+  |---- SYN (seq=X) ---------------&gt;|  LISTEN
+  |                  SYN-RECEIVED    |
+  |&lt;--- SYN+ACK (seq=Y, ack=X+1) ---|  
+  |  ESTABLISHED                     |
+  |---- ACK (ack=Y+1) -------------&gt; |  ESTABLISHED
+  |  [dados podem fluir aqui]        |</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Encerramento gracioso (4-way)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Encerramento TCP</span></div>
+              <pre class="code-block">Cliente                          Servidor
+  |---- FIN ----------------------&gt; |  CLOSE-WAIT
+  |  FIN-WAIT-1                      |
+  |&lt;--- ACK ----------------------- |  
+  |  FIN-WAIT-2                      |
+  |&lt;--- FIN ----------------------- |  LAST-ACK
+  |  TIME-WAIT                       |
+  |---- ACK ----------------------&gt; |  CLOSED
+  |  (espera 2*MSL = 60-120s)        |
+  |  CLOSED                          |</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fluxo" class="section-title">Controle de Fluxo e Congestionamento</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Janela Deslizante (Flow Control)</h3>
+            <p>O receptor anuncia o <strong>receive window</strong> (rwnd) &mdash; quanto de buffer está disponível. O remetente não pode ter mais bytes <em>in-flight</em> do que rwnd. Se rwnd = 0, o remetente para e envia probes periódicos.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Controle de Congestionamento</h3>
+            <ul>
+              <li><strong>Slow Start:</strong> cwnd começa em 1 MSS; dobra a cada RTT (exponencial) até o ssthresh</li>
+              <li><strong>Congestion Avoidance:</strong> após ssthresh, aumenta 1 MSS por RTT (linear); até perda</li>
+              <li><strong>Fast Retransmit:</strong> 3 ACKs duplicados &rarr; retransmite sem esperar timeout</li>
+              <li><strong>Fast Recovery (Reno/CUBIC):</strong> após fast retransmit, divide ssthresh ao meio e retoma na metade (não volta ao slow start)</li>
+              <li><strong>CUBIC (Linux padrão):</strong> função cúbica para crescer cwnd; melhor para redes de alta latência/largura de banda</li>
+              <li><strong>BBR (Google):</strong> modelo de rede baseado em BDP (Bandwidth-Delay Product); não baseia em perda; preferído em CDNs e Google</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="udp.html"><strong>UDP</strong></a>, <a href="portas.html"><strong>Portas</strong></a>, <a href="sockets.html"><strong>Sockets</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "TCP é uma obra-prima da engenharia: resolve o problema de entrega confiável sobre IP não-confiável com elegante ausência de mágica."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

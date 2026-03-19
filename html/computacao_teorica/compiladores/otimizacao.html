@@ -1,0 +1,172 @@
+﻿<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Otimização em compiladores: passes locais e globais, análise de fluxo de dados, constant folding, inlining, dead-code elimination e níveis -O." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Otimização | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores &rsaquo; Otimização</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Otimização</h1>
+        <p>Fazendo mais com menos &mdash; sem alterar o resultado do programa.</p>
+      </div>
+      <p class="intro-highlight">
+        A fase de <strong>otimização</strong> transforma o código intermediário para que o programa resultante
+        seja mais rápido, menor ou consume menos energia &mdash; sem mudar o comportamento observável.
+        É o &ldquo;coelho de cartola&rdquo; dos compiladores: magia com garantia formal.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="niveis" class="section-title">Níveis de Otimização</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Flag</th><th>Nome</th><th>O que ativa</th><th>Uso típico</th></tr></thead>
+          <tbody>
+            <tr><td><code>-O0</code></td><td>Sem otimização</td><td>Nada &mdash; compilação rápida, debugging fácil</td><td>Desenvolvimento</td></tr>
+            <tr><td><code>-O1</code></td><td>Leve</td><td>Eliminação de código morto, folding de constantes simples</td><td>Debug com alguma otimização</td></tr>
+            <tr><td><code>-O2</code></td><td>Padrão</td><td>Maioria dos passes seguros; sem aumento de tamanho do código</td><td>Produção</td></tr>
+            <tr><td><code>-O3</code></td><td>Agressivo</td><td>Inlining agressivo, vectorização, unrolling</td><td>HPC, CPU-bound</td></tr>
+            <tr><td><code>-Os</code></td><td>Tamanho</td><td>Similar -O2 mas evita passes que aumentam tamanho</td><td>Embarcados</td></tr>
+            <tr><td><code>-Oz</code></td><td>Tamanho mínimo</td><td>Agressivo em redução de tamanho, pode ser mais lento</td><td>WASM, firmware</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="passes-locais" class="section-title">Passes Locais</h2>
+      <div class="card">
+        <p>Passes locais atuam dentro de um <strong>bloco básico</strong> (sequência de instruções sem desvios):</p>
+        <ul>
+          <li><strong>Constant Folding</strong>: <code>x = 2 * 3</code> &rarr; <code>x = 6</code> em tempo de compilação.</li>
+          <li><strong>Constant Propagation</strong>: substitui variáveis de valor constante pelos valores diretamente.</li>
+          <li><strong>Dead Code Elimination</strong>: remove código cujos resultados nunca são usados.</li>
+          <li><strong>Common Subexpression Elimination (CSE)</strong>: <code>a*b + c + a*b</code> &rarr; computa <code>a*b</code> uma vez.</li>
+          <li><strong>Peephole</strong>: substitui sequências curtas de instruções por versões mais eficientes (<code>x*2</code> &rarr; <code>x&lt;&lt;1</code>).</li>
+        </ul>
+        <pre class="example">// Antes: dead code + constant folding
+int a = 2 * 3;      // a = 6 (constant folding)
+int b = a + 0;      // b = 6 (additive identity)
+bool c = false;     // c nunca usado
+return a;           // b e c: dead code
+
+// Depois:
+return 6;</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="passes-globais" class="section-title">Passes Globais e de Loop</h2>
+      <div class="card">
+        <p>Passes globais analisam o grafo de fluxo de controle (CFG) completo:</p>
+        <ul>
+          <li><strong>Inlining</strong>: substitui chamadas de função pelo corpo da função &mdash; elimina overhead de chamada.</li>
+          <li><strong>Loop Invariant Code Motion (LICM)</strong>: move cálculos que não dependem do loop para fora dele.</li>
+          <li><strong>Loop Unrolling</strong>: replica o corpo do loop N vezes, reduzindo overhead de desvio.</li>
+          <li><strong>Strength Reduction</strong>: <code>x = i * 4</code> no loop &rarr; <code>x += 4</code> (adição em vez de multiplicação).</li>
+          <li><strong>Vectorização (Auto-SIMD)</strong>: converte loops em instruções SIMD (ex.: AVX2, NEON).</li>
+        </ul>
+        <!-- CFG com loop back-edge -->
+        <svg viewBox="0 0 380 170" width="100%" role="img" aria-label="CFG com loop back-edge">
+          <defs>
+            <marker id="cfg-ac" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="6" markerHeight="5" orient="auto">
+              <polygon points="0,0 10,3.5 0,7" style="fill:var(--accent)"/>
+            </marker>
+          </defs>
+          <!-- blocos -->
+          <rect x="10" y="10" width="100" height="35" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="60" y="27" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Entrada</text>
+          <rect x="10" y="65" width="100" height="35" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="60" y="82" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Loop Header</text>
+          <rect x="10" y="120" width="100" height="35" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="60" y="137" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Saída</text>
+          <rect x="150" y="65" width="100" height="35" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="200" y="82" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Loop Body</text>
+          <rect x="280" y="65" width="90" height="35" rx="5" style="fill:var(--bg-secondary);stroke:var(--text-secondary);stroke-width:1.5"/>
+          <text x="325" y="82" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-secondary);font:11px monospace">LICM: mov</text>
+          <!-- setas -->
+          <line x1="60" y1="45" x2="60" y2="63" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#cfg-ac)"/>
+          <line x1="60" y1="100" x2="60" y2="118" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#cfg-ac)"/>
+          <line x1="110" y1="82" x2="148" y2="82" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#cfg-ac)"/>
+          <!-- back-edge tracejado -->
+          <path d="M 250,82 L 290,82 L 290,48 L 35,48 L 35,65" fill="none" style="stroke:var(--text-secondary);stroke-width:1.2;stroke-dasharray:4 3"/>
+          <text x="192" y="40" text-anchor="middle" style="fill:var(--text-secondary);font:9px sans-serif">back edge (loop)</text>
+        </svg>
+        <p>O <strong>back-edge</strong> no CFG identifica loops. LICM move instruções invariantes para o pré-header.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="fluxo-dados" class="section-title">Análise de Fluxo de Dados</h2>
+      <div class="card">
+        <p>Muitas otimizações dependem de análises sobre o grafo de fluxo de controle:</p>
+        <ul>
+          <li><strong>Reaching Definitions</strong>: &ldquo;quais definições de <code>x</code> podem chegar a este ponto?&rdquo; &mdash; base para constant propagation.</li>
+          <li><strong>Liveness Analysis</strong>: &ldquo;<code>x</code> ainda será usado após este ponto?&rdquo; &mdash; base para dead-code e alocação de registradores.</li>
+          <li><strong>Dominators</strong>: bloco A domina B se todo caminho de entrada passa por A &mdash; base para detecção de loops e SSA.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/geracao_codigo.html">Geração de Código</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/representacao_intermediaria.html">Voltar: Representação Intermediária</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "Otimizar é encontrar o equivalente mais rápido &mdash; não um programa diferente, mas o mesmo programa em versão mais eficiente."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

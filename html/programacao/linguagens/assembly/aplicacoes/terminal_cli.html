@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para aplicacoes terminal e CLI: leitura de argumentos argc/argv, leitura/escrita em stdin/stdout com syscalls, parsing de strings em assembly, programas utilitarios bare-metal." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Terminal e CLI</h1>
+          <p>Programas de linha de comando em Assembly puro são uma das aplicações mais diretas e educativas da linguagem. Desde ler <strong>argc/argv</strong> passados pelo kernel no stack, até fazer I/O com syscalls <code>read</code>/<code>write</code>, converter números em strings e implementar parsing de argumentos — tudo sem nenhuma biblioteca externa.</p>
+        </div>
+        <p class="intro-highlight">
+          Quando o kernel Linux inicia um processo ELF, o <strong>stack já contém</strong>: <code>[rsp] = argc</code>, <code>[rsp+8] = argv[0]</code>, <code>[rsp+16] = argv[1]</code>... seguidos de <code>envp[]</code>. O código assembly pode lê-los diretamente de <code>rsp</code> antes mesmo de configurar o frame do <code>main</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="argc-argv">Lendo argc, argv e envp</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; _start: acessar argumentos da linha de comando</div>
+          <pre class="example"><span class="com">; Layout do stack ao iniciar _start:</span>
+<span class="com">;  [rsp]       = argc     (int64)</span>
+<span class="com">;  [rsp+8]     = argv[0]  (char* → nome do executável)</span>
+<span class="com">;  [rsp+16]    = argv[1]  (char* → 1° argumento)</span>
+<span class="com">;  ...         = argv[argc-1]</span>
+<span class="com">;  [rsp+8*(argc+1)] = NULL (fim de argv)</span>
+<span class="com">;  [rsp+8*(argc+2)] = envp[0] ...</span>
+
+<span class="kw">section</span> .data
+    uso_msg  <span class="fn">db</span> <span class="str">"Uso: prog &lt;nome&gt;"</span>, <span class="num">10</span>, <span class="num">0</span>
+    ola_pre  <span class="fn">db</span> <span class="str">"Ola, "</span>, <span class="num">0</span>
+    newline  <span class="fn">db</span> <span class="num">10</span>
+
+<span class="kw">section</span> .text
+<span class="kw">global</span> _start
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; strlen_asm: calcula comprimento de string terminada com \0</span>
+<span class="com">;; rdi = ptr, retorna rax = comprimento</span>
+<span class="com">;;------------------------------------------------------------</span>
+strlen_asm:
+    <span class="kw">xor</span>   rax, rax
+.loop:
+    <span class="kw">cmp</span>   <span class="tp">byte</span> [rdi + rax], <span class="num">0</span>
+    <span class="kw">je</span>    .fim
+    <span class="kw">inc</span>   rax
+    <span class="kw">jmp</span>   .loop
+.fim:
+    <span class="kw">ret</span>
+
+_start:
+    <span class="kw">mov</span>   rbx, [rsp]           <span class="com">; rbx = argc</span>
+    <span class="kw">cmp</span>   rbx, <span class="num">2</span>               <span class="com">; precisamos de pelo menos 1 argumento</span>
+    <span class="kw">jl</span>    .sem_args
+
+    <span class="com">; argv[1] = [rsp + 16]</span>
+    <span class="kw">mov</span>   r12, [rsp + <span class="num">16</span>]      <span class="com">; r12 = argv[1] (callee-saved = não perde)</span>
+
+    <span class="com">; escrever "Ola, "</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> ola_pre]
+    <span class="kw">call</span>  strlen_asm
+    <span class="kw">mov</span>   rdx, rax              <span class="com">; tamanho</span>
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> ola_pre]
+    <span class="kw">mov</span>   edi, <span class="num">1</span>               <span class="com">; fd=stdout</span>
+    <span class="kw">mov</span>   eax, <span class="num">1</span>               <span class="com">; sys_write</span>
+    <span class="kw">syscall</span>
+
+    <span class="com">; escrever argv[1]</span>
+    <span class="kw">mov</span>   rdi, r12
+    <span class="kw">call</span>  strlen_asm
+    <span class="kw">mov</span>   rdx, rax
+    <span class="kw">mov</span>   rsi, r12
+    <span class="kw">mov</span>   edi, <span class="num">1</span>
+    <span class="kw">mov</span>   eax, <span class="num">1</span>
+    <span class="kw">syscall</span>
+
+    <span class="com">; escrever newline</span>
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> newline]
+    <span class="kw">mov</span>   edx, <span class="num">1</span>
+    <span class="kw">mov</span>   edi, <span class="num">1</span>
+    <span class="kw">mov</span>   eax, <span class="num">1</span>
+    <span class="kw">syscall</span>
+    <span class="kw">jmp</span>   .sair
+
+.sem_args:
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> uso_msg]
+    <span class="kw">mov</span>   edx, <span class="num">18</span>
+    <span class="kw">mov</span>   edi, <span class="num">2</span>               <span class="com">; fd=stderr</span>
+    <span class="kw">mov</span>   eax, <span class="num">1</span>
+    <span class="kw">syscall</span>
+
+.sair:
+    <span class="kw">xor</span>   edi, edi
+    <span class="kw">mov</span>   eax, <span class="num">60</span>
+    <span class="kw">syscall</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="io-buffer">Leitura de stdin e Conversoes Numericas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; ler do stdin e converter string para inteiro</div>
+          <pre class="example"><span class="kw">section</span> .bss
+    buf     <span class="fn">resb</span> <span class="num">64</span>        <span class="com">; buffer para leitura</span>
+
+<span class="kw">section</span> .data
+    prompt  <span class="fn">db</span> <span class="str">"Digite um número: "</span>, <span class="num">0</span>
+
+<span class="kw">section</span> .text
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; itoa64: converte rax (int64) → string em buffer</span>
+<span class="com">;; rdi = buffer de saída (mín. 21 bytes), retorna rdi=início str</span>
+<span class="com">;;------------------------------------------------------------</span>
+itoa64:
+    <span class="kw">push</span>  rbx
+    <span class="kw">mov</span>   rbx, rdi
+    <span class="kw">add</span>   rbx, <span class="num">20</span>
+    <span class="kw">mov</span>   <span class="tp">byte</span> [rbx], <span class="num">0</span>        <span class="com">; terminador nulo</span>
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">jns</span>   .positivo
+    <span class="kw">neg</span>   rax                  <span class="com">; tornar positivo</span>
+    <span class="kw">push</span>  rax
+    <span class="kw">mov</span>   rax, <span class="num">1</span>               <span class="com">; flag: negativo</span>
+    <span class="kw">push</span>  rax
+    <span class="kw">mov</span>   rax, [rsp + <span class="num">8</span>]
+.positivo:
+    <span class="kw">mov</span>   rcx, <span class="num">10</span>
+.loop:
+    <span class="kw">xor</span>   rdx, rdx
+    <span class="kw">div</span>   rcx                  <span class="com">; rax = quociente, rdx = resto (0-9)</span>
+    <span class="kw">add</span>   dl, <span class="str">'0'</span>
+    <span class="kw">dec</span>   rbx
+    <span class="kw">mov</span>   [rbx], dl
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">jnz</span>   .loop
+    <span class="kw">mov</span>   rax, rbx             <span class="com">; retorna ponteiro para início</span>
+    <span class="kw">pop</span>   rbx
+    <span class="kw">ret</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; atoi64: converte string decimal → int64 em rax</span>
+<span class="com">;; rdi = ptr string  (suporta sinal negativo)</span>
+<span class="com">;;------------------------------------------------------------</span>
+atoi64:
+    <span class="kw">xor</span>   rax, rax
+    <span class="kw">xor</span>   rcx, rcx            <span class="com">; sinal: 0=positivo, 1=negativo</span>
+    <span class="kw">cmp</span>   <span class="tp">byte</span> [rdi], <span class="str">'-'</span>
+    <span class="kw">jne</span>   .digits
+    <span class="kw">inc</span>   rdi
+    <span class="kw">inc</span>   rcx
+.digits:
+    <span class="kw">movzx</span> rdx, <span class="tp">byte</span> [rdi]
+    <span class="kw">sub</span>   dl, <span class="str">'0'</span>
+    <span class="kw">js</span>    .fim                 <span class="com">; dl < 0 → não é dígito</span>
+    <span class="kw">cmp</span>   dl, <span class="num">9</span>
+    <span class="kw">ja</span>    .fim
+    <span class="kw">imul</span>  rax, rax, <span class="num">10</span>
+    <span class="kw">add</span>   rax, rdx
+    <span class="kw">inc</span>   rdi
+    <span class="kw">jmp</span>   .digits
+.fim:
+    <span class="kw">test</span>  rcx, rcx
+    <span class="kw">jz</span>    .ret
+    <span class="kw">neg</span>   rax
+.ret:
+    <span class="kw">ret</span>
+
+ler_numero:
+    <span class="com">; read(0, buf, 64)</span>
+    <span class="kw">xor</span>   edi, edi             <span class="com">; fd=stdin</span>
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> buf]
+    <span class="kw">mov</span>   edx, <span class="num">64</span>
+    <span class="kw">xor</span>   eax, eax             <span class="com">; sys_read = 0</span>
+    <span class="kw">syscall</span>                    <span class="com">; rax = bytes lidos</span>
+    <span class="com">; substituir '\n' por '\0'</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> buf]
+    <span class="kw">add</span>   rdi, rax
+    <span class="kw">dec</span>   rdi
+    <span class="kw">mov</span>   <span class="tp">byte</span> [rdi], <span class="num">0</span>
+    <span class="com">; converter string → inteiro</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> buf]
+    <span class="kw">call</span>  atoi64               <span class="com">; rax = valor numérico</span>
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LINUX MAN-PAGES. <strong>execve(2), read(2), write(2)</strong>. Disponível em: &lt;https://man7.org/linux/man-pages/&gt;. Acesso em: 2025.</li>
+            <li>AMD. <strong>AMD64 Architecture Programmer's Manual Vol. 2</strong>. Santa Clara: AMD Inc., 2024. Disponível em: &lt;https://developer.amd.com/resources/developer-guides-manuals/&gt;. Acesso em: 2025.</li>
+            <li>BLANDY, Jim; ORENDORFF, Jason. <strong>Programming Rust</strong>. Sebastopol: O'Reilly, 2021. ISBN 978-1-492-05259-4.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Aplicações Web (WebAssembly)</a></li>
+          <li><a href="../guia/fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Fundamentos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Usar <strong>r12–r15</strong> para guardar ponteiros importantes (como argv[1]) durante chamadas de função é essencial — esses registradores são <em>callee-saved</em> pela System V ABI, o que significa que qualquer função C que você chamar via <code>call</code> preservará seus valores automaticamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

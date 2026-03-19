@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para Web: WebAssembly (WASM) com WAT (WebAssembly Text Format), WASI para acesso ao sistema, compilar assembly para .wasm, usar modulos WASM em JavaScript e Node.js." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Web e WebAssembly | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Web e WebAssembly</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Web e WebAssembly</h1>
+          <p><strong>WebAssembly (WASM)</strong> é a forma moderna de escrever código de baixo nível para a web. É uma máquina virtual de stack com seu próprio assembly — o <strong>WAT (WebAssembly Text Format)</strong> — que compila para um binário <code>.wasm</code> executável em qualquer navegador moderno com desempenho próximo ao nativo. E com <strong>WASI</strong>, os mesmos módulos rodam fora do browser, no servidor.</p>
+        </div>
+        <p class="intro-highlight">
+          WASM não é x86 — é uma arquitetura virtual de propósito específico para a web. Mas os mesmos conceitos de Assembly (pilha, memória linear, tipos primitivos) se aplicam. Um módulo WASM pode ser um <strong>hot path computacional</strong> em C/C++/Rust compilado para .wasm e chamado via JavaScript ou um módulo WAT escrito diretamente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wat">WAT — WebAssembly Text Format</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">WAT &mdash; Modulo WebAssembly completo</div>
+          <pre class="example"><span class="com">;; WebAssembly Text Format (WAT)</span>
+<span class="com">;; Compilar: wat2wasm modulo.wat -o modulo.wasm</span>
+<span class="com">;; Instalar: npm install -g wabt   (inclui wat2wasm, wasm2wat)</span>
+
+(<span class="kw">module</span>
+  <span class="com">;; ── importar função do host (JS/Node) ──────────────────</span>
+  (<span class="fn">import</span> <span class="str">"console"</span> <span class="str">"log"</span>
+    (<span class="fn">func</span> $log (<span class="fn">param</span> i32))
+  )
+
+  <span class="com">;; ── memória: 1 página = 64 KB ──────────────────────────</span>
+  (<span class="fn">memory</span> (<span class="fn">export</span> <span class="str">"memory"</span>) <span class="num">1</span>)
+
+  <span class="com">;; ── dados iniciais na memória ──────────────────────────</span>
+  (<span class="fn">data</span> (<span class="fn">i32.const</span> <span class="num">0</span>) <span class="str">"Ola WASM!\00"</span>)
+
+  <span class="com">;; ── função: somar dois i32 ──────────────────────────────</span>
+  (<span class="fn">func</span> (<span class="fn">export</span> <span class="str">"soma"</span>)
+    (<span class="fn">param</span> $a i32) (<span class="fn">param</span> $b i32)
+    (<span class="fn">result</span> i32)
+    <span class="fn">local.get</span> $a
+    <span class="fn">local.get</span> $b
+    <span class="fn">i32.add</span>
+  )
+
+  <span class="com">;; ── função: fibonacci(n) ────────────────────────────────</span>
+  (<span class="fn">func</span> (<span class="fn">export</span> <span class="str">"fib"</span>)
+    (<span class="fn">param</span> $n i32) (<span class="fn">result</span> i32)
+    (<span class="fn">local</span> $a i32) (<span class="fn">local</span> $b i32) (<span class="fn">local</span> $tmp i32)
+    (<span class="fn">local.set</span> $a (<span class="fn">i32.const</span> <span class="num">0</span>))
+    (<span class="fn">local.set</span> $b (<span class="fn">i32.const</span> <span class="num">1</span>))
+    (<span class="fn">block</span>
+      (<span class="fn">loop</span>
+        (<span class="fn">br_if</span> <span class="num">1</span> (<span class="fn">i32.le_s</span> (<span class="fn">local.get</span> $n) (<span class="fn">i32.const</span> <span class="num">0</span>)))
+        (<span class="fn">local.set</span> $tmp (<span class="fn">i32.add</span> (<span class="fn">local.get</span> $a) (<span class="fn">local.get</span> $b)))
+        (<span class="fn">local.set</span> $a (<span class="fn">local.get</span> $b))
+        (<span class="fn">local.set</span> $b (<span class="fn">local.get</span> $tmp))
+        (<span class="fn">local.set</span> $n (<span class="fn">i32.sub</span> (<span class="fn">local.get</span> $n) (<span class="fn">i32.const</span> <span class="num">1</span>)))
+        <span class="fn">br</span> <span class="num">0</span>
+      )
+    )
+    <span class="fn">local.get</span> $a
+  )
+
+  <span class="com">;; ── função: escrever string (chama $log) ────────────────</span>
+  (<span class="fn">func</span> (<span class="fn">export</span> <span class="str">"greet"</span>)
+    (<span class="fn">i32.const</span> <span class="num">0</span>)   <span class="com">;; endereço da string na memória</span>
+    <span class="fn">call</span> $log
+  )
+)</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript &mdash; Carregar e usar modulo WASM</div>
+          <pre class="example"><span class="com">// Carregar modulo .wasm via fetch/WebAssembly API</span>
+<span class="kw">async function</span> <span class="fn">carregarWasm</span>() {
+    <span class="kw">const</span> importObject = {
+        console: {
+            log: (ptr) => {
+                <span class="com">// ptr = endereço na memória linear do WASM</span>
+                <span class="kw">const</span> mem = <span class="kw">new</span> Uint8Array(instance.exports.memory.buffer);
+                <span class="kw">let</span> str = <span class="str">""</span>;
+                <span class="kw">let</span> i = ptr;
+                <span class="kw">while</span> (mem[i] !== <span class="num">0</span>) str += String.fromCharCode(mem[i++]);
+                console.log(str);
+            }
+        }
+    };
+
+    <span class="com">// Opção 1: fetch + instantiateStreaming (mais eficiente)</span>
+    <span class="kw">const</span> { instance } = <span class="kw">await</span> WebAssembly.<span class="fn">instantiateStreaming</span>(
+        <span class="fn">fetch</span>(<span class="str">"modulo.wasm"</span>),
+        importObject
+    );
+
+    <span class="com">// Chamar funções exportadas</span>
+    console.<span class="fn">log</span>(instance.exports.<span class="fn">soma</span>(<span class="num">3</span>, <span class="num">4</span>));     <span class="com">// 7</span>
+    console.<span class="fn">log</span>(instance.exports.<span class="fn">fib</span>(<span class="num">10</span>));       <span class="com">// 55</span>
+    instance.exports.<span class="fn">greet</span>();                   <span class="com">// "Ola WASM!"</span>
+
+    <span class="com">// Acessar memória linear diretamente</span>
+    <span class="kw">const</span> mem = <span class="kw">new</span> Int32Array(instance.exports.memory.buffer);
+    mem[<span class="num">0</span>] = <span class="num">42</span>;   <span class="com">// escrever na posição 0 da memória WASM</span>
+}
+
+<span class="fn">carregarWasm</span>();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wasi">WASI — WebAssembly fora do Browser</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; Compilar C para WASM com WASI e rodar com Wasmtime</div>
+          <pre class="example"><span class="com"># WASI = WebAssembly System Interface — syscalls portáveis</span>
+<span class="com"># Permite rodar .wasm no servidor sem Docker, sem OS específico</span>
+
+<span class="com"># Instalar WASI SDK</span>
+# https://github.com/WebAssembly/wasi-sdk/releases
+
+<span class="com"># Compilar C → WASM com WASI target</span>
+/opt/wasi-sdk/bin/clang \
+    --sysroot=/opt/wasi-sdk/share/wasi-sysroot \
+    -target wasm32-wasi \
+    -O2 \
+    programa.c -o programa.wasm
+
+<span class="com"># Rodar com Wasmtime (runtime WebAssembly nativo)</span>
+wasmtime programa.wasm           <span class="com"># executar diretamente</span>
+wasmtime --dir=. programa.wasm   <span class="com"># dar acesso ao diretório atual</span>
+
+<span class="com"># Instalar Wasmtime</span>
+curl https://wasmtime.dev/install.sh -sSf | bash
+
+<span class="com"># Rodar com Node.js (WASI experimental)</span>
+node --experimental-wasi-unstable-preview1 run_wasm.js</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Node.js &mdash; Executar modulo WASM com WASI</div>
+          <pre class="example"><span class="kw">import</span> { WASI } <span class="kw">from</span> <span class="str">'node:wasi'</span>;
+<span class="kw">import</span> { readFileSync } <span class="kw">from</span> <span class="str">'node:fs'</span>;
+
+<span class="kw">const</span> wasi = <span class="kw">new</span> <span class="fn">WASI</span>({
+    version: <span class="str">'preview1'</span>,
+    args: process.argv,
+    env: process.env,
+    preopens: { <span class="str">'/'</span>: <span class="str">'/'</span> }   <span class="com">// mapear diretório raiz</span>
+});
+
+<span class="kw">const</span> bytes = <span class="fn">readFileSync</span>(<span class="str">'programa.wasm'</span>);
+<span class="kw">const</span> { module, instance } = <span class="kw">await</span> WebAssembly.<span class="fn">instantiate</span>(
+    bytes,
+    wasi.<span class="fn">getImportObject</span>()
+);
+
+wasi.<span class="fn">start</span>(instance);   <span class="com">// executa _start do WASM</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="c-para-wasm">Compilar C/C++ para WebAssembly com Emscripten</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal &mdash; Emscripten: compilar para browser</div>
+          <pre class="example"><span class="com"># Instalar Emscripten SDK (emsdk)</span>
+git clone https://github.com/emscripten-core/emsdk.git
+cd emsdk
+./emsdk install latest
+./emsdk activate latest
+source ./emsdk_env.sh
+
+<span class="com"># Compilar .c → .wasm + .js (glue code automático)</span>
+emcc programa.c -o saida.html     <span class="com"># gera saida.html + saida.wasm + saida.js</span>
+emcc programa.c -o saida.js       <span class="com"># só o módulo JS</span>
+emcc programa.c -o saida.wasm     <span class="com"># só o binário wasm</span>
+
+<span class="com"># Com otimizações</span>
+emcc -O3 -flto programa.c -o saida.wasm
+
+<span class="com"># Exportar funções específicas</span>
+emcc programa.c \
+    -EXPORTED_FUNCTIONS="['_soma', '_fib']" \
+    -EXPORTED_RUNTIME_METHODS="['ccall', 'cwrap']" \
+    -o saida.js
+
+<span class="com"># Servir localmente (navegadores bloqueiam file:// para WASM)</span>
+python3 -m http.server 8080</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>W3C. <strong>WebAssembly Specification</strong>. World Wide Web Consortium, 2024. Disponível em: &lt;https://webassembly.github.io/spec/&gt;. Acesso em: 2025.</li>
+            <li>MOZILLA DEVELOPER NETWORK. <strong>WebAssembly — JavaScript API</strong>. MDN Web Docs, 2024. Disponível em: &lt;https://developer.mozilla.org/en-US/docs/WebAssembly&gt;. Acesso em: 2025.</li>
+            <li>BYTECODEALLIANCE. <strong>WASI: WebAssembly System Interface</strong>. Disponível em: &lt;https://wasi.dev/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Terminal e CLI</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — GUI e Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>WebAssembly não substitui JavaScript</strong> — ele complementa. Use WASM para hot paths: parsing, criptografia, codecs de vídeo/áudio, simulações físicas, hashing e qualquer operação de CPU-intensiva. Para lógica de UI, DOM, eventos e rede, JavaScript continua sendo a escolha certa. A interop WASM↔JS tem custo — minimize chamadas de fronteira.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

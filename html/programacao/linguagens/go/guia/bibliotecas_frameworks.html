@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e frameworks Go: Gin, Echo, net/http, gRPC, GORM, sqlx, Cobra e mais." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Bibliotecas e Frameworks</h1>
+          <p>O ecossistema Go oferece bibliotecas de alta qualidade para qualquer domínio: web (Gin, Echo, Chi, net/http), banco de dados (GORM, sqlx, pgx), gRPC, mensageria (kafka-go, NATS), CLI (Cobra, urfave/cli), logging (zerolog, zap, slog), observabilidade (Prometheus, OpenTelemetry) e testabilidade (testify).</p>
+        </div>
+        <p class="intro-highlight">
+          A biblioteca padrão <code>net/http</code> de Go é <strong>production-ready por si só</strong>. O servidor HTTP integrado usa goroutines automáticas por conexão, suporta TLS nativo, HTTP/2 e timeouts configuráveis. Frameworks como Gin e Echo adicionam roteamento com parâmetros, middleware composable e binding de JSON — mas para muitos projetos, <code>net/http</code> puro é suficiente.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gin">Gin — Web Framework</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">API REST completa com Gin: rotas, middleware, JSON, validação</div>
+          <pre class="example"><span class="com">// go get github.com/gin-gonic/gin</span>
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"net/http"</span>
+    <span class="str">"github.com/gin-gonic/gin"</span>
+)
+
+<span class="kw">type</span> Produto <span class="kw">struct</span> {
+    ID    int    `json:"id"`
+    Nome  string `json:"nome"  binding:"required,min=2"`
+    Preco float64`json:"preco" binding:"required,gt=0"`
+}
+
+<span class="kw">var</span> produtos = []Produto{
+    {1, <span class="str">"Teclado"</span>, 250.0},
+    {2, <span class="str">"Mouse"</span>,   120.0},
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    r := gin.Default()   <span class="com">// Logger + Recovery middleware</span>
+
+    <span class="com">// Middleware customizado</span>
+    r.Use(<span class="kw">func</span>(c *gin.Context) {
+        c.Header(<span class="str">"X-App"</span>, <span class="str">"MeuServico"</span>)
+        c.Next()
+    })
+
+    <span class="com">// Grupo de rotas com prefixo</span>
+    api := r.Group(<span class="str">"/api/v1"</span>)
+    {
+        api.GET(<span class="str">"/produtos"</span>, <span class="kw">func</span>(c *gin.Context) {
+            c.JSON(http.StatusOK, gin.H{<span class="str">"dados"</span>: produtos})
+        })
+
+        api.GET(<span class="str">"/produtos/:id"</span>, <span class="kw">func</span>(c *gin.Context) {
+            id := c.Param(<span class="str">"id"</span>)
+            <span class="kw">for</span> _, p := <span class="kw">range</span> produtos {
+                <span class="kw">if</span> fmt.Sprint(p.ID) == id {
+                    c.JSON(http.StatusOK, p)
+                    <span class="kw">return</span>
+                }
+            }
+            c.JSON(http.StatusNotFound, gin.H{<span class="str">"erro"</span>: <span class="str">"não encontrado"</span>})
+        })
+
+        api.POST(<span class="str">"/produtos"</span>, <span class="kw">func</span>(c *gin.Context) {
+            <span class="kw">var</span> novo Produto
+            <span class="kw">if</span> err := c.ShouldBindJSON(&amp;novo); err != nil {
+                c.JSON(http.StatusBadRequest, gin.H{<span class="str">"erro"</span>: err.Error()})
+                <span class="kw">return</span>
+            }
+            novo.ID = len(produtos) + 1
+            produtos = append(produtos, novo)
+            c.JSON(http.StatusCreated, novo)
+        })
+
+        api.DELETE(<span class="str">"/produtos/:id"</span>, <span class="kw">func</span>(c *gin.Context) {
+            c.Status(http.StatusNoContent)
+        })
+    }
+
+    r.Run(<span class="str">":8080"</span>)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="grpc">gRPC — RPC de Alta Performance</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Definir proto, gerar código Go, implementar servidor</div>
+          <pre class="example"><span class="com">// produtos.proto</span>
+syntax = "proto3";
+option go_package = "github.com/usuario/app/pb";
+
+service ProdutoService {
+    rpc BuscarProduto (BuscarRequest) returns (Produto);
+    rpc ListarProdutos(ListarRequest) returns (stream Produto);
+}
+
+message Produto { int32 id=1; string nome=2; float preco=3; }
+message BuscarRequest { int32 id=1; }
+message ListarRequest { }
+
+<span class="com">// Gerar: protoc --go_out=. --go-grpc_out=. produtos.proto</span>
+
+<span class="com">// Implementação do servidor</span>
+<span class="kw">type</span> servidor <span class="kw">struct</span> {
+    pb.UnimplementedProdutoServiceServer
+}
+
+<span class="kw">func</span> (s *servidor) <span class="fn">BuscarProduto</span>(ctx context.Context, req *pb.BuscarRequest) (*pb.Produto, error) {
+    <span class="kw">for</span> _, p := <span class="kw">range</span> produtosDB {
+        <span class="kw">if</span> p.Id == req.Id {
+            <span class="kw">return</span> p, nil
+        }
+    }
+    <span class="kw">return</span> nil, status.Errorf(codes.NotFound, <span class="str">"produto %d não encontrado"</span>, req.Id)
+}
+
+<span class="kw">func</span> (s *servidor) <span class="fn">ListarProdutos</span>(req *pb.ListarRequest, stream pb.ProdutoService_ListarProdutosServer) error {
+    <span class="kw">for</span> _, p := <span class="kw">range</span> produtosDB {
+        <span class="kw">if</span> err := stream.Send(p); err != nil {
+            <span class="kw">return</span> err
+        }
+    }
+    <span class="kw">return</span> nil
+}
+
+<span class="com">// Iniciar servidor gRPC</span>
+lis, _ := net.Listen(<span class="str">"tcp"</span>, <span class="str">":50051"</span>)
+s := grpc.NewServer()
+pb.RegisterProdutoServiceServer(s, &amp;servidor{})
+s.Serve(lis)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="banco-dados">Banco de Dados — sqlx e GORM</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">sqlx para SQL idiomático e GORM para ORM</div>
+          <pre class="example"><span class="com">// sqlx — thin wrapper sobre database/sql</span>
+<span class="com">// go get github.com/jmoiron/sqlx</span>
+<span class="com">// go get github.com/lib/pq</span>
+
+<span class="kw">import</span> (
+    <span class="str">"github.com/jmoiron/sqlx"</span>
+    _ <span class="str">"github.com/lib/pq"</span>
+)
+
+db, _ := sqlx.Connect(<span class="str">"postgres"</span>,
+    <span class="str">"host=localhost port=5432 user=user password=pass dbname=app sslmode=disable"</span>)
+defer db.Close()
+
+<span class="kw">type</span> Usuario <span class="kw">struct</span> {
+    ID    int    `db:"id"`
+    Nome  string `db:"nome"`
+    Email string `db:"email"`
+}
+
+<span class="com">// Select lista</span>
+<span class="kw">var</span> usuarios []Usuario
+db.Select(&amp;usuarios, <span class="str">"SELECT * FROM usuarios WHERE ativo = $1"</span>, true)
+
+<span class="com">// Get um registro</span>
+<span class="kw">var</span> u Usuario
+db.Get(&amp;u, <span class="str">"SELECT * FROM usuarios WHERE id = $1"</span>, 1)
+
+<span class="com">// Named queries</span>
+db.NamedExec(`INSERT INTO usuarios (nome, email) VALUES (:nome, :email)`, u)
+
+<span class="com">// Transação</span>
+tx := db.MustBegin()
+tx.NamedExec(`UPDATE usuarios SET nome=:nome WHERE id=:id`, u)
+tx.Commit()
+
+<span class="com">// ---- GORM ----</span>
+<span class="com">// go get gorm.io/gorm</span>
+<span class="com">// go get gorm.io/driver/postgres</span>
+
+<span class="kw">import</span> (
+    <span class="str">"gorm.io/gorm"</span>
+    <span class="str">"gorm.io/driver/postgres"</span>
+)
+
+db2, _ := gorm.Open(postgres.Open(dsn), &amp;gorm.Config{})
+db2.AutoMigrate(&amp;Usuario{})
+
+<span class="com">// CRUD com GORM</span>
+db2.Create(&amp;Usuario{Nome: <span class="str">"Alice"</span>, Email: <span class="str">"alice@ex.com"</span>})
+db2.First(&amp;u, 1)
+db2.Model(&amp;u).Update(<span class="str">"Nome"</span>, <span class="str">"Alice Silva"</span>)
+db2.Delete(&amp;u)
+
+<span class="com">// Queries complexas</span>
+db2.Where(<span class="str">"nome LIKE ?"</span>, <span class="str">"%Alice%"</span>).Find(&amp;usuarios)
+db2.Joins(<span class="str">"JOIN pedidos ON pedidos.usuario_id = usuarios.id"</span>).Find(&amp;usuarios)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cobra-cli">Cobra — CLIs Profissionais</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Subcomandos, flags e argumentos com Cobra</div>
+          <pre class="example"><span class="com">// go get github.com/spf13/cobra</span>
+<span class="com">// Estrutura usada por kubectl, Hugo, Docker CLI</span>
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"os"</span>
+    <span class="str">"github.com/spf13/cobra"</span>
+)
+
+<span class="kw">var</span> verbose bool
+<span class="kw">var</span> output  string
+
+<span class="kw">var</span> rootCmd = &amp;cobra.Command{
+    Use:   <span class="str">"meutool"</span>,
+    Short: <span class="str">"Ferramenta de exemplo"</span>,
+}
+
+<span class="kw">var</span> processar = &amp;cobra.Command{
+    Use:   <span class="str">"processar [arquivo]"</span>,
+    Short: <span class="str">"Processa um arquivo"</span>,
+    Args:  cobra.ExactArgs(1),
+    RunE: <span class="kw">func</span>(cmd *cobra.Command, args []string) error {
+        arquivo := args[0]
+        <span class="kw">if</span> verbose {
+            fmt.Printf(<span class="str">"Processando: %s → %s\n"</span>, arquivo, output)
+        }
+        <span class="com">// lógica de processamento...</span>
+        <span class="kw">return</span> nil
+    },
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    rootCmd.PersistentFlags().BoolVarP(&amp;verbose, <span class="str">"verbose"</span>, <span class="str">"v"</span>, false, <span class="str">"modo verboso"</span>)
+    processar.Flags().StringVarP(&amp;output, <span class="str">"output"</span>, <span class="str">"o"</span>, <span class="str">"output.txt"</span>, <span class="str">"arquivo de saída"</span>)
+    rootCmd.AddCommand(processar)
+    <span class="kw">if</span> err := rootCmd.Execute(); err != nil {
+        os.Exit(1)
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="observabilidade">Observabilidade — Prometheus, Zap e OpenTelemetry</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Métricas, logging estruturado e tracing</div>
+          <pre class="example"><span class="com">// Prometheus — métricas</span>
+<span class="com">// go get github.com/prometheus/client_golang/prometheus</span>
+
+httpReqs := prometheus.NewCounterVec(
+    prometheus.CounterOpts{Name: <span class="str">"http_requests_total"</span>, Help: <span class="str">"Total HTTP"</span>},
+    []string{<span class="str">"method"</span>, <span class="str">"status"</span>},
+)
+prometheus.MustRegister(httpReqs)
+
+latencia := prometheus.NewHistogramVec(
+    prometheus.HistogramOpts{
+        Name:    <span class="str">"http_latency_seconds"</span>,
+        Buckets: prometheus.DefBuckets,
+    }, []string{<span class="str">"path"</span>},
+)
+prometheus.MustRegister(latencia)
+
+<span class="com">// Incrementar no handler</span>
+httpReqs.With(prometheus.Labels{<span class="str">"method"</span>: <span class="str">"GET"</span>, <span class="str">"status"</span>: <span class="str">"200"</span>}).Inc()
+
+<span class="com">// Expor /metrics</span>
+http.Handle(<span class="str">"/metrics"</span>, promhttp.Handler())
+
+<span class="com">// Zap — logging estruturado de alto desempenho</span>
+<span class="com">// go get go.uber.org/zap</span>
+logger, _ := zap.NewProduction()
+defer logger.Sync()
+
+logger.Info(<span class="str">"servidor iniciado"</span>,
+    zap.String(<span class="str">"addr"</span>, <span class="str">":8080"</span>),
+    zap.Int(<span class="str">"pid"</span>, os.Getpid()),
+)
+logger.Error(<span class="str">"erro ao conectar"</span>,
+    zap.String(<span class="str">"host"</span>, <span class="str">"db:5432"</span>),
+    zap.Error(err),
+)
+
+<span class="com">// slog (stdlib Go 1.21) — opção padrão sem dependência</span>
+slog.Info(<span class="str">"requisição recebida"</span>, <span class="str">"method"</span>, <span class="str">"GET"</span>, <span class="str">"path"</span>, <span class="str">"/api"</span>)
+slog.Error(<span class="str">"falha na query"</span>, <span class="str">"err"</span>, err)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Gin. <strong>Gin Web Framework</strong>. Disponível em: &lt;https://gin-gonic.com&gt;. Acesso em: 2026.</li>
+            <li>GORM. <strong>The fantastic ORM library for Go</strong>. Disponível em: &lt;https://gorm.io&gt;. Acesso em: 2026.</li>
+            <li>Cobra. <strong>A Commander for modern Go CLI interactions</strong>. Disponível em: &lt;https://github.com/spf13/cobra&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Cobra é a base da maioria das CLIs profissionais em Go — <strong>kubectl, Hugo, GitHub CLI, Docker CLI, Helm e Terraform</strong> usam Cobra ou padrão similar. A razão é a hierarquia de subcomandos: <code>kubectl get pods</code>, <code>kubectl apply -f</code>, <code>kubectl logs --follow</code> são todos subcomandos com seus próprios flags, argumentos e documentação, sem boilerplate manual. Cobra gera help consistente, completação de shell (bash/zsh/fish) e documentação markdown automaticamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

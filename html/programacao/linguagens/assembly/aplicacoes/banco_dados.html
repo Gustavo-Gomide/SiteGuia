@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para banco de dados: acesso a arquivos binários via syscalls, mmap, estruturas de registro em assembly, B-Tree e hash table em linguagem de montagem, leitura de formatos binários." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Banco de Dados</h1>
+          <p>Motores de banco de dados de alto desempenho como SQLite, PostgreSQL e RocksDB contêm código assembly em seus caminhos críticos: índices B-Tree, comparadores de chave com SIMD, e rotinas de I/O de arquivos mapeadas em memória. Entender como assembladores lêem e escrevem estruturas de dados em disco ajuda a compreender <strong>por que</strong> essas escolhas de implementação existem.</p>
+        </div>
+        <p class="intro-highlight">
+          Assembly oferece acesso direto a <strong>mmap</strong> (memória mapeada de arquivo), manipulação de offsets com aritmética pura de ponteiros, e otimizações SIMD para comparação em massa de chaves — tarefas que um JIT de banco de dados deve dominar.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mmap">Arquivos com mmap (memory-mapped files)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Linux syscall mmap — mapear arquivo em memória</div>
+          <pre class="example"><span class="com">; NASM x86-64 Linux — mmap um arquivo de banco de dados para memória</span>
+<span class="com">; O sistema operacional gerencia páginas (lazy loading) — acesso por ponteiro comum</span>
+
+section .data
+    filename   <span class="fn">db</span> <span class="str">"data.db"</span>, <span class="num">0</span>
+    fd         <span class="fn">dq</span> <span class="num">0</span>      <span class="com">; file descriptor</span>
+    map_addr   <span class="fn">dq</span> <span class="num">0</span>      <span class="com">; ponteiro retornado por mmap</span>
+    file_size  <span class="fn">dq</span> <span class="num">0</span>
+
+section .text
+    global _start
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; open(filename, O_RDONLY=0, 0)</span>
+<span class="com">;;------------------------------------------------------------</span>
+_start:
+    <span class="kw">mov</span>   rax, <span class="num">2</span>             <span class="com">; syscall: open</span>
+    <span class="kw">lea</span>   rdi, [rel filename]
+    <span class="kw">xor</span>   rsi, rsi            <span class="com">; O_RDONLY = 0</span>
+    <span class="kw">xor</span>   rdx, rdx
+    syscall
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">js</span>    .error
+    <span class="kw">mov</span>   [rel fd], rax
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; fstat(fd, &stat_buf) — obter tamanho do arquivo</span>
+<span class="com">;; struct stat.st_size está no offset 48</span>
+<span class="com">;;------------------------------------------------------------</span>
+    <span class="kw">sub</span>   rsp, <span class="num">144</span>            <span class="com">; alocar struct stat na stack</span>
+    <span class="kw">mov</span>   rax, <span class="num">5</span>             <span class="com">; syscall: fstat</span>
+    <span class="kw">mov</span>   rdi, [rel fd]
+    <span class="kw">mov</span>   rsi, rsp
+    syscall
+    <span class="kw">mov</span>   rax, [rsp + <span class="num">48</span>]    <span class="com">; st_size</span>
+    <span class="kw">mov</span>   [rel file_size], rax
+    <span class="kw">add</span>   rsp, <span class="num">144</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0)</span>
+<span class="com">;;------------------------------------------------------------</span>
+    <span class="kw">mov</span>   rax, <span class="num">9</span>             <span class="com">; syscall: mmap</span>
+    <span class="kw">xor</span>   rdi, rdi            <span class="com">; addr = NULL (kernel escolhe)</span>
+    <span class="kw">mov</span>   rsi, [rel file_size]
+    <span class="kw">mov</span>   rdx, <span class="num">1</span>             <span class="com">; PROT_READ</span>
+    <span class="kw">mov</span>   r10, <span class="num">2</span>             <span class="com">; MAP_PRIVATE</span>
+    <span class="kw">mov</span>   r8,  [rel fd]
+    <span class="kw">xor</span>   r9,  r9             <span class="com">; offset = 0</span>
+    syscall
+    <span class="kw">test</span>  rax, rax
+    <span class="kw">js</span>    .error
+    <span class="kw">mov</span>   [rel map_addr], rax  <span class="com">; agora rax aponta para os dados do arquivo</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; Agora podemos ler o arquivo como memória comum</span>
+<span class="com">;; Exemplo: ler os primeiros 8 bytes (magic number / version header)</span>
+<span class="com">;;------------------------------------------------------------</span>
+    <span class="kw">mov</span>   rbx, [rel map_addr]
+    <span class="kw">mov</span>   rax, [rbx]          <span class="com">; primeiros 8 bytes do arquivo</span>
+    <span class="com">; rax agora contém o header magic (ex: 0x53514C697465 = "SQLite")</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; munmap(addr, size) — liberar mapeamento</span>
+<span class="com">;;------------------------------------------------------------</span>
+    <span class="kw">mov</span>   rax, <span class="num">11</span>            <span class="com">; syscall: munmap</span>
+    <span class="kw">mov</span>   rdi, [rel map_addr]
+    <span class="kw">mov</span>   rsi, [rel file_size]
+    syscall
+
+    <span class="kw">mov</span>   rax, <span class="num">60</span>            <span class="com">; exit(0)</span>
+    <span class="kw">xor</span>   rdi, rdi
+    syscall
+
+.error:
+    <span class="kw">mov</span>   rax, <span class="num">60</span>
+    <span class="kw">mov</span>   rdi, <span class="num">1</span>
+    syscall</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="struct-records">Estruturas de Registro (Fixed-Width Records)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Leitura de registros fixos &mdash; tabela de banco de dados simples</div>
+          <pre class="example"><span class="com">; Estrutura de registro (como se fosse uma row/linha de tabela):</span>
+<span class="com">; struct Record {</span>
+<span class="com">;   uint32_t id;        // offset 0,  4 bytes</span>
+<span class="com">;   char     name[32];  // offset 4,  32 bytes</span>
+<span class="com">;   double   salary;    // offset 36, 8 bytes</span>
+<span class="com">;   uint8_t  active;    // offset 44, 1 byte</span>
+<span class="com">;   uint8_t  pad[3];    // offset 45, 3 bytes (alinhamento)</span>
+<span class="com">; };                    // total: 48 bytes</span>
+
+<span class="at">%define</span> REC_SIZE    <span class="num">48</span>
+<span class="at">%define</span> OFF_ID      <span class="num">0</span>
+<span class="at">%define</span> OFF_NAME    <span class="num">4</span>
+<span class="at">%define</span> OFF_SALARY  <span class="num">36</span>
+<span class="at">%define</span> OFF_ACTIVE  <span class="num">44</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; get_record(base_addr, index) → ponteiro para o registro</span>
+<span class="com">;; rdi = base_addr, rsi = index (0-based)</span>
+<span class="com">;; retorna em rax</span>
+<span class="com">;;------------------------------------------------------------</span>
+get_record:
+    <span class="kw">imul</span>  rsi, rsi, REC_SIZE   <span class="com">; offset = index * 48</span>
+    <span class="kw">lea</span>   rax, [rdi + rsi]     <span class="com">; ponteiro = base + offset</span>
+    ret
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; linear_scan: varrer todos os registros buscando id == alvo</span>
+<span class="com">;; rdi = base_addr, rsi = num_records, rdx = target_id</span>
+<span class="com">;; retorna em rax (ponteiro ou NULL)</span>
+<span class="com">;;------------------------------------------------------------</span>
+linear_scan:
+    <span class="kw">push</span>  rbx
+    <span class="kw">push</span>  r12
+    <span class="kw">mov</span>   rbx, rdi             <span class="com">; rbx = ponteiro corrente</span>
+    <span class="kw">mov</span>   r12, rdx             <span class="com">; r12 = target_id</span>
+    <span class="kw">xor</span>   rcx, rcx             <span class="com">; rcx = contador</span>
+
+.loop:
+    <span class="kw">cmp</span>   rcx, rsi
+    <span class="kw">jge</span>   .not_found
+
+    <span class="kw">mov</span>   eax, [rbx + OFF_ID]  <span class="com">; ler id do registro atual</span>
+    <span class="kw">cmp</span>   eax, r12d
+    <span class="kw">je</span>    .found
+
+    <span class="kw">add</span>   rbx, REC_SIZE        <span class="com">; avançar para próximo registro</span>
+    <span class="kw">inc</span>   rcx
+    <span class="kw">jmp</span>   .loop
+
+.found:
+    <span class="kw">mov</span>   rax, rbx             <span class="com">; retornar ponteiro</span>
+    <span class="kw">pop</span>   r12
+    <span class="kw">pop</span>   rbx
+    ret
+
+.not_found:
+    <span class="kw">xor</span>   rax, rax             <span class="com">; retornar NULL</span>
+    <span class="kw">pop</span>   r12
+    <span class="kw">pop</span>   rbx
+    ret
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; cmp_records_by_id: comparador para qsort</span>
+<span class="com">;; rdi = *Record a, rsi = *Record b</span>
+<span class="com">;; retorna: negativo / zero / positivo</span>
+<span class="com">;;------------------------------------------------------------</span>
+cmp_records_by_id:
+    <span class="kw">mov</span>   eax, [rdi + OFF_ID]
+    <span class="kw">mov</span>   edx, [rsi + OFF_ID]
+    <span class="kw">sub</span>   eax, edx             <span class="com">; retorna a.id - b.id</span>
+    ret</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="btree">B-Tree: Traversal em Assembly</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Busca binária em nó de B-Tree (chaves inteiras de 8 bytes)</div>
+          <pre class="example"><span class="com">; Nó de B-Tree (formato SQLite-like, simplificado):</span>
+<span class="com">; struct BTreeNode {</span>
+<span class="com">;   uint16_t num_keys;   // offset 0: número de chaves no nó</span>
+<span class="com">;   uint8_t  is_leaf;    // offset 2: 1 = folha, 0 = interno</span>
+<span class="com">;   uint8_t  pad;        // offset 3</span>
+<span class="com">;   int64_t  keys[MAX];  // offset 4: array de chaves (8 bytes cada)</span>
+<span class="com">; };</span>
+<span class="at">%define</span> OFF_NUM_KEYS  <span class="num">0</span>
+<span class="at">%define</span> OFF_IS_LEAF   <span class="num">2</span>
+<span class="at">%define</span> OFF_KEYS      <span class="num">4</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; btree_node_binary_search</span>
+<span class="com">;; rdi = ponteiro para BTreeNode</span>
+<span class="com">;; rsi = chave de busca (int64)</span>
+<span class="com">;; retorna: rax = índice onde chave foi encontrada (ou -1)</span>
+<span class="com">;;          rcx = índice do filho a seguir (para nós internos)</span>
+<span class="com">;;------------------------------------------------------------</span>
+btree_node_binary_search:
+    <span class="kw">movzx</span> r8, <span class="tp">word</span> [rdi + OFF_NUM_KEYS]  <span class="com">; r8 = num_keys</span>
+    <span class="kw">test</span>  r8, r8
+    <span class="kw">jz</span>    .empty_node
+
+    <span class="kw">xor</span>   r9, r9              <span class="com">; r9 = low = 0</span>
+    <span class="kw">mov</span>   r10, r8             <span class="com">; r10 = high = num_keys</span>
+    <span class="kw">dec</span>   r10
+
+.bsearch_loop:
+    <span class="kw">cmp</span>   r9, r10
+    <span class="kw">jg</span>    .not_found_exact
+
+    <span class="kw">mov</span>   r11, r9
+    <span class="kw">add</span>   r11, r10
+    <span class="kw">shr</span>   r11, <span class="num">1</span>              <span class="com">; mid = (low + high) / 2</span>
+
+    <span class="com">; Ler keys[mid] — cálculo de offset: 4 + mid*8</span>
+    <span class="kw">lea</span>   rax, [rdi + OFF_KEYS]
+    <span class="kw">mov</span>   rax, [rax + r11*8]  <span class="com">; rax = keys[mid]</span>
+
+    <span class="kw">cmp</span>   rsi, rax
+    <span class="kw">je</span>    .found_exact
+    <span class="kw">jl</span>    .go_left
+    <span class="com">; maior: mover low para mid+1</span>
+    <span class="kw">lea</span>   r9, [r11 + 1]
+    <span class="kw">jmp</span>   .bsearch_loop
+
+.go_left:
+    <span class="kw">lea</span>   r10, [r11 - 1]
+    <span class="kw">jmp</span>   .bsearch_loop
+
+.found_exact:
+    <span class="kw">mov</span>   rax, r11            <span class="com">; índice encontrado</span>
+    <span class="kw">mov</span>   rcx, r11            <span class="com">; filho à direita da chave = índice+1</span>
+    <span class="kw">inc</span>   rcx
+    ret
+
+.not_found_exact:
+    <span class="kw">mov</span>   rax, <span class="num">-1</span>            <span class="com">; não encontrado</span>
+    <span class="kw">mov</span>   rcx, r9            <span class="com">; índice do filho a seguir descendo</span>
+    ret
+
+.empty_node:
+    <span class="kw">mov</span>   rax, <span class="num">-1</span>
+    <span class="kw">xor</span>   rcx, rcx
+    ret</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="crc32">CRC-32 para Integridade de Dados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CRC-32 com instrução SSE4.2 crc32 (hardware)</div>
+          <pre class="example"><span class="com">; Intel SSE4.2 inclui instrução CRC32 CRC32 por hardware (Nehalem+)</span>
+<span class="com">; Usada em SQLite páginas de journal, checksums de transação</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; crc32_sse42(data, len) → uint32 em eax</span>
+<span class="com">;; rdi = ponteiro para dados, rsi = comprimento em bytes</span>
+<span class="com">;;------------------------------------------------------------</span>
+crc32_sse42:
+    <span class="kw">mov</span>    eax, <span class="num">0xFFFFFFFF</span>   <span class="com">; valor inicial</span>
+    <span class="kw">xor</span>    rcx, rcx
+
+    <span class="com">; Processar 8 bytes por vez enquanto possível</span>
+.loop8:
+    <span class="kw">sub</span>    rsi, <span class="num">8</span>
+    <span class="kw">jl</span>     .tail
+
+    crc32  rax, <span class="tp">qword</span> [rdi + rcx]   <span class="com">; CRC-32C sobre 8 bytes</span>
+    <span class="kw">add</span>    rcx, <span class="num">8</span>
+    <span class="kw">jmp</span>    .loop8
+
+    <span class="com">; Processar bytes restantes individualmente</span>
+.tail:
+    <span class="kw">add</span>    rsi, <span class="num">8</span>           <span class="com">; restaurar contagem restante</span>
+.loop1:
+    <span class="kw">test</span>   rsi, rsi
+    <span class="kw">jz</span>     .done
+    crc32  eax, <span class="tp">byte</span> [rdi + rcx]
+    <span class="kw">inc</span>    rcx
+    <span class="kw">dec</span>    rsi
+    <span class="kw">jmp</span>    .loop1
+
+.done:
+    <span class="kw">not</span>    eax               <span class="com">; complemento final</span>
+    ret
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; Uso: verificar página de banco de dados (ex: 4KB)</span>
+<span class="com">;;------------------------------------------------------------</span>
+verify_page:
+    <span class="com">; rdi = ponteiro da página (4096 bytes)</span>
+    <span class="com">; Os primeiros 4 bytes contêm o CRC salvo</span>
+    <span class="kw">mov</span>   r15d, [rdi]         <span class="com">; CRC stored header</span>
+    <span class="kw">mov</span>   [rdi], dword <span class="num">0</span>     <span class="com">; zerar campo CRC antes de calcular</span>
+    <span class="kw">mov</span>   rsi, <span class="num">4096</span>
+    <span class="kw">call</span>  crc32_sse42
+    <span class="kw">mov</span>   [rdi], r15d        <span class="com">; restaurar campo CRC</span>
+    <span class="kw">cmp</span>   eax, r15d
+    <span class="kw">sete</span>  al                  <span class="com">; al = 1 se válido, 0 se corrompido</span>
+    <span class="kw">movzx</span> eax, al
+    ret</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="simd-keys">Comparação de Chaves em Massa com AVX2</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Varredura vetorizada de índice &mdash; localizar chave em 256 inteiros</div>
+          <pre class="example"><span class="com">; AVX2: processar 8 chaves int32 por ciclo</span>
+<span class="com">; Usado em bancos colunar (DuckDB, ClickHouse) para predicados WHERE col = val</span>
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; simd_find_key(int32* keys, int32 target, int count) → index ou -1</span>
+<span class="com">;; rdi = keys array, esi = target (int32), edx = count</span>
+<span class="com">;;------------------------------------------------------------</span>
+simd_find_key:
+    <span class="kw">push</span>   rbx
+    <span class="kw">vmovd</span>  xmm0, esi            <span class="com">; xmm0 = target</span>
+    <span class="kw">vpbroadcastd</span> ymm0, xmm0    <span class="com">; ymm0 = [target x8] (broadcast para 256 bits)</span>
+    <span class="kw">xor</span>    rbx, rbx             <span class="com">; índice corrente</span>
+
+.loop8:
+    <span class="kw">cmp</span>    rbx, rdx
+    <span class="kw">jge</span>    .not_found
+
+    <span class="com">; Carregar 8 chaves de 32 bits (256 bits)</span>
+    <span class="kw">vmovdqu</span>  ymm1, [rdi + rbx*4]
+
+    <span class="com">; Comparar 8 pares em paralelo</span>
+    <span class="kw">vpcmpeqd</span> ymm2, ymm0, ymm1  <span class="com">; ymm2[lane] = 0xFFFFFFFF se igual, 0 se diferente</span>
+
+    <span class="com">; Extrair bitmask dos bytes mais significativos dos 32 resultados</span>
+    <span class="kw">vpmovmskb</span> ecx, ymm2          <span class="com">; ecx = 32 bits, 1 bit por byte de ymm2</span>
+    <span class="kw">test</span>   ecx, ecx
+    <span class="kw">jz</span>     .next8               <span class="com">; nenhum match neste bloco de 8</span>
+
+    <span class="com">; Encontrou: mapear bit para índice</span>
+    <span class="com">; Cada chave int32 ocupa 4 bytes → cada match tem 4 bits consecutivos setados</span>
+    <span class="kw">bsf</span>    ecx, ecx             <span class="com">; posição do primeiro bit setado</span>
+    <span class="kw">shr</span>    ecx, <span class="num">2</span>              <span class="com">; dividir por 4 → índice dentro dos 8</span>
+    <span class="kw">add</span>    rbx, rcx             <span class="com">; índice absoluto</span>
+    <span class="kw">mov</span>    rax, rbx
+    <span class="kw">pop</span>    rbx
+    ret
+
+.next8:
+    <span class="kw">add</span>    rbx, <span class="num">8</span>
+
+    <span class="com">; Garantir que não ultrapasse count (loop handle parcial)</span>
+    <span class="kw">jmp</span>    .loop8
+
+.not_found:
+    <span class="kw">mov</span>    rax, <span class="num">-1</span>
+    <span class="kw">pop</span>    rbx
+    <span class="kw">vzeroupper</span>                  <span class="com">; limpeza AVX obrigatória antes de SSE</span>
+    ret</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BHARGAVA, A. <strong>Grokking Algorithms</strong>. Manning Publications, 2016. Cap. 11: Where to Go Next — B-Trees internals.</li>
+            <li>INTEL CORPORATION. <strong>Intel Intrinsics Guide — CRC32, VPCMPEQD, VPBROADCASTD</strong>. Disponível em: &lt;https://www.intel.com/content/www/us/en/docs/intrinsics-guide&gt;. Acesso em: 2025.</li>
+            <li>SQLite Consortium. <strong>SQLite File Format Specification</strong>. Disponível em: &lt;https://www.sqlite.org/fileformat.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Embedded e IoT</a></li>
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly Avançado — SIMD, AVX, syscalls</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A instrução <strong>CRC32</strong> do Intel SSE4.2 processa um byte (ou 2/4/8 bytes) por ciclo, sem desvios — é um exemplo perfeito de como hardware dedicado supera algoritmos de software. Engines de banco de dados como InnoDB e RocksDB usam CRC32-C (a variante Castagnoli) exatamente por ser acelerado em hardware em praticamente todos os processadores modernos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

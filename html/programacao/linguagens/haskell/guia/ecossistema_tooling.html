@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema Haskell: GHCup, Cabal, Stack, Hackage, HLS, QuickCheck e formatação com Ormolu." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Ecossistema e Tooling</h1>
+          <p>O ecossistema Haskell é centrado no <strong>GHC</strong> (compilador), <strong>Cabal</strong> (build tool oficial) ou <strong>Stack</strong> (build tool com snapshots, reprodutibilidade garantida), <strong>Hackage</strong> (repositório de pacotes), <strong>HLS</strong> (Language Server) e ferramentas de qualidade como <code>QuickCheck</code>, <code>HSpec</code> e <code>Ormolu</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>GHCup</strong> é o instalador oficial recomendado — gerencia versões de GHC, Cabal, Stack e HLS de forma isolada, similar ao <code>rustup</code> do Rust. Não instale GHC pelo package manager do sistema; use GHCup para controle de versão.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="cabal-stack" class="section-title">Cabal e Stack — Projetos e Dependências</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Comandos essenciais para build, test e run</div>
+          <pre class="example"><span class="com">-- Cabal — build tool oficial do GHC</span>
+cabal init meu-projeto           <span class="com">-- criar projeto interativo</span>
+cabal build                      <span class="com">-- compilar</span>
+cabal run                        <span class="com">-- compilar e executar</span>
+cabal test                       <span class="com">-- rodar testes</span>
+cabal repl                       <span class="com">-- GHCi com o projeto carregado</span>
+cabal install hlint ormolu       <span class="com">-- instalar ferramenta global</span>
+
+<span class="com">-- meu-projeto.cabal</span>
+cabal-version:      3.0
+name:               meu-projeto
+version:            0.1.0.0
+
+executable meu-projeto
+    main-is:          Main.hs
+    hs-source-dirs:   src
+    ghc-options:      -Wall -O2
+    build-depends:
+        base ^>=4.19,
+        text ^>=2.1,
+        aeson ^>=2.2,
+        containers ^>=0.7
+
+library
+    exposed-modules:  Lib, Lib.Types
+    hs-source-dirs:   lib
+    build-depends:    base, text, containers
+
+test-suite tests
+    type:             exitcode-stdio-1.0
+    main-is:          Spec.hs
+    hs-source-dirs:   test
+    build-depends:    base, meu-projeto, hspec, QuickCheck
+
+<span class="com">-- Stack — build tool com snapshots LTS (Stackage)</span>
+stack new meu-projeto              <span class="com">-- criar projeto com template</span>
+stack build                        <span class="com">-- compilar</span>
+stack run                          <span class="com">-- executar</span>
+stack test                         <span class="com">-- testar</span>
+stack ghci                         <span class="com">-- REPL com projeto</span>
+stack exec -- meu-projeto          <span class="com">-- executar binário</span>
+
+<span class="com">-- stack.yaml</span>
+resolver: lts-22.28    <span class="com">-- snapshot LTS do Stackage — versões compatíveis garantidas</span>
+packages:
+  - .
+extra-deps:
+  - some-package-1.2.3    <span class="com">-- dependência fora do LTS</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="hspec-quickcheck" class="section-title">HSpec e QuickCheck — Testes</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Testes unitários expressivos e property-based testing</div>
+          <pre class="example"><span class="com">-- HSpec — BDD-style tests</span>
+import Test.Hspec
+import Test.QuickCheck
+
+<span class="com">-- Funções sendo testadas</span>
+reverter :: [a] -> [a]
+reverter []     = []
+reverter (x:xs) = reverter xs ++ [x]
+
+somaLista :: [Int] -> Int
+somaLista = foldl (+) 0
+
+<span class="com">-- Suíte de testes HSpec</span>
+main :: IO ()
+main = hspec $ do
+    describe "reverter" $ do
+        it "lista vazia retorna vazia" $
+            reverter ([] :: [Int]) `shouldBe` []
+
+        it "inverte lista simples" $
+            reverter [1, 2, 3] `shouldBe` [3, 2, 1]
+
+        it "reverter duas vezes = identidade" $
+            reverter (reverter [1..5]) `shouldBe` [1..5]
+
+    describe "somaLista" $ do
+        it "soma lista vazia = 0" $
+            somaLista [] `shouldBe` 0
+
+        it "soma lista conhecida" $
+            somaLista [1..100] `shouldBe` 5050
+
+<span class="com">-- QuickCheck — property-based testing</span>
+propReverterDuasVezes :: [Int] -> Bool
+propReverterDuasVezes xs = reverter (reverter xs) == xs
+
+propReverterLength :: [Int] -> Bool
+propReverterLength xs = length (reverter xs) == length xs
+
+propSomaComutativa :: [Int] -> [Int] -> Bool
+propSomaComutativa xs ys = somaLista (xs ++ ys) == somaLista (ys ++ xs)
+
+testesQuickCheck :: IO ()
+testesQuickCheck = do
+    quickCheck propReverterDuasVezes
+    quickCheck propReverterLength
+    quickCheck propSomaComutativa
+<span class="com">-- +++ OK, passed 100 tests.</span>
+
+<span class="com">-- QuickCheck com HSpec (combinado)</span>
+main2 :: IO ()
+main2 = hspec $ do
+    describe "reverter" $ do
+        it "reverter duas vezes = identidade" $
+            property propReverterDuasVezes
+        it "preserva length" $
+            property propReverterLength</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tooling" class="section-title">Ferramentas de Qualidade</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Ferramenta</th><th>Função</th><th>Comando</th></tr></thead>
+            <tbody>
+              <tr><td><strong>HLS</strong></td><td>Language Server — autocomplete, hover types, go-to-def</td><td><code>ghcup install hls</code></td></tr>
+              <tr><td><strong>HLint</strong></td><td>Sugestões de simplificação e idiomaticidade</td><td><code>hlint src/</code></td></tr>
+              <tr><td><strong>Ormolu</strong></td><td>Formatador de código (opinionado, sem configuração)</td><td><code>ormolu --mode inplace **/*.hs</code></td></tr>
+              <tr><td><strong>Fourmolu</strong></td><td>Fork do Ormolu com algumas opções de configuração</td><td><code>fourmolu --mode inplace src/</code></td></tr>
+              <tr><td><strong>stan</strong></td><td>Análise estática avançada do GHC</td><td><code>stan --hiedir=.hie/</code></td></tr>
+              <tr><td><strong>weeder</strong></td><td>Detectar código morto (déclarations não usadas)</td><td><code>weeder</code></td></tr>
+              <tr><td><strong>cabal-fmt</strong></td><td>Formatar arquivo .cabal</td><td><code>cabal-fmt --inplace *.cabal</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GHC Extensions — habilitar no .cabal ou por arquivo</div>
+          <pre class="example"><span class="com">-- Por arquivo (pragma no topo)</span>
+{-# LANGUAGE OverloadedStrings #-}    <span class="com">-- "literais" :: Text (não só String)</span>
+{-# LANGUAGE RecordWildCards   #-}    <span class="com">-- let Pessoa{..} = p; usar nome, idade</span>
+{-# LANGUAGE LambdaCase        #-}    <span class="com">-- \case Nothing -> ...; Just x -> ...</span>
+{-# LANGUAGE TupleSections     #-}    <span class="com">-- (,3) como função (x -> (x,3))</span>
+{-# LANGUAGE ScopedTypeVariables #-}  <span class="com">-- forall a. em assinaturas locais</span>
+{-# LANGUAGE DerivingStrategies #-}   <span class="com">-- deriving (Show) via SomeNewtype</span>
+{-# LANGUAGE MultiParamTypeClasses #-} <span class="com">-- class Convert a b where ...</span>
+{-# LANGUAGE FlexibleInstances  #-}   <span class="com">-- instance MyClass [Int] where ...</span>
+{-# LANGUAGE TypeApplications   #-}   <span class="com">-- read @Int, fromIntegral @Int @Double</span>
+
+<span class="com">-- No .cabal (default-extensions aplicado a todos os módulos)</span>
+<span class="com">-- default-extensions:</span>
+<span class="com">--     OverloadedStrings</span>
+<span class="com">--     LambdaCase</span>
+<span class="com">--     RecordWildCards</span>
+
+<span class="com">-- Exemplos de uso das extensions</span>
+<span class="com">-- LambdaCase:</span>
+descricao :: Maybe Int -> String
+descricao = \case
+    Nothing -> "ausente"
+    Just 0  -> "zero"
+    Just n  -> "valor: " ++ show n
+
+<span class="com">-- OverloadedStrings: usa "texto" com tipo Text diretamente</span>
+import Data.Text (Text)
+titulo :: Text
+titulo = "Haskell"    <span class="com">-- sem fromString "Haskell" necessário</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="governanca-tecnica" class="section-title">Governanca Tecnica e Padroes de Time</h2>
+        <p>Para manter consistencia entre projetos e linguagens, defina uma baseline de engenharia: formato obrigatorio, regras de review, gates de CI, politica de versao e checklist de release. Em Haskell, essa disciplina reduz muito a variabilidade entre modulos e facilita onboarding.</p>
+        <ul>
+          <li><strong>Qualidade minima:</strong> <code>-Wall</code>, testes automatizados e lint sem warnings criticos.</li>
+          <li><strong>Operacao:</strong> logs estruturados, metricas por fluxo e alarmes orientados a SLO.</li>
+          <li><strong>Seguranca:</strong> auditoria de dependencias e controle de atualizacao de snapshots.</li>
+          <li><strong>Evolucao:</strong> migracoes pequenas, reversiveis e com plano de rollback.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>CABAL TEAM. <strong>Cabal User Guide</strong>. Disponível em: &lt;https://cabal.readthedocs.io&gt;. Acesso em: 2026.</li>
+            <li>STACKAGE. <strong>Stackage — Stable Hackage</strong>. Disponível em: &lt;https://www.stackage.org&gt;. Acesso em: 2026.</li>
+            <li>HSPEC. <strong>Hspec — A Testing Framework for Haskell</strong>. Disponível em: &lt;https://hspec.github.io&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Haskell Avançado</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>QuickCheck</strong> mudou para sempre o que significa testar software. Em vez de escrever casos manualmente, você <em>descreve propriedades</em> que devem ser verdadeiras para qualquer input, e a biblioteca gera centenas de casos automaticamente — incluindo casos de borda que você jamais pensaria. Originou toda uma categoria de ferramentas: Hypothesis (Python), fast-check (JS), PropTest (Rust).</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

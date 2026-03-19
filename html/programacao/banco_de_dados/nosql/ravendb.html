@@ -1,0 +1,389 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="RavenDB: banco NoSQL de documentos JSON com transações ACID completas, LINQ nativo para .NET e indexacao automatica." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>RavenDB | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>RavenDB</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">RavenDB</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>RavenDB</h1>
+          <p>O NoSQL transacional: ACID completo, auto-indexação inteligente e LINQ nativo para .NET.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>RavenDB</strong> é um banco de dados de documentos JSON open-source,
+          construído inteiramente em C# para a plataforma .NET. Ele se destaca por oferecer algo
+          genuinamente raro no mundo NoSQL: <strong>transações ACID completas por padrão</strong>,
+          em multi-documentos e multi-coleções, usando o motor de armazenamento proprietário
+          <strong>Voron</strong> (B+Tree com MVCC).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">1. O Que É o RavenDB?</h2>
+        <p>
+          Pense no RavenDB como um banco de documentos que não abre mão da garantia de consistência
+          que os desenvolvedores .NET já esperam do SQL Server. A filosofia do criador Oren Eini
+          (Ayende Rahien) é clara: <em>"desenvolvedores não deveriam ter que escolher entre
+          escalabilidade e corretude"</em>.
+        </p>
+        <p>
+          O modelo de dados é baseado em documentos JSON com coleções (equivalentes a tabelas sem schema fixo),
+          ligações entre documentos via <em>document includes</em>, e relacionamentos opcionais por referência.
+          Mas o diferencial real está em duas decisões arquiteturais: a engine <strong>Voron</strong> e o
+          sistema de <strong>índices automáticos</strong>.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Engine Voron:</strong> armazenamento B+Tree proprietário implementado em C#.
+            Usa Memory-Mapped Files para leituras ultra-rápidas, write-ahead log (WAL) para durabilidade,
+            e MVCC (Multi-Version Concurrency Control) para isolamento. Cada transação vê um snapshot
+            consistente do banco — leitores nunca bloqueiam escritores e vice-versa.
+          </p>
+        </div>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Característica</th>
+                  <th>MongoDB</th>
+                  <th>CouchDB</th>
+                  <th>RavenDB</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>ACID multi-documento</td><td>A partir da v4.0 (com overhead)</td><td>Apenas single-doc</td><td>Nativo por padrão</td></tr>
+                <tr><td>Auto-indexação</td><td>Não (índices manuais)</td><td>View-based (map-reduce)</td><td>Sim — cria índices automaticamente a partir de queries</td></tr>
+                <tr><td>Linguagem de query</td><td>MQL (API JSON)</td><td>Mango Query</td><td>RQL (SQL-like) + LINQ nativo</td></tr>
+                <tr><td>Plataforma principal</td><td>Multi-plataforma</td><td>Multi-plataforma</td><td>.NET/C# (também Java, Python)</td></tr>
+                <tr><td>Replicação</td><td>Replica Set (Raft)</td><td>CouchDB Replication Protocol</td><td>Multi-master com consensus Rachis (Raft)</td></tr>
+                <tr><td>Storage engine</td><td>WiredTiger</td><td>CouchStore</td><td>Voron (B+Tree, MVCC)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona por Dentro</h2>
+        <p>
+          O fluxo de uma operação no RavenDB segue um modelo session-based: a aplicação abre uma
+          <strong>Session</strong>, faz várias operações em memória (unit-of-work pattern), e chama
+          <code class="code-inline">SaveChanges()</code> para commitar tudo em uma única transação ACID.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">arquitetura-ravendb.txt</div>
+          <pre class="example"><span class="com">Session (Unit of Work):</span>
+  session.Store(pedido)     <- tracked in memory
+  session.Store(produto)    <- tracked in memory
+  produto.Estoque -= qtd    <- change detected
+  session.SaveChanges()     <- ONE atomic transaction
+
+<span class="com">Voron Storage Engine:</span>
+  WAL (Write-Ahead Log)    <- journal sequencial, durabilidade
+  B+ Tree                  <- estrutura principal de dados
+  MVCC Snapshots           <- leitores isolados sem locks
+  Lucene Index             <- full-text search e índices estáticos
+
+<span class="com">Auto-Index Engine:</span>
+  Query chega -> Query Optimizer
+    índice existente? -> usa índice
+    índice ausente?   -> cria Auto-Index em background
+                      -> responde com IsStale: true na 1a execução
+                      -> índice pronto em segundos</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Document Includes</h3>
+            <p>
+              Em vez de fazer N+1 queries para carregar documentos relacionados, o RavenDB suporta
+              <code class="code-inline">Include</code> — carrega o documento principal e seus relacionamentos
+              em um único round-trip ao servidor. Exemplo: carregar um Pedido e automaticamente incluir
+              o Produto e o Cliente referenciados, tudo em uma Request.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Change Tracking</h3>
+            <p>
+              A Session do RavenDB rastreia automaticamente todas as mudanças feitas nos objetos carregados.
+              Você não precisa chamar um método "update" — basta modificar a propriedade do objeto e
+              chamar <code class="code-inline">SaveChanges()</code>. O RavenDB detecta o diff e gera
+              apenas o patch mínimo necessário.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Cluster com Rachis (Raft)</h3>
+            <p>
+              Em cluster, o RavenDB usa <strong>Rachis</strong> — implementação própria do algoritmo
+              Raft para consensus distribuído. Garante que escritas são confirmadas por maioria dos
+              nós antes de retornar success. Suporta topologias: replicação de banco, replicação
+              de coleção por nó (pull replication) e clusters geo-distribuídos.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- RQL e LINQ -->
+      <section>
+        <h2 id="rql" class="section-title">3. RQL e LINQ — Duas Formas de Consultar</h2>
+        <p>
+          O RavenDB oferece duas linguagens de query intercambiáveis: <strong>RQL (Raven Query Language)</strong>,
+          uma sintaxe SQL-like para queries diretas, e integração nativa com <strong>LINQ</strong> para
+          desenvolvedores C# que preferem type-safety em compile time.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ravendb-queries.cs</div>
+          <pre class="example"><span class="kw">using</span> (<span class="kw">var</span> <span class="tp">session</span> = <span class="tp">store</span>.OpenSession())
+{
+    <span class="com">// 1. CRUD básico com ACID</span>
+    <span class="kw">var</span> <span class="tp">pedido</span> = <span class="kw">new</span> <span class="tp">Pedido</span> {
+        ProdutoId = <span class="str">"produtos/42"</span>,
+        Quantidade = <span class="num">3</span>,
+        Status = <span class="str">"Pendente"</span>,
+        Timestamp = <span class="tp">DateTime</span>.UtcNow
+    };
+    <span class="tp">session</span>.Store(<span class="tp">pedido</span>);
+
+    <span class="com">// Transação multi-documento — ou salva tudo, ou nada</span>
+    <span class="kw">var</span> <span class="tp">produto</span> = <span class="tp">session</span>.Load&lt;<span class="tp">Produto</span>&gt;(<span class="str">"produtos/42"</span>);
+    <span class="tp">produto</span>.Estoque -= <span class="tp">pedido</span>.Quantidade;
+    <span class="tp">session</span>.SaveChanges();  <span class="com">// COMMIT ACID</span>
+
+    <span class="com">// 2. LINQ — type-safe, sem strings de query</span>
+    <span class="kw">var</span> <span class="tp">pedidosPendentes</span> = <span class="tp">session</span>
+        .Query&lt;<span class="tp">Pedido</span>&gt;()
+        .Where(<span class="tp">p</span> =&gt; <span class="tp">p</span>.Status == <span class="str">"Pendente"</span>
+                   &amp;&amp; <span class="tp">p</span>.Timestamp &gt; <span class="tp">DateTime</span>.UtcNow.AddDays(-<span class="num">7</span>))
+        .OrderByDescending(<span class="tp">p</span> =&gt; <span class="tp">p</span>.Timestamp)
+        .Take(<span class="num">50</span>)
+        .ToList();
+
+    <span class="com">// 3. Include — carrega Pedido + Produto em um único round-trip</span>
+    <span class="kw">var</span> <span class="tp">pedidoComProduto</span> = <span class="tp">session</span>
+        .Include&lt;<span class="tp">Pedido</span>&gt;(<span class="tp">p</span> =&gt; <span class="tp">p</span>.ProdutoId)
+        .Load&lt;<span class="tp">Pedido</span>&gt;(<span class="str">"pedidos/1-A"</span>);
+    <span class="kw">var</span> <span class="tp">produtoRef</span> = <span class="tp">session</span>.Load&lt;<span class="tp">Produto</span>&gt;(<span class="tp">pedidoComProduto</span>.ProdutoId);
+
+    <span class="com">// 4. RQL — SQL-like direto</span>
+    <span class="kw">var</span> <span class="tp">resultados</span> = <span class="tp">session</span>.Advanced
+        .RawQuery&lt;<span class="tp">Pedido</span>&gt;(<span class="str">@"from Pedidos
+                             where Status = 'Pendente'
+                             and search(Notas, 'urgente')
+                             order by Timestamp desc
+                             limit 20"</span>)
+        .ToList();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- INDICES_MARKER -->
+
+      <section>
+        <h2 id="indices-sec" class="section-title">4. Sistema de Indices</h2>
+        <p>
+          O RavenDB monitora continuamente as queries que chegam. Quando detecta uma query sem
+          cobertura de índice, o <strong>Auto-Index Engine</strong> cria automaticamente um índice
+          otimizado em background — sem intervenção do DBA. Você pode também criar índices estáticos
+          (Map/Reduce) para cenários avancados, com full-text search via Lucene integrado.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Auto-Indexes</h3>
+            <p>
+              Criados automaticamente quando uma query chega sem índice adequado. Começam como
+              "stale" na primeira execução e ficam totalmente atualizados em segundos. O RavenDB
+              também remove auto-indexes não utilizados para economizar recursos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Static Map/Reduce Indexes</h3>
+            <p>
+              Indices definidos explicitamente pelo desenvolvedor. A parte <em>Map</em> seleciona e
+              transforma documentos; a parte <em>Reduce</em> agrega resultados — similar ao paradigma
+              MapReduce, mas executado em tempo real a medida que documentos mudam.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Full-Text Search (Lucene)</h3>
+            <p>
+              Todo índice pode ter campos com analisadores Lucene — tokenização, stemming, ngrams.
+              A query RQL usa a função <code class="code-inline">search(campo, 'termo')</code> para
+              full-text search nativo, sem precisar de uma instância separada de Elasticsearch.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Time-Series e Counters</h3>
+            <p>
+              RavenDB tem suporte nativo a <strong>Time-Series</strong> (dados temporais) e
+              <strong>Counters</strong> — incremento/decremento atômico sem lock, ideal para
+              contadores de visualizações e métricas de alta frequência.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Stale Indexes:</strong> Índices são atualizados de forma assíncrona. Por padrão,
+            queries retornam resultados "stale" imediatamente. Para leitura consistente pós-escrita,
+            use <code class="code-inline">WaitForNonStaleResults()</code> --- isso adiciona latencia.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS-DE-USO_MARKER -->
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Usar e Quando Evitar</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Use RavenDB quando...</h3>
+            <ul>
+              <li><strong>Ecossistema .NET/C#:</strong> LINQ type-safe e drivers NuGet oficiais.</li>
+              <li><strong>ACID multi-documento obrigatório:</strong> pedidos + estoque + log em uma transação.</li>
+              <li><strong>Schema flexível com garantias:</strong> documentos JSON evoluem sem migrations.</li>
+              <li><strong>Full-text search nativo:</strong> Lucene embutido, sem Elasticsearch separado.</li>
+              <li><strong>Offline-first .NET/Xamarin:</strong> replicação automática com clientes móveis.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Evite RavenDB quando...</h3>
+            <ul>
+              <li><strong>Ecossistema Python/Node:</strong> drivers fora do .NET têm experiência inferior.</li>
+              <li><strong>JOINs complexos:</strong> dados altamente normalizados ficam melhor em SQL.</li>
+              <li><strong>Escala extrema de writes:</strong> Cassandra ou DynamoDB têm throughput superior.</li>
+              <li><strong>Grafo denso:</strong> Neo4j é muito mais expressivo para traversal de grafos.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Data Subscriptions</h3>
+            <p>Mecanismo de change feed tipado. Define-se um filtro e o RavenDB entrega novos documentos correspondentes com backpressure e checkpointing. Ideal para pipelines assíncronos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>ETL / CDC Integrado</h3>
+            <p>ETL nativo para SQL Server, Elasticsearch ou outro RavenDB. Script de transformação configurado no Studio propaga mudanças em near-real-time sem Debezium ou Kafka Connect.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Optimistic Concurrency</h3>
+            <p>Cada documento recebe um <strong>Change Vector</strong> (clock lógico distribuído). Com <code class="code-inline">UseOptimisticConcurrency = true</code>, escritas com Change Vector desatualizado são rejeitadas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Smuggler — Backup</h3>
+            <p>Backup incremental para S3, Azure Blob e armazenamento local. Exporta <code class="code-inline">.ravendbdump</code> portáveis. CLI (<code class="code-inline">raven.smuggler</code>) ou Studio.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>RavenDB Studio</h3>
+            <p>Interface web embutida na porta 8080. Navegue documentos, crie índices, execute RQL e monitore performance — zero dependência externa.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>RavenDB Cloud</h3>
+            <p>Serviço gerenciado em AWS, Azure e GCP. Clusters automáticos, SSL/TLS por padrão e tier gratuito para desenvolvimento.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Drivers Oficiais</h3>
+            <p>.NET/C# (completo com LINQ), Java, Python, Go, Node.js e Ruby. Todos os drivers fora do .NET acessam via HTTP/REST.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>ASP.NET / Blazor</h3>
+            <p>NuGet <code class="code-inline">RavenDB.Client</code> registra store e session no DI do ASP.NET Core com escopo por request HTTP automático.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Smuggler CLI</h3>
+            <p>Backup e migração por linha de comando. S3, Azure Blob e GCS. Integra em pipelines CI/CD para snapshots programáticos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>AI / Vector Search</h3>
+            <p>Versões recentes: embeddings como campos e pesquisa por similaridade. Permite RAG (Retrieval Augmented Generation) sem infraestrutura adicional.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS_MARKER -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>HIBERNATING RHINOS. <strong>RavenDB Documentation</strong>. Disponivel em: https://ravendb.net/docs/. Acesso em: 2025.</li>
+            <li>EINI, Oren (Ayende Rahien). <strong>RavenDB in Action</strong>. Hibernating Rhinos, 2022. Disponivel em: https://ravendb.net/learn/inside-ravendb-book/. Acesso em: 2025.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled</strong>. Addison-Wesley, 2012.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+            <li>HIBERNATING RHINOS. <strong>RavenDB ACID Transactions</strong>. Disponivel em: https://ravendb.net/docs/. Acesso em: 2025.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/mongodb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>MongoDB - Documentos JSON</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/couchdb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>CouchDB - Offline-First e MVCC</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/firebase.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Firebase - BaaS Realtime</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introducao ao NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          ACID em NoSQL nao e um oxímoro - e uma engenharia cuidadosa que o RavenDB levou a serio desde o dia um. - Oren Eini
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

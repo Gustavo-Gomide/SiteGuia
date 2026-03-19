@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para Web: ASP.NET Core Minimal API REST completa, autenticacao JWT, Blazor WebAssembly, gRPC com protobuf, middleware customizado e deploy com Docker." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para Web</h1>
+          <p>ASP.NET Core e o framework web de maior performance no ecossistema moderno — consistentemente no top 5 do benchmark TechEmpower. Suporta REST, gRPC, WebSockets (SignalR), Blazor (C# no browser via WASM), autenticacao JWT/OAuth2, OpenAPI/Swagger e deploy nativo em Docker e Kubernetes.</p>
+        </div>
+        <p class="intro-highlight">
+          ASP.NET Core Minimal API (introducida no .NET 6) permite montar uma API REST completa em poucos arquivos sem boilerplate de controllers, mantendo toda a potencia de DI, middleware e Swagger. Para arquiteturas maiores, controllers e MVC oferecem mais estrutura e convencoes.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="minimal-api">Minimal API — REST com DTOs e Validacao</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + ASP.NET Core &mdash; API REST completa com CRUD, FluentValidation e Swagger</div>
+          <pre class="example"><span class="com">// Program.cs — API completa com grupos e filtros</span>
+<span class="kw">using</span> <span class="tp">FluentValidation</span>;
+
+<span class="kw">var</span> builder = <span class="tp">WebApplication</span>.<span class="fn">CreateBuilder</span>(args);
+builder.Services.<span class="fn">AddEndpointsApiExplorer</span>();
+builder.Services.<span class="fn">AddSwaggerGen</span>();
+builder.Services.<span class="fn">AddValidatorsFromAssemblyContaining</span>&lt;<span class="tp">Program</span>&gt;();
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="tp">ProdutoDb</span>&gt;();
+
+<span class="kw">var</span> app = builder.<span class="fn">Build</span>();
+<span class="kw">if</span> (app.Environment.<span class="fn">IsDevelopment</span>()) { app.<span class="fn">UseSwagger</span>(); app.<span class="fn">UseSwaggerUI</span>(); }
+app.<span class="fn">UseHttpsRedirection</span>();
+
+<span class="com">// Grupo de rotas — prefixo e metadados compartilhados</span>
+<span class="kw">var</span> api = app.<span class="fn">MapGroup</span>(<span class="str">"/api/v1/produtos"</span>)
+             .<span class="fn">WithTags</span>(<span class="str">"Produtos"</span>)
+             .<span class="fn">WithOpenApi</span>();
+
+api.<span class="fn">MapGet</span>(<span class="str">"/"</span>, (<span class="tp">ProdutoDb</span> db) =&gt; db.<span class="fn">Todos</span>())
+   .<span class="fn">WithName</span>(<span class="str">"ListarProdutos"</span>);
+
+api.<span class="fn">MapGet</span>(<span class="str">"/{id:int}"</span>, (<span class="kw">int</span> id, <span class="tp">ProdutoDb</span> db) =&gt;
+  db.<span class="fn">Buscar</span>(id) <span class="kw">is</span> { } p ? <span class="tp">Results</span>.<span class="fn">Ok</span>(p) : <span class="tp">Results</span>.<span class="fn">NotFound</span>());
+
+api.<span class="fn">MapPost</span>(<span class="str">"/"</span>, (<span class="tp">CriarProdutoDto</span> dto, <span class="tp">IValidator</span>&lt;<span class="tp">CriarProdutoDto</span>&gt; v, <span class="tp">ProdutoDb</span> db) =&gt; {
+  <span class="kw">var</span> erros = v.<span class="fn">Validate</span>(dto);
+  <span class="kw">if</span> (!erros.IsValid) <span class="kw">return</span> <span class="tp">Results</span>.<span class="fn">ValidationProblem</span>(erros.<span class="fn">ToDictionary</span>());
+  <span class="kw">var</span> p = db.<span class="fn">Criar</span>(dto);
+  <span class="kw">return</span> <span class="tp">Results</span>.<span class="fn">CreatedAtRoute</span>(<span class="str">"ListarProdutos"</span>, <span class="kw">null</span>, p);
+});
+
+api.<span class="fn">MapPut</span>(<span class="str">"/{id:int}"</span>, (<span class="kw">int</span> id, <span class="tp">AtualizarProdutoDto</span> dto, <span class="tp">ProdutoDb</span> db) =&gt;
+  db.<span class="fn">Atualizar</span>(id, dto) ? <span class="tp">Results</span>.<span class="fn">NoContent</span>() : <span class="tp">Results</span>.<span class="fn">NotFound</span>());
+
+api.<span class="fn">MapDelete</span>(<span class="str">"/{id:int}"</span>, (<span class="kw">int</span> id, <span class="tp">ProdutoDb</span> db) =&gt;
+  db.<span class="fn">Remover</span>(id) ? <span class="tp">Results</span>.<span class="fn">NoContent</span>() : <span class="tp">Results</span>.<span class="fn">NotFound</span>());
+
+app.<span class="fn">Run</span>();
+
+<span class="com">// DTOs e validacao</span>
+<span class="kw">record</span> <span class="tp">CriarProdutoDto</span>(<span class="kw">string</span> Nome, <span class="kw">decimal</span> Preco, <span class="kw">int</span> Estoque);
+<span class="kw">record</span> <span class="tp">AtualizarProdutoDto</span>(<span class="kw">string</span>? Nome, <span class="kw">decimal</span>? Preco);
+
+<span class="kw">class</span> <span class="tp">CriarValidator</span> : <span class="tp">AbstractValidator</span>&lt;<span class="tp">CriarProdutoDto</span>&gt;
+{
+  <span class="kw">public</span> <span class="tp">CriarValidator</span>() {
+    <span class="fn">RuleFor</span>(x =&gt; x.Nome).<span class="fn">NotEmpty</span>().<span class="fn">MaximumLength</span>(<span class="num">200</span>);
+    <span class="fn">RuleFor</span>(x =&gt; x.Preco).<span class="fn">GreaterThan</span>(<span class="num">0</span>);
+    <span class="fn">RuleFor</span>(x =&gt; x.Estoque).<span class="fn">GreaterThanOrEqualTo</span>(<span class="num">0</span>);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="jwt">Autenticacao JWT e Autorizacao</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + ASP.NET Core &mdash; emissao e validacao de JWT Bearer, roles e policies</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">IdentityModel</span>.<span class="tp">Tokens</span>.<span class="tp">Jwt</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Security</span>.<span class="tp">Claims</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">IdentityModel</span>.<span class="tp">Tokens</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">AspNetCore</span>.<span class="tp">Authentication</span>.<span class="tp">JwtBearer</span>;
+
+<span class="com">// Configurar autenticacao JWT</span>
+builder.Services.<span class="fn">AddAuthentication</span>(<span class="tp">JwtBearerDefaults</span>.AuthenticationScheme)
+  .<span class="fn">AddJwtBearer</span>(opt =&gt; {
+    opt.TokenValidationParameters = <span class="kw">new</span> <span class="tp">TokenValidationParameters</span> {
+      ValidateIssuer           = <span class="kw">true</span>,
+      ValidateAudience         = <span class="kw">true</span>,
+      ValidateLifetime         = <span class="kw">true</span>,
+      ValidateIssuerSigningKey = <span class="kw">true</span>,
+      ValidIssuer    = builder.Configuration[<span class="str">"Jwt:Issuer"</span>],
+      ValidAudience  = builder.Configuration[<span class="str">"Jwt:Audience"</span>],
+      IssuerSigningKey = <span class="kw">new</span> <span class="tp">SymmetricSecurityKey</span>(
+        <span class="tp">Encoding</span>.<span class="tp">UTF8</span>.<span class="fn">GetBytes</span>(builder.Configuration[<span class="str">"Jwt:Key"</span>]!))
+    };
+  });
+
+builder.Services.<span class="fn">AddAuthorizationBuilder</span>()
+  .<span class="fn">AddPolicy</span>(<span class="str">"Admin"</span>, p =&gt; p.<span class="fn">RequireRole</span>(<span class="str">"admin"</span>))
+  .<span class="fn">AddPolicy</span>(<span class="str">"PremiumOrAdmin"</span>, p =&gt; p.<span class="fn">RequireAssertion</span>(ctx =&gt;
+    ctx.User.<span class="fn">IsInRole</span>(<span class="str">"admin"</span>) || ctx.User.<span class="fn">IsInRole</span>(<span class="str">"premium"</span>)));
+
+<span class="com">// Endpoint de login — gera token JWT</span>
+app.<span class="fn">MapPost</span>(<span class="str">"/auth/login"</span>, (<span class="tp">LoginDto</span> dto) =&gt;
+{
+  <span class="com">// Validar credenciais (nunca exponha senha em texto puro)</span>
+  <span class="kw">if</span> (dto.Email != <span class="str">"admin@ex.com"</span> || dto.Senha != <span class="str">"senhaHash"</span>)
+    <span class="kw">return</span> <span class="tp">Results</span>.<span class="fn">Unauthorized</span>();
+
+  <span class="kw">var</span> claims = <span class="kw">new</span>[] {
+    <span class="kw">new</span> <span class="tp">Claim</span>(<span class="tp">ClaimTypes</span>.Sub,   <span class="str">"user-guid-aqui"</span>),
+    <span class="kw">new</span> <span class="tp">Claim</span>(<span class="tp">ClaimTypes</span>.Email, dto.Email),
+    <span class="kw">new</span> <span class="tp">Claim</span>(<span class="tp">ClaimTypes</span>.Role,  <span class="str">"admin"</span>)
+  };
+  <span class="kw">var</span> key    = <span class="kw">new</span> <span class="tp">SymmetricSecurityKey</span>(<span class="tp">Encoding</span>.<span class="tp">UTF8</span>.<span class="fn">GetBytes</span>(<span class="str">"chave-super-secreta-32chars!!"</span>));
+  <span class="kw">var</span> creds  = <span class="kw">new</span> <span class="tp">SigningCredentials</span>(key, <span class="tp">SecurityAlgorithms</span>.HmacSha256);
+  <span class="kw">var</span> token  = <span class="kw">new</span> <span class="tp">JwtSecurityToken</span>(
+    issuer:   <span class="str">"MinhaApi"</span>, audience: <span class="str">"MinhaApiClients"</span>,
+    claims:   claims, expires: <span class="tp">DateTime</span>.UtcNow.<span class="fn">AddHours</span>(<span class="num">1</span>),
+    signingCredentials: creds);
+
+  <span class="kw">return</span> <span class="tp">Results</span>.<span class="fn">Ok</span>(<span class="kw">new</span> { Token = <span class="kw">new</span> <span class="tp">JwtSecurityTokenHandler</span>().<span class="fn">WriteToken</span>(token) });
+});
+
+<span class="com">// Endpoint protegido por role</span>
+app.<span class="fn">MapGet</span>(<span class="str">"/admin/dashboard"</span>, (<span class="tp">ClaimsPrincipal</span> user) =&gt;
+  <span class="kw">new</span> { Mensagem = <span class="str">$"Bem-vindo, {user.FindFirst(ClaimTypes.Email)?.Value}"</span> })
+   .<span class="fn">RequireAuthorization</span>(<span class="str">"Admin"</span>);</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <strong>Seguranca JWT:</strong> A chave simetrica deve ter ao menos 256 bits (32 caracteres). Nunca armazene a chave em codigo — use <code>dotnet user-secrets</code> para desenvolvimento e variaveis de ambiente (ou Key Vault) em producao. Use HTTPS para que tokens nao sejam interceptados. Nunca armazene senhas em texto puro — use BCrypt/Argon2 via ASP.NET Core Identity.
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="grpc">gRPC com Protobuf</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + gRPC &mdash; definicao .proto, servico e cliente streaming</div>
+          <pre class="example"><span class="com">// produtos.proto — definicao do contrato</span>
+<span class="com">// syntax = "proto3";</span>
+<span class="com">// package produtos;</span>
+<span class="com">// service ProdutoService {</span>
+<span class="com">//   rpc Buscar (BuscarRequest) returns (ProdutoReply);</span>
+<span class="com">//   rpc ListarStream (FiltroRequest) returns (stream ProdutoReply);</span>
+<span class="com">// }</span>
+<span class="com">// message BuscarRequest { int32 id = 1; }</span>
+<span class="com">// message ProdutoReply { int32 id = 1; string nome = 2; double preco = 3; }</span>
+<span class="com">// message FiltroRequest { double preco_maximo = 1; }</span>
+
+<span class="com">// Implementacao do servico gRPC</span>
+<span class="kw">using</span> <span class="tp">Grpc</span>.<span class="tp">Core</span>;
+<span class="kw">using</span> <span class="tp">Produtos</span>;
+
+<span class="kw">class</span> <span class="tp">ProdutoGrpcService</span> : <span class="tp">ProdutoService</span>.<span class="tp">ProdutoServiceBase</span>
+{
+  <span class="kw">private readonly</span> <span class="tp">IProdutoRepository</span> _repo;
+  <span class="kw">public</span> <span class="tp">ProdutoGrpcService</span>(<span class="tp">IProdutoRepository</span> repo) =&gt; _repo = repo;
+
+  <span class="kw">public override async</span> <span class="tp">Task</span>&lt;<span class="tp">ProdutoReply</span>&gt; <span class="fn">Buscar</span>(<span class="tp">BuscarRequest</span> req, <span class="tp">ServerCallContext</span> ctx)
+  {
+    <span class="kw">var</span> p = <span class="kw">await</span> _repo.<span class="fn">FindAsync</span>(req.Id, ctx.CancellationToken)
+          ?? <span class="kw">throw new</span> <span class="tp">RpcException</span>(<span class="kw">new</span> <span class="tp">Status</span>(<span class="tp">StatusCode</span>.NotFound, <span class="str">"Produto nao encontrado"</span>));
+    <span class="kw">return new</span> <span class="tp">ProdutoReply</span> { Id = p.Id, Nome = p.Nome, Preco = (<span class="kw">double</span>)p.Preco };
+  }
+
+  <span class="kw">public override async</span> <span class="tp">Task</span> <span class="fn">ListarStream</span>(
+    <span class="tp">FiltroRequest</span> req, <span class="tp">IServerStreamWriter</span>&lt;<span class="tp">ProdutoReply</span>&gt; stream, <span class="tp">ServerCallContext</span> ctx)
+  {
+    <span class="kw">await foreach</span> (<span class="kw">var</span> p <span class="kw">in</span> _repo.<span class="fn">BuscarBaratosAsync</span>((<span class="kw">decimal</span>)req.PrecoMaximo, ctx.CancellationToken))
+    {
+      <span class="kw">await</span> stream.<span class="fn">WriteAsync</span>(<span class="kw">new</span> <span class="tp">ProdutoReply</span> { Id = p.Id, Nome = p.Nome });
+    }
+  }
+}
+
+<span class="com">// Registrar no Program.cs</span>
+builder.Services.<span class="fn">AddGrpc</span>();
+app.<span class="fn">MapGrpcService</span>&lt;<span class="tp">ProdutoGrpcService</span>&gt;();
+
+<span class="com">// Cliente gRPC tipado</span>
+<span class="kw">var</span> channel = <span class="tp">GrpcChannel</span>.<span class="fn">ForAddress</span>(<span class="str">"https://localhost:5001"</span>);
+<span class="kw">var</span> client  = <span class="kw">new</span> <span class="tp">ProdutoService</span>.<span class="tp">ProdutoServiceClient</span>(channel);
+<span class="kw">var</span> reply   = <span class="kw">await</span> client.<span class="fn">BuscarAsync</span>(<span class="kw">new</span> <span class="tp">BuscarRequest</span> { Id = <span class="num">42</span> });
+<span class="tp">Console</span>.<span class="fn">WriteLine</span>(reply.Nome);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="middleware">Middleware Customizado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# &mdash; middleware para logging, rate limiting e tratamento de excecoes</div>
+          <pre class="example"><span class="com">// Middleware de request logging</span>
+<span class="kw">class</span> <span class="tp">RequestLoggingMiddleware</span>(<span class="tp">RequestDelegate</span> next, <span class="tp">ILogger</span>&lt;<span class="tp">RequestLoggingMiddleware</span>&gt; logger)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">InvokeAsync</span>(<span class="tp">HttpContext</span> ctx)
+  {
+    <span class="kw">var</span> sw = <span class="tp">Stopwatch</span>.<span class="fn">StartNew</span>();
+    <span class="kw">try</span>   { <span class="kw">await</span> <span class="fn">next</span>(ctx); }
+    <span class="kw">finally</span>
+    {
+      sw.<span class="fn">Stop</span>();
+      logger.<span class="fn">LogInformation</span>(
+        <span class="str">"{Method} {Path} {Status} {ElapsedMs}ms"</span>,
+        ctx.Request.Method, ctx.Request.Path, ctx.Response.StatusCode, sw.ElapsedMilliseconds);
+    }
+  }
+}
+
+<span class="com">// Middleware de tratamento global de excecoes</span>
+<span class="kw">class</span> <span class="tp">ExceptionMiddleware</span>(<span class="tp">RequestDelegate</span> next, <span class="tp">ILogger</span>&lt;<span class="tp">ExceptionMiddleware</span>&gt; logger)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">InvokeAsync</span>(<span class="tp">HttpContext</span> ctx)
+  {
+    <span class="kw">try</span> { <span class="kw">await</span> <span class="fn">next</span>(ctx); }
+    <span class="kw">catch</span> (<span class="tp">ValidationException</span> ex)
+    {
+      ctx.Response.StatusCode = <span class="num">400</span>;
+      <span class="kw">await</span> ctx.Response.<span class="fn">WriteAsJsonAsync</span>(<span class="kw">new</span> { Erros = ex.Errors.<span class="fn">Select</span>(e =&gt; e.ErrorMessage) });
+    }
+    <span class="kw">catch</span> (<span class="tp">Exception</span> ex)
+    {
+      logger.<span class="fn">LogError</span>(ex, <span class="str">"Erro nao tratado"</span>);
+      ctx.Response.StatusCode = <span class="num">500</span>;
+      <span class="kw">await</span> ctx.Response.<span class="fn">WriteAsJsonAsync</span>(<span class="kw">new</span> { Mensagem = <span class="str">"Erro interno"</span> });
+    }
+  }
+}
+
+<span class="com">// Registrar middleware</span>
+app.<span class="fn">UseMiddleware</span>&lt;<span class="tp">ExceptionMiddleware</span>&gt;();  <span class="com">// deve ser o primeiro</span>
+app.<span class="fn">UseMiddleware</span>&lt;<span class="tp">RequestLoggingMiddleware</span>&gt;();
+
+<span class="com">// Rate limiting nativo (.NET 7+)</span>
+builder.Services.<span class="fn">AddRateLimiter</span>(opt =&gt; {
+  opt.<span class="fn">AddFixedWindowLimiter</span>(<span class="str">"api"</span>, o =&gt; {
+    o.PermitLimit        = <span class="num">100</span>;
+    o.Window             = <span class="tp">TimeSpan</span>.<span class="fn">FromMinutes</span>(<span class="num">1</span>);
+    o.QueueLimit         = <span class="num">10</span>;
+    o.QueueProcessingOrder = <span class="tp">QueueProcessingOrder</span>.OldestFirst;
+  });
+});
+app.<span class="fn">UseRateLimiter</span>();
+api.<span class="fn">RequireRateLimiting</span>(<span class="str">"api"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>Create web APIs with ASP.NET Core</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/aspnet/core/web-api/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>gRPC services with C#</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/aspnet/core/grpc/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>Rate limiting middleware in ASP.NET Core</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/aspnet/core/performance/rate-limit&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# com Banco de Dados</a></li>
+          <li><a href="../guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> ASP.NET Core Minimal API compila rotas para delegates fortemente tipados — sem reflexao em runtime, sem boxing. O modelo de hosting kestrel + sem IIS pode processar mais de 7 milhoes de requisicoes por segundo em hardware moderno de acordo com benchmarks TechEmpower Plaintext.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

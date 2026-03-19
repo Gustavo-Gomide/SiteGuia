@@ -1,0 +1,213 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Gerenciamento de usuários e grupos no Linux: /etc/passwd, /etc/shadow, /etc/group, criação e modificação de usuários, grupos suplementares e sudo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Usuários e Grupos no Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Usuários e Grupos no Linux</h1>
+            <p class="page-subtitle">/etc/passwd, /etc/shadow, /etc/group, gerenciamento e contas de serviço</p>
+          </div>
+        </div>
+        <p class="intro-highlight">No Linux, cada processo roda como um usuário específico; cada arquivo pertence a um usuário e a um grupo. Entender como gerenciar usuários, grupos, UIDs reservados e contas de serviço é fundamental tanto para segurança quanto para administração de sistemas multi-usuário.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — ARQUIVOS DE USUÁRIOS ═══════════════════ -->
+      <section id="arquivos">
+        <h2>Arquivos de Usuários</h2>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Arquivo</th><th>Formato</th><th>Conteúdo</th></tr></thead>
+          <tbody>
+            <tr><td>/etc/passwd</td><td>login:x:uid:gid:GECOS:home:shell</td><td>Informações públicas do usuário; legível por todos; hash da senha movido para shadow</td></tr>
+            <tr><td>/etc/shadow</td><td>login:$hash:lastchg:min:max:warn:inactive:expire</td><td>Hashes de senha e política de expiração; legível apenas por root</td></tr>
+            <tr><td>/etc/group</td><td>nome:x:gid:membros</td><td>Definição de grupos e lista de membros suplementares</td></tr>
+            <tr><td>/etc/gshadow</td><td>nome:hash:admins:membros</td><td>Senhas de grupo (raro em uso); protegido como shadow</td></tr>
+          </tbody>
+        </table></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — linhas reais dos arquivos de usuários</div>
+          <pre class="code-block"># /etc/passwd (campo a campo)
+# login : x  : uid  : gid  : GECOS       : home        : shell
+  root  : x  : 0    : 0    : root        : /root       : /bin/bash
+  www-data:x : 33   : 33   : www-data    : /var/www    : /usr/sbin/nologin
+  joao  : x  : 1001 : 1001 : Joao Silva  : /home/joao  : /bin/bash
+
+# /etc/shadow (campo a campo)
+# login : $hash       : lastchg : min : max : warn : inactive : expire
+  joao  : $6$salt$... : 19700   : 0   : 90  : 7    :          :
+# $6$ = SHA-512; $5$ = SHA-256; $y$ = yescrypt (moderno)
+
+# /etc/group (campo a campo)
+# nome    : x : gid : membros
+  docker  : x : 999 : joao,deployer
+  sudo    : x : 27  : joao,admin
+  www-data: x : 33  :
+
+# Consultar usuario via getent (funciona com LDAP tambem)
+getent passwd joao
+getent group docker</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — GERENCIAMENTO DE USUÁRIOS ═══════════════════ -->
+      <section id="gerenciamento">
+        <h2>Gerenciamento de Usuários</h2>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Comando</th><th>Flags Importantes</th><th>Descrição</th></tr></thead>
+          <tbody>
+            <tr><td>useradd</td><td>-m (criar home), -s (shell), -G (grupos), -c (GECOS)</td><td>Criar novo usuário</td></tr>
+            <tr><td>userdel</td><td>-r (remover home e mail spool)</td><td>Remover usuário do sistema</td></tr>
+            <tr><td>usermod</td><td>-aG (adicionar a grupo), -L (bloquear), -U (desbloquear), -s (mudar shell)</td><td>Modificar usuário existente</td></tr>
+            <tr><td>passwd</td><td>-l (lock), -u (unlock), -e (expirar senha)</td><td>Gerenciar senha de usuário</td></tr>
+            <tr><td>chage</td><td>-l (listar), -M (max dias), -W (aviso), -E (data expiração)</td><td>Política de expiração de senha</td></tr>
+            <tr><td>id</td><td>—</td><td>Exibir UID, GID e grupos do usuário atual ou especificado</td></tr>
+            <tr><td>groups</td><td>—</td><td>Listar grupos do usuário</td></tr>
+          </tbody>
+        </table></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — exemplos práticos de gerenciamento</div>
+          <pre class="code-block"># Criar usuario com home, shell bash e grupos adicionais
+useradd -m -s /bin/bash -G sudo,docker -c "Desenvolvedora" ana
+
+# Definir senha
+passwd ana
+
+# Adicionar usuario a grupo sem remover dos outros (-a eh crucial)
+usermod -aG docker ana
+
+# Bloquear acesso (sem remover o usuario)
+usermod -L joao
+passwd -l joao      # equivalente
+
+# Ver info de expiração da senha
+chage -l ana
+
+# Forcar troca de senha no proximo login
+chage -d 0 ana
+# ou
+passwd -e ana
+
+# Ver UID/GID e grupos do usuario atual
+id
+id ana
+
+# Remover usuario E home
+userdel -r joao_antigo</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — GRUPOS ═══════════════════ -->
+      <section id="grupos">
+        <h2>Grupos e Gerenciamento</h2>
+        <p>Grupos permitem compartilhar acesso a recursos entre vários usuários. Cada usuário tem um <strong>grupo primário</strong> (GID no <code>/etc/passwd</code>) e pode pertencer a múltiplos <strong>grupos suplementares</strong>.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — gerenciamento de grupos</div>
+          <pre class="code-block"># Criar grupo
+groupadd desenvolvedores
+
+# Criar grupo com GID especifico
+groupadd -g 2000 deploy
+
+# Modificar grupo
+groupmod -n devs desenvolvedores    # renomear
+groupmod -g 2001 deploy             # mudar GID
+
+# Remover grupo (apenas se nao for primario de nenhum usuario)
+groupdel antigo_grupo
+
+# Trocar grupo primario na sessao atual (sem logout)
+newgrp docker     # abre subshell com docker como GID primario
+
+# Executar comando como membro de grupo
+sg docker -c "docker ps"
+
+# Listar todos os grupos via NSS (funciona com LDAP)
+getent group | grep -i develop
+
+# Ver grupos do usuario
+groups ana       # ana : ana sudo docker desenvolvedores</pre>
+        </div>
+        <p>Boa prática: criar um grupo por serviço (<code>www-data</code>, <code>docker</code>, <code>nginx</code>) e adicionar apenas os usuários autorizados, em vez de usar root ou conceder permissões globais.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — UID/GID RESERVADOS ═══════════════════ -->
+      <section id="uid-reservados">
+        <h2>UID/GID Reservados e Contas de Serviço</h2>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Faixa de UID</th><th>Uso</th><th>Exemplos</th></tr></thead>
+          <tbody>
+            <tr><td>0</td><td>Superusuário root</td><td>root (UID 0, GID 0) — acesso irrestrito</td></tr>
+            <tr><td>1 – 99</td><td>Contas do sistema base</td><td>daemon (1), bin (2), sys (3) — histórico Unix</td></tr>
+            <tr><td>100 – 999</td><td>Contas de serviço criadas por pacotes</td><td>www-data (33), syslog (104), messagebus (105), nobody (65534)</td></tr>
+            <tr><td>1000+</td><td>Usuários reais interativos</td><td>O primeiro usuário criado na instalação (UID 1000)</td></tr>
+            <tr><td>65534</td><td>nobody — usuário sem privilégios</td><td>NFS, processos que precisam rodar sem identidade</td></tr>
+          </tbody>
+        </table></div>
+        <p>A configuração em <code>/etc/login.defs</code> controla os ranges: <code>UID_MIN</code> (padrão 1000), <code>UID_MAX</code> (padrão 60000), <code>SYS_UID_MIN</code> (101), <code>SYS_UID_MAX</code> (999).</p>
+        <p><strong>Contas de serviço boas práticas:</strong> sem shell login (<code>/usr/sbin/nologin</code> ou <code>/bin/false</code>), sem home dir significativo, sem senha definida, escondem privilégios mínimos necessários ao serviço.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — criar conta de servico corretamente</div>
+          <pre class="code-block"># Criar conta de servico segura
+useradd \
+  --system \
+  --no-create-home \
+  --shell /usr/sbin/nologin \
+  --comment "Conta de servico do app" \
+  appuser
+
+# Verificar
+getent passwd appuser
+# appuser:x:998:998:Conta de servico do app:/:/usr/sbin/nologin
+
+# Tentar logar deve falhar
+su - appuser
+# This account is currently not available.
+
+# Ainda e possivel rodar processos como esse usuario
+sudo -u appuser /opt/app/bin/app --config /etc/app/config.ini</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Complemente com <a href="/html/sistemas/linux/permissoes_linux.html">Permissões no Linux</a> e <a href="/html/sistemas/linux/servicos_systemd.html">Serviços com systemd</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Cada processo deve rodar com o mínimo de privilégios necessários — princípio do least privilege aplicado desde o usuário do sistema."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

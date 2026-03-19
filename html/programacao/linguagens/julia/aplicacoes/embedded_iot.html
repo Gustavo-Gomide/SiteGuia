@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Embedded e IoT com Julia: hardware via serial, MQTT, Raspberry Pi, coleta e processamento de sensores." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Julia — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Embedded e IoT</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+					<h1>Julia — Embedded e Internet das Coisas</h1>
+					<p>Julia não é uma linguagem de firmware bare-metal como C, mas é excelente para o lado de borda e gateway IoT: aquisição serial, pré-processamento local, inferência leve e publicação para nuvem via MQTT.</p>
+				</div>
+				<p class="intro-highlight">Em IoT real, Julia costuma atuar como camada inteligente entre sensores e cloud: recebe telemetria, limpa ruído, agrega janelas de tempo, detecta anomalias e envia dados já enriquecidos.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="serial-sensores">Leitura de Sensores por Serial</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">SerialPorts.jl para comunicação com microcontroladores</div>
+					<pre class="example">using SerialPorts
+using Dates
+
+porta = SerialPort("COM3", 115200)
+
+function ler_linha_segura(sp::SerialPort)
+		try
+				return readline(sp)
+		catch err
+				@warn "falha na leitura serial" erro = err
+				return nothing
+		end
+end
+
+for _ in 1:10
+		linha = ler_linha_segura(porta)
+		isnothing(linha) &amp;&amp; continue
+
+		<span class="com"># Exemplo esperado do Arduino: "temp=24.5,hum=56.2"</span>
+		println("$(now()) | $linha")
+end
+
+close(porta)
+
+<span class="com"># Dica prática: use timeout e reconexão para evitar travas.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="mqtt">MQTT para Telemetria</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Publicar e consumir mensagens IoT</div>
+					<pre class="example">using MQTTClient
+using JSON3
+
+client = Client("tcp://broker.hivemq.com:1883", "julia-iot-node")
+connect(client)
+
+payload = JSON3.write(Dict(
+		"device_id" =&gt; "sensor-01",
+		"temp" =&gt; 24.6,
+		"hum" =&gt; 55.9,
+		"ts" =&gt; time(),
+))
+
+publish(client, "siteguia/iot/telemetria", payload)
+
+subscribe(client, "siteguia/iot/comandos") do msg
+		println("Comando recebido: ", String(msg.payload))
+end
+
+disconnect(client)
+
+<span class="com"># QoS, retained message e reconexão automática são essenciais em produção.</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="edge-analytics">Edge Analytics no Gateway</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Filtragem, janelas e detecção simples de anomalias</div>
+					<pre class="example">using Statistics
+
+function media_movel(v::Vector{Float64}, janela::Int)
+		n = length(v)
+		n &lt; janela &amp;&amp; return Float64[]
+		saida = Float64[]
+		for i in janela:n
+				push!(saida, mean(@view v[i-janela+1:i]))
+		end
+		saida
+end
+
+function detectar_anomalia(amostra::Float64, historico::Vector{Float64}; zlim = 3.0)
+		length(historico) &lt; 10 &amp;&amp; return false
+		mu = mean(historico)
+		sigma = std(historico)
+		sigma == 0 &amp;&amp; return false
+		z = abs((amostra - mu) / sigma)
+		z &gt; zlim
+end
+
+leituras = [24.0, 24.2, 24.1, 24.3, 24.2, 24.1, 24.0, 24.2, 24.3, 24.2]
+nova = 30.8
+
+if detectar_anomalia(nova, leituras)
+		println("ALERTA: valor fora do padrão")
+end
+
+<span class="com"># Esse tipo de lógica local reduz tráfego e latência de alertas.</span></pre>
+				</div>
+				<div class="logic-grid">
+					<div class="panel panel--positive">
+						<p class="panel-title">Boa arquitetura IoT com Julia</p>
+						<ul>
+							<li>Microcontrolador coleta sinal bruto</li>
+							<li>Julia no gateway faz limpeza e agregação</li>
+							<li>Broker MQTT distribui para serviços</li>
+							<li>Nuvem armazena e gera dashboards</li>
+						</ul>
+					</div>
+					<div class="panel panel--negative">
+						<p class="panel-title">Pontos críticos</p>
+						<ul>
+							<li>Firmware ainda costuma ser C/C++/Rust</li>
+							<li>Conectividade intermitente exige buffer local</li>
+							<li>Segurança (TLS, certificados) não pode ser opcional</li>
+						</ul>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>MQTT.ORG. <strong>MQTT Version 5.0</strong>. Disponível em: &lt;https://mqtt.org/&gt;. Acesso em: 2026.</li>
+						<li>JULIA EMBEDDED COMMUNITY. <strong>Julia for Edge Computing Discussions</strong>. Disponível em: &lt;https://discourse.julialang.org/&gt;. Acesso em: 2026.</li>
+						<li>NIST. <strong>NISTIR 8259A: IoT Device Cybersecurity Capability Core Baseline</strong>. 2020.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Julia</a></li>
+					<li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Julia</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em IoT profissional, Julia tende a gerar mais valor no <strong>edge inteligente</strong> do que no firmware puro: ela conecta mundo físico e analytics com menos fricção e com ótima capacidade de modelagem numérica.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

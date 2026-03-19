@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Gerenciamento de privilégios: menor privilégio, RBAC, PAM, JIT/JEA, sudo, contas privilegiadas e boas práticas para controle de acesso." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Gerenciamento de Privilégios | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Gerenciamento de Privilégios</strong></p>
+      </div>
+
+      <section>
+        <h2 id="principios" class="section-title">Princípio do Menor Privilégio</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Gerenciamento de Privilégios</h1>
+          <p>Menor privilégio, PAM, sudo e controle de contas — limitar blast radius.</p>
+        </div>
+
+        <p class="intro-highlight">Menor privilégio (Principle of Least Privilege — PoLP) é um dos princípios mais importantes de segurança: cada usuário, processo ou sistema deve ter apenas as permissões estritamente necessárias para realizar sua função, e nada mais. Limita o blast radius em caso de comprometimento.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="modelos" class="section-title">Modelos de Controle de Acesso</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Modelo</th><th>Como funciona</th><th>Exemplo</th><th>Quando usar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>DAC (Discretionary)</td><td>Dono do recurso decide quem tem acesso; permissões UNIX (rwx)</td><td>chmod, chown</td><td>Sistemas de arquivo simples</td></tr>
+              <tr><td>MAC (Mandatory)</td><td>Política central define acesso baseado em classificação (Ex: Top Secret); usuário não controla</td><td>SELinux, MLS</td><td>Governo, militar</td></tr>
+              <tr><td>RBAC (Role-Based)</td><td>Permissões atribuídas a roles (cargos); usuários pertencem a roles</td><td>AD Groups, Kubernetes RBAC, AWS IAM Roles</td><td>Empresas, cloud</td></tr>
+              <tr><td>ABAC (Attribute-Based)</td><td>Decisão baseada em atributos do usuário, recurso e contexto</td><td>Azure ABAC, OPA/Rego</td><td>Controle granular, multi-tenant</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="sudo" class="section-title">sudo — Linux Privilege Escalation Controlada</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# /etc/sudoers (sempre editar com visudo):
+
+# Permitir usuário específico executar apenas um comando como root:
+deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart nginx
+
+# Grupo ops pode reiniciar qualquer serviço:
+%ops ALL=(root) /usr/bin/systemctl restart *
+
+# Nunca dar sudo irrestrito:
+# RUIM: user ALL=(ALL) NOPASSWD: ALL
+# Isso equivale a dar root sem senha
+
+# Auditar uso do sudo:
+tail -f /var/log/auth.log | grep sudo
+
+# Bloquear escalada via editor/shell:
+# Qualquer comando com shell escape (vim, less, find) pode
+# ser usado para escapar para root se tiver sudo sem restrição</pre>
+      </section>
+
+      <section>
+        <h2 id="pam" class="section-title">PAM — Privileged Access Management</html>
+        <div class="section-divider"></div>
+
+        <p>PAM é uma solução corporativa para gerenciar, monitorar e auditar o acesso de usuários privilegiados a sistemas críticos. É diferente do PAM do Linux (Pluggable Authentication Modules).</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Funcionalidades PAM Corporativo</h3>
+            <ul>
+              <li>Cofre de senhas com rotação automática</li>
+              <li>Gravação de sessões privilegiadas</li>
+              <li>Workflow de aprovação para acesso</li>
+              <li>MFA obrigatório para acesso privilegiado</li>
+              <li>Auditoria completa de ações</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>JIT — Just-in-Time Access</h3>
+            <p>Acesso privilegiado concedido apenas quando necessário, por tempo limitado. Elimina contas admin permanentes. Reduz risco de roubo de credenciais privilegiadas ociosas. Exemplos: Azure PIM, CyberArk JIT, HashiCorp Vault.</p>
+          </div>
+          <div class="card">
+            <h3>JEA — Just Enough Administration</h3>
+            <p>Recurso PowerShell que cria endpoints de administração restrita — usuários podem executar apenas comandos específicos em um contexto elevado, sem receber privilégios completos de admin.</p>
+          </div>
+          <div class="card">
+            <h3>Ferramentas PAM</h3>
+            <ul>
+              <li>CyberArk Privileged Access Manager</li>
+              <li>BeyondTrust Password Safe</li>
+              <li>Delinea Secret Server</li>
+              <li>HashiCorp Vault (open source)</li>
+              <li>Azure AD Privileged Identity Management</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Contas administrativas são o alvo final de qualquer ataque sofisticado. PAM com JIT reduce o tempo de exposição de credenciais privilegiadas. Para começar: audite quem tem admin, implemente LAPS para admins locais Windows, e introduza aprovação de workflow para acesso a sistemas críticos.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Uma conta com privilégio excessivo não é um vetor de ataque — é uma porta escancarada."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

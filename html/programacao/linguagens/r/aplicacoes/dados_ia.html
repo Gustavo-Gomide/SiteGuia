@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R para Dados e IA: tidymodels, caret, Keras/TensorFlow, torch, XGBoost, MLflow, H2O AutoML, DALEX e interpretabilidade de modelos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Dados e Inteligência Artificial</h1>
+          <p>tidymodels, caret, deep learning com Keras e torch, XGBoost, MLflow, AutoML com H2O e interpretabilidade de modelos.</p>
+        </div>
+        <p class="intro-highlight">
+          R é uma das plataformas mais completas para ciência de dados e machine learning estatisticamente rigoroso. O <strong>tidymodels</strong> unificou o fluxo de modelagem; <strong>torch para R</strong> trouxe redes neurais sem depender de Python; e ferramentas de interpretabilidade como <strong>DALEX</strong> e <strong>vip</strong> respondem à pergunta mais importante: <em>por que</em> o modelo fez essa previsão?
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tidymodels">tidymodels — Framework Completo de ML</h2>
+        <p>
+          <strong>tidymodels</strong> é um meta-pacote que fornece uma interface unificada, consistente e tidy para todo o workflow de machine learning em R. Seus componentes formam uma pipeline modular: preparação de dados, especificação de modelo, ajuste de hiperparâmetros e avaliação.
+        </p>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Pacote</th><th>Responsabilidade</th></tr></thead>
+            <tbody>
+              <tr><td><code>rsample</code></td><td>Divisão treino/teste e cross-validation</td></tr>
+              <tr><td><code>recipes</code></td><td>Pré-processamento e feature engineering</td></tr>
+              <tr><td><code>parsnip</code></td><td>Interface unificada para especificar modelos</td></tr>
+              <tr><td><code>workflows</code></td><td>Une recipe + modelo em uma unidade coerente</td></tr>
+              <tr><td><code>tune</code></td><td>Busca de hiperparâmetros (grid, Bayesiano)</td></tr>
+              <tr><td><code>yardstick</code></td><td>Métricas de avaliação (RMSE, ROC-AUC, etc.)</td></tr>
+              <tr><td><code>broom</code></td><td>Transforma saídas de modelos em tibbles tidy</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tidymodels-completo.R — classificação binária</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"tidymodels"</span>)
+
+<span class="com"># Dataset: prever se tumor é maligno (1) ou benigno (0)</span>
+dados &lt;- <span class="fn">read_csv</span>(<span class="str">"cancer.csv"</span>) |&gt;
+  <span class="fn">mutate</span>(diagnostico = <span class="fn">factor</span>(diagnostico, levels = <span class="fn">c</span>(<span class="str">"B"</span>, <span class="str">"M"</span>)))
+
+<span class="com"># 1. Split estratificado</span>
+set.seed(<span class="num">42</span>)
+splits &lt;- <span class="fn">initial_split</span>(dados, prop = <span class="num">0.75</span>, strata = diagnostico)
+treino  &lt;- <span class="fn">training</span>(splits)
+teste   &lt;- <span class="fn">testing</span>(splits)
+cv_folds &lt;- <span class="fn">vfold_cv</span>(treino, v = <span class="num">10</span>, strata = diagnostico)
+
+<span class="com"># 2. Receita de pré-processamento</span>
+receita &lt;- <span class="fn">recipe</span>(diagnostico ~ ., data = treino) |&gt;
+  <span class="fn">step_impute_median</span>(<span class="fn">all_numeric_predictors</span>()) |&gt;
+  <span class="fn">step_nzv</span>(<span class="fn">all_predictors</span>()) |&gt;       <span class="com"># remove features com variância ~zero</span>
+  <span class="fn">step_normalize</span>(<span class="fn">all_numeric_predictors</span>()) |&gt;  <span class="com"># z-score</span>
+  <span class="fn">step_corr</span>(<span class="fn">all_numeric_predictors</span>(), threshold = <span class="num">0.9</span>)  <span class="com"># remove correlações altas</span>
+
+<span class="com"># 3. Especificação do modelo</span>
+modelo_xgb &lt;- <span class="fn">boost_tree</span>(
+  trees        = <span class="fn">tune</span>(),
+  tree_depth   = <span class="fn">tune</span>(),
+  learn_rate   = <span class="fn">tune</span>(),
+  loss_reduction = <span class="fn">tune</span>()
+) |&gt;
+  <span class="fn">set_engine</span>(<span class="str">"xgboost"</span>) |&gt;
+  <span class="fn">set_mode</span>(<span class="str">"classification"</span>)
+
+<span class="com"># 4. Workflow</span>
+wf &lt;- <span class="fn">workflow</span>() |&gt; <span class="fn">add_recipe</span>(receita) |&gt; <span class="fn">add_model</span>(modelo_xgb)
+
+<span class="com"># 5. Busca de hiperparâmetros Bayesiana</span>
+grid_resultado &lt;- <span class="fn">tune_bayes</span>(
+  wf, resamples = cv_folds,
+  metrics = <span class="fn">metric_set</span>(roc_auc, accuracy, f_meas),
+  initial = <span class="num">10</span>, iter = <span class="num">20</span>
+)
+
+<span class="com"># 6. Finalização e avaliação no teste</span>
+melhor_params &lt;- <span class="fn">select_best</span>(grid_resultado, metric = <span class="str">"roc_auc"</span>)
+wf_final       &lt;- <span class="fn">finalize_workflow</span>(wf, melhor_params)
+resultado_teste &lt;- <span class="fn">last_fit</span>(wf_final, splits)
+
+<span class="fn">collect_metrics</span>(resultado_teste)
+<span class="com"># # A tibble: 2 x 4</span>
+<span class="com">#   .metric  .estimator .estimate .config</span>
+<span class="com">#   accuracy binary        0.977  Preprocessor1_Model1</span>
+<span class="com">#   roc_auc  binary        0.996  Preprocessor1_Model1</span>
+
+<span class="com"># Curva ROC</span>
+resultado_teste |&gt;
+  <span class="fn">collect_predictions</span>() |&gt;
+  <span class="fn">roc_curve</span>(diagnostico, .pred_M) |&gt;
+  <span class="fn">autoplot</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="deep-learning">Deep Learning: Keras e torch para R</h2>
+        <p>
+          R tem dois caminhos para deep learning: <strong>keras</strong> (via <code>reticulate</code>, usa TensorFlow/Python por baixo) e <strong>torch</strong> (binding nativo de LibTorch, sem dependência de Python). O pacote <code>torch</code> é mais integrado ao ecossistema R.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">torch-rede-neural.R — regressão com torch</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"torch"</span>)
+
+<span class="com"># Dados de exemplo</span>
+x &lt;- <span class="fn">torch_tensor</span>(<span class="fn">matrix</span>(<span class="fn">rnorm</span>(<span class="num">1000</span>), ncol = <span class="num">5</span>))
+y &lt;- <span class="fn">torch_tensor</span>(<span class="fn">rnorm</span>(<span class="num">200</span>))
+
+<span class="com"># Definir rede com nn_module</span>
+<span class="tp">RedeRegressao</span> &lt;- <span class="fn">nn_module</span>(
+  <span class="str">"RedeRegressao"</span>,
+  initialize = <span class="kw">function</span>() {
+    self$l1 &lt;- <span class="fn">nn_linear</span>(<span class="num">5</span>, <span class="num">64</span>)
+    self$l2 &lt;- <span class="fn">nn_linear</span>(<span class="num">64</span>, <span class="num">32</span>)
+    self$l3 &lt;- <span class="fn">nn_linear</span>(<span class="num">32</span>, <span class="num">1</span>)
+    self$dropout &lt;- <span class="fn">nn_dropout</span>(p = <span class="num">0.2</span>)
+  },
+  forward = <span class="kw">function</span>(x) {
+    x |&gt; self$l1() |&gt; <span class="fn">nnf_relu</span>() |&gt; self$dropout() |&gt;
+         self$l2() |&gt; <span class="fn">nnf_relu</span>() |&gt;
+         self$l3()
+  }
+)
+
+rede &lt;- <span class="fn">RedeRegressao</span>()
+otimizador &lt;- <span class="fn">optim_adam</span>(rede$parameters, lr = <span class="num">0.001</span>)
+criterio   &lt;- <span class="fn">nn_mse_loss</span>()
+
+<span class="com"># Loop de treinamento</span>
+<span class="kw">for</span> (epoca <span class="kw">in</span> <span class="num">1</span>:<span class="num">100</span>) {
+  rede$train()
+  prev  &lt;- rede(x)$squeeze()
+  perda &lt;- <span class="fn">criterio</span>(prev, y)
+  otimizador$<span class="fn">zero_grad</span>()
+  perda$<span class="fn">backward</span>()
+  otimizador$<span class="fn">step</span>()
+  <span class="kw">if</span> (epoca %% <span class="num">10</span> == <span class="num">0</span>)
+    <span class="fn">message</span>(<span class="fn">sprintf</span>(<span class="str">"Época %d | Loss: %.4f"</span>, epoca, perda$<span class="fn">item</span>()))
+}
+
+<span class="com"># Salvar e carregar modelo</span>
+<span class="fn">torch_save</span>(rede, <span class="str">"modelo.pt"</span>)
+rede_carregada &lt;- <span class="fn">torch_load</span>(<span class="str">"modelo.pt"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gradient-boosting">XGBoost e LightGBM</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">xgboost-lightgbm.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"xgboost"</span>)
+<span class="fn">library</span>(<span class="str">"lightgbm"</span>)
+
+<span class="com"># ---- XGBoost ----</span>
+dtreino &lt;- <span class="fn">xgb.DMatrix</span>(data = <span class="fn">as.matrix</span>(treino[,-<span class="num">1</span>]), label = treino[[<span class="num">1</span>]])
+dteste  &lt;- <span class="fn">xgb.DMatrix</span>(data = <span class="fn">as.matrix</span>(teste[,-<span class="num">1</span>]))
+
+params &lt;- <span class="fn">list</span>(
+  objective   = <span class="str">"binary:logistic"</span>,
+  eval_metric = <span class="str">"auc"</span>,
+  eta         = <span class="num">0.05</span>,
+  max_depth   = <span class="num">6</span>,
+  subsample   = <span class="num">0.8</span>,
+  colsample_bytree = <span class="num">0.8</span>
+)
+
+xgb_model &lt;- <span class="fn">xgb.train</span>(
+  params  = params,
+  data    = dtreino,
+  nrounds = <span class="num">500</span>,
+  watchlist = <span class="fn">list</span>(treino = dtreino, teste = dteste),
+  early_stopping_rounds = <span class="num">20</span>,
+  verbose = <span class="num">0</span>
+)
+
+previsoes_xgb &lt;- <span class="fn">predict</span>(xgb_model, dteste)
+
+<span class="com"># ---- LightGBM ---- (mais rápido, melhor em categorias altas)</span>
+dtreino_lgb &lt;- <span class="fn">lgb.Dataset</span>(
+  data  = <span class="fn">as.matrix</span>(treino[,-<span class="num">1</span>]),
+  label = treino[[<span class="num">1</span>]]
+)
+
+lgb_model &lt;- <span class="fn">lgb.train</span>(
+  params = <span class="fn">list</span>(objective = <span class="str">"binary"</span>, metric = <span class="str">"auc"</span>, learning_rate = <span class="num">0.05</span>),
+  data   = dtreino_lgb,
+  nrounds = <span class="num">500</span>
+)
+
+previsoes_lgb &lt;- <span class="fn">predict</span>(lgb_model, <span class="fn">as.matrix</span>(teste[,-<span class="num">1</span>]))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interpretabilidade">Interpretabilidade: DALEX, vip e pdp</h2>
+        <p>
+          <strong>Interpretabilidade</strong> é crítica para modelos em produção: regulamentações (LGPD, GDPR, setor financeiro) exigem explicações. As ferramentas abaixo funcionam com qualquer modelo — R, Python, ou black box — pois interagem apenas via predições.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">interpretabilidade.R — DALEX, vip, pdp</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"DALEX"</span>)
+<span class="fn">library</span>(<span class="str">"vip"</span>)
+<span class="fn">library</span>(<span class="str">"pdp"</span>)
+
+<span class="com"># Criar explainer DALEX — wrapper agnóstico de modelo</span>
+explainer &lt;- <span class="fn">explain</span>(
+  model      = wf_final |&gt; <span class="fn">extract_fit_parsnip</span>(),
+  data       = teste |&gt; <span class="fn">select</span>(-diagnostico),
+  y          = <span class="fn">as.numeric</span>(teste$diagnostico == <span class="str">"M"</span>),
+  label      = <span class="str">"XGBoost Cancer"</span>,
+  predict_function = <span class="kw">function</span>(m, x) <span class="fn">predict</span>(m, <span class="fn">new_data</span>=x, type=<span class="str">"prob"</span>)$.pred_M
+)
+
+<span class="com"># Importância de variáveis (permutation importance)</span>
+imp &lt;- <span class="fn">model_parts</span>(explainer, type = <span class="str">"variable_importance"</span>)
+<span class="fn">plot</span>(imp)
+
+<span class="com"># Perfis PDP — efeito marginal de cada variável</span>
+pdp_profiles &lt;- <span class="fn">model_profile</span>(explainer,
+  variables = <span class="fn">c</span>(<span class="str">"radius_mean"</span>, <span class="str">"texture_mean"</span>))
+<span class="fn">plot</span>(pdp_profiles)
+
+<span class="com"># SHAP — explicação por observação</span>
+shap &lt;- <span class="fn">local_attributions</span>(explainer, new_observation = teste[<span class="num">1</span>, -<span class="num">1</span>])
+<span class="fn">plot</span>(shap)
+
+<span class="com"># vip — importância nativa do modelo (rápido)</span>
+wf_final |&gt;
+  <span class="fn">extract_fit_parsnip</span>() |&gt;
+  <span class="fn">vip</span>(num_features = <span class="num">15</span>)   <span class="com"># gráfico de importância das 15 top features</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mlflow">MLflow — Rastreamento de Experimentos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">mlflow-tracking.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"mlflow"</span>)
+
+<span class="com"># Iniciar servidor MLflow (em terminal separado):</span>
+<span class="com"># $ mlflow server --host 0.0.0.0 --port 5000</span>
+
+<span class="fn">mlflow_set_tracking_uri</span>(<span class="str">"http://localhost:5000"</span>)
+<span class="fn">mlflow_set_experiment</span>(<span class="str">"cancer-classification"</span>)
+
+<span class="com"># Registrar <span class="fn">run</span></span>
+<span class="kw">with</span>(<span class="fn">mlflow_start_run</span>(run_name = <span class="str">"xgboost-v1"</span>), {
+  <span class="com"># Log de hiperparâmetros</span>
+  <span class="fn">mlflow_log_param</span>(<span class="str">"eta"</span>, <span class="num">0.05</span>)
+  <span class="fn">mlflow_log_param</span>(<span class="str">"max_depth"</span>, <span class="num">6</span>)
+  <span class="fn">mlflow_log_param</span>(<span class="str">"nrounds"</span>, <span class="num">500</span>)
+
+  <span class="com"># ... treinar modelo ...</span>
+
+  <span class="com"># Log de métricas</span>
+  <span class="fn">mlflow_log_metric</span>(<span class="str">"roc_auc_treino"</span>, <span class="num">0.998</span>)
+  <span class="fn">mlflow_log_metric</span>(<span class="str">"roc_auc_teste"</span>,  <span class="num">0.996</span>)
+  <span class="fn">mlflow_log_metric</span>(<span class="str">"accuracy_teste"</span>, <span class="num">0.977</span>)
+
+  <span class="com"># Salvar artefato (modelo como .rds)</span>
+  <span class="fn">saveRDS</span>(xgb_model, <span class="str">"modelo.rds"</span>)
+  <span class="fn">mlflow_log_artifact</span>(<span class="str">"modelo.rds"</span>)
+})</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="automl">AutoML com H2O</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">h2o-automl.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"h2o"</span>)
+<span class="fn">h2o.init</span>(nthreads = -<span class="num">1</span>, max_mem_size = <span class="str">"8G"</span>)
+
+<span class="com"># Converter para H2O Frame</span>
+treino_h2o &lt;- <span class="fn">as.h2o</span>(treino)
+teste_h2o  &lt;- <span class="fn">as.h2o</span>(teste)
+
+<span class="com"># AutoML — testa múltiplos algoritmos automaticamente</span>
+aml &lt;- <span class="fn">h2o.automl</span>(
+  x               = <span class="fn">setdiff</span>(<span class="fn">names</span>(treino), <span class="str">"diagnostico"</span>),
+  y               = <span class="str">"diagnostico"</span>,
+  training_frame  = treino_h2o,
+  leaderboard_frame = teste_h2o,
+  max_models      = <span class="num">20</span>,
+  seed            = <span class="num">42</span>,
+  max_runtime_secs = <span class="num">300</span>,
+  include_algos   = <span class="fn">c</span>(<span class="str">"GLM"</span>, <span class="str">"GBM"</span>, <span class="str">"XGBoost"</span>, <span class="str">"DRF"</span>, <span class="str">"StackedEnsemble"</span>)
+)
+
+<span class="com"># Leaderboard — ranking dos melhores modelos</span>
+<span class="fn">print</span>(aml@leaderboard, n = <span class="num">10</span>)
+
+<span class="com"># Melhor modelo</span>
+melhor_modelo &lt;- aml@leader
+<span class="fn">h2o.performance</span>(melhor_modelo, newdata = teste_h2o)
+
+<span class="com"># Explicabilidade automática</span>
+<span class="fn">h2o.explain</span>(aml, teste_h2o)   <span class="com"># relatório HTML completo</span>
+
+<span class="fn">h2o.shutdown</span>(prompt = <span class="kw">FALSE</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>KUHN, Max; WICKHAM, Hadley. <strong>Tidy Modeling with R</strong>. O'Reilly Media, 2022. Disponível em: <a href="https://www.tmwr.org/" target="_blank" rel="noopener">tmwr.org</a></li>
+          <li>FALBEL, Daniel; LURASCHI, Javier. <strong>torch: Tensors and Neural Networks with 'GPU' Acceleration</strong>. R package, 2024. Disponível em: <a href="https://torch.mlverse.org/" target="_blank" rel="noopener">torch.mlverse.org</a></li>
+          <li>BIECEK, Przemyslaw; BURZYKOWSKI, Tomasz. <strong>Explanatory Model Analysis</strong>. CRC Press, 2021. Disponível em: <a href="https://ema.drwhy.ai/" target="_blank" rel="noopener">ema.drwhy.ai</a></li>
+          <li>CHEN, Tianqi; GUESTRIN, Carlos. <strong>XGBoost: A Scalable Tree Boosting System</strong>. KDD, 2016. Disponível em: <a href="https://doi.org/10.1145/2939672.2939785" target="_blank" rel="noopener">doi.org/10.1145/2939672.2939785</a></li>
+          <li>H2O.AI. <strong>H2O AutoML: Scalable Automatic Machine Learning</strong>. 7th ICML Workshop on Automated Machine Learning, 2020. Disponível em: <a href="https://docs.h2o.ai/h2o/latest-stable/h2o-docs/automl.html" target="_blank" rel="noopener">docs.h2o.ai</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> R com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> R Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "A black-box model with unacceptable explanations is just an unacceptable model." — Przemyslaw Biecek, Explanatory Model Analysis</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

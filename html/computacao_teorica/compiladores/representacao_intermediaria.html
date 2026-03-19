@@ -1,0 +1,183 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Representação Intermediária (IR) em compiladores: Three-Address Code (TAC), SSA, LLVM IR, o problema M×N e como IR conecta frontend e backend." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Representação Intermediária | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Representação Intermediária (IR)</h1>
+        <p>O &ldquo;meio-campo&rdquo; entre AST e instruções de máquina.</p>
+      </div>
+      <p class="intro-highlight">
+        A <strong>IR</strong> (​Intermediate Representation) é um formato interno do compilador que representa o
+        programa de forma independente tanto da linguagem-fonte quanto da arquitetura-alvo. Ela é o ponto
+        central onde otimizações são aplicadas e onde frontend e backend se desacoplam.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="mxn" class="section-title">O Problema M &times; N</h2>
+      <div class="card">
+        <p>Sem IR, cada par (linguagem-fonte, arquitetura-alvo) exigiria um compilador separado: M linguagens
+        &times; N arquiteturas = M&times;N implementações. Com IR, o custo cai para M&nbsp;+&nbsp;N:</p>
+        <div>
+            <!-- Diagrama M x N com IR -->
+            <svg viewBox="0 0 480 130" width="100%" role="img" aria-label="Diagrama M x N com IR como pivô" style="max-width:800px;display:block;margin:0 auto">
+              <defs>
+                <marker id="ir-arr" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="5" markerHeight="4" orient="auto">
+                  <polygon points="0,0 10,3.5 0,7" style="fill:var(--accent)"/>
+                </marker>
+              </defs>
+              <!-- linhas tracejadas: langs → IR -->
+              <line x1="90" y1="22" x2="188" y2="58" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <line x1="90" y1="57" x2="188" y2="63" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <line x1="90" y1="92" x2="188" y2="72" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <!-- linhas tracejadas: IR → archs -->
+              <line x1="292" y1="58" x2="388" y2="22" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <line x1="292" y1="63" x2="388" y2="57" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <line x1="292" y1="72" x2="388" y2="92" style="stroke:var(--accent);stroke-width:1;stroke-dasharray:4 3" marker-end="url(#ir-arr)"/>
+              <!-- caixas linguagens -->
+              <rect x="20" y="10" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="55" y="22" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">C</text>
+              <rect x="20" y="45" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="55" y="57" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Rust</text>
+              <rect x="20" y="80" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="55" y="92" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">Go</text>
+              <!-- caixa IR -->
+              <rect x="190" y="45" width="100" height="40" rx="4" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+              <text x="240" y="65" text-anchor="middle" dominant-baseline="middle" style="fill:var(--accent);font:bold 13px monospace">IR</text>
+              <!-- caixas arquiteturas -->
+              <rect x="390" y="10" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="425" y="22" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">x86</text>
+              <rect x="390" y="45" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="425" y="57" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">ARM</text>
+              <rect x="390" y="80" width="70" height="25" rx="4" style="fill:var(--bg-secondary);stroke:var(--text-primary);stroke-width:1.5"/>
+              <text x="425" y="92" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:11px monospace">WASM</text>
+              <!-- labels abaixo -->
+              <text x="55"  y="120" text-anchor="middle" style="fill:var(--text-secondary);font:10px monospace">frontends (M)</text>
+              <text x="240" y="120" text-anchor="middle" style="fill:var(--text-secondary);font:10px monospace">IR</text>
+              <text x="425" y="120" text-anchor="middle" style="fill:var(--text-secondary);font:10px monospace">backends (N)</text>
+            </svg>
+        </div>
+        <p>Cada linguagem implementa apenas um <strong>frontend</strong> (fonte &rarr; IR) e cada arquitetura
+        implementa apenas um <strong>backend</strong> (IR &rarr; código). M+N em vez de M&times;N.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tac" class="section-title">Three-Address Code (TAC)</h2>
+      <div class="card">
+        <p>TAC (código de três endereços) é a IR mais simples estudada em cursos. Cada instrução tem no
+        máximo uma operação e três operandos (<code>x = y op z</code>). Considerações complexas são
+        partidas em temporários:</p>
+        <pre class="example">// Código-fonte: a = b * c + d;
+// TAC:
+t1 = b * c
+t2 = t1 + d
+a  = t2
+
+// Código-fonte: if (x > 0) y = x; else y = -x;
+// TAC:
+    t1 = x > 0
+    ifFalse t1 goto L1
+    y = x
+    goto L2
+L1: y = -x
+L2: ...</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="ssa" class="section-title">Static Single Assignment (SSA)</h2>
+      <div class="card">
+        <p>Na forma <strong>SSA</strong>, cada variável é atribuída exatamente uma vez. Atribuições múltiplas
+        geram novas <em>versões</em>:<br>
+        <code>x = 1; x = x + 1;</code> &rarr; <code>x&sub;1; = 1; x&sub;2; = x&sub;1; + 1;</code></p>
+        <p>Quando dois caminhos de fluxo convergem, SSA usa funções <strong>&phi; (phi)</strong> para
+        selecionar a versão correta:</p>
+        <pre class="example">if (cond) x1 = a; else x2 = b;
+// Após o if: x3 = phi(x1, x2)  // seleciona conforme o caminho tomado</pre>
+        <h3>Por que SSA é usado em compiladores modernos?</h3>
+        <ul>
+          <li>Simplifica análises: definicaão única facilita rastrear uso/def.</li>
+          <li>Muitas otimizações (constant propagation, dead-code) são triviais em SSA.</li>
+          <li>LLVM IR, GCC GIMPLE e Java Bytecode usam formas baseadas em SSA.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="llvm" class="section-title">LLVM IR: Exemplo Real</h2>
+      <div class="card">
+        <pre class="example">; Trecho de LLVM IR para: int soma(int a, int b) { return a + b; }
+define i32 @soma(i32 %a, i32 %b) {
+entry:
+  %result = add i32 %a, %b   ; SSA: %result definido uma vez
+  ret i32 %result
+}</pre>
+        <p>Características da LLVM IR: tipoção explícita, SSA rigoroso, controle de fluxo via
+        <em>basic blocks</em>, e portabilidade entre múltiplos backends (x86, ARM, WASM).</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/otimizacao.html">Otimização</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/analise_semantica.html">Voltar: Análise Semântica</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "A IR é o esperanto dos compiladores &mdash; uma língua franca que permite que frontends e backends se comuniquem."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

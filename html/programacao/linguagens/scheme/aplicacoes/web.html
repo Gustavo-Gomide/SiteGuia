@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Aplicacoes Web com Scheme: arquitetura, frameworks, integracao com banco e deploy pratico com Racket, Guile e Chicken." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Scheme em Aplicacoes Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Scheme em Aplicacoes Web</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero-web" class="section-title">Aplicacoes Web</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Lisp e Scheme">
+            <span data-svg="lisp" aria-hidden="true"></span>
+          </div>
+          <h1>Como levar Scheme para sistemas web reais</h1>
+          <p>Scheme pode rodar APIs, SSR e automacoes HTTP com elegancia funcional, desde que voce escolha runtime e arquitetura com criterio.</p>
+        </div>
+        <p class="intro-highlight">Web em Scheme funciona melhor quando o projeto privilegia simplicidade de regras de negocio, composicao funcional e interfaces HTTP bem definidas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos" class="section-title">Conceitos e contexto</h2>
+        <p>Pense no servidor web como uma central telefonica: cada requisicao chega, passa por um roteador, por validacoes e finalmente por uma funcao que devolve resposta. Em Scheme, essas etapas viram funcoes pequenas e testaveis.</p>
+        <div class="panel">
+          <h3 class="panel-title">Stacks comuns</h3>
+          <table class="table">
+            <thead>
+              <tr><th>Dialeto</th><th>Opcao web</th><th>Ponto forte</th><th>Trade-off</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Racket</td><td><code class="code-inline">web-server</code></td><td>Ferramental produtivo e docs fortes</td><td>Ecosistema menor que Node/Python</td></tr>
+              <tr><td>Chicken</td><td>Spiffy + Intarweb</td><td>Binario nativo rapido</td><td>Pacotes heterogeneos por egg</td></tr>
+              <tr><td>Guile</td><td>Artanis / HTTP manual</td><td>Integracao GNU e scripting</td><td>Menos material de producao</td></tr>
+              <tr><td>Gambit</td><td>FFI/C + servidor externo</td><td>Portabilidade via C backend</td><td>Web full-stack exige mais integracao</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="como-funciona" class="section-title">Como funciona no backend</h2>
+        <div class="grid-cards">
+          <div class="card"><strong>Router funcional</strong><p>Mapeia caminho HTTP para funcoes puras quando possivel.</p></div>
+          <div class="card"><strong>Middlewares</strong><p>Autenticacao, log e validacao compostos como pipeline.</p></div>
+          <div class="card"><strong>Serializacao</strong><p>Conversao para JSON normalmente depende de biblioteca por dialeto.</p></div>
+          <div class="card"><strong>Estado</strong><p>Sessao e cache pedem disciplina para evitar acoplamento acidental.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="sintaxe-uso" class="section-title">Exemplo pratico: API simples em Racket</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">app.rkt</div>
+          <pre class="example"><span class="kw">#lang</span> racket
+(<span class="kw">require</span> web-server/servlet-env
+         web-server/http
+         json)
+
+(<span class="kw">define</span> (<span class="fn">resposta-json</span> payload)
+  (<span class="fn">response/output</span>
+   #:code <span class="num">200</span>
+   #:headers (list (header #"Content-Type" #"application/json"))
+   (<span class="kw">lambda</span> (out)
+     (write-json payload out))))
+
+(<span class="kw">define</span> (<span class="fn">start</span> req)
+  (<span class="com">; regra de negocio pode ficar separada em modulo proprio</span>
+  (resposta-json (hash 'status <span class="str">"ok"</span> 'runtime <span class="str">"racket"</span>)))
+
+(serve/servlet start #:port <span class="num">8080</span> #:servlet-path <span class="str">"/api"</span>)</pre>
+        </div>
+        <p>O handler <code class="code-inline">start</code> recebe a requisicao, delega regra de negocio e monta resposta HTTP. Em producao, voce normalmente coloca um proxy reverso na frente (Nginx/Caddy) para TLS, compressao e observabilidade.</p>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Quando usar e quando evitar</h2>
+        <div class="panel">
+          <h3 class="panel-title">Bom encaixe</h3>
+          <ul>
+            <li>Backends de nicho com muita transformacao simbolica.</li>
+            <li>Ferramentas internas e APIs administrativas.</li>
+            <li>Servicos que valorizam macro-programacao para gerar codigo e DSL.</li>
+          </ul>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Em produtos com front-end muito acoplado ao ecossistema JavaScript, o custo de integracao pode superar o ganho tecnico de usar Scheme no backend.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="avancado" class="section-title">Topicos avancados de producao</h2>
+        <div class="panel">
+          <h3 class="panel-title">Pontos criticos</h3>
+          <ul>
+            <li>Pooling de conexoes em banco deve ser implementado com cuidado para evitar latencia em picos.</li>
+            <li>FFI para libs C pode resolver lacunas, mas aumenta risco operacional.</li>
+            <li>Estrategia de observabilidade (logs estruturados, metricas, tracing) costuma exigir wrappers proprios.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="ecossistema" class="section-title">Ecossistema recomendado</h2>
+        <div class="grid-cards">
+          <div class="card"><strong>Racket</strong><p>Excelente para comecar rapido com web-server e tooling didatico.</p></div>
+          <div class="card"><strong>Chicken</strong><p>Boa opcao quando binario nativo e prioridade.</p></div>
+          <div class="card"><strong>Guile</strong><p>Forte em automacao e integracao com stack GNU.</p></div>
+          <div class="card"><strong>PostgreSQL + Redis</strong><p>Combina bem com arquitetura funcional stateless.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="comparacao" class="section-title">Comparacao com stacks mainstream</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Criterio</th><th>Scheme Web</th><th>Node.js</th><th>Python</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Curva inicial</td><td>Media/alta</td><td>Baixa</td><td>Baixa</td></tr>
+            <tr><td>Metaprogramacao</td><td>Muito forte</td><td>Moderada</td><td>Moderada</td></tr>
+            <tr><td>Maturidade de frameworks</td><td>Limitada</td><td>Alta</td><td>Alta</td></tr>
+            <tr><td>Controle de runtime</td><td>Alto (dialeto dependente)</td><td>Medio</td><td>Medio</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>FLATT, Matthew et al. <strong>Racket Documentation</strong>. Disponivel em: <a href="https://docs.racket-lang.org/" target="_blank" rel="noopener">docs.racket-lang.org</a>.</li>
+            <li>SHINN, Alex et al. <strong>Revised(7) Report on the Algorithmic Language Scheme</strong>. Disponivel em: <a href="https://small.r7rs.org/" target="_blank" rel="noopener">small.r7rs.org</a>.</li>
+            <li>CHICKEN TEAM. <strong>CHICKEN Scheme Manual</strong>. Disponivel em: <a href="https://wiki.call-cc.org/man/5/" target="_blank" rel="noopener">wiki.call-cc.org/man/5</a>.</li>
+            <li>GNU PROJECT. <strong>GNU Guile Reference Manual</strong>. Disponivel em: <a href="https://www.gnu.org/software/guile/manual/" target="_blank" rel="noopener">gnu.org/software/guile/manual</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Proximo passo: escolha um runtime e publique um microservico pequeno primeiro, medindo latencia, consumo e produtividade da equipe.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/linguagens/scheme/aplicacoes/terminal_cli.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme em Terminal e CLI</a></li>
+          <li><a href="/html/programacao/linguagens/scheme/aplicacoes/banco_dados.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme com Banco de Dados</a></li>
+          <li><a href="/html/programacao/linguagens/scheme/guia/avancado.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span> Scheme - Recursos Avancados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Sistemas web robustos nascem de escolhas arquiteturais consistentes, nao de hype de linguagem.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

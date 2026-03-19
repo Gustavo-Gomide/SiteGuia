@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Diagrama de Implantação UML: nós, ambientes, redes e onde cada componente roda; exemplo com API, banco e fila.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Diagrama de Implantação (UML) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Mostre onde o sistema vive antes de ir para produção.</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Diagrama de Implantação</h1>
+          <p class="page-subtitle">Nós, artefatos, redes e conexões — a infraestrutura onde o sistema executa.</p>
+        </div>
+        <p class="intro-highlight">O diagrama de implantação é o mapa da infraestrutura: onde cada serviço vive, o que fala com o quê e através de qual protocolo. Indispensável para discussões de performance, segurança e resiliência.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="elementos" class="section-title">Elementos do diagrama</h2>
+        <div class="section-divider"></div>
+        <p>O diagrama de implantação tem três tipos de elementos principais — nós, artefatos e conexões.</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Elemento</th>
+                <th>Notação</th>
+                <th>Descrição</th>
+                <th>Exemplo concreto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Nó (node)</td>
+                <td>Cubo 3D ou retângulo rotulado</td>
+                <td>Recurso computacional que executa artefatos</td>
+                <td>VM, container, cluster K8s, dispositivo</td>
+              </tr>
+              <tr>
+                <td>Artefato</td>
+                <td>Retângulo com «artifact»</td>
+                <td>Unidade implantável rodando em um nó</td>
+                <td>api-service:3.2, worker-v2, nginx:alpine</td>
+              </tr>
+              <tr>
+                <td>Conexão</td>
+                <td>Linha com protocolo/porta</td>
+                <td>Comunicação entre nós ou artefatos</td>
+                <td>HTTPS:443, AMQP:5672, TCP:5432</td>
+              </tr>
+              <tr>
+                <td>Zona/Rede</td>
+                <td>Retângulo tracejado ou dashed</td>
+                <td>Agrupamento de nós por rede ou responsabilidade</td>
+                <td>VPC pública, subnet privada, DMZ</td>
+              </tr>
+              <tr>
+                <td>Dependência externa</td>
+                <td>Ator ou componente externo</td>
+                <td>Serviço fora da nossa infra</td>
+                <td>Stripe API, SendGrid, Auth0, AWS S3</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo: API + banco + fila + CDN</h2>
+        <div class="section-divider"></div>
+        <p>Um diagrama mínimo de produção que levanta questões de SLA, zonas de rede privada e pontos únicos de falha.</p>
+        <div class="code-container">
+          <pre class="example">Internet
+  │ HTTPS:443
+[CDN / CloudFront]
+  │ HTTPS:443
+[Load Balancer] ── zona pública ──────────────────┐
+  │ HTTP:8080                                     │
+  ├── [App Server A]  artefato: api-service:3.2   │
+  └── [App Server B]  artefato: api-service:3.2   │
+       │ JDBC:5432 (zona privada)                 │
+       │                                          │
+[DB Primary: PostgreSQL]                          │
+  └── replicação → [DB Replica]                   │
+                                                  │
+  ├── [Worker] artefato: order-worker:1.5         │
+  │    │ AMQP:5672                                │
+  └── [Broker: RabbitMQ]                          │
+                                                  │
+[Storage: S3 / Blob] ── HTTPS:443 ───────────────┘
+
+Dependências externas:
+  api-service → Stripe API (HTTPS:443)
+  order-worker → SendGrid (HTTPS:443)
+  api-service → Auth0 (HTTPS:443)
+
+Segredos:
+  DB creds    → Secret Manager
+  Stripe key  → Env var via K8s Secret
+  JWT secret  → Vault</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>Um mapa de infra incompleto cria surpresas caras em produção — especialmente em incidentes de segurança e escalabilidade.</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Omitir dependências externas</h3>
+            <p>Stripe, SendGrid, Auth0 e CDNs são pontos de falha. Não incluí-los no diagrama esconde SLAs e riscos de disponibilidade.</p>
+          </div>
+          <div class="card">
+            <h3>Ignorar zonas de rede</h3>
+            <p>Sem separar público/privado, o time não discute o que está exposto. Subnet privada não é detalhe — é requisito de segurança.</p>
+          </div>
+          <div class="card">
+            <h3>Não indicar protocolos e portas</h3>
+            <p>Linhas sem protocolo/porta tornam o diagrama impreciso para DevOps. HTTPS vs HTTP, 5432 vs 3306 — esses detalhes importam em regras de firewall.</p>
+          </div>
+          <div class="card">
+            <h3>Esquecer gestão de segredos</h3>
+            <p>Não modelar onde ficam as credenciais (Secret Manager, Vault, variáveis de ambiente) é a omissão mais cara de segurança.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Volte a <a href="/html/engenharia_software/uml/diagrama_componentes.html">Diagrama de Componentes</a> para ver as dependências lógicas, e aprofunde-se em arquitetura de sistemas na seção <a href="/html/engenharia_software/design/arquitetura/">Arquitetura de Software</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Infra que ninguém desenhou é infra que ninguém entende quando o incidente acontece."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

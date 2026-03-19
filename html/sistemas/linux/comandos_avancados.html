@@ -1,0 +1,252 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Comandos avançados do Linux: sed, awk, xargs, find avançado, expressões regulares, substituição de processo, here-docs, job control e shell scripting." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Comandos Avançados Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Comandos Avançados Linux</h1>
+            <p class="page-subtitle">sed, awk, xargs, find, here-docs, job control e substituição de processo</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Depois dos básicos, os comandos avançados permitem automatizar processamento de texto, transformar dados em pipelines e montar scripts complexos. É aqui que a verdadeira produtividade do terminal se manifesta: sed edita streams, awk processa colunas com lógica, find localiza qualquer coisa e xargs paraleliza operações em massa.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SED ═══════════════════ -->
+      <section id="sed">
+        <h2>sed — Stream Editor</h2>
+        <p><code>sed</code> processa texto linha a linha aplicando comandos de edição. É ideal para substituições em massa, extração de intervalos de linhas e limpeza de dados.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — sed: substituição, filtros e edição in-place</div>
+          <pre class="code-block"># Sintaxe basica
+# sed 'ENDERECO s/PADRAO/SUBSTITUTO/FLAGS' arquivo
+
+# Substituicao global (g) em todas as linhas
+sed 's/http:/https:/g' urls.txt
+
+# Case-insensitive (I no GNU sed)
+sed 's/erro/ERRO/gI' log.txt
+
+# Apenas a linha 5
+sed '5s/antigo/novo/' arquivo.txt
+
+# Linhas 10 a 20
+sed '10,20s/foo/bar/g' arquivo.txt
+
+# Deletar linhas em branco
+sed '/^$/d' arquivo.txt
+
+# Deletar comentarios (linhas que comecam com #)
+sed '/^#/d' config.conf
+
+# Imprimir apenas linhas com padrao (como grep)
+sed -n '/error/p' app.log
+
+# Edicao IN-PLACE (modifica o arquivo diretamente)
+sed -i 's/localhost/127.0.0.1/g' /etc/app/config.ini
+
+# Backup automatico ao editar in-place
+sed -i.bak 's/old/new/g' arquivo.txt   # cria arquivo.txt.bak
+
+# Script sed multi-linha (arquivo .sed)
+cat > limpar.sed <<'EOF'
+/^$/d
+/^#/d
+s/[[:space:]]*$//
+EOF
+sed -f limpar.sed config.conf</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — AWK ═══════════════════ -->
+      <section id="awk">
+        <h2>awk — Pattern Processing</h2>
+        <p><code>awk</code> é uma linguagem de programação especializada em processar texto estruturado por colunas (campos). Enquanto <code>sed</code> é orientado a linhas, <code>awk</code> entende campos e permite lógica condicional e cálculos.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — awk: colunas, somas e reformatação</div>
+          <pre class="code-block"># Estrutura: awk 'BEGIN{inicio} /padrao/ {acao} END{fim}' arquivo
+
+# Variaveis especiais
+# NR  = numero da linha atual
+# NF  = numero de campos na linha
+# FS  = separador de campo (padrao: espaco)
+# OFS = separador de saida
+
+# Imprimir so a primeira coluna (usuarios)
+awk -F: '{print $1}' /etc/passwd
+
+# Imprimir linhas onde o campo 3 (UID) > 1000 (usuarios reais)
+awk -F: '$3 >= 1000 {print $1, $3}' /etc/passwd
+
+# Somar segunda coluna de um CSV
+awk -F, '{sum += $2} END {print "Total:", sum}' vendas.csv
+
+# Reformatar saida do ps (somente PID e CMD)
+ps aux | awk 'NR>1 {print $2, $11}'
+
+# Contar ocorrencias por valor
+awk '{count[$1]++} END {for (k in count) print count[k], k}' access.log \
+  | sort -rn | head -10
+
+# Calcular media da 5a coluna
+awk '{sum+=$5; n++} END {printf "Media: %.2f\n", sum/n}' dados.txt
+
+# BEGIN e END blocos
+awk 'BEGIN{print "=== Inicio ==="} {print NR": "$0} END{print "=== Fim ==="}' arquivo.txt</pre>
+        </div>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Ferramenta</th><th>Melhor para</th><th>Ponto fraco</th></tr></thead>
+          <tbody>
+            <tr><td>awk</td><td>Processar colunas, cálculos, lógica condicional por campo</td><td>Manipulação de strings complexas</td></tr>
+            <tr><td>sed</td><td>Substituições globais, edição in-place de arquivos</td><td>Operações multi-linha e lógica condicional</td></tr>
+            <tr><td>cut</td><td>Extrair colunas delimitadas rapidamente</td><td>Sem lógica, sem cálculos</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — FIND AVANÇADO E XARGS ═══════════════════ -->
+      <section id="find-xargs">
+        <h2>find Avançado e xargs</h2>
+        <p><code>find</code> percorre a árvore de diretórios aplicando filtros. <code>xargs</code> converte stdin em argumentos para outro comando, permitindo executar operações em massa.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — find e xargs em combinacoes poderosas</div>
+          <pre class="code-block"># Encontrar arquivos maiores que 100 MB
+find / -type f -size +100M 2>/dev/null
+
+# Remover logs com mais de 30 dias
+find /var/log -name "*.log" -mtime +30 -exec rm {} ;
+
+# Mesma coisa com xargs (mais eficiente: uma chamada rm para varios arquivos)
+find /var/log -name "*.log" -mtime +30 -print0 | xargs -0 rm -f
+
+# Mudar permissoes apenas de arquivos (nao diretorios)
+find /var/www -type f -exec chmod 644 {} +
+
+# Mudar permissoes apenas de diretorios
+find /var/www -type d -exec chmod 755 {} +
+
+# Buscar por permissao (SUID bits)
+find / -perm /4000 -type f 2>/dev/null
+
+# Mostrar arquivos modificados nas ultimas 24h
+find . -mtime -1 -type f
+
+# Combinar find + xargs + grep: buscar "TODO" em todos os .py
+find . -name "*.py" -print0 | xargs -0 grep -n "TODO"
+
+# Contar linhas de todos os arquivos .c no projeto
+find . -name "*.c" -print0 | xargs -0 wc -l
+
+# Processamento paralelo com xargs -P
+find . -name "*.jpg" -print0 | xargs -0 -P 4 -I{} convert {} -resize 800x600 resized/{}
+
+# Nomes com espacos: SEMPRE usar -print0 com xargs -0
+find . -name "* *" -print0 | xargs -0 ls -la</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — JOB CONTROL E SHELL FEATURES ═══════════════════ -->
+      <section id="job-control">
+        <h2>Job Control e Shell Features</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — job control, here-doc e substituição de processo</div>
+          <pre class="code-block"># ==================== JOB CONTROL ====================
+
+# Rodar em background
+long_process.sh &
+
+# Listar jobs em background
+jobs
+
+# Trazer job para foreground
+fg %1
+
+# Enviar para background (apos Ctrl+Z)
+bg %1
+
+# Desanexar processo do terminal (sobrevive a logout)
+nohup backup.sh &> /var/log/backup.log &
+disown %1       # desanexar job ja em execucao
+
+# ==================== HERE-DOC ====================
+# Passar bloco de texto como stdin sem arquivo temporario
+cat <<'EOF' > /etc/nginx/sites-available/app.conf
+server {
+    listen 80;
+    server_name app.exemplo.com;
+    root /var/www/app;
+}
+EOF
+
+# Usar variaveis no here-doc (sem aspas no EOF)
+VERSAO="1.2.3"
+cat <<EOF
+Instalando versao $VERSAO
+EOF
+
+# ==================== SUBSTITUICAO DE PROCESSO ====================
+# <(cmd)  = resultado de cmd como se fosse arquivo
+# >(cmd)  = cmd recebe saida como se fosse arquivo
+
+# Comparar duas listagens sem arquivo temporario
+diff <(ls dir1/) <(ls dir2/)
+
+# Processar dois arquivos remotos sem baixar
+diff <(ssh host1 cat /etc/hosts) <(ssh host2 cat /etc/hosts)
+
+# ==================== BRACE EXPANSION ====================
+# Criar estrutura de diretorios de uma vez
+mkdir -p projeto/{src,tests,docs,build}/{main,utils}
+
+# Backup rapido
+cp arquivo.conf{,.bak}
+
+# ==================== GLOBBING ESTENDIDO ====================
+shopt -s globstar    # ativar **
+grep -n "TODO" **/*.py   # buscar em todos .py recursivamente</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Revise os fundamentos em <a href="/html/sistemas/linux/comandos_basicos.html">Comandos Básicos</a> e avance para <a href="/html/sistemas/linux/processos_linux.html">Processos no Linux</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"sed e awk são linguagens de programação disfarradas de comandos — dominá-los transforma pipelines em programas."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Boas práticas Delphi: naming conventions, estrutura de projeto, SOLID com interfaces, DUnitX testes, dependency injection, padrões de design e refactoring." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Delphi — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Delphi &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="delphi_object_pascal" aria-hidden="true"></span></div>
+          <h1>Delphi — Projetos e Boas Práticas</h1>
+          <p>Projetos Delphi profissionais seguem convenções de nomenclatura rigorosas, separam camadas (apresentação, negócio, dados) e usam interfaces para inversão de dependência. <strong>Spring4D</strong> traz IoC container; <strong>DUnitX</strong> fornece testes unitários; e a estrutura de diretórios organizada é essencial para escalar.</p>
+        </div>
+        <p class="intro-highlight">
+          A convenção de prefixo <strong>T</strong> para tipos/classes é a mais conhecida de Delphi — <code>TCliente</code>, <code>TPedido</code>. Mas o sistema vai além: <strong>F</strong> para fields privados, <strong>I</strong> para interfaces, <strong>E</strong> para exceções, <strong>C</strong> para constantes. Seguir essas convenções torna o código imediatamente reconhecível por qualquer desenvolvedor Pascal.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="naming">Convenções de Nomenclatura</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Prefixo</th><th>Uso</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td><code>T</code></td><td>Tipos: classes, records, enums</td><td><code>TCliente</code>, <code>TEnderecoRecord</code></td></tr>
+              <tr><td><code>I</code></td><td>Interfaces</td><td><code>IRepositorio</code>, <code>ILogger</code></td></tr>
+              <tr><td><code>E</code></td><td>Exceções (descendentes de Exception)</td><td><code>EValidacaoError</code>, <code>EDbError</code></td></tr>
+              <tr><td><code>F</code></td><td>Fields privados de classe</td><td><code>FNome</code>, <code>FIdade</code></td></tr>
+              <tr><td><code>A</code></td><td>Parâmetros de métodos</td><td><code>ANome</code>, <code>AValor</code></td></tr>
+              <tr><td><code>C</code></td><td>Constantes</td><td><code>CMaxTentativas</code>, <code>CVersionApp</code></td></tr>
+              <tr><td><code>G</code></td><td>Variáveis globais</td><td><code>GAppConfig</code> (evitar)</td></tr>
+              <tr><td>sem prefixo</td><td>Variáveis locais, parâmetros sem A</td><td><code>nome</code>, <code>total</code>, <code>i</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de diretórios recomendada</div>
+          <pre class="example">MeuSistema/
+├── src/
+│   ├── core/                <span class="com">// entidades e regras de negócio puras</span>
+│   │   ├── Entidades.pas
+│   │   ├── Servicos.pas
+│   │   └── Interfaces.pas
+│   ├── infra/               <span class="com">// implementações concretas (DB, HTTP, File)</span>
+│   │   ├── RepositorioCliente.pas
+│   │   └── ServicoEmail.pas
+│   ├── app/                 <span class="com">// application services — orquestração</span>
+│   │   └── CasoUsoTransferencia.pas
+│   └── ui/                  <span class="com">// VCL/FMX — forms, frames, data modules</span>
+│       ├── FrmPrincipal.pas
+│       ├── FrmPrincipal.dfm
+│       ├── FrmCliente.pas
+│       └── DmClientes.pas   <span class="com">// DataModule — componentes de dados</span>
+├── tests/
+│   ├── TestEntidades.pas
+│   └── TestServicos.pas
+├── lib/                     <span class="com">// bibliotecas de terceiros (.dcu, .pas)</span>
+│   └── Spring4D/
+└── MeuSistema.dproj</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interfaces-di">Interfaces e Injeção de Dependência</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Padrão Repository com interfaces — dependência invertida</div>
+          <pre class="example"><span class="kw">type</span>
+  <span class="com">// Interface — contrato sem implementação</span>
+  IClienteRepo = <span class="kw">interface</span>
+  [<span class="str">'{AAA-BBB-CCC}'</span>]
+    <span class="kw">function</span>  Buscar(AId: <span class="tp">Integer</span>): TCliente;
+    <span class="kw">procedure</span> Salvar(ACliente: TCliente);
+    <span class="kw">function</span>  Listar: TArray&lt;TCliente&gt;;
+  <span class="kw">end</span>;
+
+  <span class="com">// Serviço depende da interface — não da implementação</span>
+  TClienteServico = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FRepo: IClienteRepo;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> Create(ARepo: IClienteRepo);
+    <span class="kw">procedure</span> RegistrarNovoCliente(const ANome, AEmail: <span class="tp">string</span>);
+  <span class="kw">end</span>;
+
+<span class="kw">constructor</span> TClienteServico.Create(ARepo: IClienteRepo);
+<span class="kw">begin</span>
+  FRepo := ARepo;   <span class="com">// injeção pelo construtor</span>
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TClienteServico.RegistrarNovoCliente(const ANome, AEmail: <span class="tp">string</span>);
+<span class="kw">var</span> c: TCliente;
+<span class="kw">begin</span>
+  c := TCliente.Create;
+  <span class="kw">try</span>
+    c.Nome  := ANome;
+    c.Email := AEmail;
+    FRepo.Salvar(c);
+  <span class="kw">finally</span>
+    c.Free;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="com">// Em produção — implementação real</span>
+servico := TClienteServico.Create(TClienteRepoFireDAC.Create(conexao));
+
+<span class="com">// Em teste — implementação fake</span>
+servico := TClienteServico.Create(TClienteRepoMemoria.Create);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes">Testes com DUnitX</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">DUnitX — testes unitários modernos em Delphi</div>
+          <pre class="example"><span class="kw">unit</span> TestCalculadora;
+
+<span class="kw">interface</span>
+<span class="kw">uses</span>
+  DUnitX.TestFramework,
+  App.Calculadora;
+
+<span class="kw">type</span>
+  [TestFixture]
+  TTestCalculadora = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FCalc: TCalculadora;
+  <span class="kw">public</span>
+    [Setup]    <span class="kw">procedure</span> Setup;
+    [TearDown] <span class="kw">procedure</span> TearDown;
+
+    [Test]
+    <span class="kw">procedure</span> Soma_DoisInteiros_RetornaCorreto;
+
+    [Test]
+    [TestCase(<span class="str">'Positivos'</span>,    <span class="str">'2,3,5'</span>)]
+    [TestCase(<span class="str">'ComNegativo'</span>,  <span class="str">'-1,1,0'</span>)]
+    [TestCase(<span class="str">'Zeros'</span>,        <span class="str">'0,0,0'</span>)]
+    <span class="kw">procedure</span> Soma_Parametrizado(A, B, Esperado: <span class="tp">Integer</span>);
+
+    [Test]
+    [WillRaise(EDivByZero)]
+    <span class="kw">procedure</span> Dividir_PorZero_LancaExcecao;
+  <span class="kw">end</span>;
+
+<span class="kw">implementation</span>
+
+<span class="kw">procedure</span> TTestCalculadora.Setup;
+<span class="kw">begin</span>
+  FCalc := TCalculadora.Create;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TTestCalculadora.TearDown;
+<span class="kw">begin</span>
+  FCalc.Free;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TTestCalculadora.Soma_DoisInteiros_RetornaCorreto;
+<span class="kw">begin</span>
+  Assert.AreEqual(<span class="num">4</span>, FCalc.Soma(<span class="num">2</span>, <span class="num">2</span>));
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TTestCalculadora.Soma_Parametrizado(A, B, Esperado: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  Assert.AreEqual(Esperado, FCalc.Soma(A, B));
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> TTestCalculadora.Dividir_PorZero_LancaExcecao;
+<span class="kw">begin</span>
+  FCalc.Dividir(<span class="num">5</span>, <span class="num">0</span>);  <span class="com">// deve lançar EDivByZero</span>
+<span class="kw">end</span>;
+
+<span class="kw">initialization</span>
+  TDUnitX.RegisterTestFixture(TTestCalculadora);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SPRING4D. <strong>Spring4D Framework</strong>. Disponível em: &lt;https://bitbucket.org/sglienke/spring4d&gt;. Acesso em: 2025.</li>
+            <li>DUnitX. <strong>DUnitX Wiki</strong>. Disponível em: &lt;https://github.com/VSoftTechnologies/DUnitX/wiki&gt;. Acesso em: 2025.</li>
+            <li>Embarcadero. <strong>Delphi Coding Style Guide</strong>. Disponível em: &lt;https://docwiki.embarcadero.com&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com FireDAC</a></li>
+          <li><a href="../aplicacoes/gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI Desktop com VCL</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A convenção <code>[TestCase('Nome', 'a,b,esperado')]</code> do DUnitX é o equivalente Delphi de parametrized tests. Um único método de teste com 10 <code>[TestCase]</code> attributes testa 10 cenários diferentes — muito mais legível do que 10 métodos separados. Use <code>Assert.AreEqual</code>, <code>Assert.IsTrue</code>, e <code>Assert.WillRaise</code> como fundação.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

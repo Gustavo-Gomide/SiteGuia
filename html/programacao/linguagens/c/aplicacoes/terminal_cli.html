@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para ferramentas de terminal e CLI: parsing de argumentos, ncurses para TUI, pipes, sinais, código das ferramentas Unix e GNU." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para Ferramentas de Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Terminal &amp; CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="terminal" aria-hidden="true"></span></div>
+          <h1>C para Terminal e CLI</h1>
+          <p>Parsing de argumentos, ncurses para TUI, pipes, sinais e os padrões de código das ferramentas Unix mais famosas do mundo.</p>
+        </div>
+        <p class="intro-highlight">
+          <code>ls</code>, <code>grep</code>, <code>awk</code>, <code>sed</code>, <code>cat</code>, <code>find</code>, <code>git</code>, <code>gcc</code> — todas essas ferramentas são escritas em C. Criar ferramentas de linha de comando eficientes, composáveis e Unix-philosophic é onde C brilha de forma única.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="getopt">Parsing de Argumentos: getopt e getopt_long</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; getopt_long: flags -v, --verbose, --output=FILE</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;getopt.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="kw">static</span> <span class="tp">int</span> flag_verbose = <span class="num">0</span>;
+<span class="kw">static</span> <span class="tp">int</span> flag_help    = <span class="num">0</span>;
+<span class="kw">static</span> <span class="kw">const</span> <span class="tp">char</span> *output_file = NULL;
+
+<span class="tp">void</span> <span class="fn">uso</span>(<span class="kw">const</span> <span class="tp">char</span> *prog) {
+    <span class="fn">fprintf</span>(stderr,
+        <span class="str">"Uso: %s [OPÇÕES] [ARQUIVO...]\n"</span>
+        <span class="str">"  -v, --verbose       saída detalhada\n"</span>
+        <span class="str">"  -o, --output=FILE   arquivo de saída\n"</span>
+        <span class="str">"  -h, --help          esta mensagem\n"</span>,
+        prog);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">int</span> argc, <span class="tp">char</span> *argv[]) {
+    <span class="kw">static</span> <span class="kw">const</span> <span class="kw">struct</span> option opts_long[] = {
+        {<span class="str">"verbose"</span>, no_argument,       &amp;flag_verbose, <span class="num">1</span>},
+        {<span class="str">"output"</span>,  required_argument, NULL,          <span class="str">'o'</span>},
+        {<span class="str">"help"</span>,    no_argument,       &amp;flag_help,    <span class="num">1</span>},
+        {NULL,      <span class="num">0</span>,                 NULL,          <span class="num">0</span>}
+    };
+
+    <span class="tp">int</span> c, idx;
+    <span class="kw">while</span> ((c = <span class="fn">getopt_long</span>(argc, argv, <span class="str">"vo:h"</span>, opts_long, &amp;idx)) != -<span class="num">1</span>) {
+        <span class="kw">switch</span> (c) {
+            <span class="kw">case</span> <span class="str">'v'</span>: flag_verbose = <span class="num">1</span>; <span class="kw">break</span>;
+            <span class="kw">case</span> <span class="str">'o'</span>: output_file = optarg; <span class="kw">break</span>;
+            <span class="kw">case</span> <span class="str">'h'</span>: flag_help = <span class="num">1</span>; <span class="kw">break</span>;
+            <span class="kw">case</span>  <span class="num">0</span>: <span class="kw">break</span>; <span class="com">/* flag foi setado diretamente */</span>
+            <span class="kw">default</span>: <span class="fn">uso</span>(argv[<span class="num">0</span>]); <span class="kw">return</span> <span class="num">1</span>;
+        }
+    }
+
+    <span class="kw">if</span> (flag_help) { <span class="fn">uso</span>(argv[<span class="num">0</span>]); <span class="kw">return</span> <span class="num">0</span>; }
+    <span class="kw">if</span> (flag_verbose) <span class="fn">printf</span>(<span class="str">"Modo verbose ativado\n"</span>);
+    <span class="kw">if</span> (output_file)  <span class="fn">printf</span>(<span class="str">"Saída: %s\n"</span>, output_file);
+
+    <span class="com">/* Processar arquivos restantes (optind até argc) */</span>
+    <span class="kw">for</span> (<span class="tp">int</span> i = optind; i &lt; argc; i++)
+        <span class="fn">printf</span>(<span class="str">"Processando: %s\n"</span>, argv[i]);
+
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pipes-sinais">Pipes, Fork e Sinais</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; pipe entre processo pai e filho</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;unistd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;sys/wait.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;signal.h&gt;</span>
+
+<span class="kw">static</span> <span class="kw">volatile</span> <span class="tp">int</span> terminando = <span class="num">0</span>;
+
+<span class="tp">void</span> <span class="fn">handle_sigint</span>(<span class="tp">int</span> sig) {
+    (<span class="tp">void</span>)sig;
+    terminando = <span class="num">1</span>;
+    <span class="fn">write</span>(STDOUT_FILENO, <span class="str">"\nRecebido SIGINT — encerrando...\n"</span>, <span class="num">33</span>);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="com">/* Registrar handler de SIGINT (Ctrl+C) */</span>
+    <span class="kw">struct</span> sigaction sa = {.sa_handler = handle_sigint};
+    <span class="fn">sigaction</span>(SIGINT, &amp;sa, NULL);
+
+    <span class="tp">int</span> pipefd[<span class="num">2</span>];  <span class="com">/* [0]=leitura, [1]=escrita */</span>
+    <span class="kw">if</span> (<span class="fn">pipe</span>(pipefd) == -<span class="num">1</span>) { <span class="fn">perror</span>(<span class="str">"pipe"</span>); <span class="kw">return</span> <span class="num">1</span>; }
+
+    <span class="tp">pid_t</span> pid = <span class="fn">fork</span>();
+    <span class="kw">if</span> (pid == -<span class="num">1</span>) { <span class="fn">perror</span>(<span class="str">"fork"</span>); <span class="kw">return</span> <span class="num">1</span>; }
+
+    <span class="kw">if</span> (pid == <span class="num">0</span>) {
+        <span class="com">/* Processo filho: lê do pipe */</span>
+        <span class="fn">close</span>(pipefd[<span class="num">1</span>]);
+        <span class="tp">char</span> buf[<span class="num">128</span>];
+        <span class="tp">ssize_t</span> n;
+        <span class="kw">while</span> ((n = <span class="fn">read</span>(pipefd[<span class="num">0</span>], buf, <span class="kw">sizeof</span>(buf) - <span class="num">1</span>)) &gt; <span class="num">0</span>) {
+            buf[n] = <span class="str">'\0'</span>;
+            <span class="fn">printf</span>(<span class="str">"Filho recebeu: %s\n"</span>, buf);
+        }
+        <span class="fn">close</span>(pipefd[<span class="num">0</span>]);
+        <span class="fn">exit</span>(<span class="num">0</span>);
+
+    } <span class="kw">else</span> {
+        <span class="com">/* Processo pai: escreve no pipe */</span>
+        <span class="fn">close</span>(pipefd[<span class="num">0</span>]);
+        <span class="kw">const</span> <span class="tp">char</span> *msgs[] = {<span class="str">"Olá"</span>, <span class="str">"do"</span>, <span class="str">"processo pai!"</span>};
+        <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">0</span>; i &lt; <span class="num">3</span>; i++) {
+            <span class="fn">write</span>(pipefd[<span class="num">1</span>], msgs[i], <span class="fn">strlen</span>(msgs[i]));
+            <span class="fn">sleep</span>(<span class="num">1</span>);
+        }
+        <span class="fn">close</span>(pipefd[<span class="num">1</span>]);
+        <span class="fn">wait</span>(NULL);  <span class="com">/* esperar filho terminar */</span>
+    }
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ncurses">Interface TUI com ncurses</h2>
+        <p>ncurses permite criar interfaces de texto ricas no terminal: janelas, cores, teclado avançado e mouse. Usada no vim, mc, htop, midnight commander e bash readline.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; ncurses: janela colorida com input</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;ncurses.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="fn">initscr</span>();           <span class="com">/* inicializar ncurses */</span>
+    <span class="fn">cbreak</span>();            <span class="com">/* sem buffer de linha */</span>
+    <span class="fn">noecho</span>();            <span class="com">/* não ecoar teclas */</span>
+    <span class="fn">keypad</span>(stdscr, TRUE); <span class="com">/* habilitar teclas especiais */</span>
+    <span class="fn">curs_set</span>(<span class="num">0</span>);          <span class="com">/* esconder cursor */</span>
+
+    <span class="kw">if</span> (<span class="fn">has_colors</span>()) {
+        <span class="fn">start_color</span>();
+        <span class="fn">init_pair</span>(<span class="num">1</span>, COLOR_GREEN,  COLOR_BLACK);
+        <span class="fn">init_pair</span>(<span class="num">2</span>, COLOR_YELLOW, COLOR_BLUE);
+        <span class="fn">init_pair</span>(<span class="num">3</span>, COLOR_WHITE,  COLOR_RED);
+    }
+
+    <span class="tp">int</span> rows, cols;
+    <span class="fn">getmaxyx</span>(stdscr, rows, cols);
+
+    <span class="com">/* Janela central */</span>
+    <span class="tp">WINDOW</span> *win = <span class="fn">newwin</span>(<span class="num">10</span>, <span class="num">40</span>,
+                          (rows - <span class="num">10</span>) / <span class="num">2</span>,
+                          (cols - <span class="num">40</span>) / <span class="num">2</span>);
+    <span class="fn">wbkgd</span>(win, COLOR_PAIR(<span class="num">2</span>));
+    <span class="fn">box</span>(win, <span class="num">0</span>, <span class="num">0</span>);
+    <span class="fn">wattron</span>(win, A_BOLD | COLOR_PAIR(<span class="num">2</span>));
+    <span class="fn">mvwprintw</span>(win, <span class="num">1</span>, <span class="num">2</span>, <span class="str">"Pressione qualquer tecla..."</span>);
+    <span class="fn">wattroff</span>(win, A_BOLD);
+    <span class="fn">wrefresh</span>(win);
+
+    <span class="fn">mvwprintw</span>(win, <span class="num">5</span>, <span class="num">2</span>, <span class="str">"Tecla: "</span>);
+    <span class="tp">int</span> ch = <span class="fn">wgetch</span>(win);
+    <span class="fn">mvwprintw</span>(win, <span class="num">5</span>, <span class="num">9</span>, <span class="str">"%d ('%c')"</span>, ch, (ch &gt; <span class="num">31</span> &amp;&amp; ch &lt; <span class="num">127</span>) ? ch : <span class="str">'?'</span>);
+    <span class="fn">wrefresh</span>(win);
+    <span class="fn">getch</span>();
+
+    <span class="fn">delwin</span>(win);
+    <span class="fn">endwin</span>();  <span class="com">/* restaurar terminal */</span>
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o tui tui.c -lncurses */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>RAYMOND, Eric S. <strong>The Art of Unix Programming</strong>. Addison-Wesley, 2003.</li>
+            <li>KERRISK, Michael. <strong>The Linux Programming Interface</strong>. No Starch Press, 2010.</li>
+            <li>GNU Project. <strong>ncurses Documentation</strong>. Disponível em: &lt;https://invisible-island.net/ncurses/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Embarcados</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C na Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Write programs that do one thing and do it well." &mdash; Doug McIlroy, Filosofia Unix</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

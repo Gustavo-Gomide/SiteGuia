@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript e banco de dados: Prisma ORM, Drizzle ORM, Redis com ioredis, SQLite nativo Node.js e MongoDB com Mongoose." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript e Banco de Dados</h1>
+          <p>Prisma ORM, Drizzle ORM type-safe, Redis com ioredis, SQLite nativo no Node.js 22 e MongoDB com Mongoose.</p>
+        </div>
+        <p class="intro-highlight">
+          O ecossistema JavaScript oferece ORMs modernos que geram tipos TypeScript automaticamente do schema do banco, eliminando erros de runtime por incompatibilidade entre dados e código.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="prisma">Prisma: ORM com Auto-complete e Migrations</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Prisma Schema &mdash; PostgreSQL com relações e enums</div>
+          <pre class="example"><span class="com">// prisma/schema.prisma</span>
+generator client {
+  provider = <span class="str">"prisma-client-js"</span>
+}
+
+datasource db {
+  provider = <span class="str">"postgresql"</span>
+  url      = env(<span class="str">"DATABASE_URL"</span>)  <span class="com">// nunca hardcoded</span>
+}
+
+model Usuario {
+  id        String    @id @default(uuid())
+  email     String    @unique
+  nome      String
+  perfil    Perfil    @default(LEITOR)
+  criado_em DateTime  @default(now())
+  posts     Post[]
+  @@index([email])
+}
+
+model Post {
+  id        String    @id @default(uuid())
+  titulo    String    @db.VarChar(200)
+  corpo     String
+  publicado Boolean   @default(false)
+  autor     Usuario   @relation(fields: [autorId], references: [id])
+  autorId   String
+  criado_em DateTime  @default(now())
+  @@index([autorId, publicado])
+}
+
+enum Perfil { ADMIN EDITOR LEITOR }</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + Prisma &mdash; CRUD com transacao e include</div>
+          <pre class="example"><span class="kw">import</span> { PrismaClient } <span class="kw">from</span> <span class="str">"@prisma/client"</span>;
+
+<span class="com">// Singleton — evitar múltiplas conexões em dev (HMR)</span>
+<span class="kw">const</span> prisma = globalThis.__prisma ?? <span class="kw">new</span> <span class="fn">PrismaClient</span>();
+<span class="kw">if</span> (process.env.NODE_ENV !== <span class="str">"production"</span>) globalThis.__prisma = prisma;
+
+<span class="com">// Busca com relacionamento e paginacao cursor-based</span>
+<span class="kw">async function</span> <span class="fn">listarPosts</span>({ cursor, limite = <span class="num">10</span> } = {}) {
+  <span class="kw">return</span> prisma.post.<span class="fn">findMany</span>({
+    where:   { publicado: <span class="kw">true</span> },
+    include: { autor: { select: { id: <span class="kw">true</span>, nome: <span class="kw">true</span> } } },
+    orderBy: { criado_em: <span class="str">"desc"</span> },
+    take:    limite,
+    ...(cursor && { cursor: { id: cursor }, skip: <span class="num">1</span> }),
+  });
+}
+
+<span class="com">// Transação: mover créditos entre usuários</span>
+<span class="kw">async function</span> <span class="fn">transferirCreditos</span>(deId, paraId, valor) {
+  <span class="kw">return</span> prisma.<span class="fn">$transaction</span>(<span class="kw">async</span> (tx) => {
+    <span class="kw">const</span> [de, para] = <span class="kw">await</span> <span class="tp">Promise</span>.<span class="fn">all</span>([
+      tx.usuario.<span class="fn">findUniqueOrThrow</span>({ where: { id: deId } }),
+      tx.usuario.<span class="fn">findUniqueOrThrow</span>({ where: { id: paraId } }),
+    ]);
+    <span class="kw">if</span> (de.creditos < valor) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">"Saldo insuficiente"</span>);
+    <span class="kw">await</span> tx.usuario.<span class="fn">update</span>({
+      where: { id: deId }, data: { creditos: { decrement: valor } },
+    });
+    <span class="kw">await</span> tx.usuario.<span class="fn">update</span>({
+      where: { id: paraId }, data: { creditos: { increment: valor } },
+    });
+  });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="drizzle">Drizzle ORM: SQL Type-Safe sem Magia</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + Drizzle &mdash; Schema, query builder e migrations</div>
+          <pre class="example"><span class="com">// db/schema.js — Drizzle com PostgreSQL</span>
+<span class="kw">import</span> { pgTable, text, integer, boolean, timestamp, uuid }
+  <span class="kw">from</span> <span class="str">"drizzle-orm/pg-core"</span>;
+<span class="kw">import</span> { relations } <span class="kw">from</span> <span class="str">"drizzle-orm"</span>;
+
+<span class="kw">export const</span> usuarios = <span class="fn">pgTable</span>(<span class="str">"usuarios"</span>, {
+  id:       <span class="fn">uuid</span>(<span class="str">"id"</span>).<span class="fn">primaryKey</span>().<span class="fn">defaultRandom</span>(),
+  email:    <span class="fn">text</span>(<span class="str">"email"</span>).<span class="fn">notNull</span>().<span class="fn">unique</span>(),
+  nome:     <span class="fn">text</span>(<span class="str">"nome"</span>).<span class="fn">notNull</span>(),
+  ativo:    <span class="fn">boolean</span>(<span class="str">"ativo"</span>).<span class="fn">default</span>(<span class="kw">true</span>),
+  criado_em: <span class="fn">timestamp</span>(<span class="str">"criado_em"</span>).<span class="fn">defaultNow</span>(),
+});
+
+<span class="kw">export const</span> usuariosRelations = <span class="fn">relations</span>(usuarios, ({ many }) => ({
+  posts: <span class="fn">many</span>(posts),
+}));
+
+<span class="com">// db/index.js</span>
+<span class="kw">import</span> { drizzle }    <span class="kw">from</span> <span class="str">"drizzle-orm/postgres-js"</span>;
+<span class="kw">import</span> postgres       <span class="kw">from</span> <span class="str">"postgres"</span>;
+<span class="kw">import</span> * <span class="kw">as</span> schema   <span class="kw">from</span> <span class="str">"./schema.js"</span>;
+
+<span class="kw">const</span> client = <span class="fn">postgres</span>(process.env.DATABASE_URL);
+<span class="kw">export const</span> db = <span class="fn">drizzle</span>(client, { schema });
+
+<span class="com">// Queries type-safe</span>
+<span class="kw">import</span> { eq, and, gt, desc } <span class="kw">from</span> <span class="str">"drizzle-orm"</span>;
+
+<span class="kw">const</span> ativos = <span class="kw">await</span> db
+  .<span class="fn">select</span>({ id: usuarios.id, nome: usuarios.nome })
+  .<span class="fn">from</span>(usuarios)
+  .<span class="fn">where</span>(<span class="fn">eq</span>(usuarios.ativo, <span class="kw">true</span>))
+  .<span class="fn">orderBy</span>(<span class="fn">desc</span>(usuarios.criado_em))
+  .<span class="fn">limit</span>(<span class="num">20</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis com ioredis: Cache e Rate Limiting</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Node.js + ioredis &mdash; Cache, pub/sub e Lua rate limiter</div>
+          <pre class="example"><span class="kw">import</span> Redis <span class="kw">from</span> <span class="str">"ioredis"</span>;
+
+<span class="kw">const</span> redis = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.REDIS_URL);
+
+<span class="com">// Decorator de cache genérico</span>
+<span class="kw">function</span> <span class="fn">comCache</span>(fn, { chave, ttlSegundos = <span class="num">300</span> }) {
+  <span class="kw">return</span> <span class="kw">async</span> (...args) => {
+    <span class="kw">const</span> key = <span class="kw">typeof</span> chave === <span class="str">"function"</span> ? <span class="fn">chave</span>(...args) : chave;
+    <span class="kw">const</span> cached = <span class="kw">await</span> redis.<span class="fn">get</span>(key);
+    <span class="kw">if</span> (cached) <span class="kw">return</span> JSON.<span class="fn">parse</span>(cached);
+    <span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">fn</span>(...args);
+    <span class="kw">await</span> redis.<span class="fn">setex</span>(key, ttlSegundos, JSON.<span class="fn">stringify</span>(result));
+    <span class="kw">return</span> result;
+  };
+}
+
+<span class="kw">const</span> buscarUsuario = <span class="fn">comCache</span>(
+  (id) => db.usuario.<span class="fn">findUnique</span>({ where: { id } }),
+  { chave: (id) => <span class="str">`usuario:${id}`</span>, ttlSegundos: <span class="num">60</span> }
+);
+
+<span class="com">// Rate limiting com sliding window (script Lua atômico)</span>
+<span class="kw">const</span> rateLimitScript = `
+  local key  = KEYS[1]
+  local now  = tonumber(ARGV[1])
+  local win  = tonumber(ARGV[2])
+  local max  = tonumber(ARGV[3])
+  redis.call('zremrangebyscore', key, 0, now - win)
+  local count = redis.call('zcard', key)
+  if count >= max then return 0 end
+  redis.call('zadd', key, now, now)
+  redis.call('expire', key, math.ceil(win / 1000))
+  return 1
+`;
+
+<span class="kw">async function</span> <span class="fn">permitir</span>(ip, { janela = <span class="num">60000</span>, max = <span class="num">100</span> } = {}) {
+  <span class="kw">const</span> ok = <span class="kw">await</span> redis.<span class="fn">eval</span>(
+    rateLimitScript, <span class="num">1</span>,
+    <span class="str">`rl:${ip}`</span>, Date.<span class="fn">now</span>(), janela, max
+  );
+  <span class="kw">return</span> ok === <span class="num">1</span>;
+}
+
+<span class="com">// Pub/Sub para invalidação de cache</span>
+<span class="kw">const</span> sub = <span class="kw">new</span> <span class="fn">Redis</span>(process.env.REDIS_URL);
+sub.<span class="fn">subscribe</span>(<span class="str">"cache:invalidar"</span>);
+sub.<span class="fn">on</span>(<span class="str">"message"</span>, (_, key) => redis.<span class="fn">del</span>(key));</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PRISMA DOCS. <strong>Prisma Documentation</strong>. Disponível em: &lt;https://www.prisma.io/docs&gt;. Acesso em: 2025.</li>
+            <li>DRIZZLE ORM. <strong>Drizzle ORM Documentation</strong>. Disponível em: &lt;https://orm.drizzle.team&gt;. Acesso em: 2025.</li>
+            <li>IOREDIS. <strong>ioredis — A robust, performance-focused Redis client</strong>. Disponível em: &lt;https://github.com/redis/ioredis&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para Web: Express e Fastify</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Prisma gera tipos TypeScript do schema — zero chances de buscar um campo que nao existe</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

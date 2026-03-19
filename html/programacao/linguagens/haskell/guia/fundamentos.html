@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos do Haskell: tipos, funções, pattern matching, list comprehensions, type classes e IO." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Fundamentos</h1>
+          <p>Os fundamentos do Haskell abrangem seu <strong>sistema de tipos avançado</strong>, funções de primeira classe, pattern matching exaustivo, list comprehensions, as type classes centrais (<code>Eq</code>, <code>Ord</code>, <code>Functor</code>, <code>Monad</code>) e o modelo de efeitos via <code>IO</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Haskell, <strong>tudo é uma expressão</strong> que tem um tipo. Não há statements, apenas expressões que retornam valores. O compilador GHC infere os tipos automaticamente através do algoritmo <em>Hindley-Milner</em> — você pode adicionar anotações de tipo para documentação, mas raramente são obrigatórias.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="tipos-basicos" class="section-title">Tipos Básicos e Funções</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos primitivos, assinaturas e definição de funções</div>
+          <pre class="example"><span class="com">-- Tipos básicos</span>
+x :: Int         <span class="com">-- inteiro de tamanho fixo (64-bit em plataformas modernas)</span>
+x = 42
+
+y :: Integer     <span class="com">-- inteiro de precisão arbitrária (BigInteger)</span>
+y = 2 ^ 100
+
+z :: Double      <span class="com">-- ponto flutuante 64-bit</span>
+z = 3.14
+
+b :: Bool
+b = True
+
+c :: Char
+c = 'A'
+
+s :: String      <span class="com">-- String = [Char] — lista de caracteres</span>
+s = "Haskell"
+
+<span class="com">-- Funções — curry por padrão</span>
+<span class="com">-- soma :: Int -> Int -> Int significa: recebe Int, retorna (Int -> Int)</span>
+soma :: Int -> Int -> Int
+soma a b = a + b
+
+<span class="com">-- Aplicação parcial — fixar primeiro argumento</span>
+soma5 :: Int -> Int
+soma5 = soma 5       <span class="com">-- equivale a: soma5 b = soma 5 b</span>
+
+<span class="com">-- Funções de alta ordem</span>
+aplicar :: (a -> b) -> a -> b
+aplicar f x = f x    <span class="com">-- equivale a ($)</span>
+
+<span class="com">-- Composição de funções com (.)</span>
+transformar :: String -> String
+transformar = map toUpper . filter isAlpha . reverse
+
+<span class="com">-- Lambda (função anônima)</span>
+dobrar :: [Int] -> [Int]
+dobrar = map (\x -> x * 2)
+
+<span class="com">-- Operador de aplicação ($) — evita parênteses</span>
+resultado :: Int
+resultado = length $ filter even [1..100]    <span class="com">-- 50</span>
+
+<span class="com">-- Where e Let</span>
+hipotenusa :: Double -> Double -> Double
+hipotenusa a b = sqrt quadSoma
+  where
+    quadSoma = a^2 + b^2
+
+hipotenusa' :: Double -> Double -> Double
+hipotenusa' a b =
+    let qa = a^2
+        qb = b^2
+    in sqrt (qa + qb)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="pattern-matching" class="section-title">Pattern Matching e Guards</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Decomposição de valores e guards booleanos</div>
+          <pre class="example"><span class="com">-- Pattern matching em funções</span>
+fatorial :: Integer -> Integer
+fatorial 0 = 1
+fatorial n = n * fatorial (n - 1)
+
+<span class="com">-- Pattern matching com listas (head:tail)</span>
+somaLista :: [Int] -> Int
+somaLista []     = 0
+somaLista (x:xs) = x + somaLista xs
+
+<span class="com">-- Guards — condições booleanas após |</span>
+classificar :: Int -> String
+classificar n
+    | n &lt; 0    = "negativo"
+    | n == 0   = "zero"
+    | n &lt; 10   = "pequeno"
+    | n &lt; 100  = "médio"
+    | otherwise = "grande"
+
+<span class="com">-- Case expression</span>
+descrever :: Bool -> String
+descrever val = case val of
+    True  -> "verdadeiro"
+    False -> "falso"
+
+<span class="com">-- Tipos algébricos (ADTs)</span>
+data Forma
+    = Circulo Double
+    | Retangulo Double Double
+    | Triangulo Double Double Double
+    deriving (Show, Eq)
+
+area :: Forma -> Double
+area (Circulo r)       = pi * r^2
+area (Retangulo l a)   = l * a
+area (Triangulo a b c) =
+    let s = (a + b + c) / 2
+    in sqrt (s * (s-a) * (s-b) * (s-c))    <span class="com">-- fórmula de Heron</span>
+
+<span class="com">-- Record syntax</span>
+data Pessoa = Pessoa
+    { nome  :: String
+    , idade :: Int
+    , email :: String
+    } deriving (Show, Eq)
+
+joao :: Pessoa
+joao = Pessoa { nome = "João", idade = 30, email = "joao@ex.com" }
+
+<span class="com">-- Record update (cria novo valor)</span>
+joaoMaisVelho :: Pessoa
+joaoMaisVelho = joao { idade = 31 }</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="listas" class="section-title">Listas e List Comprehensions</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Listas lazy, funções fundamentais e comprehensions</div>
+          <pre class="example"><span class="com">-- Listas — estrutura fundamental em Haskell</span>
+nums :: [Int]
+nums = [1, 2, 3, 4, 5]
+
+<span class="com">-- Range</span>
+de1a100  = [1..100]
+pares    = [2, 4..100]      <span class="com">-- com passo</span>
+infinito = [1..]            <span class="com">-- lista infinita! (lazy evaluation)</span>
+primeiros10infinito = take 10 [1..]    <span class="com">-- [1,2,3,4,5,6,7,8,9,10]</span>
+
+<span class="com">-- Funções fundamentais de lista</span>
+head [1,2,3]           <span class="com">-- 1 (primeiro)</span>
+tail [1,2,3]           <span class="com">-- [2,3] (resto)</span>
+last [1,2,3]           <span class="com">-- 3 (último)</span>
+init [1,2,3]           <span class="com">-- [1,2] (sem último)</span>
+length [1,2,3]         <span class="com">-- 3</span>
+null []                <span class="com">-- True</span>
+reverse [1,2,3]        <span class="com">-- [3,2,1]</span>
+[1,2] ++ [3,4]         <span class="com">-- [1,2,3,4] (concatenar)</span>
+0 : [1,2,3]            <span class="com">-- [0,1,2,3] (cons)</span>
+
+<span class="com">-- Higher-order functions essenciais</span>
+map (*2) [1..5]                     <span class="com">-- [2,4,6,8,10]</span>
+filter even [1..10]                 <span class="com">-- [2,4,6,8,10]</span>
+foldl (+) 0 [1..100]                <span class="com">-- 5050 (soma acumulada)</span>
+foldr (:) [] [1,2,3]                <span class="com">-- [1,2,3] (reconstruir com foldr)</span>
+zipWith (+) [1,2,3] [10,20,30]      <span class="com">-- [11,22,33]</span>
+zip [1,2,3] ["a","b","c"]           <span class="com">-- [(1,"a"),(2,"b"),(3,"c")]</span>
+concatMap (\x -> [x, x*10]) [1,2,3] <span class="com">-- [1,10,2,20,3,30]</span>
+takeWhile (&lt;5) [1..10]              <span class="com">-- [1,2,3,4]</span>
+dropWhile (&lt;5) [1..10]              <span class="com">-- [5,6,7,8,9,10]</span>
+span (&lt;5) [1..10]                   <span class="com">-- ([1,2,3,4],[5,6,7,8,9,10])</span>
+
+<span class="com">-- List comprehensions — sintaxe concisa</span>
+quadrados   = [x^2 | x &lt;- [1..10]]
+paresQuad   = [x^2 | x &lt;- [1..10], even x]
+produtos    = [x*y | x &lt;- [1..3], y &lt;- [1..3], x /= y]
+
+<span class="com">-- Crivo de Eratóstenes com lista infinita</span>
+crivo :: [Int] -> [Int]
+crivo (p:xs) = p : crivo [x | x &lt;- xs, x `mod` p /= 0]
+
+primos :: [Int]
+primos = crivo [2..]
+primeiros20primos = take 20 primos    <span class="com">-- [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="maybe-either" class="section-title">Maybe, Either e Tratamento de Erros</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos soma para ausência de valor e erros</div>
+          <pre class="example"><span class="com">-- Maybe a = Nothing | Just a</span>
+dividir :: Int -> Int -> Maybe Int
+dividir _ 0 = Nothing
+dividir a b = Just (a `div` b)
+
+cabeca :: [a] -> Maybe a
+cabeca []    = Nothing
+cabeca (x:_) = Just x
+
+<span class="com">-- Encadeamento com >>=  (bind)</span>
+buscarUsuario :: Int -> Maybe String
+buscarUsuario 1 = Just "João"
+buscarUsuario _ = Nothing
+
+buscarEmail :: String -> Maybe String
+buscarEmail "João" = Just "joao@ex.com"
+buscarEmail _      = Nothing
+
+emailDoUsuario :: Int -> Maybe String
+emailDoUsuario id = buscarUsuario id >>= buscarEmail
+
+<span class="com">-- Maybe como functor e monad</span>
+resultado1 :: Maybe Int
+resultado1 = fmap (*2) (Just 5)    <span class="com">-- Just 10</span>
+
+resultado2 :: Maybe Int
+resultado2 = fmap (*2) Nothing     <span class="com">-- Nothing (propagação automática)</span>
+
+<span class="com">-- do notation (açúcar sintático para >>=)</span>
+emailComDo :: Int -> Maybe String
+emailComDo id = do
+    nome  &lt;- buscarUsuario id     <span class="com">-- extrai de Maybe; aborta se Nothing</span>
+    email &lt;- buscarEmail nome
+    return email                  <span class="com">-- wrapa em Just</span>
+
+<span class="com">-- Either e b = Left e | Right b</span>
+data ErroValidacao = CampoVazio | EmailInvalido | IdadeInvalida deriving Show
+
+validarEmail :: String -> Either ErroValidacao String
+validarEmail ""    = Left CampoVazio
+validarEmail email
+    | '@' `elem` email = Right email
+    | otherwise        = Left EmailInvalido
+
+validarIdade :: Int -> Either ErroValidacao Int
+validarIdade n
+    | n &lt; 0 || n > 150 = Left IdadeInvalida
+    | otherwise         = Right n
+
+validarFormulario :: String -> Int -> Either ErroValidacao (String, Int)
+validarFormulario email idade = do
+    e &lt;- validarEmail email
+    i &lt;- validarIdade idade
+    return (e, i)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="io-monad" class="section-title">IO Monad — Efeitos Controlados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Entradas, saídas e interação com o mundo real</div>
+          <pre class="example"><span class="com">-- IO separa código puro de código com efeitos</span>
+<span class="com">-- Funções puras: String -> String, Int -> Int...</span>
+<span class="com">-- Funções com efeitos: IO String, IO (), IO Int...</span>
+
+lerNome :: IO String
+lerNome = do
+    putStr <span class="str">"Digite seu nome: "</span>
+    nome &lt;- getLine          <span class="com">-- getLine :: IO String</span>
+    return nome              <span class="com">-- return :: a -> IO a (não é "return" imperativo!)</span>
+
+saudar :: IO ()
+saudar = do
+    nome &lt;- lerNome
+    let saudacao = "Olá, " ++ nome ++ "!"    <span class="com">-- let para código puro dentro do</span>
+    putStrLn saudacao
+
+<span class="com">-- Ler e escrever arquivos</span>
+copiarArquivo :: FilePath -> FilePath -> IO ()
+copiarArquivo origem destino = do
+    conteudo &lt;- readFile origem     <span class="com">-- readFile :: FilePath -> IO String</span>
+    writeFile destino conteudo      <span class="com">-- writeFile :: FilePath -> String -> IO ()</span>
+
+<span class="com">-- mapM_ — executar IO para cada elemento de lista</span>
+imprimirNumeros :: [Int] -> IO ()
+imprimirNumeros = mapM_ print   <span class="com">-- mapM_ :: (a -> IO b) -> [a] -> IO ()</span>
+
+<span class="com">-- when e unless do Control.Monad</span>
+import Control.Monad (when, unless, forM_)
+
+checagem :: Int -> IO ()
+checagem n = do
+    when (n > 0) $ putStrLn "Número positivo"
+    unless (even n) $ putStrLn "Número ímpar"
+
+<span class="com">-- forM_ — loop com índice</span>
+main :: IO ()
+main = forM_ [1..5] $ \i ->
+    putStrLn $ show i ++ ": item " ++ show i</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+      <section>
+        <h2 id="roteiro-fundamentos-aplicados" class="section-title">Fundamentos Aplicados por Dominio</h2>
+        <p>O valor real dos fundamentos aparece quando eles viram decisoes tecnicas em projetos. <code>Maybe</code> e <code>Either</code> reduzem erros em APIs e bancos; funcoes puras simplificam testes de regras de IA e jogos; e composicao de funcoes permite construir pipelines de dados e CLIs sem acoplamento excessivo.</p>
+        <ul>
+          <li><strong>Concorrencia/paralelismo:</strong> comece com pureza e depois introduza <code>async</code>/<code>STM</code> onde houver estado compartilhado.</li>
+          <li><strong>APIs/servidores:</strong> use tipos de request/response como contrato, evitando parsing ad hoc em varias camadas.</li>
+          <li><strong>Banco de dados:</strong> separe validacao de dominio (pura) da persistencia (IO) para facilitar testes.</li>
+          <li><strong>IA/dados:</strong> modelagem de features e transformacoes como funcoes puras melhora reprodutibilidade.</li>
+          <li><strong>Embedded/IoT:</strong> estados e mensagens tipadas evitam classes comuns de erro em telemetria.</li>
+          <li><strong>GUI/jogos/mobile:</strong> trate interface como funcao do estado para reduzir inconsistencias de fluxo.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+      <section>
+        <h2 id="tradeoffs-avancados" class="section-title">Trade-offs de Arquitetura Avancada</h2>
+        <div class="panel">
+          <h3 class="panel-title">Quando a sofisticacao compensa</h3>
+          <p>Stacks com transformers, type-level programming e STM sao excelentes para sistemas long-lived e de alto rigor, como APIs criticas, plataformas de dados e servicos financeiros. Nesses cenarios, o custo inicial de modelagem e recuperado em manutencao e reducao de incidentes.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Quando simplificar</h3>
+          <p>Para prototipos de curtissimo prazo, MVPs exploratorios ou equipes iniciando em Haskell, prefira camadas menores, menos extensoes e mais foco em legibilidade operacional. O objetivo e evoluir complexidade conforme necessidade real.</p>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Padrao pratico: primeiro correcao e observabilidade, depois abstrações sofisticadas. Sem metricas e logs, qualquer arquitetura avancada vira caixa-preta.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+      <section>
+        <h2 id="fluxo-profissional" class="section-title">Fluxo Profissional de Equipe</h2>
+        <p>Em times maduros, tooling nao e apenas conveniencia: e uma politica de qualidade. Uma rotina comum inclui formatacao automatica, lint em CI, testes de propriedade para invariantes de dominio, e contratos de API versionados para reduzir regressao em servicos e clientes.</p>
+        <ul>
+          <li><strong>CLI e automacao:</strong> comandos unificados para <code>build</code>, <code>test</code>, <code>lint</code> e <code>run</code>.</li>
+          <li><strong>API e DB:</strong> migracoes versionadas e testes de integracao contra banco real.</li>
+          <li><strong>Dados/IA:</strong> pipelines reproduziveis com lock de dependencias e seeds controladas.</li>
+          <li><strong>Concorrencia:</strong> testes focados em cancelamento, timeouts e backpressure.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+      <section>
+        <h2 id="arquitetura-recomendada" class="section-title">Arquitetura Recomendada e Limites</h2>
+        <p>Para produtos reais, mantenha um nucleo de dominio puro e interfaces de infraestrutura finas. Essa separacao funciona bem para APIs, banco de dados, processamento de dados e CLI. Em GUI, jogos e mobile, Haskell costuma atuar melhor no nucleo de regras e sincronizacao, integrando com tecnologias de interface mais consolidadas.</p>
+        <table class="table">
+          <thead><tr><th>Cenario</th><th>Arquitetura sugerida</th><th>Trade-off</th></tr></thead>
+          <tbody>
+            <tr><td>API corporativa</td><td>ReaderT + Servant + Persistent</td><td>Mais setup inicial, alta previsibilidade</td></tr>
+            <tr><td>Pipeline de dados</td><td>Funcoes puras + streaming + jobs isolados</td><td>Mais modelagem, menos erro silencioso</td></tr>
+            <tr><td>IoT/Gateway</td><td>Validacao tipada + mensageria + retry controlado</td><td>Cuidado com latencia e footprint</td></tr>
+            <tr><td>GUI/Jogos/Mobile</td><td>Nucleo Haskell + frontend nativo</td><td>Integração adicional por FFI/API</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LIPOVACA, Miran. <strong>Learn You a Haskell for Great Good!</strong> Disponível em: &lt;http://learnyouahaskell.com&gt;. Acesso em: 2026.</li>
+            <li>ALLEN, C.; MORONUKI, J. <strong>Haskell Programming from First Principles</strong>. 2016.</li>
+            <li>HASKELL.ORG. <strong>Haskell — An Advanced, Purely Functional Programming Language</strong>. Disponível em: &lt;https://www.haskell.org&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introdução ao Haskell</a></li>
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Haskell Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <code>do</code> notation do Haskell é <strong>açúcar sintático para encadeamento de funções monádicas</strong>: <code>x &lt;- ação</code> desencadeia <code>ação &gt;&gt;= \x -&gt; ...</code>. Isso significa que o mesmo <code>do</code> que parece imperativo para <code>IO</code> funciona para <code>Maybe</code>, <code>Either</code>, listas, parsers e qualquer coisa que seja uma Monad — tornando a notação universal e composável.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Rust para web com Axum: rotas, extractors, middleware, estado, websocket, autenticacao e deploy." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Rust - Aplicacoes Web | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box"><p><strong>Rust - Aplicacoes Web</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="rust" aria-hidden="true"></span></div>
+					<h1>Rust para Web</h1>
+					<p>APIs seguras e performaticas com Axum, Tower e stack async moderna.</p>
+				</div>
+				<p class="intro-highlight">Rust em web backend combina latencia baixa, uso eficiente de memoria e um modelo de concorrencia robusto para servicos de alta carga.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="axum-core">Axum: Router, Extractors, Middleware e State</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">axum base</div>
+					  <pre class="example"><span class="com">// estrutura minima de API com estado compartilhado</span>
+			<span class="kw">use</span> axum::{extract::State, routing::{get, post}, <span class="tp">Json</span>, Router};
+<span class="kw">use</span> serde::{Deserialize, Serialize};
+
+<span class="attr">#[derive(Clone)]</span>
+<span class="kw">struct</span> AppState { versao: <span class="kw">&amp;'</span><span class="kw">static</span> <span class="kw">str</span> }
+
+<span class="attr">#[derive(Deserialize)]</span>
+<span class="kw">struct</span> LoginReq { user: <span class="tp">String</span>, pass: <span class="tp">String</span> }
+
+<span class="attr">#[derive(Serialize)]</span>
+<span class="kw">struct</span> Health { ok: <span class="kw">bool</span> }
+
+<span class="kw">async</span> <span class="kw">fn</span> <span class="fn">health</span>() -&gt; Json&lt;Health&gt; { Json(Health { ok: <span class="kw">true</span> }) }
+<span class="kw">async</span> <span class="kw">fn</span> <span class="fn">login</span>(State(_s): State&lt;AppState&gt;, Json(_req): Json&lt;LoginReq&gt;) -&gt; Json&lt;Health&gt; {
+		Json(Health { ok: <span class="kw">true</span> })
+}</pre>
+				</div>
+				<p>Com Tower middleware, adicione logging, timeout, compressao e rate limit sem acoplar regras ao handler.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="seguranca-e-realtime">JWT, Argon2, WebSocket e Rate Limiting</h2>
+				<p>Autenticacao comum: senha com Argon2, emissao de JWT para sessao stateless e validacao por middleware. Para comunicacao em tempo real, Axum suporta WebSocket nativamente.</p>
+				<div class="panel">
+					<ul>
+						<li>Hash de senha: <code class="code-inline">argon2</code> com salt unico por usuario.</li>
+						<li>Token: <code class="code-inline">jsonwebtoken</code> com expiracao curta e refresh strategy.</li>
+						<li>Rate limiting: camada Tower para proteger endpoints sensiveis.</li>
+						<li>WebSocket: canais para notificacoes e eventos push.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="deploy-performance">Deploy com Docker, Health Checks e Benchmarks</h2>
+				<p>Deploy padrao usa multi-stage Docker build. Exponha endpoint de health para orquestradores e rode benchmarks periodicos com <code class="code-inline">criterion</code> e testes de carga externos.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">dockerfile simplificado</div>
+					<pre class="example"><span class="kw">FROM</span> rust:1.85 as builder
+<span class="kw">WORKDIR</span> /app
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> cargo build --release
+
+<span class="kw">FROM</span> debian:bookworm-slim
+<span class="kw">COPY</span> --from=builder /app/target/release/api /usr/local/bin/api
+<span class="kw">CMD</span> [<span class="str">"api"</span>]</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<div class="panel"><ul>
+					<li>AXUM TEAM. Documentacao oficial. Disponivel em: <a href="https://docs.rs/axum" target="_blank" rel="noopener">docs.rs/axum</a>.</li>
+					<li>TOWER TEAM. Middleware e Service abstractions. Disponivel em: <a href="https://docs.rs/tower" target="_blank" rel="noopener">docs.rs/tower</a>.</li>
+					<li>ARGON2 RFC 9106. Disponivel em: <a href="https://www.rfc-editor.org/rfc/rfc9106" target="_blank" rel="noopener">rfc9106</a>.</li>
+				</ul></div>
+			</section>
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/rust/aplicacoes/banco_dados.html">Rust para Banco de Dados</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/rust/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Backend solido comeca em tipos corretos e termina em observabilidade real.</p>
+			</div>
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

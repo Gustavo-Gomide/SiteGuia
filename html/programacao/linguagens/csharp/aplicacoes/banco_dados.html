@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# com Banco de Dados: EF Core 9 (migrações, Fluent API, LINQ avançado, tabelas temporais, raw SQL, concorrência otimista), Dapper micro-ORM, MongoDB Driver e Redis." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# com Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# com Banco de Dados</h1>
+          <p>O ecossistema .NET oferece acesso a banco de dados em todos os niveis de abstracao: EF Core como ORM completo com Code-First, Dapper para queries SQL diretas com mapeamento minimalista, MongoDB Driver para documentos flexiveis e StackExchange.Redis para cache e pub/sub. Cada ferramenta tem seu lugar e conhecer todas e essencial para projetos profissionais.</p>
+        </div>
+        <p class="intro-highlight">
+          EF Core 9 com .NET 9 traz melhorias significativas: queries compostas sem traducao de N+1, split queries, tabelas temporais (SQL Server), compiled queries para zero overhead de traducao e suporte a JSON columns no PostgreSQL via Npgsql.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="efcore-modelagem">EF Core — Modelagem com Fluent API</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + EF Core &mdash; entidades, DbContext, Fluent API e related configurations</div>
+          <pre class="example"><span class="com">// Entidades do dominio</span>
+<span class="kw">public class</span> <span class="tp">Categoria</span>
+{
+  <span class="kw">public int</span>    Id        { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public required string</span> Nome     { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public</span> <span class="tp">ICollection</span>&lt;<span class="tp">Produto</span>&gt; Produtos { <span class="kw">get</span>; } = [];
+}
+
+<span class="kw">public class</span> <span class="tp">Produto</span>
+{
+  <span class="kw">public int</span>     Id           { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public required string</span> Nome { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public decimal</span> Preco        { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public int</span>     Estoque      { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public int</span>     CategoriaId  { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="kw">public</span> <span class="tp">Categoria</span>? Categoria  { <span class="kw">get</span>; <span class="kw">set</span>; }
+  <span class="com">// Concorrencia otimista — EF Core rastreia</span>
+  <span class="at">[Timestamp]</span>
+  <span class="kw">public byte</span>[] RowVersion   { <span class="kw">get</span>; <span class="kw">set</span>; } = [];
+}
+
+<span class="com">// DbContext com configuracoes via Fluent API</span>
+<span class="kw">class</span> <span class="tp">LojaDb</span>(<span class="tp">DbContextOptions</span>&lt;<span class="tp">LojaDb</span>&gt; opts) : <span class="tp">DbContext</span>(opts)
+{
+  <span class="kw">public</span> <span class="tp">DbSet</span>&lt;<span class="tp">Produto</span>&gt;   Produtos   =&gt; <span class="fn">Set</span>&lt;<span class="tp">Produto</span>&gt;();
+  <span class="kw">public</span> <span class="tp">DbSet</span>&lt;<span class="tp">Categoria</span>&gt; Categorias =&gt; <span class="fn">Set</span>&lt;<span class="tp">Categoria</span>&gt;();
+
+  <span class="kw">protected override void</span> <span class="fn">OnModelCreating</span>(<span class="tp">ModelBuilder</span> mb)
+  {
+    mb.<span class="fn">Entity</span>&lt;<span class="tp">Produto</span>&gt;(e =&gt; {
+      e.<span class="fn">HasKey</span>(p =&gt; p.Id);
+      e.<span class="fn">Property</span>(p =&gt; p.Nome).<span class="fn">HasMaxLength</span>(<span class="num">200</span>).<span class="fn">IsRequired</span>();
+      e.<span class="fn">Property</span>(p =&gt; p.Preco).<span class="fn">HasPrecision</span>(<span class="num">18</span>, <span class="num">2</span>);
+      e.<span class="fn">HasIndex</span>(p =&gt; p.CategoriaId);
+      e.<span class="fn">HasOne</span>(p =&gt; p.Categoria)
+       .<span class="fn">WithMany</span>(c =&gt; c.Produtos)
+       .<span class="fn">HasForeignKey</span>(p =&gt; p.CategoriaId)
+       .<span class="fn">OnDelete</span>(<span class="tp">DeleteBehavior</span>.Restrict);
+      <span class="com">// Filtro global — produtos com estoque positivo</span>
+      e.<span class="fn">HasQueryFilter</span>(p =&gt; p.Estoque &gt; <span class="num">0</span>);
+    });
+    mb.<span class="fn">Entity</span>&lt;<span class="tp">Categoria</span>&gt;(e =&gt; {
+      e.<span class="fn">HasKey</span>(c =&gt; c.Id);
+      e.<span class="fn">Property</span>(c =&gt; c.Nome).<span class="fn">HasMaxLength</span>(<span class="num">100</span>);
+    });
+  }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + EF Core &mdash; migracoes e seed via IEntityTypeConfiguration</div>
+          <pre class="example"><span class="com">// Configuracao separada para Produto — IEntityTypeConfiguration</span>
+<span class="kw">class</span> <span class="tp">ProdutoConfiguration</span> : <span class="tp">IEntityTypeConfiguration</span>&lt;<span class="tp">Produto</span>&gt;
+{
+  <span class="kw">public void</span> <span class="fn">Configure</span>(<span class="tp">EntityTypeBuilder</span>&lt;<span class="tp">Produto</span>&gt; builder)
+  {
+    builder.<span class="fn">ToTable</span>(<span class="str">"Produtos"</span>, <span class="str">"loja"</span>);  <span class="com">// schema especifico</span>
+    builder.<span class="fn">HasData</span>(
+      <span class="kw">new</span> <span class="tp">Produto</span> { Id = <span class="num">1</span>, Nome = <span class="str">"Notebook"</span>, Preco = <span class="num">3500</span>, Estoque = <span class="num">10</span>, CategoriaId = <span class="num">1</span> },
+      <span class="kw">new</span> <span class="tp">Produto</span> { Id = <span class="num">2</span>, Nome = <span class="str">"Mouse"</span>,    Preco = <span class="num">80</span>,   Estoque = <span class="num">100</span>, CategoriaId = <span class="num">1</span> }
+    );
+  }
+}
+
+<span class="com">// Registrar no OnModelCreating</span>
+mb.<span class="fn">ApplyConfigurationsFromAssembly</span>(<span class="tp">typeof</span>(<span class="tp">LojaDb</span>).Assembly);
+
+<span class="com">// CLI de migracao</span>
+<span class="com">// dotnet ef migrations add InitialCreate --project Infra --startup-project Api</span>
+<span class="com">// dotnet ef database update</span>
+<span class="com">// dotnet ef migrations script -- gera SQL para revisao</span>
+
+<span class="com">// Program.cs — apply migrations ao subir a aplicacao</span>
+<span class="kw">await using var</span> scope = app.Services.<span class="fn">CreateAsyncScope</span>();
+<span class="kw">var</span> db = scope.ServiceProvider.<span class="fn">GetRequiredService</span>&lt;<span class="tp">LojaDb</span>&gt;();
+<span class="kw">await</span> db.Database.<span class="fn">MigrateAsync</span>();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="efcore-queries">EF Core — Queries Avancadas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + EF Core &mdash; LINQ avancado, split query, compiled query e raw SQL</div>
+          <pre class="example"><span class="com">// Paginacao eficiente com Keyset Pagination (evita OFFSET lento)</span>
+<span class="kw">async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">BuscarPaginaAsync</span>(<span class="tp">LojaDb</span> db, <span class="kw">int</span> ultimoId, <span class="kw">int</span> page = <span class="num">20</span>)
+  =&gt; <span class="kw">await</span> db.Produtos
+      .<span class="fn">Where</span>(p =&gt; p.Id &gt; ultimoId)
+      .<span class="fn">OrderBy</span>(p =&gt; p.Id)
+      .<span class="fn">Take</span>(page)
+      .<span class="fn">AsNoTracking</span>()   <span class="com">// sem rastreamento = mais rapido para reads</span>
+      .<span class="fn">ToListAsync</span>();
+
+<span class="com">// Eager loading — evita N+1</span>
+<span class="kw">var</span> cats = <span class="kw">await</span> db.Categorias
+  .<span class="fn">Include</span>(c =&gt; c.Produtos.<span class="fn">Where</span>(p =&gt; p.Preco &lt; <span class="num">1000</span>))  <span class="com">// filtered include</span>
+  .<span class="fn">AsSplitQuery</span>()           <span class="com">// evita produto cartesiano, emite 2 SELECTs</span>
+  .<span class="fn">AsNoTrackingWithIdentityResolution</span>()
+  .<span class="fn">ToListAsync</span>();
+
+<span class="com">// Projections — busca apenas o necessario</span>
+<span class="kw">var</span> resumos = <span class="kw">await</span> db.Produtos
+  .<span class="fn">Select</span>(p =&gt; <span class="kw">new</span> { p.Id, p.Nome, p.Preco })
+  .<span class="fn">ToListAsync</span>();
+
+<span class="com">// Compiled Query — reutiliza plano de consulta</span>
+<span class="kw">private static readonly</span> <span class="tp">Func</span>&lt;<span class="tp">LojaDb</span>, <span class="kw">int</span>, <span class="tp">Task</span>&lt;<span class="tp">Produto</span>?&gt;&gt; <span class="fn">BuscarPorIdQuery</span> =
+  <span class="tp">EF</span>.<span class="fn">CompileAsyncQuery</span>((<span class="tp">LojaDb</span> db, <span class="kw">int</span> id) =&gt;
+    db.Produtos.<span class="fn">FirstOrDefault</span>(p =&gt; p.Id == id));
+
+<span class="kw">var</span> produto = <span class="kw">await</span> <span class="fn">BuscarPorIdQuery</span>(db, <span class="num">42</span>);
+
+<span class="com">// Raw SQL parametrizado — sem risco de SQL injection</span>
+<span class="kw">var</span> lista = <span class="kw">await</span> db.Produtos
+  .<span class="fn">FromSqlRaw</span>(<span class="str">"SELECT * FROM loja.Produtos WHERE Preco BETWEEN {0} AND {1}"</span>, <span class="num">100</span>, <span class="num">500</span>)
+  .<span class="fn">AsNoTracking</span>()
+  .<span class="fn">ToListAsync</span>();
+
+<span class="com">// Interpolated SQL — EF Core parametriza automaticamente</span>
+<span class="kw">decimal</span> min = <span class="num">100</span>, max = <span class="num">500</span>;
+<span class="kw">var</span> lista2 = <span class="kw">await</span> db.Produtos
+  .<span class="fn">FromSql</span>($<span class="str">"SELECT * FROM loja.Produtos WHERE Preco BETWEEN {min} AND {max}"</span>)
+  .<span class="fn">ToListAsync</span>();
+
+<span class="com">// Concorrencia otimista — trata DbUpdateConcurrencyException</span>
+<span class="kw">try</span>
+{
+  produtoExistente.Preco = <span class="num">4000</span>;
+  <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>();
+}
+<span class="kw">catch</span> (<span class="tp">DbUpdateConcurrencyException</span> ex)
+{
+  <span class="kw">var</span> entry   = ex.Entries.<span class="fn">Single</span>();
+  <span class="kw">var</span> dbVals  = <span class="kw">await</span> entry.<span class="fn">GetDatabaseValuesAsync</span>();
+  entry.OriginalValues.<span class="fn">SetValues</span>(dbVals!);
+  <span class="kw">await</span> db.<span class="fn">SaveChangesAsync</span>();  <span class="com">// retry com valores atualizados</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dapper">Dapper — Micro-ORM SQL Direto</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Dapper &mdash; queries parametrizadas, multi-map, Table-Valued Parameters e transactions</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Dapper</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Data</span>;
+<span class="kw">using</span> <span class="tp">Npgsql</span>;
+
+<span class="kw">class</span> <span class="tp">ProdutoDapperRepo</span>(<span class="tp">NpgsqlDataSource</span> ds)
+{
+  <span class="com">// Query simples — retorna IEnumerable&lt;Produto&gt;</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">IEnumerable</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">ListarAsync</span>(<span class="kw">decimal</span> precoMax)
+  {
+    <span class="kw">await using var</span> conn = <span class="kw">await</span> ds.<span class="fn">OpenConnectionAsync</span>();
+    <span class="kw">return await</span> conn.<span class="fn">QueryAsync</span>&lt;<span class="tp">Produto</span>&gt;(
+      <span class="str">"SELECT id, nome, preco, estoque, categoria_id FROM loja.produtos WHERE preco &lt;= @PrecoMax"</span>,
+      <span class="kw">new</span> { PrecoMax = precoMax });
+  }
+
+  <span class="com">// Multi-map — JOIN em um unico roundtrip</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">IEnumerable</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">ListarComCategoriaAsync</span>()
+  {
+    <span class="kw">const string</span> sql = <span class="str">"""
+      SELECT p.*, c.id, c.nome
+      FROM loja.produtos p
+      JOIN loja.categorias c ON c.id = p.categoria_id
+    """</span>;
+    <span class="kw">await using var</span> conn = <span class="kw">await</span> ds.<span class="fn">OpenConnectionAsync</span>();
+    <span class="kw">return await</span> conn.<span class="fn">QueryAsync</span>&lt;<span class="tp">Produto</span>, <span class="tp">Categoria</span>, <span class="tp">Produto</span>&gt;(sql,
+      (prod, cat) =&gt; { prod.Categoria = cat; <span class="kw">return</span> prod; },
+      splitOn: <span class="str">"id"</span>);
+  }
+
+  <span class="com">// Transacao — inserir pedido + itens atomicamente</span>
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">CriarPedidoAsync</span>(<span class="tp">Pedido</span> pedido, <span class="tp">IEnumerable</span>&lt;<span class="tp">ItemPedido</span>&gt; itens)
+  {
+    <span class="kw">await using var</span> conn = <span class="kw">await</span> ds.<span class="fn">OpenConnectionAsync</span>();
+    <span class="kw">await using var</span> tx   = <span class="kw">await</span> conn.<span class="fn">BeginTransactionAsync</span>();
+    <span class="kw">try</span>
+    {
+      <span class="kw">var</span> id = <span class="kw">await</span> conn.<span class="fn">ExecuteScalarAsync</span>&lt;<span class="kw">int</span>&gt;(
+        <span class="str">"INSERT INTO pedidos (cliente_id, total) VALUES (@ClienteId, @Total) RETURNING id"</span>,
+        pedido, tx);
+      <span class="kw">foreach</span> (<span class="kw">var</span> item <span class="kw">in</span> itens)
+        item.PedidoId = id;
+      <span class="kw">await</span> conn.<span class="fn">ExecuteAsync</span>(
+        <span class="str">"INSERT INTO itens_pedido (pedido_id, produto_id, quantidade) VALUES (@PedidoId, @ProdutoId, @Quantidade)"</span>,
+        itens, tx);
+      <span class="kw">await</span> tx.<span class="fn">CommitAsync</span>();
+    }
+    <span class="kw">catch</span> { <span class="kw">await</span> tx.<span class="fn">RollbackAsync</span>(); <span class="kw">throw</span>; }
+  }
+
+  <span class="com">// QueryMultiple — varios result sets em uma unica query</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;(<span class="tp">IEnumerable</span>&lt;<span class="tp">Produto</span>&gt; Produtos, <span class="kw">int</span> Total)&gt; <span class="fn">BuscarPaginaAsync</span>(<span class="kw">int</span> pag)
+  {
+    <span class="kw">const string</span> sql = <span class="str">"""
+      SELECT * FROM loja.produtos ORDER BY id LIMIT 20 OFFSET @Offset;
+      SELECT COUNT(*) FROM loja.produtos;
+    """</span>;
+    <span class="kw">await using var</span> conn = <span class="kw">await</span> ds.<span class="fn">OpenConnectionAsync</span>();
+    <span class="kw">await using var</span> multi = <span class="kw">await</span> conn.<span class="fn">QueryMultipleAsync</span>(sql, <span class="kw">new</span> { Offset = (pag - <span class="num">1</span>) * <span class="num">20</span> });
+    <span class="kw">var</span> produtos = <span class="kw">await</span> multi.<span class="fn">ReadAsync</span>&lt;<span class="tp">Produto</span>&gt;();
+    <span class="kw">var</span> total    = <span class="kw">await</span> multi.<span class="fn">ReadSingleAsync</span>&lt;<span class="kw">int</span>&gt;();
+    <span class="kw">return</span> (produtos, total);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mongodb">MongoDB — Driver Oficial C#</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + MongoDB.Driver &mdash; CRUD, indices, aggregation e transactions</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">MongoDB</span>.<span class="tp">Driver</span>;
+<span class="kw">using</span> <span class="tp">MongoDB</span>.<span class="tp">Bson</span>;
+
+<span class="com">// Documento — BsonId mapeia para _id</span>
+<span class="kw">record</span> <span class="tp">LogEvento</span>(
+  <span class="at">[BsonId, BsonRepresentation(BsonType.ObjectId)]</span> <span class="kw">string</span>? Id,
+  <span class="kw">string</span> Evento, <span class="kw">string</span> Usuario, <span class="tp">DateTime</span> CriadoAt, <span class="tp">BsonDocument</span> Dados);
+
+<span class="kw">class</span> <span class="tp">LogRepository</span>(<span class="tp">IMongoDatabase</span> db)
+{
+  <span class="kw">private readonly</span> <span class="tp">IMongoCollection</span>&lt;<span class="tp">LogEvento</span>&gt; _col = db.<span class="fn">GetCollection</span>&lt;<span class="tp">LogEvento</span>&gt;(<span class="str">"logs"</span>);
+
+  <span class="com">// Criar indices na inicializacao</span>
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">CriarIndicesAsync</span>()
+  {
+    <span class="kw">var</span> idx = <span class="tp">Builders</span>&lt;<span class="tp">LogEvento</span>&gt;.IndexKeys;
+    <span class="kw">await</span> _col.Indexes.<span class="fn">CreateManyAsync</span>([
+      <span class="kw">new</span> <span class="tp">CreateIndexModel</span>&lt;<span class="tp">LogEvento</span>&gt;(idx.<span class="fn">Ascending</span>(l =&gt; l.Usuario)),
+      <span class="kw">new</span> <span class="tp">CreateIndexModel</span>&lt;<span class="tp">LogEvento</span>&gt;(idx.<span class="fn">Descending</span>(l =&gt; l.CriadoAt),
+        <span class="kw">new</span> <span class="tp">CreateIndexOptions</span> { ExpireAfter = <span class="tp">TimeSpan</span>.<span class="fn">FromDays</span>(<span class="num">90</span>) })  <span class="com">// TTL index</span>
+    ]);
+  }
+
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">InserirAsync</span>(<span class="tp">LogEvento</span> log) =&gt; <span class="kw">await</span> _col.<span class="fn">InsertOneAsync</span>(log);
+
+  <span class="com">// Filtro tipado via Builders</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">LogEvento</span>&gt;&gt; <span class="fn">BuscarPorUsuarioAsync</span>(<span class="kw">string</span> usuario)
+  {
+    <span class="kw">var</span> filtro = <span class="tp">Builders</span>&lt;<span class="tp">LogEvento</span>&gt;.Filter;
+    <span class="kw">return await</span> _col
+      .<span class="fn">Find</span>(filtro.<span class="fn">Eq</span>(l =&gt; l.Usuario, usuario) &amp; filtro.<span class="fn">Gte</span>(l =&gt; l.CriadoAt, <span class="tp">DateTime</span>.UtcNow.<span class="fn">AddDays</span>(-<span class="num">7</span>)))
+      .<span class="fn">SortByDescending</span>(l =&gt; l.CriadoAt)
+      .<span class="fn">Limit</span>(<span class="num">100</span>)
+      .<span class="fn">ToListAsync</span>();
+  }
+
+  <span class="com">// Aggregation pipeline</span>
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">List</span>&lt;<span class="tp">BsonDocument</span>&gt;&gt; <span class="fn">EventosPorDiaAsync</span>()
+    =&gt; <span class="kw">await</span> _col.<span class="fn">Aggregate</span>()
+        .<span class="fn">Group</span>(<span class="kw">new</span> <span class="tp">BsonDocument</span> {
+          { <span class="str">"_id"</span>, <span class="kw">new</span> <span class="tp">BsonDocument</span>(<span class="str">"$dateToString"</span>,
+              <span class="kw">new</span> <span class="tp">BsonDocument</span> {{ <span class="str">"format"</span>, <span class="str">"%Y-%m-%d"</span>}, { <span class="str">"date"</span>, <span class="str">"$criadoAt"</span> }}) },
+          { <span class="str">"total"</span>, <span class="kw">new</span> <span class="tp">BsonDocument</span>(<span class="str">"$sum"</span>, <span class="num">1</span>) }
+        })
+        .<span class="fn">ToListAsync</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="redis">Redis — Cache e Pub/Sub com StackExchange.Redis</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + StackExchange.Redis &mdash; cache com IDistributedCache, pub/sub e Lua scripts atomicos</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Extensions</span>.<span class="tp">Caching</span>.<span class="tp">StackExchangeRedis</span>;
+<span class="kw">using</span> <span class="tp">StackExchange</span>.<span class="tp">Redis</span>;
+
+<span class="com">// Registrar</span>
+builder.Services.<span class="fn">AddStackExchangeRedisCache</span>(o =&gt; o.Configuration = <span class="str">"localhost:6379"</span>);
+builder.Services.<span class="fn">AddSingleton</span>&lt;<span class="tp">IConnectionMultiplexer</span>&gt;(
+  <span class="tp">ConnectionMultiplexer</span>.<span class="fn">Connect</span>(<span class="str">"localhost:6379"</span>));
+
+<span class="com">// Cache-aside pattern com IDistributedCache</span>
+<span class="kw">class</span> <span class="tp">ProdutoCacheService</span>(<span class="tp">IDistributedCache</span> cache, <span class="tp">IProdutoRepository</span> repo)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="tp">Produto</span>?&gt; <span class="fn">GetOrSetAsync</span>(<span class="kw">int</span> id, <span class="tp">CancellationToken</span> ct = <span class="kw">default</span>)
+  {
+    <span class="kw">var</span> key   = $<span class="str">"produto:{id}"</span>;
+    <span class="kw">var</span> bytes = <span class="kw">await</span> cache.<span class="fn">GetAsync</span>(key, ct);
+    <span class="kw">if</span> (bytes <span class="kw">is</span> { Length: &gt; <span class="num">0</span> })
+      <span class="kw">return</span> <span class="tp">JsonSerializer</span>.<span class="fn">Deserialize</span>&lt;<span class="tp">Produto</span>&gt;(bytes);
+
+    <span class="kw">var</span> produto = <span class="kw">await</span> repo.<span class="fn">FindAsync</span>(id, ct);
+    <span class="kw">if</span> (produto <span class="kw">is not null</span>)
+      <span class="kw">await</span> cache.<span class="fn">SetAsync</span>(key,
+        <span class="tp">JsonSerializer</span>.<span class="fn">SerializeToUtf8Bytes</span>(produto),
+        <span class="kw">new</span> <span class="tp">DistributedCacheEntryOptions</span> {
+          AbsoluteExpirationRelativeToNow = <span class="tp">TimeSpan</span>.<span class="fn">FromMinutes</span>(<span class="num">10</span>) }, ct);
+
+    <span class="kw">return</span> produto;
+  }
+
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">InvalidarAsync</span>(<span class="kw">int</span> id) =&gt;
+    <span class="kw">await</span> cache.<span class="fn">RemoveAsync</span>($<span class="str">"produto:{id}"</span>);
+}
+
+<span class="com">// Pub/Sub para invalidacao de cache distribuida</span>
+<span class="kw">class</span> <span class="tp">CacheInvalidacaoPublisher</span>(<span class="tp">IConnectionMultiplexer</span> mux)
+{
+  <span class="kw">public async</span> <span class="tp">Task</span> <span class="fn">PublicarAsync</span>(<span class="kw">int</span> produtoId)
+  {
+    <span class="kw">var</span> pub = mux.<span class="fn">GetSubscriber</span>();
+    <span class="kw">await</span> pub.<span class="fn">PublishAsync</span>(<span class="tp">RedisChannel</span>.<span class="fn">Literal</span>(<span class="str">"cache:invalidar"</span>), produtoId.ToString());
+  }
+}
+
+<span class="com">// Script Lua atomico — incremento com limite (rate limiting manual)</span>
+<span class="kw">class</span> <span class="tp">RateLimiterRedis</span>(<span class="tp">IConnectionMultiplexer</span> mux)
+{
+  <span class="kw">private static readonly</span> <span class="tp">LuaScript</span> _script = <span class="tp">LuaScript</span>.<span class="fn">Prepare</span>(<span class="str">"""
+    local cur = redis.call('incr', @key)
+    if cur == 1 then redis.call('expire', @key, @ttl) end
+    return cur
+  """</span>);
+
+  <span class="kw">public async</span> <span class="tp">Task</span>&lt;<span class="kw">bool</span>&gt; <span class="fn">PermitidoAsync</span>(<span class="kw">string</span> ip, <span class="kw">int</span> limite = <span class="num">100</span>)
+  {
+    <span class="kw">var</span> db  = mux.<span class="fn">GetDatabase</span>();
+    <span class="kw">var</span> res = (<span class="kw">int</span>) <span class="kw">await</span> db.<span class="fn">ScriptEvaluateAsync</span>(_script, <span class="kw">new</span> { key = $<span class="str">"rl:{ip}"</span>, ttl = <span class="num">60</span> });
+    <span class="kw">return</span> res &lt;= limite;
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Comparativo de Ferramentas</h2>
+
+        <div class="panel">
+          <p class="panel-title">EF Core vs Dapper vs ADO.NET</p>
+          <table class="table">
+            <thead>
+              <tr><th>Ferramenta</th><th>Abstracao</th><th>Performance</th><th>Flexibilidade SQL</th><th>Ideal para</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>EF Core</td><td>Alta (ORM)</td><td>Boa (compiled query)</td><td>Media</td><td>CRUDs complexos, relacoes, migrations</td></tr>
+              <tr><td>Dapper</td><td>Baixa</td><td>Excelente</td><td>Total</td><td>Queries criticas, relatórios, ETL</td></tr>
+              <tr><td>ADO.NET raw</td><td>Nenhuma</td><td>Maxima</td><td>Total</td><td>Drivers customizados, bulk insert</td></tr>
+              <tr><td>MongoDB</td><td>Documento</td><td>Excelente horizontal</td><td>Aggregation pipeline</td><td>Logs, catálogos, dados flexiveis</td></tr>
+              <tr><td>Redis</td><td>Key-Value</td><td>Sub-milissegundo</td><td>Scripts Lua</td><td>Cache, sessoes, rate limiting, pub/sub</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>Entity Framework Core — documentação oficial</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/ef/core/&gt;. Acesso em: 2025.</li>
+            <li>STACKOVERFLOW COMMUNITY. <strong>Dapper — a Simple Object Mapper for .NET</strong>. Disponível em: &lt;https://github.com/DapperLib/Dapper&gt;. Acesso em: 2025.</li>
+            <li>STACKEXCHANGE. <strong>StackExchange.Redis documentation</strong>. Disponível em: &lt;https://stackexchange.github.io/StackExchange.Redis/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para IA e Dados</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Use <code>AsNoTracking()</code> em todas as queries de leitura — reduz o consumo de memória em até 30% porque o EF Core não precisa manter instâncias de rastreamento de entidades no ChangeTracker.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

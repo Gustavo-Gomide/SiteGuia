@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="DDD (Domain-Driven Design): quando usar, blocos fundamentais (ubiquitous language, bounded context) e como começar sem burocracia.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>DDD | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Design guiado pelo domínio do negócio</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">DDD</h1>
+          <p class="page-subtitle">Domain-Driven Design — Eric Evans</p>
+        </div>
+        <p class="intro-highlight">DDD é uma abordagem de design onde o modelo de software reflete a linguagem e as regras reais do domínio. O objetivo é criar sistemas com fronteiras explícitas, termos compartilhados entre time e negócio, e código que evolui conforme o entendimento cresce.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="blocos" class="section-title">Blocos fundamentais</h2>
+        <div class="section-divider"></div>
+        <p>DDD organiza o domínio em blocos táticos (construções em código) e estratégicos (fronteiras e termos):</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Bloco</th>
+                <th>Tipo</th>
+                <th>Função</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Ubiquitous Language</strong></td>
+                <td>Estratégico</td>
+                <td>Linguagem única compartilhada entre time e domínio.</td>
+              </tr>
+              <tr>
+                <td><strong>Bounded Context</strong></td>
+                <td>Estratégico</td>
+                <td>Fronteira onde um modelo de domínio faz sentido e é consistente.</td>
+              </tr>
+              <tr>
+                <td><strong>Entity</strong></td>
+                <td>Tático</td>
+                <td>Objeto com identidade única que persiste ao longo do tempo.</td>
+              </tr>
+              <tr>
+                <td><strong>Value Object</strong></td>
+                <td>Tático</td>
+                <td>Objeto definido por seus atributos, sem identidade própria (imutável).</td>
+              </tr>
+              <tr>
+                <td><strong>Aggregate</strong></td>
+                <td>Tático</td>
+                <td>Cluster de Entities/Value Objects com uma raiz única que garante invariantes.</td>
+              </tr>
+              <tr>
+                <td><strong>Domain Event</strong></td>
+                <td>Tático</td>
+                <td>Fato relevante ocorrido no domínio (ex: PedidoCriado, PagamentoRecusado).</td>
+              </tr>
+              <tr>
+                <td><strong>Repository</strong></td>
+                <td>Tático</td>
+                <td>Interface de persistência definida pelo domínio (não pelo banco).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="aggregate-exemplo" class="section-title">Aggregate — exemplo de invariante</h2>
+        <div class="section-divider"></div>
+        <p>O Aggregate garante consistência interna: não há forma de colocar o sistema em estado inválido via API externa:</p>
+        <div class="code-container">
+          <pre class="code-block">class Pedido { // Aggregate Root
+  private status: 'rascunho' | 'confirmado' | 'cancelado' = 'rascunho';
+  private itens: ItemPedido[] = [];
+
+  adicionarItem(produto: Produto, quantidade: number): void {
+    if (this.status !== 'rascunho') {
+      throw new Error('Não é possível alterar pedido confirmado.');
+    }
+    this.itens.push(new ItemPedido(produto, quantidade));
+  }
+
+  confirmar(): DomainEvent[] {
+    if (this.itens.length === 0) {
+      throw new Error('Pedido sem itens não pode ser confirmado.');
+    }
+    this.status = 'confirmado';
+    return [new PedidoConfirmado(this.id, this.calcularTotal())];
+  }
+
+  // itens só são acessíveis via Pedido — não há repositório de ItemPedido
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando aplicar (e quando evitar)</h2>
+        <div class="section-divider"></div>
+        <p>DDD tem custo de implementação real — aplique onde o retorno justifica:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Aplique quando</h3>
+            <p>Domínio complexo com muitas regras e exceções. Múltiplos times com cadencia própria. Termos ambiguos entre áreas.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>CRUD simples sem regras de negócio. Produto em validação (fronteiras mudam rápido). Time pequeno sem maturidade no domínio.</p>
+          </div>
+          <div class="card">
+            <h3>Como começar</h3>
+            <p>Mapeie termos reais com o negócio. Escolha um fluxo crítico. Modele as invariantes. Isole infraestrutura trás de portas.</p>
+          </div>
+          <div class="card">
+            <h3>Armadilhas</h3>
+            <p>Excesso de camadas sem clareza. Linguagem técnica em vez da do negócio. DDD como pasta de código, não como modelo mental.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>DDD se complementa com <a href="/html/engenharia_software/design/clean_architecture.html">Clean Architecture</a> (fronteiras e dependências) e <a href="/html/engenharia_software/design/arquitetura/microservicos.html">Microserviços</a> (bounded contexts como limite de serviço).</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O modelo de domínio não é o banco de dados. É a linguagem executavél do negócio."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

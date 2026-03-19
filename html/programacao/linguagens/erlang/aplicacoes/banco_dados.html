@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang com banco de dados: ETS, DETS, Mnesia e integração com PostgreSQL, além de padrões de persistência e transação." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Erlang — Banco de Dados</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="hero">Erlang com Banco de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Banco de Dados</h1>
+          <p>Erlang trabalha muito bem com dados de curta vida em memória e com persistência orientada a mensagens. O segredo é distinguir o que deve ficar no runtime da BEAM, o que precisa ir para disco e o que deve morar num banco externo com semântica própria de consulta e transação.</p>
+        </div>
+        <p class="intro-highlight">A pergunta correta não é “qual ORM usar em Erlang?”, e sim “qual parte do estado precisa ser local, qual parte precisa ser transacional e qual parte precisa ser compartilhada fora do nó?”.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="camadas-persistencia">As três camadas clássicas de persistência</h2>
+        <div class="grid grid--3">
+          <div class="card">
+            <h3>ETS</h3>
+            <p>Tabelas em memória para cache, índices rápidos, contadores e sessões locais.</p>
+          </div>
+          <div class="card">
+            <h3>Mnesia</h3>
+            <p>Banco distribuído da BEAM com transações, replicação e forte integração com registros Erlang.</p>
+          </div>
+          <div class="card">
+            <h3>Bancos externos</h3>
+            <p>PostgreSQL, MySQL e afins quando o sistema exige SQL, BI, auditoria ou integração com outros serviços.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mnesia-pratica">Mnesia e dados transacionais na BEAM</h2>
+        <p>Mnesia funciona melhor quando o domínio já é naturalmente distribuído na própria BEAM e o volume de consulta ad hoc não exige o ecossistema SQL tradicional. Ela brilha em metadados de cluster, roteamento, tabelas operacionais e estado replicado de serviços.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tabela Mnesia com transação simples</div>
+          <pre class="example">-record(sessao, {id, usuario, expira_em}).
+
+mnesia:create_table(sessao, [
+    {attributes, record_info(fields, sessao)},
+    {type, set},
+    {disc_copies, [node()]}
+]).
+
+Salvar = fun() -&gt;
+    mnesia:write(#sessao{id = 10,
+                         usuario = &lt;&lt;"gusta"&gt;&gt;,
+                         expira_em = erlang:system_time(second) + 3600})
+end,
+{atomic, ok} = mnesia:transaction(Salvar).</pre>
+        </div>
+        <p>O ganho aqui é a proximidade com o runtime. A perda está na integração: se o resto da organização vive em SQL, você precisa justificar claramente por que Mnesia é a melhor fonte de verdade.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sql-externo">Quando usar PostgreSQL ou outro banco externo</h2>
+        <p>Quando o sistema precisa de joins complexos, auditoria robusta, ferramentas de análise, backup operacional maduro e interoperabilidade com outras equipes, um banco externo costuma ser a escolha mais pragmática. Em Erlang, o padrão saudável é isolar acesso a banco num conjunto pequeno de workers e deixar o resto do sistema conversar por mensagens e contratos claros.</p>
+        <svg viewBox="0 0 760 170" role="img" aria-label="Integração Erlang com banco externo" class="w-full">
+          <rect x="40" y="60" width="150" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="115" y="87" text-anchor="middle">Processos de domínio</text>
+          <rect x="250" y="60" width="160" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="330" y="87" text-anchor="middle">Worker de acesso</text>
+          <rect x="470" y="60" width="200" height="44" rx="10" ry="10" fill="none" stroke="currentColor"></rect>
+          <text x="570" y="87" text-anchor="middle">PostgreSQL / MySQL</text>
+          <line x1="190" y1="82" x2="250" y2="82" stroke="currentColor"></line>
+          <line x1="410" y1="82" x2="470" y2="82" stroke="currentColor"></line>
+          <text x="330" y="130" text-anchor="middle">pool, timeout, retry e métricas</text>
+        </svg>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite espalhar SQL por muitos módulos. Em Erlang, concentrar o ponto de I/O facilita supervisionar falhas, aplicar backpressure e medir latência.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boas-praticas">Boas práticas de persistência</h2>
+        <ul>
+          <li>use ETS para leitura rápida e dados descartáveis, não como banco global invisível</li>
+          <li>prefira mensagens e workers dedicados para encapsular banco externo</li>
+          <li>defina timeouts realistas e trate banco indisponível como evento esperado</li>
+          <li>se usar Mnesia, teste explicitamente particionamento, cópias e recuperação</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ERLANG/OTP. <strong>Mnesia User's Guide</strong>. Disponível em: &lt;https://www.erlang.org/doc/apps/mnesia/mnesia_chap1.html&gt;. Acesso em: 2026.</li>
+            <li>ERLANG/OTP. <strong>ETS — Erlang Term Storage</strong>. Disponível em: &lt;https://www.erlang.org/doc/man/ets.html&gt;. Acesso em: 2026.</li>
+            <li>LOGAN, M.; MERRITT, E.; CARLSSON, R. <strong>Erlang and OTP in Action</strong>. Manning, 2010.</li>
+            <li>EPGSQL. <strong>PostgreSQL client for Erlang</strong>. Disponível em: &lt;https://github.com/epgsql/epgsql&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Integrar persistência com APIs web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Pipelines de dados e inferência</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/erlang/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Arquitetura de projeto e releases</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Persistência boa em Erlang não tenta esconder o custo do banco. Ela torna explícitos os limites entre memória local, estado distribuído e dados que realmente precisam de um sistema externo de consulta e durabilidade.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

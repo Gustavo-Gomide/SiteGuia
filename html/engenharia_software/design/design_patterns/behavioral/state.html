@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="State: padrão comportamental que permite um objeto alterar seu comportamento quando seu estado interno muda." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>State | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Comportamento muda conforme o estado interno</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">State</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">State permite que um objeto altere seu comportamento quando o estado interno muda, fazendo parecer que a classe mudou. Substitui <code>if/switch</code> de estado espalhados por classes de estado que encapsulam transições e comportamentos.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="transicoes" class="section-title">Exemplo — máquina de estado de pedido</h2>
+        <div class="section-divider"></div>
+        <p>Cada estado sabe quais transições são válidas a partir dele:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Estado</th>
+                <th>confirmar()</th>
+                <th>cancelar()</th>
+                <th>entregar()</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Rascunho</strong></td>
+                <td>→ Confirmado</td>
+                <td>→ Cancelado</td>
+                <td>Erro</td>
+              </tr>
+              <tr>
+                <td><strong>Confirmado</strong></td>
+                <td>Erro</td>
+                <td>→ Cancelado</td>
+                <td>→ Entregue</td>
+              </tr>
+              <tr>
+                <td><strong>Entregue</strong></td>
+                <td>Erro</td>
+                <td>Erro</td>
+                <td>Erro</td>
+              </tr>
+              <tr>
+                <td><strong>Cancelado</strong></td>
+                <td>Erro</td>
+                <td>Erro</td>
+                <td>Erro</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="codigo" class="section-title">Implementação</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface EstadoPedido {
+  confirmar(pedido: Pedido): void;
+  cancelar(pedido: Pedido): void;
+  entregar(pedido: Pedido): void;
+}
+
+class EstadoRascunho implements EstadoPedido {
+  confirmar(pedido: Pedido): void {
+    pedido.estado = new EstadoConfirmado();
+  }
+  cancelar(pedido: Pedido): void {
+    pedido.estado = new EstadoCancelado();
+  }
+  entregar(): void {
+    throw new Error('Pedido em rascunho não pode ser entregue.');
+  }
+}
+
+class EstadoConfirmado implements EstadoPedido {
+  confirmar(): void { throw new Error('Já confirmado.'); }
+  cancelar(pedido: Pedido): void { pedido.estado = new EstadoCancelado(); }
+  entregar(pedido: Pedido): void { pedido.estado = new EstadoEntregue(); }
+}
+
+class Pedido {
+  estado: EstadoPedido = new EstadoRascunho();
+
+  confirmar() { this.estado.confirmar(this); }
+  cancelar()  { this.estado.cancelar(this); }
+  entregar()  { this.estado.entregar(this); }
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>O comportamento varia por estado e o número de estados é conhecido. Pedidos, conexões, workflow, players de áudio/vídeo.</p>
+          </div>
+          <div class="card">
+            <h3>Elimina if/switch</h3>
+            <p>Em vez de <code>if (status === 'confirmado') {...}</code> espalhado, cada comportamento fica encapsulado na classe de estado.</p>
+          </div>
+          <div class="card">
+            <h3>vs Strategy</h3>
+            <p>Strategy troca algoritmo externamente. State troca comportamento internamente baseado em transições de estado.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Poucos estados simples — um enum + switch pode ser mais legível. State vale a pena quando as transições são complexas.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>State é muito usado em jogos (estado do personagem) e workflows. Veja <a href="/html/engenharia_software/design/design_patterns/behavioral/strategy.html">Strategy</a> para troca de algoritmo externo sem máquina de estado.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "State distribui a máquina de estados entre classes — cada estado sabe para onde pode ir, não o objeto central."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

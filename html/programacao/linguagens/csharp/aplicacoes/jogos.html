@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para Desenvolvimento de Jogos: Unity (MonoBehaviour, física, coroutines, eventos, ScriptableObjects, shader HLSL), Godot com C# e MonoGame para jogos 2D/3D do zero." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para Jogos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Jogos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para Desenvolvimento de Jogos</h1>
+          <p>C# e a linguagem principal do <strong>Unity</strong> — o engine de jogos mais utilizado no mundo — e uma das opcoes de scripting no <strong>Godot 4</strong>. Alem disso, <strong>MonoGame</strong> permite construir jogos 2D multiplataforma com controle total sobre o pipeline de renderizacao. C# no contexto de jogos exige atencao especial a gerencia de memoria (evitar alocacoes em runtime) e ao modelo de execucao de frame-by-frame.</p>
+        </div>
+        <p class="intro-highlight">
+          No Unity, cada <code>MonoBehaviour</code> roda em uma thread principal. Operacoes custosas como carregamento de assets ou chamadas de rede devem usar <code>Coroutine</code> (yield/await) ou o <code>Job System</code> com Burst Compiler para aproveitar threads sem bloquear o frame.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="unity-basico">Unity — MonoBehaviour, Física e Input</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Unity &mdash; movimento de personagem com Rigidbody, Input System e animacoes</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">UnityEngine</span>;
+<span class="kw">using</span> <span class="tp">UnityEngine</span>.<span class="tp">InputSystem</span>;
+
+<span class="kw">public class</span> <span class="tp">PlayerController</span> : <span class="tp">MonoBehaviour</span>
+{
+  <span class="at">[Header("Movimento")]</span>
+  <span class="at">[SerializeField]</span> <span class="kw">private float</span> _velocidade  = <span class="num">5f</span>;
+  <span class="at">[SerializeField]</span> <span class="kw">private float</span> _forcaPulo   = <span class="num">8f</span>;
+
+  <span class="kw">private</span> <span class="tp">Rigidbody2D</span> _rb;
+  <span class="kw">private</span> <span class="tp">Animator</span>    _anim;
+  <span class="kw">private</span> <span class="tp">Vector2</span>     _input;
+  <span class="kw">private bool</span>        _noChao;
+
+  <span class="kw">void</span> <span class="fn">Awake</span>()
+  {
+    _rb   = <span class="fn">GetComponent</span>&lt;<span class="tp">Rigidbody2D</span>&gt;();
+    _anim = <span class="fn">GetComponent</span>&lt;<span class="tp">Animator</span>&gt;();
+  }
+
+  <span class="com">// Chamado pelo Input System Action Map</span>
+  <span class="kw">public void</span> <span class="fn">OnMove</span>(<span class="tp">InputValue</span> value)  =&gt; _input = value.<span class="fn">Get</span>&lt;<span class="tp">Vector2</span>&gt;();
+  <span class="kw">public void</span> <span class="fn">OnJump</span>(<span class="tp">InputValue</span> value)
+  {
+    <span class="kw">if</span> (value.<span class="fn">isPressed</span> &amp;&amp; _noChao)
+      _rb.<span class="fn">AddForce</span>(<span class="tp">Vector2</span>.up * _forcaPulo, <span class="tp">ForceMode2D</span>.Impulse);
+  }
+
+  <span class="kw">void</span> <span class="fn">FixedUpdate</span>()
+  {
+    = <span class="kw">new</span> <span class="tp">Vector2</span>(_input.x * _velocidade, _rb.velocity.y);
+    _anim.<span class="fn">SetFloat</span>(<span class="str">"Speed"</span>, <span class="tp">Mathf</span>.<span class="fn">Abs</span>(_input.x));
+    <span class="kw">if</span> (_input.x != <span class="num">0</span>)
+      <span class="fn">transform</span>.localScale = <span class="kw">new</span> <span class="tp">Vector3</span>(<span class="tp">Mathf</span>.<span class="fn">Sign</span>(_input.x), <span class="num">1</span>, <span class="num">1</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">OnCollisionEnter2D</span>(<span class="tp">Collision2D</span> col)
+  {
+    <span class="kw">if</span> (col.gameObject.<span class="fn">CompareTag</span>(<span class="str">"Ground"</span>)) _noChao = <span class="kw">true</span>;
+  }
+  <span class="kw">void</span> <span class="fn">OnCollisionExit2D</span>(<span class="tp">Collision2D</span> col)
+  {
+    <span class="kw">if</span> (col.gameObject.<span class="fn">CompareTag</span>(<span class="str">"Ground"</span>)) _noChao = <span class="kw">false</span>;
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="unity-avancado">Unity — ScriptableObjects, Events e Object Pooling</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Unity &mdash; ScriptableObject como data container e evento global desacoplado</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">UnityEngine</span>;
+<span class="kw">using</span> <span class="tp">System</span>.<span class="tp">Collections</span>.<span class="tp">Generic</span>;
+
+<span class="com">// ScriptableObject — configuracao de inimigo editavel no Inspector</span>
+<span class="at">[CreateAssetMenu(menuName = "Game/InimigoConfig")]</span>
+<span class="kw">public class</span> <span class="tp">InimigoConfig</span> : <span class="tp">ScriptableObject</span>
+{
+  <span class="kw">public string</span> NomeInimigo;
+  <span class="kw">public float</span>  Vida;
+  <span class="kw">public float</span>  Velocidade;
+  <span class="kw">public float</span>  DanoAtaque;
+  <span class="kw">public</span> <span class="tp">Sprite</span>  Sprite;
+}
+
+<span class="com">// Evento global via ScriptableObject — sem dependencia de singleton</span>
+<span class="at">[CreateAssetMenu(menuName = "Game/EventoJogo")]</span>
+<span class="kw">public class</span> <span class="tp">EventoJogo</span> : <span class="tp">ScriptableObject</span>
+{
+  <span class="kw">private readonly</span> <span class="tp">List</span>&lt;<span class="tp">IEventoListener</span>&gt; _listeners = <span class="kw">new</span>();
+  <span class="kw">public void</span> <span class="fn">Disparar</span>()  =&gt; _listeners.<span class="fn">ForEach</span>(l =&gt; l.<span class="fn">AoReceberEvento</span>());
+  <span class="kw">public void</span> <span class="fn">Registrar</span>(<span class="tp">IEventoListener</span> l)   =&gt; _listeners.<span class="fn">Add</span>(l);
+  <span class="kw">public void</span> <span class="fn">Cancelar</span>(<span class="tp">IEventoListener</span> l)   =&gt; _listeners.<span class="fn">Remove</span>(l);
+}
+<span class="kw">public interface</span> <span class="tp">IEventoListener</span> { <span class="kw">void</span> <span class="fn">AoReceberEvento</span>(); }
+
+<span class="com">// Object Pool nativo (Unity 2021+)</span>
+<span class="kw">using</span> <span class="tp">UnityEngine</span>.<span class="tp">Pool</span>;
+
+<span class="kw">public class</span> <span class="tp">ProjetilPool</span> : <span class="tp">MonoBehaviour</span>
+{
+  <span class="at">[SerializeField]</span> <span class="kw">private</span> <span class="tp">Projetil</span> _prefab;
+
+  <span class="kw">private</span> <span class="tp">ObjectPool</span>&lt;<span class="tp">Projetil</span>&gt; _pool;
+
+  <span class="kw">void</span> <span class="fn">Awake</span>()
+  {
+    _pool = <span class="kw">new</span> <span class="tp">ObjectPool</span>&lt;<span class="tp">Projetil</span>&gt;(
+      createFunc:   () =&gt; <span class="tp">Instantiate</span>(_prefab),
+      actionOnGet:  p  =&gt; p.gameObject.<span class="fn">SetActive</span>(<span class="kw">true</span>),
+      actionOnRelease: p =&gt; p.gameObject.<span class="fn">SetActive</span>(<span class="kw">false</span>),
+      actionOnDestroy: p =&gt; <span class="tp">Destroy</span>(p.gameObject),
+      defaultCapacity: <span class="num">20</span>, maxSize: <span class="num">100</span>);
+  }
+
+  <span class="kw">public</span> <span class="tp">Projetil</span> <span class="fn">Obter</span>() =&gt; _pool.<span class="fn">Get</span>();
+  <span class="kw">public void</span> <span class="fn">Retornar</span>(<span class="tp">Projetil</span> p) =&gt; _pool.<span class="fn">Release</span>(p);
+}
+
+<span class="com">// Coroutine — carregamento progressivo com progresso</span>
+<span class="kw">public class</span> <span class="tp">GerenciadorCena</span> : <span class="tp">MonoBehaviour</span>
+{
+  <span class="kw">public</span> <span class="tp">IEnumerator</span> <span class="fn">CarregarCenaAsync</span>(<span class="kw">string</span> nome, <span class="tp">System</span>.<span class="tp">Action</span>&lt;<span class="kw">float</span>&gt; onProgresso)
+  {
+    <span class="kw">var</span> op = <span class="tp">SceneManager</span>.<span class="fn">LoadSceneAsync</span>(nome);
+    op.allowSceneActivation = <span class="kw">false</span>;
+    <span class="kw">while</span> (op.progress &lt; <span class="num">0.9f</span>)
+    {
+      onProgresso(op.progress / <span class="num">0.9f</span>);
+      <span class="kw">yield return null</span>;
+    }
+    onProgresso(<span class="num">1f</span>);
+    op.allowSceneActivation = <span class="kw">true</span>;
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="monogame">MonoGame — Jogo 2D do Zero</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + MonoGame &mdash; game loop, sprite, colisao e gerenciador de estados</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Xna</span>.<span class="tp">Framework</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Xna</span>.<span class="tp">Framework</span>.<span class="tp">Graphics</span>;
+<span class="kw">using</span> <span class="tp">Microsoft</span>.<span class="tp">Xna</span>.<span class="tp">Framework</span>.<span class="tp">Input</span>;
+
+<span class="kw">public class</span> <span class="tp">Jogo</span> : <span class="tp">Game</span>
+{
+  <span class="kw">private</span> <span class="tp">GraphicsDeviceManager</span> _graphics;
+  <span class="kw">private</span> <span class="tp">SpriteBatch</span>            _batch;
+  <span class="kw">private</span> <span class="tp">Texture2D</span>              _texJogador, _texInimigo;
+  <span class="kw">private</span> <span class="tp">Rectangle</span>              _jogador = <span class="kw">new</span>(<span class="num">100</span>, <span class="num">100</span>, <span class="num">64</span>, <span class="num">64</span>);
+  <span class="kw">private</span> <span class="tp">Rectangle</span>              _inimigo  = <span class="kw">new</span>(<span class="num">400</span>, <span class="num">200</span>, <span class="num">64</span>, <span class="num">64</span>);
+
+  <span class="kw">public</span> <span class="tp">Jogo</span>()
+  {
+    _graphics = <span class="kw">new</span> <span class="tp">GraphicsDeviceManager</span>(<span class="kw">this</span>);
+    Content.RootDirectory = <span class="str">"Content"</span>;
+  }
+
+  <span class="kw">protected override void</span> <span class="fn">LoadContent</span>()
+  {
+    _batch    = <span class="kw">new</span> <span class="tp">SpriteBatch</span>(<span class="tp">GraphicsDevice</span>);
+    _texJogador = Content.<span class="fn">Load</span>&lt;<span class="tp">Texture2D</span>&gt;(<span class="str">"jogador"</span>);
+    _texInimigo  = Content.<span class="fn">Load</span>&lt;<span class="tp">Texture2D</span>&gt;(<span class="str">"inimigo"</span>);
+  }
+
+  <span class="kw">protected override void</span> <span class="fn">Update</span>(<span class="tp">GameTime</span> gt)
+  {
+    <span class="kw">var</span> ks  = <span class="tp">Keyboard</span>.<span class="fn">GetState</span>();
+    <span class="kw">var</span> dt  = (<span class="kw">float</span>) gt.ElapsedGameTime.TotalSeconds;
+    <span class="kw">var</span> vel = (<span class="kw">int</span>) (<span class="num">200</span> * dt);
+
+    <span class="kw">if</span> (ks.<span class="fn">IsKeyDown</span>(<span class="tp">Keys</span>.Left))  _jogador.X -= vel;
+    <span class="kw">if</span> (ks.<span class="fn">IsKeyDown</span>(<span class="tp">Keys</span>.Right)) _jogador.X += vel;
+    <span class="kw">if</span> (ks.<span class="fn">IsKeyDown</span>(<span class="tp">Keys</span>.Up))    _jogador.Y -= vel;
+    <span class="kw">if</span> (ks.<span class="fn">IsKeyDown</span>(<span class="tp">Keys</span>.Down))  _jogador.Y += vel;
+
+    <span class="com">// Colisao AABB</span>
+    <span class="kw">if</span> (_jogador.<span class="fn">Intersects</span>(_inimigo))
+      <span class="tp">Console</span>.<span class="fn">WriteLine</span>(<span class="str">"Colisao detectada!"</span>);
+
+    <span class="fn">base</span>.<span class="fn">Update</span>(gt);
+  }
+
+  <span class="kw">protected override void</span> <span class="fn">Draw</span>(<span class="tp">GameTime</span> gt)
+  {
+    <span class="tp">GraphicsDevice</span>.<span class="fn">Clear</span>(<span class="tp">Color</span>.CornflowerBlue);
+    _batch.<span class="fn">Begin</span>(<span class="tp">SpriteSortMode</span>.Deferred, <span class="tp">BlendState</span>.AlphaBlend,
+                  <span class="tp">SamplerState</span>.PointClamp);
+    _batch.<span class="fn">Draw</span>(_texJogador, _jogador, <span class="tp">Color</span>.White);
+    _batch.<span class="fn">Draw</span>(_texInimigo,  _inimigo,  <span class="tp">Color</span>.White);
+    _batch.<span class="fn">End</span>();
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="logica-grid">Boas Praticas em Jogos C#</h2>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3><span data-svg="check" aria-hidden="true"></span> Boas Praticas</h3>
+            <ul>
+              <li>Cache de componentes no <code>Awake()</code> com <code>GetComponent&lt;T&gt;</code></li>
+              <li>Usar <code>ObjectPool&lt;T&gt;</code> para projeteis, particulas e efeitos</li>
+              <li>Usar <code>struct</code> para dados de estado (posicao, velocidade) — zero alocacao</li>
+              <li>Preferir <code>Physics.SphereCastNonAlloc</code> sobre <code>SphereCastAll</code></li>
+              <li>Usar profiler (<code>ProfilerMarker</code>) para medir hotspots</li>
+              <li>ScriptableObjects para configs editaveis sem acoplar cenas</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3><span data-svg="xmark" aria-hidden="true"></span> Anti-Padroes</h3>
+            <ul>
+              <li>Chamar <code>GetComponent&lt;T&gt;</code> no <code>Update()</code> — muito lento</li>
+              <li>Usar <code>Find("nome")</code> ou <code>FindObjectOfType&lt;T&gt;</code> em runtime</li>
+              <li>Alocar strings, listas ou arrays no <code>Update()</code> — trigger de GC</li>
+              <li>Usar <code>Debug.Log()</code> em producao — custo de GC alocacao de string</li>
+              <li><code>yield return new WaitForSeconds()</code> — use instancia cached</li>
+              <li>Singleton Game Manager com estado global bagunçado</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>UNITY TECHNOLOGIES. <strong>Unity Manual — Scripting</strong>. Disponível em: &lt;https://docs.unity3d.com/Manual/ScriptingSection.html&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>MonoGame documentation</strong>. Disponível em: &lt;https://docs.monogame.net/&gt;. Acesso em: 2025.</li>
+            <li>GODOT ENGINE. <strong>C# basics in Godot</strong>. Disponível em: &lt;https://docs.godotengine.org/en/stable/tutorials/scripting/c_sharp/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Mobile</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> No Unity, evite alocar objetos no <code>Update()</code>. Uma unica alocacao de <code>new WaitForSeconds()</code> por frame pode disparar o Garbage Collector a cada poucos segundos e causar stutters. Cache <code>WaitForSeconds</code> como campo <code>readonly</code> e reuse-o.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

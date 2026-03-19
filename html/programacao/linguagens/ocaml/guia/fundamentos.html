@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos de OCaml: tipos básicos, imutabilidade com let, listas, pattern matching, funções recursivas, currying, pipe operator, tuplas, records e módulos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>OCaml — Fundamentos</h1>
+          <p>Os blocos de construção de OCaml: tipos primitivos, imutabilidade, pattern matching e o sistema de funções que torna a linguagem tão expressiva.</p>
+        </div>
+        <p class="intro-highlight">
+          Em OCaml, quase tudo é uma <strong>expressão</strong> com um <strong>tipo</strong> inferido pelo compilador. Não há statements sem valor — até um <code>if</code> retorna alguma coisa. Essa consistência torna o código previsível e o compilador extremamente informativo sobre erros.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos-basicos">Tipos Básicos</h2>
+        <div class="panel">
+          <p>OCaml possui tipos primitivos com semântica bem definida. Destaque importante: <strong>int e float são tipos completamente separados</strong> — os operadores aritméticos são distintos para cada um.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tipos_basicos.ml — Tipos e operações primitivos</div>
+          <pre class="example"><span class="com">(* ── int ──────────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> a : <span class="tp">int</span> = <span class="num">42</span>
+<span class="kw">let</span> b = -<span class="num">7</span>
+<span class="kw">let</span> soma   = a + b       <span class="com">(* 35 *)</span>
+<span class="kw">let</span> resto  = <span class="num">17</span> <span class="kw">mod</span> <span class="num">5</span>   <span class="com">(* 2 *)</span>
+<span class="kw">let</span> potenc = <span class="num">2</span> lsl <span class="num">3</span>    <span class="com">(* 16 — left shift lógico *)</span>
+
+<span class="com">(* ── float ────────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> pi    = <span class="num">3.14159265</span>
+<span class="kw">let</span> e     = <span class="fn">exp</span> <span class="num">1.0</span>      <span class="com">(* 2.71828... — função do módulo Stdlib *)</span>
+<span class="kw">let</span> raiz2 = <span class="fn">sqrt</span> <span class="num">2.0</span>    <span class="com">(* 1.41421... *)</span>
+<span class="kw">let</span> prod  = pi *. <span class="num">2.0</span>   <span class="com">(* +. -. *. /. para float *)</span>
+
+<span class="com">(* ── bool ─────────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> verdadeiro = <span class="kw">true</span>
+<span class="kw">let</span> falso      = <span class="kw">false</span>
+<span class="kw">let</span> e_logico   = verdadeiro &amp;&amp; falso   <span class="com">(* false *)</span>
+<span class="kw">let</span> ou_logico  = verdadeiro || falso   <span class="com">(* true *)</span>
+<span class="kw">let</span> negacao    = <span class="kw">not</span> verdadeiro        <span class="com">(* false *)</span>
+
+<span class="com">(* ── char ─────────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> letra  = <span class="str">'A'</span>
+<span class="kw">let</span> codigo = <span class="fn">Char.code</span> letra          <span class="com">(* 65 *)</span>
+<span class="kw">let</span> chr65  = <span class="fn">Char.chr</span> <span class="num">65</span>             <span class="com">(* 'A' *)</span>
+
+<span class="com">(* ── string ───────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> s1 = <span class="str">"Hello"</span>
+<span class="kw">let</span> s2 = <span class="str">"World"</span>
+<span class="kw">let</span> concat  = s1 ^ <span class="str">" "</span> ^ s2           <span class="com">(* "Hello World" *)</span>
+<span class="kw">let</span> len     = <span class="tp">String</span>.<span class="fn">length</span> s1         <span class="com">(* 5 *)</span>
+<span class="kw">let</span> sub     = <span class="tp">String</span>.<span class="fn">sub</span> s1 <span class="num">1</span> <span class="num">3</span>       <span class="com">(* "ell" — início 1, tamanho 3 *)</span>
+<span class="kw">let</span> c_em_s1 = s1.[<span class="num">0</span>]                  <span class="com">(* 'H' — índice 0 *)</span>
+
+<span class="com">(* ── unit ─────────────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> nada : <span class="tp">unit</span> = ()   <span class="com">(* único valor do tipo unit *)</span>
+<span class="kw">let</span> () = <span class="fn">print_endline</span> <span class="str">"efeito colateral retorna unit"</span></pre>
+        </div>
+
+        <div class="panel">
+          <p><strong>Regra de ouro:</strong> em OCaml, <code>+</code> é exclusivamente para <code>int</code>. Para <code>float</code> use <code>+.</code>. Para <code>string</code> use <code>^</code>. Essa separação explícita elimina uma classe inteira de bugs de conversão implícita presentes em C e JavaScript.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="imutabilidade-let">Imutabilidade e let</h2>
+        <div class="panel">
+          <p>Em OCaml, <code>let</code> cria <strong>ligações imutáveis</strong> — não variáveis. Uma vez que <code>let x = 5</code> é definido, <code>x</code> sempre será <code>5</code> naquele escopo. Para mutabilidade, use <code>ref</code> explicitamente.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">imutabilidade.ml — let vs ref</div>
+          <pre class="example"><span class="com">(* let = ligação imutável *)</span>
+<span class="kw">let</span> x = <span class="num">10</span>
+<span class="com">(* x = 20  ← ERRO de compilação: x não é mutável *)</span>
+
+<span class="com">(* Shadowing: novo let no mesmo escopo "esconde" o anterior *)</span>
+<span class="kw">let</span> x = <span class="num">10</span>
+<span class="kw">let</span> x = x * <span class="num">2</span>   <span class="com">(* novo x = 20, o anterior "desaparece" *)</span>
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"%d\n"</span> x   <span class="com">(* 20 *)</span>
+
+<span class="com">(* let ... in: escopo local *)</span>
+<span class="kw">let</span> resultado =
+  <span class="kw">let</span> a = <span class="num">5</span> <span class="kw">in</span>
+  <span class="kw">let</span> b = <span class="num">3</span> <span class="kw">in</span>
+  a + b   <span class="com">(* 8 — a e b só existem aqui *)</span>
+
+<span class="com">(* ref = referência mutável (como ponteiro para int) *)</span>
+<span class="kw">let</span> contador = <span class="fn">ref</span> <span class="num">0</span>     <span class="com">(* tipo: int ref *)</span>
+<span class="kw">let</span> () =
+  contador := !contador + <span class="num">1</span>;   <span class="com">(* := atribui; ! desreferencia *)</span>
+  contador := !contador + <span class="num">1</span>;
+  <span class="fn">Printf.printf</span> <span class="str">"contador = %d\n"</span> !contador   <span class="com">(* 2 *)</span>
+
+<span class="com">(* Loop imperativo com ref *)</span>
+<span class="kw">let</span> soma_imperativa n =
+  <span class="kw">let</span> acum = <span class="fn">ref</span> <span class="num">0</span> <span class="kw">in</span>
+  <span class="kw">for</span> i = <span class="num">1</span> to n <span class="kw">do</span>
+    acum := !acum + i
+  <span class="kw">done</span>;
+  !acum
+
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"Soma 1..100 = %d\n"</span> (soma_imperativa <span class="num">100</span>)
+<span class="com">(* Soma 1..100 = 5050 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções — Currying e Aplicação Parcial</h2>
+        <div class="panel">
+          <p>Em OCaml, toda função tem <strong>exatamente um argumento</strong>. "Funções com vários argumentos" são na realidade funções que retornam funções — isso é <strong>currying</strong>. Isso permite aplicação parcial de forma natural.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">funcoes.ml — Definição, currying, recursão</div>
+          <pre class="example"><span class="com">(* Função simples *)</span>
+<span class="kw">let</span> <span class="fn">quadrado</span> x = x * x
+<span class="com">(* val quadrado : int -> int *)</span>
+
+<span class="com">(* Função com dois argumentos — na verdade, curried *)</span>
+<span class="kw">let</span> <span class="fn">soma</span> a b = a + b
+<span class="com">(* val soma : int -> int -> int
+   Equivalente a: let soma = fun a -> (fun b -> a + b) *)</span>
+
+<span class="com">(* Aplicação parcial — fixa um argumento *)</span>
+<span class="kw">let</span> soma5 = soma <span class="num">5</span>     <span class="com">(* val soma5 : int -> int *)</span>
+<span class="kw">let</span> quinze = soma5 <span class="num">10</span>  <span class="com">(* 15 *)</span>
+
+<span class="com">(* Funções anônimas com fun *)</span>
+<span class="kw">let</span> triplo = <span class="kw">fun</span> x -> x * <span class="num">3</span>
+<span class="kw">let</span> pares  = <span class="tp">List</span>.<span class="fn">filter</span> (<span class="kw">fun</span> x -> x <span class="kw">mod</span> <span class="num">2</span> = <span class="num">0</span>) [<span class="num">1</span>;<span class="num">2</span>;<span class="num">3</span>;<span class="num">4</span>;<span class="num">5</span>;<span class="num">6</span>]
+<span class="com">(* [2; 4; 6] *)</span>
+
+<span class="com">(* Funções recursivas: OBRIGATÓRIO usar `let rec` *)</span>
+<span class="kw">let rec</span> <span class="fn">fatorial</span> n =
+  <span class="kw">if</span> n <= <span class="num">0</span> <span class="kw">then</span> <span class="num">1</span>
+  <span class="kw">else</span> n * fatorial (n - <span class="num">1</span>)
+
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"%d\n"</span> (fatorial <span class="num">10</span>)  <span class="com">(* 3628800 *)</span>
+
+<span class="com">(* Recursão de cauda (tail call) — não acumula stack *)</span>
+<span class="kw">let rec</span> <span class="fn">fatorial_tc</span> n acum =
+  <span class="kw">if</span> n <= <span class="num">0</span> <span class="kw">then</span> acum
+  <span class="kw">else</span> fatorial_tc (n - <span class="num">1</span>) (n * acum)
+
+<span class="kw">let</span> fat10 = fatorial_tc <span class="num">10</span> <span class="num">1</span>   <span class="com">(* 3628800 — seguro para n grande *)</span>
+
+<span class="com">(* Funções mutuamente recursivas com and *)</span>
+<span class="kw">let rec</span> <span class="fn">par</span>  n = <span class="kw">if</span> n = <span class="num">0</span> <span class="kw">then</span> <span class="kw">true</span>  <span class="kw">else</span> impar  (n - <span class="num">1</span>)
+<span class="kw">and</span>     <span class="fn">impar</span> n = <span class="kw">if</span> n = <span class="num">0</span> <span class="kw">then</span> <span class="kw">false</span> <span class="kw">else</span> par    (n - <span class="num">1</span>)
+
+<span class="com">(* Operador pipe |> — encadeamento funcional *)</span>
+<span class="kw">let</span> resultado =
+  [<span class="num">1</span>; <span class="num">2</span>; <span class="num">3</span>; <span class="num">4</span>; <span class="num">5</span>; <span class="num">6</span>; <span class="num">7</span>; <span class="num">8</span>; <span class="num">9</span>; <span class="num">10</span>]
+  |> <span class="tp">List</span>.<span class="fn">filter</span>  (<span class="kw">fun</span> x -> x <span class="kw">mod</span> <span class="num">2</span> = <span class="num">0</span>)  <span class="com">(* [2;4;6;8;10] *)</span>
+  |> <span class="tp">List</span>.<span class="fn">map</span>     (<span class="kw">fun</span> x -> x * x)            <span class="com">(* [4;16;36;64;100] *)</span>
+  |> <span class="tp">List</span>.<span class="fn">fold_left</span> (+) <span class="num">0</span>                      <span class="com">(* 220 *)</span>
+
+<span class="com">(* Composição de funções com @@ e |> *)</span>
+<span class="kw">let</span> dobra_e_incrementa = (<span class="kw">fun</span> x -> x + <span class="num">1</span>) @@ (<span class="kw">fun</span> x -> x * <span class="num">2</span>)
+<span class="com">(* @@ aplica da direita pra esquerda: primeiro *2, depois +1 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="listas">Listas e Pattern Matching</h2>
+        <div class="panel">
+          <p>Listas em OCaml são <strong>encadeadas imutáveis</strong>. O operador <code>::</code> (cons) adiciona um elemento ao início. O pattern matching em listas é exaustivo — o compilador avisa se um caso não foi tratado.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">listas.ml — Construção, acesso e pattern matching</div>
+          <pre class="example"><span class="com">(* Construção de listas *)</span>
+<span class="kw">let</span> vazia   = []
+<span class="kw">let</span> nums    = [<span class="num">1</span>; <span class="num">2</span>; <span class="num">3</span>; <span class="num">4</span>; <span class="num">5</span>]
+<span class="kw">let</span> adicion = <span class="num">0</span> :: nums          <span class="com">(* [0; 1; 2; 3; 4; 5] *)</span>
+<span class="kw">let</span> concat  = [<span class="num">1</span>;<span class="num">2</span>] @ [<span class="num">3</span>;<span class="num">4</span>;<span class="num">5</span>]   <span class="com">(* [1; 2; 3; 4; 5] — O(n) *)</span>
+
+<span class="com">(* Cabeça e cauda *)</span>
+<span class="kw">let</span> cabeca = <span class="tp">List</span>.<span class="fn">hd</span> nums   <span class="com">(* 1 *)</span>
+<span class="kw">let</span> cauda  = <span class="tp">List</span>.<span class="fn">tl</span> nums   <span class="com">(* [2; 3; 4; 5] *)</span>
+
+<span class="com">(* Pattern matching — a forma idiomática *)</span>
+<span class="kw">let rec</span> <span class="fn">soma_lista</span> lista =
+  <span class="kw">match</span> lista <span class="kw">with</span>
+  | []      -> <span class="num">0</span>                              <span class="com">(* caso base: vazia *)</span>
+  | x :: xs -> x + soma_lista xs              <span class="com">(* x = cabeça, xs = cauda *)</span>
+
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"%d\n"</span> (soma_lista nums)   <span class="com">(* 15 *)</span>
+
+<span class="com">(* Pattern matching com múltiplos casos *)</span>
+<span class="kw">let</span> <span class="fn">descrever_lista</span> = <span class="kw">function</span>
+  | []          -> <span class="str">"vazia"</span>
+  | [x]         -> <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"singleton: %d"</span> x
+  | [x; y]      -> <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"dois elementos: %d e %d"</span> x y
+  | x :: _ <span class="kw">when</span> x > <span class="num">100</span> -> <span class="str">"começa com número grande"</span>
+  | _ :: _      -> <span class="str">"três ou mais elementos"</span>
+<span class="com">(* `function` é açúcar para `fun x -> match x with` *)</span>
+
+<span class="com">(* Funções de alta ordem em listas *)</span>
+<span class="kw">let</span> dobrados   = <span class="tp">List</span>.<span class="fn">map</span>    (<span class="kw">fun</span> x -> x * <span class="num">2</span>)         nums
+<span class="kw">let</span> so_pares   = <span class="tp">List</span>.<span class="fn">filter</span> (<span class="kw">fun</span> x -> x <span class="kw">mod</span> <span class="num">2</span> = <span class="num">0</span>) nums
+<span class="kw">let</span> total      = <span class="tp">List</span>.<span class="fn">fold_left</span>  (+) <span class="num">0</span>                nums
+<span class="kw">let</span> produto    = <span class="tp">List</span>.<span class="fn">fold_right</span> ( *) nums <span class="num">1</span>          <span class="com">(* 120 *)</span>
+<span class="kw">let</span> tam        = <span class="tp">List</span>.<span class="fn">length</span>    nums                  <span class="com">(* 5 *)</span>
+<span class="kw">let</span> invertida  = <span class="tp">List</span>.<span class="fn">rev</span>       nums                  <span class="com">(* [5;4;3;2;1] *)</span>
+<span class="kw">let</span> ordenada   = <span class="tp">List</span>.<span class="fn">sort</span>      <span class="fn">compare</span>               nums
+<span class="kw">let</span> existe_3   = <span class="tp">List</span>.<span class="fn">mem</span>       <span class="num">3</span>                     nums  <span class="com">(* true *)</span>
+<span class="kw">let</span> strings    = <span class="tp">List</span>.<span class="fn">map</span>       <span class="fn">string_of_int</span>         nums</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="option-result">Option e Result — Erros Sem Exceções</h2>
+        <div class="panel">
+          <p>OCaml usa <strong>tipos algébricos</strong> para representar valores opcionais e erros. O tipo <code>option</code> substitui <code>null</code> completamente — o compilador força o tratamento do caso ausente. O tipo <code>result</code> modela operações que podem falhar.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">option_result.ml — Tratamento seguro de valores opcionais</div>
+          <pre class="example"><span class="com">(* type 'a option = None | Some of 'a *)</span>
+<span class="kw">let</span> encontrado    : <span class="tp">int option</span> = <span class="tp">Some</span> <span class="num">42</span>
+<span class="kw">let</span> nao_encontrado : <span class="tp">int option</span> = <span class="tp">None</span>
+
+<span class="com">(* Tratar option com pattern matching *)</span>
+<span class="kw">let</span> <span class="fn">mostrar_opcao</span> = <span class="kw">function</span>
+  | <span class="tp">None</span>   -> <span class="fn">print_endline</span> <span class="str">"Não encontrado"</span>
+  | <span class="tp">Some</span> v -> <span class="fn">Printf.printf</span> <span class="str">"Encontrado: %d\n"</span> v
+
+<span class="kw">let</span> () = <span class="fn">mostrar_opcao</span> encontrado      <span class="com">(* Encontrado: 42 *)</span>
+<span class="kw">let</span> () = <span class="fn">mostrar_opcao</span> nao_encontrado  <span class="com">(* Não encontrado *)</span>
+
+<span class="com">(* Division segura *)</span>
+<span class="kw">let</span> <span class="fn">dividir</span> a b =
+  <span class="kw">if</span> b = <span class="num">0</span> <span class="kw">then</span> <span class="tp">None</span>
+  <span class="kw">else</span> <span class="tp">Some</span> (a / b)
+
+<span class="com">(* Option.map e Option.bind da Stdlib *)</span>
+<span class="kw">let</span> dobrado = <span class="tp">Option</span>.<span class="fn">map</span> (<span class="kw">fun</span> x -> x * <span class="num">2</span>) encontrado
+<span class="com">(* Some 84 — transforma se Some, passa None adiante *)</span>
+
+<span class="com">(* type ('ok, 'err) result = Ok of 'ok | Error of 'err *)</span>
+<span class="kw">let</span> <span class="fn">parsear_int</span> s =
+  <span class="kw">match</span> <span class="fn">int_of_string_opt</span> s <span class="kw">with</span>
+  | <span class="tp">Some</span> n -> <span class="tp">Ok</span> n
+  | <span class="tp">None</span>   -> <span class="tp">Error</span> (<span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"%S não é um inteiro"</span> s)
+
+<span class="kw">let</span> () =
+  <span class="kw">match</span> <span class="fn">parsear_int</span> <span class="str">"42"</span> <span class="kw">with</span>
+  | <span class="tp">Ok</span> n  -> <span class="fn">Printf.printf</span> <span class="str">"Número: %d\n"</span> n
+  | <span class="tp">Error</span> e -> <span class="fn">Printf.printf</span> <span class="str">"Erro: %s\n"</span> e
+
+<span class="com">(* Encadeamento de Results com bind (>>=) *)</span>
+<span class="kw">let</span> ( >>= ) r f = <span class="kw">match</span> r <span class="kw">with</span>
+  | <span class="tp">Ok</span> v    -> f v
+  | <span class="tp">Error</span> e -> <span class="tp">Error</span> e
+
+<span class="kw">let</span> operacao =
+  <span class="fn">parsear_int</span> <span class="str">"10"</span>
+  >>= (<span class="kw">fun</span> x -> <span class="fn">parsear_int</span> <span class="str">"5"</span>
+  >>= (<span class="kw">fun</span> y -> <span class="tp">Ok</span> (x + y)))
+<span class="com">(* Ok 15 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tuplas-records">Tuplas e Records</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tuplas_records.ml — Agrupamento de dados heterogêneos</div>
+          <pre class="example"><span class="com">(* Tuplas: produto de tipos — (T1 * T2 * ... * Tn) *)</span>
+<span class="kw">let</span> par    : <span class="tp">int * string</span> = (<span class="num">1</span>, <span class="str">"um"</span>)
+<span class="kw">let</span> triple : <span class="tp">int * float * bool</span> = (<span class="num">42</span>, <span class="num">3.14</span>, <span class="kw">true</span>)
+
+<span class="com">(* Desestruturação com let *)</span>
+<span class="kw">let</span> (x, y) = par
+<span class="kw">let</span> (a, b, c) = triple
+
+<span class="com">(* fst e snd para pares *)</span>
+<span class="kw">let</span> primeiro = <span class="fn">fst</span> par   <span class="com">(* 1 *)</span>
+<span class="kw">let</span> segundo  = <span class="fn">snd</span> par   <span class="com">(* "um" *)</span>
+
+<span class="com">(* Pattern matching em tuplas *)</span>
+<span class="kw">let</span> <span class="fn">descrever</span> = <span class="kw">function</span>
+  | (<span class="num">0</span>, <span class="num">0</span>) -> <span class="str">"origem"</span>
+  | (x, <span class="num">0</span>) -> <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"no eixo x: %d"</span> x
+  | (<span class="num">0</span>, y) -> <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"no eixo y: %d"</span> y
+  | (x, y) -> <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"ponto (%d, %d)"</span> x y
+
+<span class="com">(* Records: campos nomeados — mais claros que tuplas *)</span>
+<span class="kw">type</span> <span class="tp">pessoa</span> = {
+  nome  : <span class="tp">string</span>;
+  idade : <span class="tp">int</span>;
+  email : <span class="tp">string</span>;
+}
+
+<span class="kw">let</span> ana = { nome = <span class="str">"Ana"</span>; idade = <span class="num">30</span>; email = <span class="str">"ana@exemplo.com"</span> }
+
+<span class="com">(* Acesso a campos *)</span>
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"%s tem %d anos\n"</span> ana.nome ana.idade
+
+<span class="com">(* Atualização funcional: copia e atualiza campos *)</span>
+<span class="kw">let</span> ana_mais_velha = { ana <span class="kw">with</span> idade = <span class="num">31</span> }
+
+<span class="com">(* Pattern matching em records *)</span>
+<span class="kw">let</span> <span class="fn">saudar</span> { nome; idade; _ } =
+  <span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"Olá, %s! Você tem %d anos."</span> nome idade
+
+<span class="com">(* Records mutáveis — campos com mutable *)</span>
+<span class="kw">type</span> <span class="tp">ponto</span> = { <span class="kw">mutable</span> x : <span class="tp">float</span>; <span class="kw">mutable</span> y : <span class="tp">float</span> }
+
+<span class="kw">let</span> p = { x = <span class="num">1.0</span>; y = <span class="num">2.0</span> }
+<span class="kw">let</span> () = p.x <- <span class="num">3.0</span>   <span class="com">(* <- para atribuir campos mutáveis *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="if-expressao">if-then-else como Expressão</h2>
+        <div class="panel">
+          <p>Em OCaml, <code>if-then-else</code> é uma <strong>expressão</strong>, não um statement. Ele retorna um valor e ambos os ramos devem ter o mesmo tipo.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">if_expressao.ml</div>
+          <pre class="example"><span class="com">(* if como expressão — retorna um valor *)</span>
+<span class="kw">let</span> <span class="fn">maximo</span> a b = <span class="kw">if</span> a > b <span class="kw">then</span> a <span class="kw">else</span> b
+<span class="com">(* val maximo : 'a -> 'a -> 'a (polimórfico comparável) *)</span>
+
+<span class="kw">let</span> <span class="fn">sinal</span> n =
+  <span class="kw">if</span>      n > <span class="num">0</span> <span class="kw">then</span>  <span class="num">1</span>
+  <span class="kw">else if</span> n < <span class="num">0</span> <span class="kw">then</span> -<span class="num">1</span>
+  <span class="kw">else</span>                  <span class="num">0</span>
+
+<span class="com">(* Se sem else: o ramo then deve retornar unit *)</span>
+<span class="kw">let</span> <span class="fn">logar_se_debug</span> debug msg =
+  <span class="kw">if</span> debug <span class="kw">then</span> <span class="fn">print_endline</span> msg
+  <span class="com">(* tipo: bool -> string -> unit *)</span>
+
+<span class="com">(* Uso como expressão em let *)</span>
+<span class="kw">let</span> descricao =
+  <span class="kw">let</span> n = <span class="num">7</span> <span class="kw">in</span>
+  <span class="str">"O número "
+  ^ string_of_int n
+  ^ if n mod 2 = 0 then " é par" else " é ímpar"</span>
+<span class="com">(* "O número 7 é ímpar" *)</span>
+
+<span class="com">(* while loop (imperativo) *)</span>
+<span class="kw">let</span> () =
+  <span class="kw">let</span> i = <span class="fn">ref</span> <span class="num">0</span> <span class="kw">in</span>
+  <span class="kw">while</span> !i < <span class="num">5</span> <span class="kw">do</span>
+    <span class="fn">Printf.printf</span> <span class="str">"%d "</span> !i;
+    i := !i + <span class="num">1</span>
+  <span class="kw">done</span>;
+  <span class="fn">print_newline</span> ()   <span class="com">(* 0 1 2 3 4 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="modulos-basicos">Módulos — Organização de Código</h2>
+        <div class="panel">
+          <p>Em OCaml, cada arquivo <code>.ml</code> é automaticamente um módulo. Módulos agrupam definições e evitam conflitos de nomes. O sistema de módulos de OCaml é mais poderoso que o de qualquer outra linguagem mainstream.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">modulos.ml — Módulos inline e da biblioteca padrão</div>
+          <pre class="example"><span class="com">(* Módulo inline *)</span>
+<span class="kw">module</span> <span class="tp">Matematica</span> = <span class="kw">struct</span>
+  <span class="kw">let</span> pi = <span class="num">3.14159265358979</span>
+  <span class="kw">let</span> <span class="fn">area_circulo</span> r = pi *. r *. r
+  <span class="kw">let</span> <span class="fn">circunferencia</span> r = <span class="num">2.0</span> *. pi *. r
+<span class="kw">end</span>
+
+<span class="kw">let</span> () =
+  <span class="tp">Matematica</span>.<span class="fn">area_circulo</span> <span class="num">5.0</span>
+  |> <span class="fn">Printf.printf</span> <span class="str">"Área = %.2f\n"</span>
+
+<span class="com">(* Abrir módulo no escopo local *)</span>
+<span class="kw">let</span> comparar_strings s1 s2 =
+  <span class="kw">let open</span> <span class="tp">String</span> <span class="kw">in</span>
+  <span class="kw">if</span> <span class="fn">length</span> s1 = <span class="fn">length</span> s2 <span class="kw">then</span> <span class="fn">compare</span> s1 s2
+  <span class="kw">else</span> <span class="fn">compare</span> (<span class="fn">length</span> s1) (<span class="fn">length</span> s2)
+
+<span class="com">(* Módulos da biblioteca padrão mais usados *)</span>
+<span class="com">(* List, Array, String, Hashtbl, Map, Set, Printf, Format, Sys, Unix *)</span>
+
+<span class="com">(* Hashtbl — hash table imperativa *)</span>
+<span class="kw">let</span> tabela : (string, int) <span class="tp">Hashtbl.t</span> = <span class="tp">Hashtbl</span>.<span class="fn">create</span> <span class="num">16</span>
+<span class="kw">let</span> () =
+  <span class="tp">Hashtbl</span>.<span class="fn">add</span> tabela <span class="str">"um"</span> <span class="num">1</span>;
+  <span class="tp">Hashtbl</span>.<span class="fn">add</span> tabela <span class="str">"dois"</span> <span class="num">2</span>;
+  <span class="kw">match</span> <span class="tp">Hashtbl</span>.<span class="fn">find_opt</span> tabela <span class="str">"dois"</span> <span class="kw">with</span>
+  | <span class="tp">Some</span> v -> <span class="fn">Printf.printf</span> <span class="str">"dois = %d\n"</span> v
+  | <span class="tp">None</span>   -> <span class="fn">print_endline</span> <span class="str">"não encontrado"</span>
+
+<span class="com">(* Map — dicionário funcional imutável *)</span>
+<span class="kw">module</span> <span class="tp">StringMap</span> = <span class="tp">Map</span>.<span class="fn">Make</span>(<span class="tp">String</span>)
+
+<span class="kw">let</span> mapa =
+  <span class="tp">StringMap</span>.<span class="fn">empty</span>
+  |> <span class="tp">StringMap</span>.<span class="fn">add</span> <span class="str">"a"</span> <span class="num">1</span>
+  |> <span class="tp">StringMap</span>.<span class="fn">add</span> <span class="str">"b"</span> <span class="num">2</span>
+  |> <span class="tp">StringMap</span>.<span class="fn">add</span> <span class="str">"c"</span> <span class="num">3</span>
+
+<span class="kw">let</span> valor_b = <span class="tp">StringMap</span>.<span class="fn">find_opt</span> <span class="str">"b"</span> mapa  <span class="com">(* Some 2 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MINSKY, Yaron; MADHAVAPEDDY, Anil; HICKEY, Jason. <strong>Real World OCaml</strong>. 2. ed. O'Reilly Media, 2022. Capítulos 1-4. Disponível em: <a href="https://dev.realworldocaml.org" target="_blank" rel="noopener">https://dev.realworldocaml.org</a></li>
+            <li>LEROY, Xavier et al. <strong>The OCaml system Documentation</strong>. INRIA, 2024. Capítulo: "The OCaml language". Disponível em: <a href="https://v2.ocaml.org/api/" target="_blank" rel="noopener">https://v2.ocaml.org/api/</a></li>
+            <li>HICKEY, Jason; MADHAVAPEDDY, Anil; MINSKY, Yaron. <strong>OCaml from the Very Beginning</strong>. Coherent Press, 2013.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/introducao.html">OCaml — Introdução</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/avancado.html">OCaml — Avançado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/ecossistema_tooling.html">OCaml — Ecossistema</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Pattern matching em OCaml não é um switch — é uma ferramenta de desconstrução que o compilador verifica por completude.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

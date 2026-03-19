@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TornadoFX: framework DSL Kotlin para JavaFX com injecao de dependencias, builders declarativos e MVC." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Kotlin TornadoFX | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Kotlin &mdash; TornadoFX</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">TornadoFX</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>TornadoFX &mdash; JavaFX com DSL Kotlin Nativo</h1>
+          <p>Builders declarativos, injecao de dependencias, MVC integrado e zero boilerplate de JavaFX.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>TornadoFX</strong> e um framework leve que envolve JavaFX com uma DSL Kotlin de alta
+          expressividade. Em vez de construir nodes JavaFX manualmente, o desenvolvedor usa builders
+          aninhados que espelham a hierarquia da UI. O sistema de <strong>ViewModel</strong> e
+          <strong>Injectable</strong> oferece DI simples sem Spring. A DSL usa extension functions e
+          lambdas com receivers para tornar o codigo de UI mais idiomatico que Java puro. Nota:
+          TornadoFX 2.x esta em desenvolvimento para suporte ao Kotlin mais recente; cheque a
+          estabilidade da versao antes de usar em producao.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="dsl" class="section-title">1. DSL Declarativa</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kotlin &mdash; view com builders tornadofx</div>
+          <pre class="example"><span class="kw">import</span> tornadofx.*
+
+<span class="kw">class</span> <span class="fn">MinhaView</span> : View(<span class="str">"Meu App TornadoFX"</span>) {
+    <span class="kw">override val</span> root = vbox(spacing = <span class="num">16</span>) {
+        paddingAll = <span class="num">24</span>
+
+        label(<span class="str">"Usuario:"</span>)
+        <span class="kw">val</span> campoNome = textfield {
+            promptText = <span class="str">"Digite seu nome..."</span>
+        }
+
+        button(<span class="str">"Confirmar"</span>) {
+            action {
+                <span class="fn">information</span>(
+                    header  = <span class="str">"Ola!"</span>,
+                    content = <span class="str">"Bem-vindo, ${campoNome.text}"</span>
+                )
+            }
+        }
+    }
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kotlin &mdash; app entry point</div>
+          <pre class="example"><span class="kw">class</span> <span class="fn">MinhaApp</span> : App(MinhaView::<span class="kw">class</span>)
+
+<span class="kw">fun</span> <span class="fn">main</span>() = <span class="fn">launch</span>&lt;MinhaApp&gt;()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="viewmodel" class="section-title">2. ViewModel e Bindings</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">kotlin &mdash; viewmodel com validacao e commit</div>
+          <pre class="example"><span class="kw">data class</span> <span class="fn">Pessoa</span>(<span class="kw">val</span> nome: String, <span class="kw">val</span> email: String)
+
+<span class="kw">class</span> <span class="fn">PessoaModel</span>(<span class="kw">val</span> pessoa: Pessoa) : ItemViewModel&lt;Pessoa&gt;(pessoa) {
+    <span class="kw">val</span> nome  = <span class="fn">bind</span>(Pessoa::nome)
+    <span class="kw">val</span> email = <span class="fn">bind</span>(Pessoa::email)
+}
+
+<span class="kw">class</span> <span class="fn">EditarPessoaView</span> : View() {
+    <span class="kw">val</span> model: PessoaModel <span class="kw">by</span> <span class="fn">inject</span>()
+
+    <span class="kw">override val</span> root = form {
+        fieldset(<span class="str">"Editar Pessoa"</span>) {
+            field(<span class="str">"Nome"</span>)  { textfield(model.nome) }
+            field(<span class="str">"Email"</span>) {
+                textfield(model.email).<span class="fn">validator</span> {
+                    <span class="kw">if</span> (it?.contains(<span class="str">"@"</span>) == <span class="kw">false</span>)
+                        error(<span class="str">"Email invalido"</span>)
+                    <span class="kw">else</span> <span class="kw">null</span>
+                }
+            }
+        }
+        button(<span class="str">"Salvar"</span>) {
+            enableWhen(model.valid)  <span class="com">// desabilitado se invalido</span>
+            action { model.<span class="fn">commit</span>() }
+        }
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">3. Quando Usar TornadoFX</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span>Ideal Para</h3>
+            <ul>
+              <li>Projetos Kotlin desktop que querem MVC estruturado com DI sem Spring/Koin</li>
+              <li>Formularios complexos com validacao automatica e bindings bidirecionais</li>
+              <li>Equipes que preferem DSL Kotlin sobre FXML XML para a UI</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span>Evitar Quando</h3>
+            <ul>
+              <li>Meta-parametro importante: TornadoFX 2.x ainda e pre-release em 2025</li>
+              <li>Prefere Compose Multiplatform para compartilhar UI com Android e Web</li>
+              <li>Time nao tem familiaridade com Kotlin &mdash; curva e maior que JavaFX direto</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>EDVIN SYSE. <strong>TornadoFX Guide</strong>. Disponivel em: <a href="https://edvin.gitbooks.io/tornadofx-guide/" target="_blank" rel="noopener">edvin.gitbooks.io/tornadofx-guide</a>. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/Interfaces_Graficas/kotlin/kotlin_javafx.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Kotlin + JavaFX sem DSL</a></li>
+          <li><a href="/html/programacao/Interfaces_Graficas/java/java_javafx.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>JavaFX em Java</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "TornadoFX mostrou como uma DSL Kotlin bem desenhada pode eliminar metade do codigo de UI sem perder poder." &mdash; Kotlin Community
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

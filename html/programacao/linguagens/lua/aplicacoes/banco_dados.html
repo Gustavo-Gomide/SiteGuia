@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Lua para banco de dados: SQL, NoSQL, pooling, transacoes, concorrencia, APIs e padroes de producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Lua - Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Lua - Banco de Dados</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="visao-geral">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone Lua"><span data-svg="lua" aria-hidden="true"></span></div>
+          <h1>Persistencia de dados com Lua em servidores e aplicacoes</h1>
+          <p>Lua pode trabalhar com SQLite, PostgreSQL, MySQL, Redis e filas de dados com boa performance, especialmente em contextos como OpenResty, automacao e sistemas embarcados.</p>
+        </div>
+        <p class="intro-highlight">Se voce domina conexao, transacao e pooling em Lua, consegue construir APIs robustas e de baixa latencia mesmo em ambientes com recursos limitados.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Fundamentos de Persistencia em Lua</h2>
+        <p>Imagine o banco como um "arquivo vivo" compartilhado entre processos. Em Lua, as bibliotecas de acesso variam conforme o ambiente: <strong>LuaSQL</strong> e <strong>LuaDBI</strong> em apps tradicionais, <strong>resty.*</strong> no OpenResty e drivers dedicados como <strong>pgmoon</strong> para PostgreSQL.</p>
+        <p>Conceitos obrigatorios: conexao, statement parametrizado, transacao, isolamento e estrategia de reconexao. Esses pilares evitam SQL injection, corrupcao de estado e gargalos em horarios de pico.</p>
+        <div class="panel">
+          <h3 class="panel-title">Stack tipica por cenario</h3>
+          <ul>
+            <li>Desktop/local: SQLite (lsqlite3) para simplicidade e offline.</li>
+            <li>API web: PostgreSQL (pgmoon/lua-resty-postgres) com pool.</li>
+            <li>Cache e fila: Redis (lua-resty-redis) para dados volateis.</li>
+            <li>Scripting legado: LuaSQL/LuaDBI para integracao rapida.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Fluxo Interno: da Requisicao ao Commit</h2>
+        <p>Uma API em Lua tipicamente recebe request HTTP, valida payload, abre (ou reutiliza) conexao, executa query parametrizada, trata erro e responde JSON. Em cargas altas, a diferenca entre "abrir conexao por request" e "usar pool" define a escalabilidade.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Fluxo de operacao com tratamento de erro</div>
+          <pre class="example"><span class="com">-- Pseudocodigo realista para camada de repositorio</span>
+<span class="kw">local</span> repo = {}
+
+<span class="kw">function</span> repo.<span class="fn">criar_usuario</span>(db, nome, email)
+  <span class="kw">if</span> nome == <span class="str">""</span> <span class="kw">then</span>
+    <span class="kw">return</span> <span class="kw">nil</span>, <span class="str">"nome invalido"</span>
+  <span class="kw">end</span>
+
+  <span class="kw">local</span> sql = <span class="str">"INSERT INTO usuarios(nome, email) VALUES(?, ?)"</span>
+  <span class="kw">local</span> ok, err = db:<span class="fn">execute</span>(sql, nome, email)
+
+  <span class="kw">if</span> <span class="kw">not</span> ok <span class="kw">then</span>
+    <span class="kw">return</span> <span class="kw">nil</span>, err
+  <span class="kw">end</span>
+
+  <span class="kw">return</span> { status = <span class="str">"criado"</span> }
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos">Bibliotecas e Abordagens</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Ferramenta</th><th>Tipo</th><th>Pontos fortes</th><th>Limitacoes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>LuaSQL</td><td>Driver SQL classico</td><td>Simples, tradicional</td><td>API menos moderna</td></tr>
+            <tr><td>LuaDBI</td><td>Interface DBI</td><td>Prepared statements, padrao unico</td><td>Depende de binding nativo</td></tr>
+            <tr><td>lsqlite3</td><td>SQLite embutido</td><td>Leve, offline</td><td>Escala limitada em escrita concorrente</td></tr>
+            <tr><td>pgmoon</td><td>PostgreSQL</td><td>Boa integracao com OpenResty</td><td>Exige tuning de rede</td></tr>
+            <tr><td>lua-resty-redis</td><td>Redis</td><td>Baixa latencia, cache/fila</td><td>Modelo eventual de dados</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sintaxe-uso">Exemplos Praticos: SQL, Transacao e API</h2>
+        <p>Exemplo com LuaDBI em PostgreSQL usando prepared statement e controle de transacao.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaDBI com transacao segura</div>
+          <pre class="example"><span class="kw">local</span> DBI = <span class="fn">require</span>(<span class="str">"DBI"</span>)
+
+<span class="kw">local</span> db = DBI.<span class="fn">Connect</span>(
+  <span class="str">"PostgreSQL"</span>,
+  <span class="str">"appdb"</span>,
+  <span class="str">"usuario"</span>,
+  <span class="str">"senha"</span>,
+  <span class="str">"localhost"</span>,
+  5432
+)
+
+<span class="kw">local</span> ok, err = db:<span class="fn">autocommit</span>(<span class="kw">false</span>)
+<span class="kw">if</span> <span class="kw">not</span> ok <span class="kw">then</span>
+  <span class="fn">error</span>(err)
+<span class="kw">end</span>
+
+<span class="kw">local</span> stmt = db:<span class="fn">prepare</span>(<span class="str">"INSERT INTO contas(nome, saldo) VALUES(?, ?)"</span>)
+stmt:<span class="fn">execute</span>(<span class="str">"Ana"</span>, 1000)
+
+<span class="kw">local</span> sucesso = <span class="kw">true</span>
+<span class="kw">if</span> sucesso <span class="kw">then</span>
+  db:<span class="fn">commit</span>()
+<span class="kw">else</span>
+  db:<span class="fn">rollback</span>()
+<span class="kw">end</span>
+
+db:<span class="fn">close</span>()</pre>
+        </div>
+        <p>Para API server-side com OpenResty, combine pool de conexoes, timeout agressivo e fallback de cache em Redis para reduzir pressao no SQL primario.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Consulta com redis como cache</div>
+          <pre class="example"><span class="kw">local</span> redis = <span class="fn">require</span>(<span class="str">"resty.redis"</span>)
+<span class="kw">local</span> r = redis:<span class="fn">new</span>()
+r:<span class="fn">set_timeout</span>(100)
+
+<span class="kw">local</span> ok = r:<span class="fn">connect</span>(<span class="str">"127.0.0.1"</span>, 6379)
+<span class="kw">if</span> <span class="kw">not</span> ok <span class="kw">then</span>
+  ngx.<span class="fn">say</span>(<span class="str">"erro redis"</span>)
+  <span class="kw">return</span>
+<span class="kw">end</span>
+
+<span class="kw">local</span> cache = r:<span class="fn">get</span>(<span class="str">"user:42"</span>)
+<span class="kw">if</span> cache ~= ngx.null <span class="kw">then</span>
+  ngx.<span class="fn">say</span>(cache)
+  <span class="kw">return</span>
+<span class="kw">end</span>
+
+ngx.<span class="fn">say</span>(<span class="str">"cache miss -> buscar no SQL"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Quando Usar e Quando Evitar</h2>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h3 class="panel-title">Use Lua para banco quando</h3>
+            <ul>
+              <li>Seu backend usa OpenResty e precisa de baixa latencia.</li>
+              <li>A aplicacao e embarcada e pede footprint reduzido.</li>
+              <li>Voce precisa automacao de ETL e scripts de integracao rapidos.</li>
+              <li>Ha necessidade de cache inteligente com Redis e fallback SQL.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Evite quando</h3>
+            <ul>
+              <li>Equipe depende de ORM avançado e migracoes muito automatizadas.</li>
+              <li>Ha forte dependencia de tooling empresarial fora do ecossistema Lua.</li>
+              <li>Processamento analitico pesado exige stack columnar especializada.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Concorrencia, Paralelismo e Confiabilidade</h2>
+        <p>Lua usa corrotinas para concorrencia cooperativa. Em OpenResty, voce ganha multiplexacao eficiente por worker. Para paralelismo real, escale por processos/workers e use fila/stream para desacoplar escrita pesada.</p>
+        <div class="panel">
+          <h3 class="panel-title">Padroes avancados</h3>
+          <ul>
+            <li>Bulk insert em batches para reduzir round-trips.</li>
+            <li>Outbox pattern para consistencia entre DB e eventos.</li>
+            <li>Idempotencia em endpoints de escrita (chave de requisicao).</li>
+            <li>Read replicas para leitura e primario exclusivo para escrita.</li>
+            <li>Backpressure com fila quando o banco atinge limite.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> O maior gargalo raramente e a linguagem. Normalmente e query mal indexada, pool mal configurado e ausencia de limites de concorrencia.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ecossistema">Ferramentas e Ecossistema</h2>
+        <div class="grid grid--3">
+          <div class="card"><h3>SQL</h3><p>LuaDBI, LuaSQL, lsqlite3</p></div>
+          <div class="card"><h3>PostgreSQL</h3><p>pgmoon, lua-resty-postgres</p></div>
+          <div class="card"><h3>MySQL</h3><p>lua-resty-mysql</p></div>
+          <div class="card"><h3>Cache/Fila</h3><p>lua-resty-redis</p></div>
+          <div class="card"><h3>Servidor</h3><p>OpenResty, Lapis</p></div>
+          <div class="card"><h3>Serializacao</h3><p>lua-cjson, dkjson</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao com Outras Stacks</h2>
+        <table class="table">
+          <thead>
+            <tr><th>Criterio</th><th>Lua + OpenResty</th><th>Node.js</th><th>Go</th><th>Python</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Latencia edge/API gateway</td><td>Muito baixa</td><td>Boa</td><td>Muito boa</td><td>Media</td></tr>
+            <tr><td>Bibliotecas DB empresariais</td><td>Media</td><td>Alta</td><td>Alta</td><td>Muito alta</td></tr>
+            <tr><td>Footprint</td><td>Baixo</td><td>Medio</td><td>Baixo</td><td>Medio</td></tr>
+            <tr><td>Curva inicial</td><td>Media</td><td>Baixa</td><td>Media</td><td>Baixa</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>LUAROCKS. <strong>LuaRocks Package Repository</strong>. Disponivel em: <a href="https://luarocks.org/" target="_blank" rel="noopener">https://luarocks.org/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>OPENRESTY. <strong>Official Documentation</strong>. Disponivel em: <a href="https://openresty.org/en/" target="_blank" rel="noopener">https://openresty.org/en/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>KEPLER PROJECT. <strong>LuaSQL Documentation</strong>. Disponivel em: <a href="https://lunarmodules.github.io/luasql/" target="_blank" rel="noopener">https://lunarmodules.github.io/luasql/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>LUA-DBI TEAM. <strong>LuaDBI</strong>. Disponivel em: <a href="https://github.com/mwild1/luadbi" target="_blank" rel="noopener">https://github.com/mwild1/luadbi</a>. Acesso em: 13 mar. 2026.</li>
+          <li>REDIS. <strong>Redis Documentation</strong>. Disponivel em: <a href="https://redis.io/docs/" target="_blank" rel="noopener">https://redis.io/docs/</a>. Acesso em: 13 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Banco de dados em Lua funciona muito bem quando a arquitetura respeita limites: conexao reutilizada, query parametrizada, observabilidade e pressao de escrita controlada.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/lua/aplicacoes/web.html">Lua para Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/lua/aplicacoes/terminal_cli.html">Lua para Terminal e CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/lua/guia/ecossistema_tooling.html">Lua - Ecossistema e Tooling</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,257 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Estratégias de alocação de memória: First Fit, Best Fit, Worst Fit, alocação dinâmica com malloc/free, buddy system e alocadores modernos (jemalloc, tcmalloc)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Alocação de Memória | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Alocação de Memória</h1>
+            <p class="page-subtitle">Estratégias para distribuir memória eficientemente — do kernel ao heap de aplicação</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Alocar memória eficientemente é crítico para o desempenho de qualquer sistema. Fragmentação desperdiça RAM disponível, e lentidão no alocador impacta a performance de toda a aplicação — um alocador ruim pode ser responsável por 10-30% do tempo de execução em aplicações multi-thread intensivas.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 ═══════════════════ -->
+      <section id="estrategias-contiguas">
+        <h2>Estratégias de Alocação Contígua</h2>
+        <p>Antes da paginação generalizada, sistemas operacionais gerenciavam regiões contíguas de RAM livre usando estratégias simples de seleção de blocos:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Estratégia</th>
+                <th>Algoritmo de Seleção</th>
+                <th>Velocidade</th>
+                <th>Fragmentação Resultante</th>
+                <th>Uso Prático</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>First Fit</td>
+                <td>Primeiro bloco livre suficientemente grande</td>
+                <td>Rápida (para na primeira opção)</td>
+                <td>Fragmentação no início da lista</td>
+                <td>Alocadores simples, slab allocator interno</td>
+              </tr>
+              <tr>
+                <td>Next Fit</td>
+                <td>Como First Fit mas começa de onde parou</td>
+                <td>Rápida e mais uniforme</td>
+                <td>Distribuída pelo heap</td>
+                <td>Variante usada em alguns sistemas embarcados</td>
+              </tr>
+              <tr>
+                <td>Best Fit</td>
+                <td>Menor bloco que satisfaz o pedido</td>
+                <td>Lenta (varre toda a lista)</td>
+                <td>Muitos fragmentos minúsculos inutilizáveis</td>
+                <td>Raramente — fragmentação pior que First Fit</td>
+              </tr>
+              <tr>
+                <td>Worst Fit</td>
+                <td>Maior bloco disponível</td>
+                <td>Lenta (varre toda a lista)</td>
+                <td>Destrói blocos grandes, poucos blocos médios sobram</td>
+                <td>Quase nunca — geralmente inferior aos outros</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 ═══════════════════ -->
+      <section id="buddy-system">
+        <h2>Buddy System</h2>
+        <p>O Buddy System é usado pelo kernel Linux para alocar páginas físicas contíguas. Divide a memória em blocos de tamanhos que são potências de 2 (1, 2, 4, 8, 16... páginas). É eficiente em alocação e coalescência — ao liberar, blocos irmãos ("buddies") adjacentes são fundidos automaticamente.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Buddy System — Split e Merge de Blocos</div>
+          <pre class="code-block">
+Estado inicial: um bloco de 16 páginas
+[████████████████]  ← 16 páginas livres
+
+Alocação de 3 páginas → bloco mínimo = 4 páginas (próxima potência de 2)
+Processo de split:
+  [████████████████] → [████████] [████████]  (split de 16 em dois de 8)
+  [████████] [████████] → [████] [████] [████████]  (split de 8 em dois de 4)
+  [████] = alocado   [████] = livre   [████████] = livre
+
+Estado: [ALOCADO-4][LIVRE-4][LIVRE-8]
+
+Alocação de 1 página → bloco mínimo = 1 página
+  [LIVRE-4] → [LIVRE-2][LIVRE-2] → [LIVRE-1][LIVRE-1]
+  → [ALOCADO-1][LIVRE-1][LIVRE-2][LIVRE-8]
+
+Liberação do bloco de 4 páginas:
+  Verifica se "buddy" (bloco irmão de mesmo tamanho) está livre
+  Buddy (segundo bloco de 4) está LIVRE → merge!
+  → [LIVRE-8][LIVRE-1][LIVRE-2]  (buddies de 4 fundiram em 8)
+
+Liberação do bloco de 1 página:
+  Buddy (segundo bloco de 1) está livre → merge!
+  → [LIVRE-8][LIVRE-2]  (buddies de 1 fundiram em 2)
+  Buddy (segundo bloco de 2) está livre → merge!
+  → [LIVRE-8][LIVRE-4]  ... e assim por diante até restaurar
+
+Complexidade: O(log N) para alocação e liberação</pre>
+        </div>
+        <p>O kernel Linux expõe o estado do buddy system via <code>/proc/buddyinfo</code>, mostrando quantos blocos livres existem para cada ordem (tamanho em potência de 2 de páginas).</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 ═══════════════════ -->
+      <section id="malloc">
+        <h2>malloc() — Alocação em Espaço de Usuário</h2>
+        <p>A função <code>malloc()</code> da biblioteca C (glibc) é o principal alocador de heap para programas de usuário. Internamente usa <code>sbrk()</code> para expandir o segmento de dados (alocações pequenas) e <code>mmap()</code> para alocações grandes (acima de ~128 KB no glibc).</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fastbins</h3>
+            <p>Cache de chunks pequenos (16-80 bytes) recém-liberados. Alocação e liberação em O(1) — não une com vizinhos. Acelera padrões onde objetos pequenos são criados e destruídos frequentemente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Smallbins e Largebins</h3>
+            <p>Listas duplamente encadeadas organizadas por tamanho. Smallbins para objetos até ~512 bytes; largebins para objetos maiores com busca por best-fit aproximado. Chunks são unidos ao liberar (coalescing).</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Arena Multi-thread</h3>
+            <p>glibc mantém arenas separadas por thread para reduzir contenção de lock. Cada arena gerencia seu próprio heap com bins independentes — evita que threads fiquem bloqueadas esperando o lock global.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Double-free e Use-after-free</h3>
+            <p>Chamar <code>free()</code> duas vezes ou usar ponteiro após freed corrompe silenciosamente os metadados do alocador (size, fd/bk pointers nos bins). Pode tornar-se vulnerabilidade de segurança exploitável via heap overflow.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Detectando Vazamentos com Valgrind</div>
+          <pre class="code-block">
+// Código C com memory leak
+#include &lt;stdlib.h&gt;
+int main() {
+    char *buf = malloc(1024);  // Alocado mas nunca liberado
+    buf[0] = 'A';
+    return 0;  // free(buf) ausente — leak de 1024 bytes
+}
+
+// Compilar e executar com Valgrind
+$ gcc -g -o programa programa.c
+$ valgrind --leak-check=full ./programa
+
+==1234== HEAP SUMMARY:
+==1234==     in use at exit: 1,024 bytes in 1 blocks
+==1234==   total heap usage: 1 allocs, 0 frees, 1,024 bytes allocated
+==1234==
+==1234== 1,024 bytes in 1 blocks are definitely lost in loss record 1 of 1
+==1234==    at 0x4C2FB0F: malloc (in /usr/lib/valgrind/...)
+==1234==    by 0x10869: main (programa.c:4)
+==1234==
+==1234== LEAK SUMMARY:
+==1234==    definitely lost: 1,024 bytes in 1 blocks</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 ═══════════════════ -->
+      <section id="alocadores-modernos">
+        <h2>Alocadores Modernos</h2>
+        <p>Para aplicações de alta performance, substituir o alocador padrão (glibc ptmalloc2) por um alocador especializado pode trazer ganhos significativos em throughput e redução de fragmentação:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Alocador</th>
+                <th>Criador / Usado em</th>
+                <th>Thread Safety</th>
+                <th>Fragmentação</th>
+                <th>Throughput Multi-thread</th>
+                <th>Destaque</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>ptmalloc2</td>
+                <td>GNU / glibc (padrão Linux)</td>
+                <td>Arenas por thread</td>
+                <td>Média</td>
+                <td>Médio</td>
+                <td>Ubíquo, compatível, mas não ideal para alto paralelismo</td>
+              </tr>
+              <tr>
+                <td>jemalloc</td>
+                <td>Facebook / Firefox, FreeBSD, Redis</td>
+                <td>Excelente (per-CPU caches)</td>
+                <td>Baixa</td>
+                <td>Alto</td>
+                <td>Profiling embutido, controle fino de fragmentação, usado em produção pesada</td>
+              </tr>
+              <tr>
+                <td>tcmalloc</td>
+                <td>Google / Chrome, Abseil</td>
+                <td>Excelente (thread-local caches)</td>
+                <td>Baixa a média</td>
+                <td>Muito alto</td>
+                <td>Thread-local caches eliminam lock na maioria das alocações, heap profiler integrado</td>
+              </tr>
+              <tr>
+                <td>mimalloc</td>
+                <td>Microsoft Research</td>
+                <td>Excelente</td>
+                <td>Muito baixa</td>
+                <td>Muito alto</td>
+                <td>Segurança aprimorada, randomização de heap, desempenho competitivo com tcmalloc</td>
+              </tr>
+              <tr>
+                <td>snmalloc</td>
+                <td>Microsoft Research</td>
+                <td>Lock-free</td>
+                <td>Baixa</td>
+                <td>Excepcional</td>
+                <td>Arquitetura message-passing para devoluções entre threads — zero sync no caminho comum</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>Substituir ptmalloc2 por jemalloc ou tcmalloc em aplicações multi-thread intensivas (servidores web, bancos de dados) frequentemente resulta em ganhos de <strong>10-30% em throughput</strong> devido à melhor gestão de arenas e menor contenção de locks.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Entenda como a fragmentação afeta todos esses padrões de alocação em <a href="/html/sistemas/memoria/fragmentacao.html">Fragmentação de Memória</a> e como o gerenciador de memória do SO coordena tudo em <a href="/html/sistemas/memoria/gerenciamento_memoria.html">Gerenciamento de Memória</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"A escolha do alocador é a decisão de performance mais ignorada em desenvolvimento de sistemas — poucos percebem quantos ciclos de CPU são gastos gerenciando o heap."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

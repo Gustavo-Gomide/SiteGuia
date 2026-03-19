@@ -1,0 +1,137 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Switches L2: tabela CAM, STP/RSTP, Port Security, PoE, LACP/EtherChannel e SPAN (port mirroring)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Switches L2 | Camada de Enlace | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Enlace</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Switches L2</h1>
+          <p class="page-subtitle">O coracão da LAN moderna: encaminham frames, evitam loops, distribuím energia e agregam links</p>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>switch de Camada 2</strong> encaminha frames Ethernet com base no endereço MAC destino, criando domínios de colisão individuais por porta. Diferentemente do hub (que repete para todas as portas), o switch aprende os MACs e encaminha apenas para a porta correta, isolando o tráfego e permitindo comunicação full-duplex simultânea.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="stp" class="section-title">STP &mdash; Spanning Tree Protocol (IEEE 802.1D)</h2>
+        <p>Redes redundantes criam <strong>loops</strong> que geram tempestades de broadcast e instabilidade da tabela CAM. O STP bloqueia logicamente links redundantes, mantendo uma topologia sem loops.</p>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Eleição do Root Bridge</h3>
+            <ol>
+              <li>Cada switch anuncia seu <strong>Bridge ID (BID)</strong> = Priority (padrão 32768) + MAC address</li>
+              <li>O switch com o <strong>menor BID</strong> vira Root Bridge; desempate: menor MAC</li>
+              <li>Para mudar o root: <code class="code-inline">spanning-tree vlan 1 priority 4096</code> (números múltiplos de 4096)</li>
+            </ol>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Funções de Porta</h3>
+            <ul>
+              <li><strong>Root Port (RP):</strong> porta com melhor caminho para o root bridge; uma por switch (exceto root)</li>
+              <li><strong>Designated Port (DP):</strong> melhor porta em cada segmento para alcançar o root; fica em forwarding</li>
+              <li><strong>Blocked Port:</strong> porta redundante colocada em blocking para evitar loop</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Estados de Porta (802.1D)</h3>
+            <ul>
+              <li><strong>Blocking:</strong> não encaminha frames; escuta BPDUs (20s)</li>
+              <li><strong>Listening:</strong> participa da eleição STP (15s)</li>
+              <li><strong>Learning:</strong> aprende MACs, não encaminha ainda (15s)</li>
+              <li><strong>Forwarding:</strong> encaminha frames normalmente</li>
+              <li><strong>Disabled:</strong> porta administrativamente desativada</li>
+            </ul>
+            <p class="note">Conversão total: até 50s em 802.1D. RSTP (802.1w) reduz para &lt; 1s com propostu/agreement.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">RSTP e Melhorias</h3>
+            <ul>
+              <li><strong>PortFast:</strong> porta de acesso vai diretamente para forwarding (sem estados intermediários); <code class="code-inline">spanning-tree portfast</code></li>
+              <li><strong>BPDU Guard:</strong> se PortFast receber BPDU &rarr; porta em err-disabled; protege contra APs/switches não autorizados</li>
+              <li><strong>Root Guard:</strong> impede que porta específica se torne root port</li>
+              <li><strong>Loop Guard:</strong> previne loops quando BPDUs param de chegar (uni-directional link failure)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="features" class="section-title">Recursos Avançados</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">EtherChannel / LACP (802.3ad)</h3>
+            <p>Agrega múltiplos links físicos em um único link lógico, aumentando largura de banda e resiliência. 2 a 8 portas por bundle.</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco &mdash; LACP EtherChannel</span></div>
+              <pre class="code-block">interface range GigabitEthernet0/1-2
+  channel-group 1 mode active   ! LACP ativo
+!
+interface Port-channel1
+  switchport mode trunk</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">SPAN (Port Mirroring)</h3>
+            <p>Copia tráfego de portas de origem para uma porta de destino onde fica conectado um analisador (Wireshark, IDS/IPS).</p>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco &mdash; SPAN local</span></div>
+              <pre class="code-block">monitor session 1 source interface Gi0/1 both
+monitor session 1 destination interface Gi0/24
+! RSPAN: entre switches (VLAN espelho)
+! ERSPAN: encapsula em GRE para destino remoto</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Comandos de Diagnóstico</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header"><span>Cisco IOS &mdash; show commands</span></div>
+              <pre class="code-block">show mac address-table           ! tabela CAM completa
+show mac address-table dynamic   ! só entradas dinâmicas
+show spanning-tree               ! estado STP por VLAN
+show spanning-tree vlan 10 detail
+show interfaces GigabitEthernet0/1 status
+show etherchannel summary        ! EtherChannels
+show port-security               ! Port Security</pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando: <a href="vlans.html"><strong>VLANs (802.1Q)</strong></a>, <a href="mac_address.html"><strong>Endereço MAC</strong></a> e <a href="../camada_rede/roteamento.html"><strong>Roteamento Inter-VLAN</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um switch sem STP configurado corretamente é uma bomba de relógio. Um loop de broadcast pode derrubar uma rede inteira em segundos."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

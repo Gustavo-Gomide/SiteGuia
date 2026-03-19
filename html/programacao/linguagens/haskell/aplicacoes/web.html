@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Web com Haskell: Servant para REST APIs type-safe, Scotty para APIs simples e Warp como servidor HTTP." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell — Web</h1>
+          <p><strong>Servant</strong> representa APIs REST como <em>tipos Haskell</em> — a API completa é uma expressão de tipo, e o compilador garante que handlers correspondem exatamente ao tipo especificado. <strong>Scotty</strong> oferece uma API simples monádica similar ao Express/Flask. <strong>Warp</strong> é o servidor HTTP de alta performance subjacente.</p>
+        </div>
+        <p class="intro-highlight">
+          Servant é único: a API é um <strong>tipo de dados</strong> que pode ser usado para gerar automaticamente documentação Swagger, clientes JavaScript, clientes Haskell tipo-safe, e backends — tudo a partir da mesma definição de tipo. Se a API muda, tudo que depende dela <em>não compila</em> até ser atualizado.
+        </p>
+      </section>
+
+      <section>
+        <h2 id="servant" class="section-title">Servant — REST APIs Type-Safe</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">API como tipo, handlers gerados pelo compilador</div>
+          <pre class="example">{-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE TypeOperators     #-}
+{-# LANGUAGE OverloadedStrings #-}
+
+import Servant
+import Network.Warp (run)
+import Data.Aeson (FromJSON, ToJSON, Generic)
+
+<span class="com">-- Tipos de domínio</span>
+data Produto = Produto
+    { produtoId   :: Int
+    , produtoNome :: String
+    , produtoPreco :: Double
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+data NovoProduto = NovoProduto
+    { novoNome  :: String
+    , novoPreco :: Double
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+<span class="com">-- Definição da API como TIPO</span>
+type ProdutosAPI
+     = "produtos" :> Get '[JSON] [Produto]
+  :<|> "produtos" :> Capture "id" Int :> Get '[JSON] Produto
+  :<|> "produtos" :> ReqBody '[JSON] NovoProduto :> Post '[JSON] Produto
+  :<|> "produtos" :> Capture "id" Int :> DeleteNoContent
+  :<|> "produtos" :> QueryParam "busca" String :> Get '[JSON] [Produto]
+
+<span class="com">-- Handlers — devem corresponder EXATAMENTE ao tipo</span>
+listarProdutos :: Handler [Produto]
+listarProdutos = return
+    [ Produto 1 "Teclado" 150.0
+    , Produto 2 "Mouse" 80.0
+    ]
+
+buscarProduto :: Int -> Handler Produto
+buscarProduto pid
+    | pid == 1  = return (Produto 1 "Teclado" 150.0)
+    | otherwise = throwError err404 { errBody = "Produto não encontrado" }
+
+criarProduto :: NovoProduto -> Handler Produto
+criarProduto novo = return $ Produto 99 (novoNome novo) (novoPreco novo)
+
+deletarProduto :: Int -> Handler NoContent
+deletarProduto _ = return NoContent
+
+buscarPorNome :: Maybe String -> Handler [Produto]
+buscarPorNome Nothing    = listarProdutos
+buscarPorNome (Just nome) = return
+    [p | p &lt;- [Produto 1 "Teclado" 150.0], nome `isInfixOf` produtoNome p]
+
+<span class="com">-- Server — combina handlers na ordem da API</span>
+server :: Server ProdutosAPI
+server = listarProdutos
+    :<|> buscarProduto
+    :<|> criarProduto
+    :<|> deletarProduto
+    :<|> buscarPorNome
+
+<span class="com">-- Executar com Warp</span>
+main :: IO ()
+main = do
+    putStrLn "Servidor em http://localhost:8080"
+    run 8080 (serve (Proxy :: Proxy ProdutosAPI) server)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="scotty" class="section-title">Scotty — API Simples e Rápida</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Scotty: API expressiva similar ao Sinatra/Express</div>
+          <pre class="example"><span class="com">-- cabal install scotty aeson</span>
+import Web.Scotty
+import Data.Aeson (object, (.=))
+
+main :: IO ()
+main = scotty 3000 $ do
+
+    <span class="com">-- Middleware</span>
+    middleware logStdoutDev  <span class="com">-- requer wai-extra</span>
+
+    <span class="com">-- GET com path param</span>
+    get "/hello/:nome" $ do
+        nome &lt;- pathParam "nome"
+        text $ "Olá, " &lt;&gt; nome &lt;&gt; "!"
+
+    <span class="com">-- GET com query param</span>
+    get "/buscar" $ do
+        q &lt;- queryParam "q" :: ActionM Text
+        json $ object ["busca" .= q]
+
+    <span class="com">-- POST com JSON body</span>
+    post "/usuarios" $ do
+        usuario &lt;- jsonData :: ActionM Usuario
+        status created201
+        json usuario
+
+    <span class="com">-- Tratamento de erro</span>
+    get "/produto/:id" $ do
+        pid &lt;- pathParam "id" :: ActionM Int
+        produto &lt;- liftIO $ buscarProduto pid
+        case produto of
+            Nothing -> do
+                status notFound404
+                json $ object ["erro" .= ("não encontrado" :: Text)]
+            Just p  -> json p
+
+    <span class="com">-- Rota não encontrada (catch-all)</span>
+    notFound $ json $ object ["erro" .= ("endpoint não existe" :: Text)]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="aeson" class="section-title">Aeson — JSON em Haskell</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Serialização e deserialização JSON type-safe</div>
+          <pre class="example">{-# LANGUAGE DeriveGeneric #-}
+import Data.Aeson
+import GHC.Generics (Generic)
+
+<span class="com">-- Derivação automática via Generic</span>
+data Usuario = Usuario
+    { usuarioId    :: Int
+    , usuarioNome  :: String
+    , usuarioEmail :: String
+    } deriving (Show, Generic, FromJSON, ToJSON)
+
+<span class="com">-- Customizar nomes dos campos JSON</span>
+data Config = Config
+    { configHost :: String
+    , configPort :: Int
+    } deriving (Show, Generic)
+
+instance ToJSON Config where
+    toJSON = genericToJSON defaultOptions
+        { fieldLabelModifier = \s -> drop 6 s  <span class="com">-- remover prefixo "config"</span>
+        }
+
+instance FromJSON Config where
+    parseJSON = genericParseJSON defaultOptions
+        { fieldLabelModifier = \s -> "config" ++ s
+        }
+
+<span class="com">-- Parser manual para controle total</span>
+instance FromJSON Usuario where
+    parseJSON = withObject "Usuario" $ \v ->
+        Usuario
+            &lt;$&gt; v .:  "id"
+            &lt;*&gt; v .:  "nome"
+            &lt;*&gt; v .:? "email" .!= "sem-email@exemplo.com"  <span class="com">-- campo opcional com default</span>
+
+<span class="com">-- Encode/decode</span>
+exemplo :: IO ()
+exemplo = do
+    let u = Usuario 1 "João" "joao@ex.com"
+
+    <span class="com">-- Serializar para ByteString</span>
+    let bs = encode u
+    putStrLn $ "JSON: " ++ show bs
+
+    <span class="com">-- Deserializar</span>
+    case decode bs :: Maybe Usuario of
+        Nothing -> putStrLn "Erro no parse"
+        Just u' -> print u'
+
+    <span class="com">-- eitherDecode para mensagem de erro detalhada</span>
+    case eitherDecode bs :: Either String Usuario of
+        Left err -> putStrLn $ "Erro: " ++ err
+        Right u' -> print u'</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="arquitetura-tradeoffs" class="section-title">Arquitetura Recomendada e Trade-offs</h2>
+        <p>Em producao, uma API Haskell costuma seguir o fluxo: rota tipada -> validacao de dominio pura -> camada de servico -> repositorio -> resposta serializada. Essa separacao permite testes rapidos no dominio e testes de integracao focados na infraestrutura.</p>
+        <table class="table">
+          <thead><tr><th>Decisao</th><th>Beneficio</th><th>Custo/limite</th></tr></thead>
+          <tbody>
+            <tr><td>Servant em contratos complexos</td><td>Garantia de tipo fim a fim</td><td>Curva inicial maior</td></tr>
+            <tr><td>Scotty em MVPs</td><td>Entrega rapida</td><td>Menos estrutura para crescimento</td></tr>
+            <tr><td>STM/async para concorrencia</td><td>Menos race conditions</td><td>Exige modelagem cuidadosa</td></tr>
+            <tr><td>JSON com aeson derivado</td><td>Produtividade alta</td><td>Atencao a compatibilidade de schema</td></tr>
+          </tbody>
+        </table>
+        <div class="panel">
+          <h3 class="panel-title">Exemplos reais de uso</h3>
+          <p>Backends de fintech, gateways de autenticacao, sistemas de auditoria e plataformas de dados com regras densas se beneficiam bastante desse modelo.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SERVANT TEAM. <strong>Servant — A Type-Level Web DSL</strong>. Disponível em: &lt;https://docs.servant.dev&gt;. Acesso em: 2026.</li>
+            <li>SCOTTY. <strong>Scotty — Web Framework Inspired by Ruby's Sinatra</strong>. Disponível em: &lt;https://hackage.haskell.org/package/scotty&gt;. Acesso em: 2026.</li>
+            <li>AESON. <strong>aeson — Fast JSON Parsing and Encoding</strong>. Disponível em: &lt;https://hackage.haskell.org/package/aeson&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Haskell Avançado</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Terminal e CLI com Haskell</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Servant demonstra o superpoder dos tipos em Haskell: a API é um <strong>tipo de nível de tipo</strong> (<code>DataKinds</code>) — não um valor ou string em runtime. Isso significa que o compilador pode <em>provar</em> que seu servidor implementa corretamente todos os endpoints com os tipos corretos. Impossível implementar um endpoint POST que retorne o tipo errado, ou esquecer de implementar um endpoint: não compila.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

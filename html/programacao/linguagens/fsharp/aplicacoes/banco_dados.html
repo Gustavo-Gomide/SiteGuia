@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="F# com banco de dados: SQL tipado, Npgsql, SQLProvider, EF Core, transacoes e boas praticas para persistencia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# - Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# - Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone F#"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>Persistencia com F#</h1>
+          <p>F# conversa com bancos relacionais e NoSQL usando toda a infraestrutura .NET, com vantagem extra na modelagem de dados e validacao em compilacao.</p>
+        </div>
+        <p class="intro-highlight">Com F#, seu modelo de dominio pode ser mais restrito que o schema do banco. Essa diferenca e saudavel: <strong>o banco guarda dados, o dominio protege regras</strong>.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="opcoes-acesso">Opcoes de Acesso a Dados</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Abordagem</th><th>Ferramentas</th><th>Perfil de uso</th></tr></thead>
+            <tbody>
+              <tr><td>SQL explicito</td><td>Npgsql, Dapper, Npgsql.FSharp</td><td>Controle total de query e performance</td></tr>
+              <tr><td>Provider tipado</td><td>SQLProvider</td><td>Produtividade com tipos inferidos da fonte</td></tr>
+              <tr><td>ORM tradicional</td><td>Entity Framework Core</td><td>Times .NET com padrao consolidado de repositorio</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="npgsql-fsharp">Exemplo com Npgsql.FSharp</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Consulta parametrizada e mapeamento seguro</div>
+          <pre class="example">open Npgsql.FSharp
+
+type Cliente = {
+    Id: int
+    Nome: string
+    Email: string
+}
+
+<span class="kw">let</span> conn = <span class="str">"Host=localhost;Database=app;Username=app;Password=segredo"</span>
+
+<span class="kw">let</span> buscarPorEmail email =
+    conn
+    |&gt; Sql.connect
+    |&gt; Sql.query <span class="str">"select id, nome, email from clientes where email = @email"</span>
+    |&gt; Sql.parameters [ <span class="str">"email"</span>, Sql.string email ]
+    |&gt; Sql.executeRow (fun read -&gt;
+        {
+            Id = read.int <span class="str">"id"</span>
+            Nome = read.string <span class="str">"nome"</span>
+            Email = read.string <span class="str">"email"</span>
+        })</pre>
+        </div>
+        <p>Uso de parametros evita SQL injection. O mapeamento explicito deixa clara a traducao banco-dominio.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="efcore">Entity Framework Core em F#</h2>
+        <p>EF Core funciona em F#, especialmente quando o time ja usa migracoes e padrao DbContext no ecossistema .NET.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Consulta simples com LINQ e Async</div>
+          <pre class="example">open Microsoft.EntityFrameworkCore
+
+<span class="kw">let</span> buscarAtivos (ctx: AppDbContext) =
+    task {
+        return!
+            ctx.Clientes
+               .Where(fun c -&gt; c.Ativo)
+               .OrderBy(fun c -&gt; c.Nome)
+               .ToListAsync()
+    }</pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> Em F#, prefira projetar para DTOs/records no limite de aplicacao. Evita vazar entidades ORM para o dominio.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transacoes-concorrencia">Transacoes e Concorrencia</h2>
+        <div class="panel">
+          <ul>
+            <li>Use transacoes curtas e com escopo explicito.</li>
+            <li>Adote chave de idempotencia em comandos externos.</li>
+            <li>Use controle otimista (versionamento) para evitar lost updates.</li>
+            <li>Nao misture I/O remoto demorado dentro da mesma transacao do banco.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Quando F# Brilha na Persistencia</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Pontos fortes</p>
+            <ul>
+              <li>Modelagem forte de comandos e eventos.</li>
+              <li>Validacao de dados antes de tocar no banco.</li>
+              <li>Composicao clara de fluxos com Result/Async.</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Cuidados</p>
+            <ul>
+              <li>Muitos samples de ORM estao em C# e exigem adaptacao.</li>
+              <li>Evite sobreengenharia funcional em CRUD simples.</li>
+              <li>Decisao de stack deve considerar maturidade do time.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>Npgsql. <strong>Npgsql Documentation</strong>. Disponivel em: &lt;https://www.npgsql.org/doc/&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>Npgsql.FSharp. <strong>Npgsql.FSharp GitHub</strong>. Disponivel em: &lt;https://github.com/Zaid-Ajaj/Npgsql.FSharp&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>Microsoft. <strong>Entity Framework Core Documentation</strong>. Disponivel em: &lt;https://learn.microsoft.com/ef/core/&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>FSProjects. <strong>SQLProvider</strong>. Disponivel em: &lt;https://fsprojects.github.io/SQLProvider/&gt;. Acesso em: 13 mar. 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Integrar banco com APIs Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Boas praticas de projeto</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Pipelines de dados com F#</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Persistencia robusta em F# nasce do equilibrio entre <strong>SQL claro, tipos de dominio fortes e fronteiras bem definidas</strong>.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

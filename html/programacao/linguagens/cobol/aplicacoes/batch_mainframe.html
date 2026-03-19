@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="COBOL em Batch e Mainframe: JCL completo, SORT utility, VSAM KSDS, GDG (Generation Data Groups), IDCAMS, processamento em lote de alto volume, SYSOUT e JESLOG." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Batch e Mainframe | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Batch e Mainframe</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Batch e Mainframe</h1>
+          <p>O processamento batch em mainframe IBM z/OS é o núcleo da infraestrutura financeira mundial. Durante a madrugada, centenas de <strong>jobs JCL</strong> processam bilhões de transações — extratos bancários, pagamento de pensões, cobrança de impostos — usando COBOL com VSAM, SORT utility e DB2 em pipelines de alta confiabilidade.</p>
+        </div>
+        <p class="intro-highlight">
+          Um único job batch bem escrito pode processar 50 milhões de registros por hora em um IBM z16. A chave: zero overhead de I/O (arquivos VSAM sequenciais em buffers), processamento record-by-record em memória constante, e ausência de garbage collector.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="jcl-completo">JCL — Job Control Language Completo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JCL completo: compilar, sort e executar em 3 steps</div>
+          <pre class="example"><span class="com">//</span><span class="fn">NIGHTJOB</span> JOB (ACCT001),'PROCESSAMENTO NOTURNO',
+<span class="com">//</span>         CLASS=B,MSGCLASS=X,NOTIFY=&amp;SYSUID,
+<span class="com">//</span>         TIME=(0,30),                       <span class="com">// limite: 30 minutos</span>
+<span class="com">//</span>         REGION=0M                          <span class="com">// sem limite de memória</span>
+<span class="com">//</span>
+<span class="com">//*-----------------------------------------------------------------</span>
+<span class="com">//* STEP01 — SORT do arquivo de entrada por agencia + conta</span>
+<span class="com">//*-----------------------------------------------------------------</span>
+<span class="com">//</span><span class="fn">STEP01</span>   EXEC PGM=SORT
+<span class="com">//</span>SORTIN   DD DSN=BANCO.TRANS.DIARIO,DISP=SHR
+<span class="com">//</span>SORTOUT  DD DSN=&&TRANS.SORTED,              <span class="com">// dataset temporário</span>
+<span class="com">//</span>            UNIT=SYSDA,SPACE=(CYL,(20,10)),
+<span class="com">//</span>            DCB=(RECFM=FB,LRECL=250,BLKSIZE=0)
+<span class="com">//</span>SYSIN    DD *
+  SORT FIELDS=(1,4,CH,A,5,10,CH,A),FILSZ=E5000000
+  SUM FIELDS=NONE
+<span class="com">//*</span>
+<span class="com">//*-----------------------------------------------------------------</span>
+<span class="com">//* STEP02 — Executar programa COBOL de processamento</span>
+<span class="com">//*-----------------------------------------------------------------</span>
+<span class="com">//</span><span class="fn">STEP02</span>   EXEC PGM=CALCSALDO,COND=(0,NE,STEP01)
+<span class="com">//</span>STEPLIB  DD DSN=BANCO.PRODUCAO.LOAD,DISP=SHR
+<span class="com">//</span>SYSOUT   DD SYSOUT=*
+<span class="com">//</span>ENTRADA  DD DSN=&&TRANS.SORTED,DISP=(OLD,DELETE) <span class="com">// consumir e deletar</span>
+<span class="com">//</span>CONTAS   DD DSN=BANCO.VSAM.CONTAS,DISP=SHR      <span class="com">// VSAM KSDS</span>
+<span class="com">//</span>SAIDA    DD DSN=BANCO.RELATORIO.SALDOS(+1),      <span class="com">// GDG próxima geração</span>
+<span class="com">//</span>            DISP=(NEW,CATLG,DELETE),
+<span class="com">//</span>            UNIT=SYSDA,SPACE=(CYL,(5,2),RLSE),
+<span class="com">//</span>            DCB=(RECFM=FB,LRECL=133)
+<span class="com">//</span>PARMLIB  DD DSN=BANCO.PARM(CALCSALD),DISP=SHR</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="vsam">VSAM — Virtual Storage Access Method</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">IDCAMS — definir KSDS (Key-Sequenced Data Set)</div>
+          <pre class="example"><span class="com">//</span><span class="fn">DEFVSAM</span>  JOB ...
+<span class="com">//</span><span class="fn">DEFCLUS</span>  EXEC PGM=IDCAMS
+<span class="com">//</span>SYSPRINT DD SYSOUT=*
+<span class="com">//</span>SYSIN    DD *
+  DEFINE CLUSTER                           -
+         (NAME(BANCO.VSAM.CONTAS)          -
+          INDEXED                          -
+          KEYS(10 0)                       -  /* chave 10 bytes, offset 0 */
+          RECSZ(200 200)                   -  /* tamanho fixo 200 bytes */
+          CYLINDERS(50 10)                 -
+          FREESPACE(20 10)                 -  /* 20% CI, 10% CA livre */
+          SHAREOPTIONS(1 3))               -
+         DATA                             -
+         (NAME(BANCO.VSAM.CONTAS.DATA))    -
+         INDEX                            -
+         (NAME(BANCO.VSAM.CONTAS.INDEX))
+</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">COBOL lendo e atualizando VSAM KSDS</div>
+          <pre class="example">       ENVIRONMENT DIVISION.
+       INPUT-OUTPUT SECTION.
+         FILE-CONTROL.
+           SELECT VSAM-CONTAS ASSIGN TO CONTAS
+               ORGANIZATION IS INDEXED
+               ACCESS MODE IS DYNAMIC
+               RECORD KEY IS VC-NUM-CONTA
+               ALTERNATE RECORD KEY IS VC-CPF-TITULAR
+                   WITH DUPLICATES
+               FILE STATUS IS WS-FS-CONTAS.
+
+       DATA DIVISION.
+       FILE SECTION.
+         FD VSAM-CONTAS.
+         01 REG-CONTA.
+           05 VC-NUM-CONTA    PIC X(10).    <span class="com">*> chave primária</span>
+           05 VC-CPF-TITULAR  PIC X(11).    <span class="com">*> chave alternada</span>
+           05 VC-NOME         PIC X(40).
+           05 VC-SALDO        PIC S9(12)V99 COMP-3.
+           05 VC-STATUS       PIC X.
+           05 FILLER          PIC X(76).
+
+       PROCEDURE DIVISION.
+<span class="com">      *> ── Leitura por chave (RANDOM) ───────────────────────────</span>
+           MOVE '0001234567' TO VC-NUM-CONTA.
+           READ VSAM-CONTAS
+               INVALID KEY DISPLAY 'Conta não encontrada'
+               NOT INVALID KEY PERFORM PROCESSAR-CONTA
+           END-READ.
+
+<span class="com">      *> ── Atualizar (REWRITE) ─────────────────────────────────</span>
+           ADD WS-CREDITO TO VC-SALDO.
+           REWRITE REG-CONTA
+               INVALID KEY DISPLAY 'Erro REWRITE: ' WS-FS-CONTAS.
+
+<span class="com">      *> ── Percorrer sequencialmente por chave alternada ────────</span>
+           MOVE '12345678901' TO VC-CPF-TITULAR.
+           START VSAM-CONTAS KEY = VC-CPF-TITULAR
+               INVALID KEY DISPLAY 'CPF não encontrado'.
+
+           PERFORM UNTIL WS-FS-CONTAS = '10'
+               READ VSAM-CONTAS NEXT
+                   AT END MOVE '10' TO WS-FS-CONTAS
+                   NOT AT END PERFORM EXIBIR-CONTA
+               END-READ
+           END-PERFORM.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gdg">GDG — Generation Data Groups</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">GDG — histórico rotativo de datasets</div>
+          <pre class="example"><span class="com">//</span> Definir GDG Base com IDCAMS
+<span class="com">//</span>SYSIN DD *
+  DEFINE GDG                               -
+         (NAME(BANCO.RELATORIO.SALDOS)     -
+          LIMIT(30)                        -  /* manter 30 gerações */
+          NOEMPTY                          -  /* não deletar ao atingir limite */
+          SCRATCH)                            /* deletar antigas automaticamente */
+
+<span class="com">//* Na JCL de produção:</span>
+<span class="com">//</span>SAIDA DD DSN=BANCO.RELATORIO.SALDOS(+1),  <span class="com">// próxima geração (nova)</span>
+<span class="com">//</span>         DISP=(NEW,CATLG,DELETE)
+
+<span class="com">//</span>LEITURA DD DSN=BANCO.RELATORIO.SALDOS(0),  <span class="com">// geração atual</span>
+<span class="com">//</span>            DISP=SHR
+
+<span class="com">//</span>ANTERIOR DD DSN=BANCO.RELATORIO.SALDOS(-1), <span class="com">// geração anterior</span>
+<span class="com">//</span>             DISP=SHR</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sort-utility">SORT Utility — Controle Avançado</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Parâmetros SORT, INCLUDE e OUTFIL para relatórios</div>
+          <pre class="example">  SORT FIELDS=(1,4,ZD,A,        /* campo 1, 4 bytes, Zoned Decimal, ASC */
+               5,10,CH,A),      /* campo 5, 10 bytes, Character, ASC */
+       FILSZ=E10000000          /* estimativa: 10M registros */
+
+<span class="com">  * Eliminar duplicatas pelo campo chave completo</span>
+  SORT FIELDS=(1,14,CH,A),EQUALS
+  SUM FIELDS=NONE
+
+<span class="com">  * Filtrar apenas registros válidos (INCLUDE)</span>
+  INCLUDE COND=(15,1,CH,EQ,C'A')    /* status = 'A'  */
+
+<span class="com">  * Excluir registros de teste</span>
+  OMIT COND=(1,3,ZD,EQ,999)         /* agencia = 999 */
+
+<span class="com">  * OUTFIL — gerar múltiplas saídas e reformatar</span>
+  OUTFIL FNAMES=SAIDA1,
+         INCLUDE=(15,1,CH,EQ,C'A'),  /* só ativos */
+         BUILD=(1,14,           /* copiar campos 1-14 */
+                30,10,ZD,EDIT=(IIIIIIT.TT),   /* formatar saldo */
+                80,8,CH)             /* copiar data */</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>IBM. <strong>z/OS DFSORT Application Programming Guide</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/zos/latest?topic=dfsort&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>z/OS VSAM Demystified</strong>. IBM Redbooks, 2013. Disponível em: &lt;https://www.redbooks.ibm.com/abstracts/sg246105.html&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>MVS JCL Reference</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/zos/latest?topic=jcl-mvs-reference&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="sistemas_corporativos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Sistemas Corporativos com COBOL</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> COBOL em Terminal / CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O <strong>GDG (Generation Data Group)</strong> é um mecanismo único do z/OS: um dataset com histórico rotativo automático. <code>(+1)</code> cria a próxima geração, <code>(0)</code> acessa a mais recente e <code>(-1)</code> a anterior. Bancos usam GDGs para manter 30 dias de relatórios diários sem gerenciar nomes de arquivos manualmente — o sistema cataloga e deleta gerações antigas automaticamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

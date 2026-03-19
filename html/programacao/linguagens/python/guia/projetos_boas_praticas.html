@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas Python: pyproject.toml, src layout, logging, segurança, type stubs, conventional commits e revisão de código." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Python — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Python &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="python" aria-hidden="true"></span></div>
+          <h1>Projetos e Boas Práticas Python</h1>
+          <p>Estruture projetos escaláveis, escreva código seguro e Pythonico, gerencie configuração sem segredos expostos e colabore usando padrões da comunidade.</p>
+        </div>
+        <p class="intro-highlight">
+          Boas práticas não são regras arbitrárias &mdash; são lições destiladas de projetos que cresceram e sobreviveram. O Guia de Estilo PEP 8, o <code>pyproject.toml</code> unificado e o padrão <code>src</code> layout existem para facilitar manutenção a longo prazo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto: src Layout</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; estrutura src layout recomendada</div>
+          <pre class="example">meu-projeto/
+├── src/
+│   └── meuapp/
+│       ├── __init__.py
+│       ├── core/
+│       │   ├── __init__.py
+│       │   ├── config.py       <span class="com"># Settings via pydantic-settings</span>
+│       │   └── exceptions.py
+│       ├── domain/
+│       │   ├── models.py       <span class="com"># Entidades de negócio (dataclasses/pydantic)</span>
+│       │   └── services.py     <span class="com"># Lógica de negócio pura (sem I/O)</span>
+│       ├── infra/
+│       │   ├── db.py           <span class="com"># SQLAlchemy engine + session factory</span>
+│       │   └── cache.py        <span class="com"># Redis client</span>
+│       └── api/
+│           ├── main.py         <span class="com"># FastAPI app factory</span>
+│           └── routes/
+│               ├── usuarios.py
+│               └── produtos.py
+├── tests/
+│   ├── conftest.py
+│   ├── unit/
+│   └── integration/
+├── pyproject.toml
+├── README.md
+└── .env.example               <span class="com"># NUNCA commitar .env com segredos</span></pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <strong>src layout vs flat layout:</strong> o <code>src/</code> layout evita que o Python importe o pacote diretamente do diretório raiz durante testes, forçando que a versão <em>instalada</em> seja usada. Isso detecta erros de empacotamento mais cedo.
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pyproject">pyproject.toml: Configuração Centralizada</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TOML &mdash; pyproject.toml completo para aplicação ou biblioteca</div>
+          <pre class="example">[build-system]
+requires      = [<span class="str">"hatchling"</span>]
+build-backend = <span class="str">"hatchling.build"</span>
+
+[project]
+name        = <span class="str">"meuapp"</span>
+version     = <span class="str">"0.1.0"</span>
+description = <span class="str">"Descrição curta do projeto"</span>
+readme      = <span class="str">"README.md"</span>
+requires-python = <span class="str">"&gt;=3.11"</span>
+license = {text = <span class="str">"MIT"</span>}
+dependencies = [
+    <span class="str">"fastapi&gt;=0.111"</span>,
+    <span class="str">"uvicorn[standard]&gt;=0.30"</span>,
+    <span class="str">"pydantic-settings&gt;=2.0"</span>,
+    <span class="str">"sqlalchemy&gt;=2.0"</span>,
+    <span class="str">"alembic&gt;=1.13"</span>,
+]
+
+[project.optional-dependencies]
+dev = [
+    <span class="str">"pytest&gt;=8"</span>, <span class="str">"pytest-cov&gt;=5"</span>, <span class="str">"pytest-asyncio&gt;=0.23"</span>,
+    <span class="str">"httpx&gt;=0.27"</span>, <span class="str">"ruff&gt;=0.4"</span>, <span class="str">"mypy&gt;=1.10"</span>,
+]
+
+[project.scripts]
+meuapp = <span class="str">"meuapp.cli:main"</span>
+
+[tool.hatch.build.targets.wheel]
+packages = [<span class="str">"src/meuapp"</span>]
+
+[tool.ruff.lint]
+select = [<span class="str">"E"</span>, <span class="str">"F"</span>, <span class="str">"I"</span>, <span class="str">"UP"</span>, <span class="str">"B"</span>]
+
+[tool.mypy]
+strict = <span class="kw">true</span>
+
+[tool.pytest.ini_options]
+testpaths  = [<span class="str">"tests"</span>]
+asyncio_mode = <span class="str">"auto"</span>
+
+[tool.coverage.report]
+fail_under = <span class="num">80</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="seguranca">Segurança e Gestão de Segredos</h2>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3><span data-svg="check" aria-hidden="true"></span> Práticas seguras</h3>
+            <ul>
+              <li>Usar <code>pydantic-settings</code> + variáveis de ambiente</li>
+              <li>HashiCorp Vault, AWS Secrets Manager para produção</li>
+              <li><code>secrets.token_urlsafe(32)</code> para gerar segredos</li>
+              <li>Validar toda entrada de usuário com Pydantic</li>
+              <li>Usar <code>parameterized queries</code> no SQLAlchemy (sem f-strings em SQL)</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3><span data-svg="xmark" aria-hidden="true"></span> Evitar sempre</h3>
+            <ul>
+              <li>Hardcoded passwords ou API keys no código</li>
+              <li>Commitar arquivos <code>.env</code> no git</li>
+              <li><code>eval()</code> ou <code>exec()</code> com input do usuário</li>
+              <li><code>pickle.loads()</code> em dados não confiáveis (RCE)</li>
+              <li><code>subprocess.shell=True</code> com input do usuário (command injection)</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python &mdash; gestão segura de configuração</div>
+          <pre class="example"><span class="kw">from</span> pydantic_settings <span class="kw">import</span> BaseSettings, SettingsConfigDict
+<span class="kw">from</span> pydantic <span class="kw">import</span> SecretStr
+<span class="kw">import</span> secrets
+
+
+<span class="kw">class</span> <span class="tp">Settings</span>(<span class="tp">BaseSettings</span>):
+    <span class="com"># SecretStr: valor nunca aparece em __repr__ nem logs</span>
+    database_url: <span class="tp">SecretStr</span>
+    secret_key:   <span class="tp">SecretStr</span> = <span class="fn">SecretStr</span>(secrets.<span class="fn">token_urlsafe</span>(<span class="num">32</span>))
+    debug:        <span class="tp">bool</span>       = <span class="kw">False</span>
+    allowed_hosts: <span class="tp">list</span>[<span class="tp">str</span>] = [<span class="str">"localhost"</span>]
+
+    model_config = <span class="fn">SettingsConfigDict</span>(
+        env_file=<span class="str">".env"</span>,
+        env_file_encoding=<span class="str">"utf-8"</span>,
+        case_sensitive=<span class="kw">False</span>,
+    )
+
+settings = <span class="fn">Settings</span>()
+db_url = settings.database_url.<span class="fn">get_secret_value</span>()   <span class="com"># desembrulha</span>
+<span class="fn">print</span>(settings.database_url)  <span class="com"># SecretStr('**********') — seguro em logs</span>
+
+<span class="com"># .gitignore deve conter:</span>
+<span class="com"># .env</span>
+<span class="com"># .env.*</span>
+<span class="com"># !.env.example</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="idiomas">Código Pythonico: PEP 8 e Idiomas</h2>
+
+        <div class="panel">
+          <p class="panel-title">Convenções PEP 8 resumidas</p>
+          <table class="table">
+            <thead><tr><th>Elemento</th><th>Convenção</th><th>Exemplo</th></tr></thead>
+            <tbody>
+              <tr><td>Variáveis / funções</td><td>snake_case</td><td><code>nome_usuario</code></td></tr>
+              <tr><td>Classes</td><td>PascalCase</td><td><code>UsuarioAtivo</code></td></tr>
+              <tr><td>Constantes</td><td>SCREAMING_SNAKE</td><td><code>MAX_CONEXOES</code></td></tr>
+              <tr><td>Atributo privado</td><td>_single_underscore</td><td><code>_cache</code></td></tr>
+              <tr><td>Atributo name-mangled</td><td>__double_underscore</td><td><code>__config</code></td></tr>
+              <tr><td>Módulos</td><td>lowercase simples</td><td><code>utils.py</code></td></tr>
+              <tr><td>Pacotes</td><td>lowercase sem traço</td><td><code>meuapp/</code></td></tr>
+              <tr><td>Type aliases</td><td>PascalCase</td><td><code>UserId = int</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PYTHON. <strong>PEP 8 – Style Guide for Python Code</strong>. Disponível em: &lt;https://peps.python.org/pep-0008/&gt;. Acesso em: 2025.</li>
+            <li>PYTHON. <strong>PEP 517/518 – Build System Interface</strong>. Disponível em: &lt;https://peps.python.org/pep-0517/&gt;. Acesso em: 2025.</li>
+            <li>OWASP. <strong>OWASP Top Ten — Injection</strong>. Disponível em: &lt;https://owasp.org/www-project-top-ten/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Web: FastAPI, Django</a></li>
+          <li><a href="../aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Python para Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Simple is better than complex" &mdash; The Zen of Python</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Guia completo sobre backup e recuperação de bancos de dados: RTO, RPO, PITR, regra 3-2-1, ferramentas e boas práticas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Backup e Recuperação | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Backup e Recuperacao de Bancos de Dados</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Backup e Recuperacao de Bancos de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Backup e Recuperacao</h1>
+          <p>RPO, RTO, PITR e a Regra 3-2-1-1-0 para sobreviver a qualquer desastre.</p>
+        </div>
+        <p class="intro-highlight">
+          Existem dois tipos de DBAs: os que ja perderam dados e os que <strong>vao</strong> perder.
+          Em 2012, o Ma.gnolia perdeu irreversivelmente todos os dados de usuarios por ausencia de backups.
+          Em 2017, a GitLab deletou acidentalmente 300 GB de producao — e os backups estavam quebrados.
+          Estrategia de backup nao e sobre copiar arquivos: e sobre garantir que a empresa
+          sobreviva a um desastre, seja ransomware, corrupcao silenciosa ou erro humano.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- VOCABULARIO DO DESASTRE -->
+      <section>
+        <h2 id="vocabulario" class="section-title">1. O Vocabulario do Desastre</h2>
+        <p>
+          Antes de configurar qualquer estrategia de backup, o negocio precisa definir tres metricas criticas.
+          Sem elas, qualquer decisao tecnica e arbitraria.
+        </p>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Metrica</th>
+                  <th>Definicao</th>
+                  <th>Exemplo Pratico</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code class="code-inline">RPO</code> — Recovery Point Objective</td>
+                  <td>Quanto de dado (no tempo) podemos perder? Define a frequencia minima dos backups.</td>
+                  <td>RPO = 1h: backup de hora em hora. Se o disco falhou as 14h50, perdemos dados desde 14h.</td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">RTO</code> — Recovery Time Objective</td>
+                  <td>Em quanto tempo o sistema deve voltar ao ar apos um desastre?</td>
+                  <td>RTO = 4h: equipe tem 4h para restaurar antes do impacto financeiro ser inaceitavel.</td>
+                </tr>
+                <tr>
+                  <td><code class="code-inline">MTD</code> — Maximum Tolerable Downtime</td>
+                  <td>Tempo maximo absoluto de indisponibilidade antes de danos irreversiveis ao negocio.</td>
+                  <td>E-commerce na Black Friday: MTD = 2h. Hospital critico: MTD = 15 min.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Regra de ouro:</strong> Quanto menores forem o RPO e RTO, mais caro e complexo sera o sistema
+            de backup. RPO = 0 e RTO = 0 exigem replicacao sincrona em tempo real —
+            com custo financeiro e de latencia significativos.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- TIPOS DE BACKUP -->
+      <section>
+        <h2 id="tipos-backup" class="section-title">2. Tipos de Backup</h2>
+        <p>
+          Nao e viavel copiar dezenas de terabytes todos os dias. A industria desenvolveu tres estrategias
+          complementares que equilibram custo, velocidade e complexidade de restauracao.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Full (Completo)</h3>
+            <p>Copia completa de todos os dados — base para todos os outros tipos. Geralmente agendado semanalmente
+            (ex: domingo de madrugada). O mais simples de restaurar: um unico arquivo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Diferencial</h3>
+            <p>Copia tudo que mudou desde o ultimo backup <strong>Full</strong>. Cresce progressivamente durante
+            a semana. Restauracao exige o ultimo Full + o ultimo Diferencial — apenas 2 arquivos, previsivel.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Incremental</h3>
+            <p>Copia apenas o que mudou desde o <strong>ultimo backup de qualquer tipo</strong>. Arquivo diario
+            minimo, mas a restauracao exige o Full + toda a cadeia de incrementais — RPO minimo, maior complexidade.</p>
+          </div>
+        </div>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr><th>Criterio</th><th>Full</th><th>Diferencial</th><th>Incremental</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Tamanho do arquivo</td><td>Grande (100%)</td><td>Medio (cresce com tempo)</td><td>Pequeno (delta)</td></tr>
+                <tr><td>Velocidade de backup</td><td>Lenta</td><td>Media</td><td>Rapida</td></tr>
+                <tr><td>Velocidade de restauracao</td><td>Rapida (1 arquivo)</td><td>Media (Full + 1 Diff)</td><td>Lenta (Full + N incrementais)</td></tr>
+                <tr><td>Uso tipico</td><td>Semanal</td><td>Diario</td><td>Horario ou continuo</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PITR -->
+      <section>
+        <h2 id="pitr" class="section-title">3. Point-in-Time Recovery (PITR)</h2>
+        <p>
+          O PITR e a "maquina do tempo" dos bancos de dados. Permite restaurar o banco para qualquer
+          momento especifico no passado — nao apenas para o instante do ultimo backup.
+          Funciona gravando continuamente o log de transacoes (WAL no PostgreSQL, Redo Log no MySQL/Oracle).
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Cenario real:</strong> Um desenvolvedor executou
+            <code class="code-inline">UPDATE pedidos SET status = 'cancelado'</code> sem clausula WHERE as 14h35.
+            Com PITR habilitado, voce restaura para 14h34:59 em ambiente separado e extrai os dados corretos
+            — sem perder o dia inteiro de trabalho.
+          </p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pitr-postgresql.sh</div>
+          <pre class="example"><span class="com"># 1. Backup base</span>
+pg_basebackup -h localhost -U replicador -D /backup/base -Ft -z -P
+
+<span class="com"># 2. Arquivar WALs (postgresql.conf)</span>
+archive_mode = on
+archive_command = <span class="str">'cp %p /backup/wal/%f'</span>
+
+<span class="com"># 3. Restaurar para ponto especifico (PostgreSQL 12+)</span>
+restore_command = <span class="str">'cp /backup/wal/%f %p'</span>
+recovery_target_time = <span class="str">'2026-03-04 14:34:59'</span>
+recovery_target_action = <span class="str">'promote'</span>
+
+touch /var/lib/postgresql/data/recovery.signal
+pg_ctl start -D /var/lib/postgresql/data</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pitr-mysql.sh</div>
+          <pre class="example"><span class="com"># MySQL/MariaDB — habilitar binary logs (my.cnf)</span>
+[mysqld]
+log_bin    = /var/log/mysql/mysql-bin.log
+binlog_format = ROW
+
+<span class="com"># Restaurar backup + aplicar binlogs ate o ponto desejado</span>
+mysqlbinlog --stop-datetime=<span class="str">"2026-03-04 14:34:59"</span> \
+  /var/log/mysql/mysql-bin.000001 | mysql -u root -p</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REGRA 3-2-1-1-0 -->
+      <section>
+        <h2 id="regra-321" class="section-title">4. A Regra 3-2-1-1-0</h2>
+        <p>
+          Desenvolvida na fotografia digital e adotada como padrao de seguranca da informacao,
+          a Regra 3-2-1 e o minimo aceitavel para qualquer sistema critico. A versao moderna acrescenta
+          duas exigencias fundamentais: imutabilidade e verificacao.
+        </p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>3 Copias dos Dados</h3>
+            <p>O dado original + dois backups independentes. Se uma copia estiver corrompida, voce ainda
+            tem outras duas. Nunca dependa de uma unica copia, nem mesmo do dado original.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>2 Midias Diferentes</h3>
+            <p>Exemplos: disco local + nuvem, SSD + fita magnetica. Se ambas as copias ficam no mesmo
+            hardware, uma unica falha pode eliminar ambas simultaneamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>1 Copia Offsite</h3>
+            <p>Pelo menos uma copia fora do ambiente principal, geograficamente separada. Incendio,
+            inundacao, roubo ou ransomware na rede local nao afetam o backup offsite.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>+1 Imutavel e 0 Erros</h3>
+            <p><strong>+1 copia imutavel</strong> (WORM/air-gapped — nao pode ser deletada por ransomware).
+            <strong>0 erros verificados</strong>: todo backup deve ser validado automaticamente e
+            com restore drill periodico. O "0 erros" e a parte mais negligenciada e a mais importante.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Usar Cada Estrategia</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Use PITR quando...</h3>
+            <ul>
+              <li>RPO minimo — perder qualquer transacao e inaceitavel (financeiro, saude).</li>
+              <li>Equipe precisa se recuperar de erros humanos (UPDATE/DELETE sem WHERE).</li>
+              <li>Auditoria exige prova do estado do banco em qualquer ponto no tempo.</li>
+              <li>Dados de producao sao dificeis de recriar e tem altissimo valor de negocio.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Full + Incremental quando...</h3>
+            <ul>
+              <li>Volume de dados grande torna backups full diarios proibitivos em custo e janela de tempo.</li>
+              <li>RPO de algumas horas e toleravel pelos SLAs do negocio.</li>
+              <li>Equipe tem automacao para gerenciar cadeias de incrementais.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Nunca faca isso...</h3>
+            <ul>
+              <li>Backup no mesmo servidor dos dados — sem protecao contra falha de hardware.</li>
+              <li>Backup sem verificacao periodica — corrupcao silenciosa e descoberta so no desastre.</li>
+              <li>Estrategia sem restore drill documentado e praticado regularmente.</li>
+              <li>Backup configurado uma unica vez e esquecido — politicas caducam com o negocio.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Backups Imutaveis (WORM)</h3>
+            <p>Write Once Read Many — arquivos que nao podem ser modificados ou deletados apos criacao.
+            S3 Object Lock, Azure Immutable Blob Storage e fitas LTO WORM sao imunes a ransomware:
+            mesmo com credenciais de admin, o atacante nao pode deletar dentro do periodo de retencao configurado.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Restore Drill</h3>
+            <p>Simulacao periodica (mensal ou trimestral) de recuperacao completa em ambiente isolado.
+            Mede o tempo real de restauracao, valida a integridade dos dados e confirma que o RTO definido
+            e atingivel. <strong>Um backup nunca testado nao e backup — e uma esperanca.</strong></p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Criptografia de Backups</h3>
+            <p>Backups em repouso devem ser criptografados com AES-256. pgBackRest tem criptografia nativa.
+            WAL-G integra com AWS KMS e GCP KMS. As chaves devem ser gerenciadas separadamente dos dados:
+            backup criptografado sem a chave e inutil para atacante e para voce.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Backup Logico vs Fisico</h3>
+            <p><strong>Logico</strong> (pg_dump, mysqldump): exporta SQL portavel, permite restauracao
+            seletiva de tabelas. <strong>Fisico</strong> (pg_basebackup, XtraBackup): copia arquivos brutos,
+            muito mais rapido para grandes volumes, mas restrito ao mesmo SGBD e versao major.</p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Corrupcao Silenciosa:</strong> backups corrompidos sao descobertos apenas na restauracao —
+            geralmente durante o proprio desastre. Use <code class="code-inline">pgbackrest verify</code>,
+            checksums do S3 e validacao de hash apos cada backup. Ferramentas como pgBackRest armazenam
+            checksums de cada arquivo WAL para detectar corrupcao automaticamente antes que voce precise restaurar.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ferramentas de Backup</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>pgBackRest</h3>
+            <p>Estado da arte para PostgreSQL self-managed. Backups paralelos, compressao, criptografia
+            AES-256, integracao com S3/GCS/Azure Blob, PITR completo e verificacao de integridade
+            nativa com <code class="code-inline">pgbackrest verify</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>WAL-G</h3>
+            <p>Alternativa moderna ao pgBackRest, tambem para MongoDB e MySQL. Nativo para cloud —
+            uploads paralelos para S3, GCS, Azure Blob ou Yandex Object Storage. Integra com AWS KMS
+            para criptografia gerenciada.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Percona XtraBackup</h3>
+            <p>Hot backup para MySQL e MariaDB sem travar as tabelas. Suporta backup incremental nativo,
+            criptografia e streaming direto para S3. Essencial para bases MySQL acima de alguns GBs
+            onde mysqldump seria proibitivamente lento.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>AWS RDS / Aurora</h3>
+            <p>Backups automaticos diarios com retencao de 1–35 dias. PITR com granularidade de 5 minutos
+            habilitado por padrao. Snapshots manuais retidos indefinidamente. Aurora Global faz replicacao
+            para segunda regiao com RPO de segundos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Azure SQL / GCP Cloud SQL</h3>
+            <p>Azure: full semanal + diferencial a cada 12h + log a cada 5–10 min, retencao ate 35 dias,
+            geo-redundant backup opcional. GCP: backups automaticos diarios com PITR habilitavel e
+            exportacao para Cloud Storage em SQL ou CSV.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Barman</h3>
+            <p>Backup and Recovery Manager para PostgreSQL, mantido pela EDB (2ndQuadrant). Gerenciamento
+            centralizado de multiplos servidores PostgreSQL, catalogos de backups, retention policies
+            e integracao com Ansible e Terraform.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>SILBERSCHATZ, Abraham; KORTH, Henry F.; SUDARSHAN, S. <strong>Sistema de Banco de Dados</strong>. 6. ed. Rio de Janeiro: Elsevier, 2012.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+            <li>PERCONA. <strong>Percona XtraBackup Documentation</strong>. Disponivel em: https://docs.percona.com/percona-xtrabackup/. Acesso em: 2026.</li>
+            <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Documentation: Backup and Restore</strong>. Disponivel em: https://www.postgresql.org/docs/current/backup.html. Acesso em: 2026.</li>
+            <li>AWS. <strong>Amazon RDS User Guide: Working With Automated Backups</strong>. Disponivel em: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_WorkingWithAutomatedBackups.html. Acesso em: 2026.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/avancado/replicacao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Replicacao - Alta Disponibilidade e Failover</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Sharding - Escala Horizontal de Dados</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/seguranca_em_banco_de_dados.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Seguranca em Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A questao nao e se seu banco vai falhar, mas quando. Prepare-se para isso." - Principio de SRE (Google)
+        </p>
+      </div>
+
+
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

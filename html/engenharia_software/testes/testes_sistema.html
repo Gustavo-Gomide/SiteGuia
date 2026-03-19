@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Testes de sistema/E2E: o que cobrem, quando usar, como evitar flakiness e definir uma suíte enxuta.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Testes de Sistema (E2E) | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Testar jornadas críticas com o sistema real</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Testes de Sistema (E2E)</h1>
+          <p class="page-subtitle">Fluxos de usuário, suíte enxuta e combate à flakiness</p>
+        </div>
+        <p class="intro-highlight">
+          Testes end-to-end validam fluxos críticos do usuário com o sistema rodando de verdade: UI ou API, banco de dados e integrações reais.
+          São os mais caros de manter — por isso precisam ser poucos, bem escolhidos e extremamente estáveis.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-cobrem" class="section-title">O que E2E cobre bem</h2>
+        <div class="section-divider"></div>
+        <p>Reserve E2E para cenários onde a relevância do teste justifica o custo — onde a integração entre todas as camadas é o risco real:</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>Fluxo crítico</th>
+                <th>Por que E2E é o nível certo</th>
+                <th>Frequência ideal no CI</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Login / autenticação</td>
+                <td>Auth envolve UI, API, token, sessão e DB em conjunto</td>
+                <td>A cada deploy</td>
+              </tr>
+              <tr>
+                <td>Checkout / pagamento</td>
+                <td>Fluxo financeiro conecta múltiplos serviços</td>
+                <td>A cada deploy</td>
+              </tr>
+              <tr>
+                <td>Cadastro de usuário</td>
+                <td>Validações + persistência + envio de e-mail juntos</td>
+                <td>A cada deploy</td>
+              </tr>
+              <tr>
+                <td>Permissões críticas</td>
+                <td>Admin vê mais que guest — risco de segurança alto</td>
+                <td>A cada deploy</td>
+              </tr>
+              <tr>
+                <td>Migrações de dados</td>
+                <td>Após migration, fluxo principal ainda funciona?</td>
+                <td>A cada release</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="como-desenhar" class="section-title">Como desenhar uma suíte enxuta</h2>
+        <div class="section-divider"></div>
+        <p>E2E deve ser pequeno, rápido o suficiente para o CI e com dados completamente controlados:</p>
+        <div class="code-container">
+          <pre class="example"># Princípios de uma suíte E2E saudável
+
+# 1. Escolha apenas o que vale
+    Mapeie os 5–10 fluxos mais críticos do produto
+    Para tudo abaixo disso, prefira integração ou unitário
+
+# 2. Dados controlados
+    Cada teste cria os próprios dados via API ou seed
+    Nunca dependa de dados deixados por outro teste
+    Seeds explícitos e pequenos (não "carregar banco de produção")
+
+# 3. Asserções de negócio, não de UI
+    Valide: "pedido foi criado com status pendente"
+    Evite: "o botão verde está visível em (x=230, y=450)"
+
+# 4. Ambientes separados
+    Staging isolado com dados sintéticos
+    URLs, credenciais e integrações externas em modo sandbox
+
+# 5. Timeouts explícitos
+    Prefira espera por condição (elemento renderizado, request completo)
+    Nunca use sleep() — é flakey por design</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns em E2E</h2>
+        <div class="section-divider"></div>
+        <p>A maioria dos problemas com suítes E2E vem de escopo mal definido e ausência de isolamento de dados:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Suíte grande e lenta</h3>
+            <p>Quando o E2E demora mais de 30 minutos, desenvolvedores passam a ignorar falhas ou desativar a suíte. Tamanho tem custo direto de confiança.</p>
+          </div>
+          <div class="card">
+            <h3>Quebras por mudanças visuais</h3>
+            <p>Selectors baseados em classe CSS ou posição absoluta quebram a cada redesign. Prefira atributos de dados específicos para testes (<code>data-testid</code>).</p>
+          </div>
+          <div class="card">
+            <h3>Ambiente instável</h3>
+            <p>Serviços externos não controlados (e-mail real, gateway de pagamento, terceiros) geram falhas esporádicas impossíveis de debugar.</p>
+          </div>
+          <div class="card">
+            <h3>E2E como cobertura principal</h3>
+            <p>Substituir unitários e integração por E2E multiplica o custo de manutenção sem ganho proporcional em confiança nas regras de negócio.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Para o nível anterior (com dependências reais mas sem UI), veja
+          <a href="/html/engenharia_software/testes/testes_integracao.html">testes de integração</a>.
+          Para validação por critérios de negócio, explore
+          <a href="/html/engenharia_software/testes/testes_aceitacao.html">testes de aceitação</a>.
+        </p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "E2E que ninguém confia é pior que nenhum E2E."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+
+
+

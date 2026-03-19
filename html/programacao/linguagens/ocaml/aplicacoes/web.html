@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OCaml para Web: Dream framework com rotas, middleware e sessão, Cohttp cliente HTTP, Yojson para JSON, Server-Side Rendering com htmx, deploy com Docker." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml — Web com Dream | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml &mdash; Web com Dream</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>OCaml — Web com Dream</h1>
+          <p>Dream é um framework web completo para OCaml: roteamento tipado, middleware composável, sessões, WebSockets e templates HTML nativos em um único pacote.</p>
+        </div>
+        <p class="intro-highlight">
+          Dream combina a segurança de tipos de OCaml com uma API web inspirada no Express (Node.js) e no Plug (Elixir). Cada handler tem tipo <code>Dream.handler</code> = <code>Dream.request -&gt; Dream.response Lwt.t</code>, permitindo composição segura sem magic implícito.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dream-basico">Dream — Primeiros Passos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Instalar e configurar projeto</div>
+          <pre class="example"><span class="com"># Instalar Dream e dependências</span>
+opam install dream yojson
+<span class="com"># Dream arrasta: lwt, httpaf, h2, tls, etc.</span>
+
+<span class="com"># Estrutura do projeto</span>
+meu_app/
+├── dune-project
+├── bin/
+│   ├── dune
+│   └── main.ml
+└── public/        <span class="com"># arquivos estáticos (opcional)</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bin/dune</div>
+          <pre class="example">(executable
+ (name main)
+ (libraries dream yojson))</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bin/main.ml — Servidor Hello World</div>
+          <pre class="example"><span class="com">(* Servidor Hello World com Dream *)</span>
+<span class="kw">let</span> () =
+  <span class="tp">Dream</span>.<span class="fn">run</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">logger</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">router</span> [
+    <span class="tp">Dream</span>.<span class="fn">get</span> <span class="str">"/"</span> (<span class="kw">fun</span> _req ->
+      <span class="tp">Dream</span>.<span class="fn">html</span> <span class="str">"&lt;h1&gt;Olá, OCaml na Web!&lt;/h1&gt;"</span>
+    );
+    <span class="tp">Dream</span>.<span class="fn">get</span> <span class="str">"/ping"</span> (<span class="kw">fun</span> _req ->
+      <span class="tp">Dream</span>.<span class="fn">respond</span> <span class="str">"pong"</span>
+    );
+  ]
+
+<span class="com">(* Rodar: dune exec bin/main.exe
+   Acesse: http://localhost:8080 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="roteamento">Roteamento e Parâmetros</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">main.ml — Rotas, parâmetros e métodos HTTP</div>
+          <pre class="example"><span class="kw">open</span> <span class="tp">Lwt</span>.<span class="tp">Syntax</span>
+
+<span class="com">(* Handlers são funções: request -> response Lwt.t *)</span>
+<span class="kw">let</span> <span class="fn">home</span> _req =
+  <span class="tp">Dream</span>.<span class="fn">html</span> {|
+    &lt;html&gt;
+    &lt;body&gt;
+      &lt;h1&gt;Home&lt;/h1&gt;
+      &lt;a href="/usuarios"&gt;Usuários&lt;/a&gt;
+    &lt;/body&gt;
+    &lt;/html&gt;
+  |}
+
+<span class="com">(* Parâmetros de rota com :nome *)</span>
+<span class="kw">let</span> <span class="fn">get_usuario</span> req =
+  <span class="kw">let</span> id = <span class="tp">Dream</span>.<span class="fn">param</span> req <span class="str">"id"</span> <span class="kw">in</span>   <span class="com">(* string *)</span>
+  <span class="kw">match</span> <span class="fn">int_of_string_opt</span> id <span class="kw">with</span>
+  | <span class="tp">None</span>   -> <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Bad_Request <span class="str">"ID inválido"</span>
+  | <span class="tp">Some</span> n ->
+      <span class="tp">Dream</span>.<span class="fn">json</span>
+        (<span class="tp">Printf</span>.<span class="fn">sprintf</span> {|{"id":%d,"nome":"Usuário %d"}|} n n)
+
+<span class="com">(* Query strings *)</span>
+<span class="kw">let</span> <span class="fn">buscar</span> req =
+  <span class="kw">let</span> query = <span class="tp">Dream</span>.<span class="fn">query</span> req <span class="str">"q"</span> |> <span class="tp">Option</span>.<span class="fn">value</span> ~default:<span class="str">""</span> <span class="kw">in</span>
+  <span class="kw">let</span> pagina = <span class="tp">Dream</span>.<span class="fn">query</span> req <span class="str">"pagina"</span>
+    |> <span class="tp">Option</span>.<span class="fn">bind</span> <span class="fn">int_of_string_opt</span>
+    |> <span class="tp">Option</span>.<span class="fn">value</span> ~default:<span class="num">1</span> <span class="kw">in</span>
+  <span class="tp">Dream</span>.<span class="fn">json</span>
+    (<span class="tp">Printf</span>.<span class="fn">sprintf</span> {|{"query":"%s","pagina":%d}|} query pagina)
+<span class="com">(* GET /buscar?q=ocaml&pagina=2 *)</span>
+
+<span class="com">(* Corpo de requisição POST *)</span>
+<span class="kw">let</span> <span class="fn">criar_usuario</span> req =
+  <span class="kw">let</span>* corpo = <span class="tp">Dream</span>.<span class="fn">body</span> req <span class="kw">in</span>
+  <span class="com">(* corpo é uma string JSON *)</span>
+  <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Created
+    (<span class="tp">Printf</span>.<span class="fn">sprintf</span> {|{"criado":true,"dados":%s}|} corpo)
+
+<span class="com">(* Headers de resposta customizados *)</span>
+<span class="kw">let</span> <span class="fn">com_cors</span> _req =
+  <span class="tp">Dream</span>.<span class="fn">respond</span>
+    ~headers:[
+      <span class="str">"Access-Control-Allow-Origin"</span>, <span class="str">"*"</span>;
+      <span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>;
+    ]
+    {|{"status":"ok"}|}
+
+<span class="kw">let</span> () =
+  <span class="tp">Dream</span>.<span class="fn">run</span> ~port:<span class="num">8080</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">logger</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">router</span> [
+    <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/"</span>                 home;
+    <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/usuarios/:id"</span>    get_usuario;
+    <span class="tp">Dream</span>.<span class="fn">post</span> <span class="str">"/usuarios"</span>         criar_usuario;
+    <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/buscar"</span>           buscar;
+    <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/cors"</span>             com_cors;
+  ]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="middleware">Middleware — Composição de Handlers</h2>
+        <div class="panel">
+          <p>Middlewares em Dream são funções <code>Dream.handler -&gt; Dream.handler</code>. O operador <code>@@</code> compõe middlewares em ordem: cada um pode interceptar antes e depois do handler interno.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">middleware.ml — Middleware customizado, autenticação e rate limiting</div>
+          <pre class="example"><span class="kw">open</span> <span class="tp">Lwt</span>.<span class="tp">Syntax</span>
+
+<span class="com">(* ── Middleware de autenticação JWT simplificado ────────────────────── *)</span>
+<span class="kw">let</span> <span class="fn">autenticar</span> next req =
+  <span class="kw">match</span> <span class="tp">Dream</span>.<span class="fn">header</span> req <span class="str">"Authorization"</span> <span class="kw">with</span>
+  | <span class="tp">None</span> ->
+      <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Unauthorized
+        {|{"erro":"token obrigatório"}|}
+  | <span class="tp">Some</span> header <span class="kw">when</span> <span class="tp">String</span>.<span class="fn">length</span> header < <span class="num">8</span> ->
+      <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Unauthorized
+        {|{"erro":"token inválido"}|}
+  | <span class="tp">Some</span> header ->
+      <span class="kw">let</span> token = <span class="tp">String</span>.<span class="fn">sub</span> header <span class="num">7</span> (<span class="tp">String</span>.<span class="fn">length</span> header - <span class="num">7</span>) <span class="kw">in</span>
+      <span class="com">(* validar JWT aqui... *)</span>
+      <span class="tp">Dream</span>.<span class="fn">set_local</span> req <span class="str">"usuario_token"</span> token;
+      next req
+
+<span class="com">(* ── Middleware de tempo de resposta ────────────────────────────────── *)</span>
+<span class="kw">let</span> <span class="fn">medir_tempo</span> next req =
+  <span class="kw">let</span> t0 = <span class="tp">Unix</span>.<span class="fn">gettimeofday</span> () <span class="kw">in</span>
+  <span class="kw">let</span>* resp = next req <span class="kw">in</span>
+  <span class="kw">let</span> elapsed = (<span class="tp">Unix</span>.<span class="fn">gettimeofday</span> () -. t0) *. <span class="num">1000.0</span> <span class="kw">in</span>
+  <span class="fn">Printf.printf</span> <span class="str">"[%s] %s %.2fms\n"</span>
+    (<span class="tp">Dream</span>.<span class="fn">method_to_string</span> (<span class="tp">Dream</span>.<span class="fn">method_</span> req))
+    (<span class="tp">Dream</span>.<span class="fn">target</span> req)
+    elapsed;
+  <span class="tp">Lwt</span>.<span class="fn">return</span> resp
+
+<span class="com">(* ── Sessões com Dream.session ──────────────────────────────────────── *)</span>
+<span class="kw">let</span> <span class="fn">login</span> req =
+  <span class="kw">let</span>* corpo = <span class="tp">Dream</span>.<span class="fn">body</span> req <span class="kw">in</span>
+  <span class="com">(* parse e validar credenciais aqui... *)</span>
+  ignore corpo;
+  <span class="kw">let</span>* () = <span class="tp">Dream</span>.<span class="fn">invalidate_session</span> req <span class="kw">in</span>
+  <span class="kw">let</span>* () = <span class="tp">Dream</span>.<span class="fn">set_session_field</span> req <span class="str">"usuario_id"</span> <span class="str">"42"</span> <span class="kw">in</span>
+  <span class="tp">Dream</span>.<span class="fn">respond</span> {|{"login":"ok"}|}
+
+<span class="kw">let</span> <span class="fn">perfil</span> req =
+  <span class="kw">match</span> <span class="tp">Dream</span>.<span class="fn">session_field</span> req <span class="str">"usuario_id"</span> <span class="kw">with</span>
+  | <span class="tp">None</span>    -> <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Unauthorized {|{"erro":"não autenticado"}|}
+  | <span class="tp">Some</span> id -> <span class="tp">Dream</span>.<span class="fn">json</span> (<span class="tp">Printf</span>.<span class="fn">sprintf</span> {|{"usuario_id":"%s"}|} id)
+
+<span class="kw">let</span> () =
+  <span class="tp">Dream</span>.<span class="fn">run</span> ~port:<span class="num">8080</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">logger</span>
+  @@ <span class="fn">medir_tempo</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">memory_sessions</span>   <span class="com">(* sessões em memória para dev *)</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">router</span> [
+    <span class="tp">Dream</span>.<span class="fn">post</span> <span class="str">"/login"</span>   login;
+    <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/perfil"</span>  perfil;
+    <span class="tp">Dream</span>.<span class="fn">scope</span> <span class="str">"/api"</span> [autenticar] [
+      <span class="tp">Dream</span>.<span class="fn">get</span>  <span class="str">"/dados"</span> (<span class="kw">fun</span> _r -> <span class="tp">Dream</span>.<span class="fn">json</span> {|{"dados":[1,2,3]}|});
+    ];
+  ]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="yojson">Yojson — Processamento de JSON</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">json_exemplo.ml — Yojson e ppx_deriving_yojson</div>
+          <pre class="example"><span class="com">(* opam install yojson ppx_deriving_yojson *)</span>
+<span class="com">(* dune: (libraries yojson) (preprocess (pps ppx_deriving_yojson)) *)</span>
+
+<span class="com">(* ── Manual parsing com Yojson.Basic ────────────────────────────────── *)</span>
+<span class="kw">open</span> <span class="tp">Yojson</span>.<span class="tp">Basic</span>.<span class="tp">Util</span>
+
+<span class="kw">let</span> json_str = {|
+  {
+    "nome": "Alice",
+    "idade": 30,
+    "ativo": true,
+    "enderecos": ["brasil", "eua"]
+  }
+|}
+
+<span class="kw">let</span> () =
+  <span class="kw">let</span> json = <span class="tp">Yojson</span>.<span class="tp">Basic</span>.<span class="fn">from_string</span> json_str <span class="kw">in</span>
+  <span class="kw">let</span> nome   = json |> <span class="fn">member</span> <span class="str">"nome"</span>  |> <span class="fn">to_string</span> <span class="kw">in</span>
+  <span class="kw">let</span> idade  = json |> <span class="fn">member</span> <span class="str">"idade"</span> |> <span class="fn">to_int</span> <span class="kw">in</span>
+  <span class="kw">let</span> ativo  = json |> <span class="fn">member</span> <span class="str">"ativo"</span> |> <span class="fn">to_bool</span> <span class="kw">in</span>
+  <span class="kw">let</span> ends   = json |> <span class="fn">member</span> <span class="str">"enderecos"</span> |> <span class="fn">to_list</span> |> <span class="tp">List</span>.<span class="fn">map</span> <span class="fn">to_string</span> <span class="kw">in</span>
+  <span class="fn">Printf.printf</span> <span class="str">"%s, %d, %b, [%s]\n"</span>
+    nome idade ativo (<span class="tp">String</span>.<span class="fn">concat</span> <span class="str">"; "</span> ends)
+
+<span class="com">(* ── Construir JSON ─────────────────────────────────────────────────── *)</span>
+<span class="kw">let</span> <span class="fn">usuario_para_json</span> nome idade =
+  `Assoc [
+    <span class="str">"nome"</span>,  `String nome;
+    <span class="str">"idade"</span>, `Int    idade;
+    <span class="str">"ativo"</span>, `Bool   <span class="kw">true</span>;
+  ]
+  |> <span class="tp">Yojson</span>.<span class="tp">Basic</span>.<span class="fn">to_string</span>
+
+<span class="com">(* ── ppx_deriving_yojson — serialização automática ─────────────────── *)</span>
+<span class="kw">type</span> <span class="tp">usuario</span> = {
+  id    : <span class="tp">int</span>;
+  nome  : <span class="tp">string</span>;
+  email : <span class="tp">string</span> <span class="tp">option</span>;   <span class="com">(* campo opcional *)</span>
+} [@@deriving yojson]
+<span class="com">(* Gera automaticamente:
+   usuario_to_yojson : usuario -> Yojson.Safe.t
+   usuario_of_yojson : Yojson.Safe.t -> (usuario, string) result *)</span>
+
+<span class="kw">let</span> alice = { id = <span class="num">1</span>; nome = <span class="str">"Alice"</span>; email = <span class="tp">Some</span> <span class="str">"alice@ex.com"</span> }
+<span class="kw">let</span> json  = <span class="fn">usuario_to_yojson</span> alice |> <span class="tp">Yojson</span>.<span class="tp">Safe</span>.<span class="fn">to_string</span>
+<span class="com">(* {"id":1,"nome":"Alice","email":"alice@ex.com"} *)</span>
+
+<span class="kw">let</span> () =
+  <span class="kw">match</span> <span class="tp">Yojson</span>.<span class="tp">Safe</span>.<span class="fn">from_string</span> json |> <span class="fn">usuario_of_yojson</span> <span class="kw">with</span>
+  | <span class="tp">Ok</span> u  -> <span class="fn">Printf.printf</span> <span class="str">"Nome: %s\n"</span> u.nome
+  | <span class="tp">Error</span> e -> <span class="fn">Printf.printf</span> <span class="str">"Erro: %s\n"</span> e</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cohttp">Cohttp — Cliente HTTP</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">http_client.ml — Cohttp cliente assíncrono</div>
+          <pre class="example"><span class="com">(* opam install cohttp-lwt-unix *)</span>
+<span class="com">(* dune: (libraries cohttp-lwt-unix lwt lwt.unix) *)</span>
+
+<span class="kw">open</span> <span class="tp">Lwt</span>.<span class="tp">Syntax</span>
+<span class="kw">module</span> <span class="tp">Client</span> = <span class="tp">Cohttp_lwt_unix</span>.<span class="tp">Client</span>
+
+<span class="com">(* GET request *)</span>
+<span class="kw">let</span> <span class="fn">get_json</span> url =
+  <span class="kw">let</span>* resp, corpo = <span class="tp">Client</span>.<span class="fn">get</span> (<span class="tp">Uri</span>.<span class="fn">of_string</span> url) <span class="kw">in</span>
+  <span class="kw">let</span> status = <span class="tp">Cohttp</span>.<span class="tp">Response</span>.<span class="fn">status</span> resp |> <span class="tp">Cohttp</span>.<span class="tp">Code</span>.<span class="fn">code_of_status</span> <span class="kw">in</span>
+  <span class="kw">let</span>* body_str = <span class="tp">Cohttp_lwt</span>.<span class="tp">Body</span>.<span class="fn">to_string</span> corpo <span class="kw">in</span>
+  <span class="tp">Lwt</span>.<span class="fn">return</span> (status, body_str)
+
+<span class="com">(* POST request com JSON *)</span>
+<span class="kw">let</span> <span class="fn">post_json</span> url json_body =
+  <span class="kw">let</span> headers = <span class="tp">Cohttp</span>.<span class="tp">Header</span>.<span class="fn">of_list</span>
+    [<span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>] <span class="kw">in</span>
+  <span class="kw">let</span> body = <span class="tp">Cohttp_lwt</span>.<span class="tp">Body</span>.<span class="fn">of_string</span> json_body <span class="kw">in</span>
+  <span class="kw">let</span>* resp, corpo = <span class="tp">Client</span>.<span class="fn">post</span> ~headers ~body (<span class="tp">Uri</span>.<span class="fn">of_string</span> url) <span class="kw">in</span>
+  <span class="kw">let</span> status = <span class="tp">Cohttp</span>.<span class="tp">Response</span>.<span class="fn">status</span> resp |> <span class="tp">Cohttp</span>.<span class="tp">Code</span>.<span class="fn">code_of_status</span> <span class="kw">in</span>
+  <span class="kw">let</span>* body_str = <span class="tp">Cohttp_lwt</span>.<span class="tp">Body</span>.<span class="fn">to_string</span> corpo <span class="kw">in</span>
+  <span class="tp">Lwt</span>.<span class="fn">return</span> (status, body_str)
+
+<span class="kw">let</span> () =
+  <span class="tp">Lwt_main</span>.<span class="fn">run</span> (
+    <span class="kw">let</span>* status, corpo = <span class="fn">get_json</span> <span class="str">"https://httpbin.org/get"</span> <span class="kw">in</span>
+    <span class="fn">Printf.printf</span> <span class="str">"Status: %d\nCorpo: %s\n"</span> status corpo;
+    <span class="tp">Lwt</span>.<span class="fn">return</span> ()
+  )</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="htmx-ssr">Dream + htmx — Server-Side Rendering</h2>
+        <div class="panel">
+          <p>Dream integra excelentemente com <strong>htmx</strong>: o servidor retorna fragmentos HTML diretamente, sem precisar de um SPA JavaScript. Isso mantém a lógica de negócio inteiramente em OCaml com segurança de tipos completa.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">main.ml — Dream + htmx (SSR interativo)</div>
+          <pre class="example"><span class="kw">open</span> <span class="tp">Lwt</span>.<span class="tp">Syntax</span>
+
+<span class="com">(* Estado simples em memória — em produção use banco de dados *)</span>
+<span class="kw">let</span> tarefas : (int * string * bool) <span class="tp">list ref</span> =
+  <span class="fn">ref</span> [(<span class="num">1</span>, <span class="str">"Aprender OCaml"</span>, <span class="kw">true</span>); (<span class="num">2</span>, <span class="str">"Usar Dream"</span>, <span class="kw">false</span>)]
+
+<span class="kw">let</span> <span class="fn">render_tarefa</span> (id, texto, feita) =
+  <span class="tp">Printf</span>.<span class="fn">sprintf</span> {|
+    &lt;li id="tarefa-%d"&gt;
+      &lt;input type="checkbox" %s
+        hx-patch="/tarefas/%d/toggle"
+        hx-target="#tarefa-%d"
+        hx-swap="outerHTML"&gt;
+      %s
+      &lt;button hx-delete="/tarefas/%d"
+              hx-target="#tarefa-%d"
+              hx-swap="outerHTML"&gt;X&lt;/button&gt;
+    &lt;/li&gt;
+  |} id (if feita then "checked" else "") id id texto id id
+
+<span class="kw">let</span> <span class="fn">render_lista</span> () =
+  <span class="kw">let</span> itens = <span class="tp">List</span>.<span class="fn">map</span> render_tarefa !tarefas |> <span class="tp">String</span>.<span class="fn">concat</span> <span class="str">""</span> <span class="kw">in</span>
+  <span class="tp">Printf</span>.<span class="fn">sprintf</span> {|&lt;ul id="lista-tarefas"&gt;%s&lt;/ul&gt;|} itens
+
+<span class="kw">let</span> <span class="fn">pagina_completa</span> () = <span class="tp">Printf</span>.<span class="fn">sprintf</span> {|
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;title&gt;To-do OCaml&lt;/title&gt;
+  &lt;script src="https://unpkg.com/htmx.org@2"&gt;&lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;h1&gt;To-do List (OCaml + htmx)&lt;/h1&gt;
+  %s
+  &lt;form hx-post="/tarefas" hx-target="#lista-tarefas" hx-swap="outerHTML"&gt;
+    &lt;input name="texto" placeholder="Nova tarefa"&gt;
+    &lt;button type="submit"&gt;Adicionar&lt;/button&gt;
+  &lt;/form&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+|} (<span class="fn">render_lista</span> ())
+
+<span class="kw">let</span> proximo_id = <span class="fn">ref</span> <span class="num">3</span>
+
+<span class="kw">let</span> () =
+  <span class="tp">Dream</span>.<span class="fn">run</span> ~port:<span class="num">8080</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">logger</span>
+  @@ <span class="tp">Dream</span>.<span class="fn">router</span> [
+    <span class="tp">Dream</span>.<span class="fn">get</span> <span class="str">"/"</span> (<span class="kw">fun</span> _r -> <span class="tp">Dream</span>.<span class="fn">html</span> (<span class="fn">pagina_completa</span> ()));
+
+    <span class="tp">Dream</span>.<span class="fn">post</span> <span class="str">"/tarefas"</span> (<span class="kw">fun</span> req ->
+      <span class="kw">let</span>* form = <span class="tp">Dream</span>.<span class="fn">form</span> req <span class="kw">in</span>
+      <span class="kw">match</span> <span class="tp">List</span>.<span class="fn">assoc_opt</span> <span class="str">"texto"</span> form <span class="kw">with</span>
+      | <span class="tp">Some</span> texto <span class="kw">when</span> texto <> <span class="str">""</span> ->
+          <span class="kw">let</span> id = !proximo_id <span class="kw">in</span>
+          incr proximo_id;
+          tarefas := !tarefas @ [(id, texto, <span class="kw">false</span>)];
+          <span class="tp">Dream</span>.<span class="fn">html</span> (<span class="fn">render_lista</span> ())
+      | _ -> <span class="tp">Dream</span>.<span class="fn">respond</span> ~status:`Bad_Request <span class="str">"texto obrigatório"</span>
+    );
+
+    <span class="tp">Dream</span>.<span class="fn">delete</span> <span class="str">"/tarefas/:id"</span> (<span class="kw">fun</span> req ->
+      <span class="kw">let</span> id = <span class="tp">Dream</span>.<span class="fn">param</span> req <span class="str">"id"</span> |> <span class="fn">int_of_string</span> <span class="kw">in</span>
+      tarefas := <span class="tp">List</span>.<span class="fn">filter</span> (<span class="kw">fun</span> (i,_,_) -> i <> id) !tarefas;
+      <span class="tp">Dream</span>.<span class="fn">respond</span> <span class="str">""</span>
+    );
+  ]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="docker">Deploy com Docker</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dockerfile — multistage build para OCaml</div>
+          <pre class="example"><span class="com"># Stage 1: Build</span>
+FROM ocaml/opam:ubuntu-22.04-ocaml-5.2 AS builder
+
+WORKDIR /app
+
+<span class="com"># Instalar dependências do sistema</span>
+RUN sudo apt-get update && sudo apt-get install -y \
+    libssl-dev pkg-config
+
+<span class="com"># Copiar arquivos do projeto</span>
+COPY --chown=opam:opam . .
+
+<span class="com"># Instalar dependências OCaml</span>
+RUN opam install . --deps-only --yes
+
+<span class="com"># Compilar</span>
+RUN eval $(opam env) && dune build bin/main.exe
+
+<span class="com"># Stage 2: Runtime (imagem mínima)</span>
+FROM ubuntu:22.04
+
+RUN apt-get update && apt-get install -y \
+    libssl3 ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/_build/default/bin/main.exe /usr/local/bin/app
+
+EXPOSE 8080
+
+CMD ["/usr/local/bin/app"]</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — Build e deploy</div>
+          <pre class="example"><span class="com"># Build da imagem</span>
+docker build -t meu-app-ocaml .
+
+<span class="com"># Rodar localmente</span>
+docker run -p 8080:8080 meu-app-ocaml
+
+<span class="com"># Com variáveis de ambiente</span>
+docker run -p 8080:8080 \
+  -e DATABASE_URL="postgres://..." \
+  -e SECRET_KEY="chave-secreta" \
+  meu-app-ocaml
+
+<span class="com"># Deploy no Fly.io (plataforma amigável para OCaml)</span>
+fly launch --dockerfile Dockerfile
+fly deploy</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DREAM CONTRIBUTORS. <strong>Dream Documentation</strong>. 2024. Disponível em: <a href="https://aantron.github.io/dream/" target="_blank" rel="noopener">https://aantron.github.io/dream/</a></li>
+            <li>MADHAVAPEDDY, Anil et al. <strong>Cohttp Documentation</strong>. 2024. Disponível em: <a href="https://github.com/mirage/ocaml-cohttp" target="_blank" rel="noopener">github.com/mirage/ocaml-cohttp</a></li>
+            <li>MINSKY, Yaron; MADHAVAPEDDY, Anil; HICKEY, Jason. <strong>Real World OCaml — Chapter: Concurrent Programming with Async</strong>. O'Reilly, 2022.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/avancado.html">OCaml — Avançado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/terminal_cli.html">OCaml — Terminal &amp; CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/ecossistema_tooling.html">OCaml — Ecossistema</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Com Dream + htmx + OCaml, você constrói aplicações web interativas com segurança de tipos end-to-end, sem JavaScript no servidor.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

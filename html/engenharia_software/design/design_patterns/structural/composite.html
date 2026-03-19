@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Composite: padrão estrutural para tratar objetos individuais e composições de objetos de forma uniforme (árvores)." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Composite | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Tratar objetos individuais e compostos da mesma forma</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Composite</h1>
+          <p class="page-subtitle">Estrutural — GoF</p>
+        </div>
+        <p class="intro-highlight">Composite compõe objetos em árvores e permite que o cliente trate tanto folhas (objetos simples) quanto galhos (compostos) de forma uniforme. A interface é a mesma — o cliente não distingue entre um arquivo e uma pasta.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura da árvore</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Component</strong></td>
+                <td>Interface comum entre folhas e compostos.</td>
+                <td><code>interface ItemArvorquivo</code></td>
+              </tr>
+              <tr>
+                <td><strong>Leaf</strong></td>
+                <td>Objeto sem filhos. Implementa a operação diretamente.</td>
+                <td><code>Arquivo</code> com seus bytes</td>
+              </tr>
+              <tr>
+                <td><strong>Composite</strong></td>
+                <td>Contão de Components. Delega a operação a cada filho.</td>
+                <td><code>Pasta</code> com lista de filhos</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — sistema de arquivos</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface ItemArquivo {
+  nome: string;
+  tamanho(): number;
+  exibir(indent?: string): void;
+}
+
+class Arquivo implements ItemArquivo {
+  constructor(public nome: string, private bytes: number) {}
+  tamanho() { return this.bytes; }
+  exibir(indent = '') { console.log(`${indent}[arquivo] ${this.nome} (${this.bytes}B)`); }
+}
+
+class Pasta implements ItemArquivo {
+  private filhos: ItemArquivo[] = [];
+
+  constructor(public nome: string) {}
+
+  adicionar(item: ItemArquivo): void { this.filhos.push(item); }
+
+  tamanho(): number {
+    return this.filhos.reduce((s, f) => s + f.tamanho(), 0);
+  }
+
+  exibir(indent = ''): void {
+    console.log(`${indent}[pasta] ${this.nome}/`);
+    this.filhos.forEach(f => f.exibir(indent + '  '));
+  }
+}
+
+// Uso — cliente trata Arquivo e Pasta da mesma forma
+const raiz = new Pasta('src');
+raiz.adicionar(new Arquivo('main.ts', 1200));
+const utils = new Pasta('utils');
+utils.adicionar(new Arquivo('helper.ts', 400));
+utils.adicionar(new Arquivo('validator.ts', 600));
+raiz.adicionar(utils);
+
+raiz.exibir();
+// [pasta] src/
+//   [arquivo] main.ts (1200B)
+//   [pasta] utils/
+//     [arquivo] helper.ts (400B)
+console.log(raiz.tamanho()); // 2200</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Estrutura hierárquica (menus, árvores de categoria, filesystems, CPDs de UI) onde folhas e compostos devem ser tratados uniformemente.</p>
+          </div>
+          <div class="card">
+            <h3>Recursividade</h3>
+            <p>Operações como tamanho(), render(), exportar() propagam naturalmente pela árvore via delegação recursiva.</p>
+          </div>
+          <div class="card">
+            <h3>Combine com Visitor</h3>
+            <p>Visitor percorre a árvore Composite e aplica operações sem modificar as classes dos nós.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>A estrutura não é hierárquica. Uma lista simples e função recursiva pode ser mais legível.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Composite combina bem com <a href="/html/engenharia_software/design/design_patterns/behavioral/visitor.html">Visitor</a> (percorrer árvore) e <a href="/html/engenharia_software/design/design_patterns/behavioral/iterator.html">Iterator</a> (iterar uniforme sobre qualquer subárvore).</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Composite torna a diferença entre uno e múltiplo irrelevante para o cliente — a interface é a mesma."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="COBOL em Sistemas Corporativos: bancário, previdência, seguros, CICS para transações online, DB2 embedded SQL, padrões de cálculo financeiro com aritmética decimal exata." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Sistemas Corporativos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Sistemas Corporativos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Sistemas Corporativos</h1>
+          <p>Bancos, seguradoras, governo e previdência social são o habitat natural do COBOL. Sua <strong>aritmética decimal exata</strong> (sem erros de ponto flutuante binário), acesso nativo a dados SQL, e décadas de código testado em produção tornam o COBOL insubstituível onde erros de centavos têm consequências legais e financeiras.</p>
+        </div>
+        <p class="intro-highlight">
+          O Banco Central Europeu, a New York Stock Exchange, e o INSS brasileiro rodam COBOL. Entender como o COBOL resolve problemas reais nestas indústrias — cálculo de pensão, processamento de pagamento, apólice de seguro — é entender por que ele sobreviveu 65 anos.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="bancario">Sistema Bancário — Transferência Segura</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Transferência interbancária com rollback em caso de erro</div>
+          <pre class="example">       IDENTIFICATION DIVISION.
+       PROGRAM-ID. TRANSFERE.
+
+       WORKING-STORAGE SECTION.
+         01 WS-CONTA-ORIGEM    PIC X(10).
+         01 WS-CONTA-DESTINO   PIC X(10).
+         01 WS-VALOR           PIC 9(12)V99 COMP-3.
+         01 WS-SALDO-ORIG      PIC S9(12)V99 COMP-3.
+         01 WS-SALDO-DEST      PIC S9(12)V99 COMP-3.
+         01 WS-STATUS-DB       PIC 9(4).
+         01 WS-MSG-ERRO        PIC X(80).
+
+       EXEC SQL INCLUDE SQLCA END-EXEC.
+
+       PROCEDURE DIVISION.
+       0000-INICIAR.
+           MOVE '0001234567' TO WS-CONTA-ORIGEM.
+           MOVE '0009876543' TO WS-CONTA-DESTINO.
+           MOVE 1500.00 TO WS-VALOR.
+           PERFORM 1000-VALIDAR-SALDO.
+           IF WS-STATUS-DB = 0
+               PERFORM 2000-EXECUTAR-TRANSFERENCIA
+           END-IF.
+           STOP RUN.
+
+       1000-VALIDAR-SALDO.
+           EXEC SQL
+               SELECT SALDO INTO :WS-SALDO-ORIG
+               FROM CONTAS
+               WHERE NUM_CONTA = :WS-CONTA-ORIGEM
+               FOR UPDATE OF SALDO     <span class="com">*> lock pessimista</span>
+           END-EXEC.
+           IF SQLCODE NOT EQUAL 0
+               MOVE SQLCODE TO WS-STATUS-DB
+               MOVE 'Conta origem não encontrada' TO WS-MSG-ERRO
+               PERFORM 9999-ERRO
+           END-IF.
+           IF WS-SALDO-ORIG < WS-VALOR
+               MOVE 4001 TO WS-STATUS-DB
+               MOVE 'Saldo insuficiente' TO WS-MSG-ERRO
+               PERFORM 9999-ERRO
+           END-IF.
+
+       2000-EXECUTAR-TRANSFERENCIA.
+           EXEC SQL
+               UPDATE CONTAS SET SALDO = SALDO - :WS-VALOR
+               WHERE NUM_CONTA = :WS-CONTA-ORIGEM
+           END-EXEC.
+           IF SQLCODE NOT EQUAL 0 PERFORM 9000-ROLLBACK.
+
+           EXEC SQL
+               UPDATE CONTAS SET SALDO = SALDO + :WS-VALOR
+               WHERE NUM_CONTA = :WS-CONTA-DESTINO
+           END-EXEC.
+           IF SQLCODE NOT EQUAL 0 PERFORM 9000-ROLLBACK.
+
+           EXEC SQL
+               INSERT INTO HISTORICO_TRANS
+               (DT_HORA, ORIGEM, DESTINO, VALOR, TIPO)
+               VALUES (CURRENT TIMESTAMP,
+                       :WS-CONTA-ORIGEM, :WS-CONTA-DESTINO,
+                       :WS-VALOR, 'TRF')
+           END-EXEC.
+           EXEC SQL COMMIT END-EXEC.
+           DISPLAY 'Transferência realizada: R$ ' WS-VALOR.
+
+       9000-ROLLBACK.
+           EXEC SQL ROLLBACK END-EXEC.
+           DISPLAY 'ROLLBACK executado. Erro: ' SQLCODE.
+           STOP RUN.
+
+       9999-ERRO.
+           DISPLAY WS-MSG-ERRO.
+           STOP RUN.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="previdencia">Previdência — Cálculo de Benefício</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Cálculo de aposentadoria com media salarial e fator previdenciário</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+         01 WS-TABELA-CONTRIB.
+           05 WS-CONTRIB OCCURS 1 TO 480 TIMES
+                         DEPENDING ON WS-QT-CONTRIB
+                         INDEXED BY WS-IDX-C.
+             10 WS-COMP  PIC 9(6).         <span class="com">*> competência AAAAMM</span>
+             10 WS-SAL   PIC 9(7)V99 COMP-3.
+
+         01 WS-QT-CONTRIB   PIC 9(3).
+         01 WS-MEDIA-80     PIC 9(9)V99 COMP-3.
+         01 WS-FATOR-PREV   PIC 9(2)V9(4) COMP-3.
+         01 WS-BENEFICIO    PIC 9(9)V99 COMP-3.
+         01 WS-TETO-INSS    PIC 9(7)V99 VALUE 7786.02.
+         01 WS-PISO-INSS    PIC 9(7)V99 VALUE 1412.00.
+
+         01 WS-SOMA-80      PIC 9(13)V99 COMP-3.
+         01 WS-QT-80        PIC 9(3).
+         01 WS-AUX-VALOR    PIC 9(9)V99 COMP-3.
+         01 WS-INDICE-SAL   PIC 9(2)V9(6) COMP-3.
+
+       PROCEDURE DIVISION.
+       3000-CALCULAR-MEDIA-80.
+<span class="com">      *> Regra dos 80%: calcular sobre os maiores 80% dos salários</span>
+           COMPUTE WS-QT-80 = FUNCTION INTEGER(WS-QT-CONTRIB * 0.8).
+           MOVE ZEROS TO WS-SOMA-80.
+
+<span class="com">      *> Ordenar contribuições DESC (SORT interno simplificado)</span>
+           PERFORM VARYING WS-IDX-C FROM 1 BY 1
+               UNTIL WS-IDX-C > WS-QT-80
+               ADD WS-SAL(WS-IDX-C) TO WS-SOMA-80
+           END-PERFORM.
+
+           COMPUTE WS-MEDIA-80 ROUNDED =
+               WS-SOMA-80 / WS-QT-80.
+
+<span class="com">      *> Aplicar teto e piso do INSS</span>
+           IF WS-MEDIA-80 > WS-TETO-INSS
+               MOVE WS-TETO-INSS TO WS-MEDIA-80
+           END-IF.
+           IF WS-MEDIA-80 < WS-PISO-INSS
+               MOVE WS-PISO-INSS TO WS-MEDIA-80
+           END-IF.
+
+       3100-APLICAR-FATOR-PREVIDENCIARIO.
+<span class="com">      *> Fator simplificado: (TC × a) / Es × (1 + (Id + TC × a) / 100)</span>
+<span class="com">      *> TC = tempo contribuição, Id = idade, a = alíquota, Es = expectativa</span>
+           COMPUTE WS-BENEFICIO ROUNDED =
+               WS-MEDIA-80 * WS-FATOR-PREV.
+
+<span class="com">      *> Exibir com máscara monetária</span>
+           MOVE WS-BENEFICIO TO WS-AUX-VALOR.
+           DISPLAY 'Benefício Calculado: R$ '
+                   WS-AUX-VALOR.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cics">CICS — Transações Online</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CICS BMS — consulta de saldo em terminal 3270</div>
+          <pre class="example">       IDENTIFICATION DIVISION.
+       PROGRAM-ID. CONSULSAL.
+
+       WORKING-STORAGE SECTION.
+         01 WS-CONTA         PIC X(10).
+         01 WS-SALDO         PIC S9(12)V99 COMP-3.
+         01 WS-SALDO-EDIT    PIC ZZZ,ZZZ,ZZ9.99-.
+
+       EXEC SQL INCLUDE SQLCA END-EXEC.
+
+       LINKAGE SECTION.
+         01 DFHCOMMAREA      PIC X(100).    <span class="com">*> área de comunicação CICS</span>
+
+       PROCEDURE DIVISION.
+       INICIO.
+           IF EIBCALEN = ZEROS
+<span class="com">      *>      Primeira vez — enviar mapa de entrada</span>
+               EXEC CICS SEND MAP('CONSMAPA')
+                              MAPSET('CONSMAPS')
+                              ERASE
+               END-EXEC
+               EXEC CICS RETURN
+                         TRANSID('CSAL')
+                         COMMAREA(WS-CONTA)
+               END-EXEC
+           ELSE
+<span class="com">      *>      Segunda vez — receber dados do operador</span>
+               EXEC CICS RECEIVE MAP('CONSMAPA')
+                                 MAPSET('CONSMAPS')
+               END-EXEC
+               PERFORM 1000-CONSULTAR-SALDO
+               EXEC CICS SEND MAP('CONSMAPA')
+                              MAPSET('CONSMAPS')
+                              DATAONLY
+               END-EXEC
+               EXEC CICS RETURN END-EXEC
+           END-IF.
+
+       1000-CONSULTAR-SALDO.
+           EXEC SQL
+               SELECT SALDO INTO :WS-SALDO
+               FROM CONTAS WHERE NUM_CONTA = :WS-CONTA
+           END-EXEC.
+           IF SQLCODE = 0
+               MOVE WS-SALDO TO WS-SALDO-EDIT
+           ELSE
+               MOVE 'CONTA NAO ENCONTRADA' TO MSGO
+           END-IF.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="seguros">Seguradora — Sinistro e Provisão</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Cálculo de prêmio de seguro com tabela de risco</div>
+          <pre class="example">       WORKING-STORAGE SECTION.
+         01 WS-TB-RISCO.
+           05 WS-FAIXA OCCURS 10 TIMES INDEXED BY WS-IF.
+             10 WS-IDADE-MIN  PIC 9(3).
+             10 WS-IDADE-MAX  PIC 9(3).
+             10 WS-FATOR-RISCO PIC 9V9(4) COMP-3.
+
+         01 WS-APOL.
+           05 WS-SEGURADO-IDADE  PIC 9(3).
+           05 WS-CAPITAL-SEGURADO PIC 9(10)V99 COMP-3.
+           05 WS-COBERTURA-TIPO  PIC X(2).
+             88 COB-VIDA        VALUE 'VD'.
+             88 COB-AUTOM       VALUE 'AT'.
+             88 COB-RESID       VALUE 'RS'.
+           05 WS-PREMIO-PURO    PIC 9(9)V99 COMP-3.
+           05 WS-PREMIO-COMERCIAL PIC 9(9)V99 COMP-3.
+           05 WS-LOADING        PIC 9V9(3) COMP-3.
+
+       PROCEDURE DIVISION.
+       5000-CALCULAR-PREMIO.
+<span class="com">      *> Buscar fator de risco por faixa etária (SEARCH)</span>
+           SET WS-IF TO 1.
+           SEARCH WS-FAIXA
+               AT END MOVE 2.5 TO WS-LOADING
+               WHEN WS-SEGURADO-IDADE >= WS-IDADE-MIN(WS-IF)
+                AND WS-SEGURADO-IDADE <= WS-IDADE-MAX(WS-IF)
+                   CONTINUE
+           END-SEARCH.
+
+           COMPUTE WS-PREMIO-PURO ROUNDED =
+               WS-CAPITAL-SEGURADO * WS-FATOR-RISCO(WS-IF) / 1000.
+
+<span class="com">      *> Loading: carregamento de despesas e lucro</span>
+           EVALUATE TRUE
+               WHEN COB-VIDA
+                   MOVE 1.35 TO WS-LOADING
+               WHEN COB-AUTOM
+                   MOVE 1.45 TO WS-LOADING
+               WHEN COB-RESID
+                   MOVE 1.25 TO WS-LOADING
+               WHEN OTHER
+                   MOVE 1.40 TO WS-LOADING
+           END-EVALUATE.
+
+           COMPUTE WS-PREMIO-COMERCIAL ROUNDED =
+               WS-PREMIO-PURO * WS-LOADING.
+
+           DISPLAY 'Prêmio puro:      R$ ' WS-PREMIO-PURO.
+           DISPLAY 'Prêmio comercial: R$ ' WS-PREMIO-COMERCIAL.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>IBM. <strong>CICS Transaction Server for z/OS — Application Programming Guide</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/cics-ts&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>DB2 for z/OS — COBOL Embedded SQL</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/db2-for-zos&gt;. Acesso em: 2025.</li>
+            <li>INSS. <strong>Manual de Rotinas de Cálculo de Benefícios Previdenciários</strong>. DATAPREV, 2023. Disponível em: &lt;https://www.dataprev.gov.br&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="batch_mainframe.html"><span data-svg="seta-direita" aria-hidden="true"></span> Batch e Mainframe</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> COBOL em Terminal / CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O COBOL usa <strong>aritmética decimal compactada (COMP-3)</strong>: cada dígito ocupa 4 bits, então <code>PIC 9(7)V99 COMP-3</code> usa apenas 5 bytes para representar valores como 1.234.567,89 — sem erro de ponto flutuante binário. Isso explica por que sistemas financeiros que lidam com centavos não podem usar <code>double</code> de C ou <code>float</code> de Python: 0.1 + 0.2 = 0.30000000000000004 em binário IEEE-754, mas COMP-3 sempre dá 0.30.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

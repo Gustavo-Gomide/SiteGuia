@@ -1,0 +1,571 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Programacao Paralela: Lei de Amdahl, paralelismo de dados, OpenMP, CUDA e Apache Spark." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Programacao Paralela | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Programacao Paralela</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Programacao Paralela</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Paralelismo &mdash; Fazer Mais ao Mesmo Tempo</h1>
+          <p>Aproveitando multiplos nucleos e GPUs para acelerar computacoes intensas.</p>
+        </div>
+        <p class="intro-highlight">
+          Em 2005, Intel e AMD lancaram seus primeiros processadores dual-core &mdash; e a Lei de Moore
+          mudou de direcao. Em vez de CPUs mais rapidas, passamos a ter <strong>mais nucleos</strong>.
+          Programas que ignoram esse fato rodam em apenas um dos 16, 32 ou 64 nucleos disponíveis.
+          Um modelo de ML que treina em 8 horas num unico core pode terminar em 30 minutos com
+          paralelizacao correta. Paralelismo e a tecnica que transforma o hardware moderno em
+          vantagem computacional real.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 1. CONCORRENCIA VS PARALELISMO -->
+      <section>
+        <h2 id="conc-vs-par" class="section-title">1. Concorrencia vs. Paralelismo</h2>
+        <p>
+          A distincao e fundamental e frequentemente confundida. Concorrencia e sobre estrutura e
+          responsividade; paralelismo e sobre execucao fisica simultanea e velocidade.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Rob Pike:</strong> "Concurrency is about <em>dealing</em> with lots of things at once.
+            Parallelism is about <em>doing</em> lots of things at once." Um servidor web que atende
+            1.000 conexoes em um unico core via event loop e concorrente, nao paralelo. Quatro workers
+            treinando um modelo de ML &mdash; cada um em um core diferente &mdash; sao paralelos.
+          </p>
+        </div>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Dimensao</th>
+                  <th>Concorrencia</th>
+                  <th>Paralelismo</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><strong>Definicao</strong></td>
+                  <td>Multiplas tarefas em progresso sobrepostas no tempo</td>
+                  <td>Multiplas tarefas executando fisicamente ao mesmo tempo</td>
+                </tr>
+                <tr>
+                  <td><strong>Requer multi-core?</strong></td>
+                  <td>Nao (funciona em single-core via context switch)</td>
+                  <td>Sim (multiplos CPUs, cores ou GPUs)</td>
+                </tr>
+                <tr>
+                  <td><strong>Objetivo principal</strong></td>
+                  <td>Responsividade, throughput de I/O</td>
+                  <td>Velocidade &mdash; menor tempo de execucao (latencia)</td>
+                </tr>
+                <tr>
+                  <td><strong>Tipo de tarefa</strong></td>
+                  <td>I/O-bound (rede, disco, banco de dados)</td>
+                  <td>CPU-bound (calculo numerico, rendering, ML, compressao)</td>
+                </tr>
+                <tr>
+                  <td><strong>Risco principal</strong></td>
+                  <td>Race conditions, deadlock, starvation</td>
+                  <td>Overhead de sincronizacao, load imbalance, Lei de Amdahl</td>
+                </tr>
+                <tr>
+                  <td><strong>Exemplos</strong></td>
+                  <td>Servidor web, GUI, event loop, consumers de fila</td>
+                  <td>Treinamento de ML, rendering 3D, simulacoes numericas, encoding de video</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 2. COMO FUNCIONA O PARALELISMO -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona o Paralelismo</h2>
+        <p>
+          Paralelismo e implementado dividindo o trabalho entre recursos de computacao fisicamente
+          independentes. Existem tres estrategias classicas de divisao:
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">diagrama &mdash; os tres tipos de paralelismo</div>
+          <pre class="example"><span class="com">-- 1. Paralelismo de Dados: mesma operacao, dados diferentes</span>
+Array [1, 2, 3, 4, 5, 6, 7, 8]
+  Core 1: [1, 2]  * 2  →  [2, 4]
+  Core 2: [3, 4]  * 2  →  [6, 8]
+  Core 3: [5, 6]  * 2  →  [10, 12]
+  Core 4: [7, 8]  * 2  →  [14, 16]
+<span class="com">-- Resultado: [2, 4, 6, 8, 10, 12, 14, 16]</span>
+
+<span class="com">-- 2. Paralelismo de Tarefas: operacoes diferentes, simultaneas</span>
+  Core 1: comprimir imagem A
+  Core 2: comprimir imagem B
+  Core 3: gerar thumbnail de A
+  Core 4: gerar thumbnail de B
+
+<span class="com">-- 3. Paralelismo de Pipeline: estagios sobrepostos (linha de montagem)</span>
+Frame 1:  [Captura] → [Decodifica] → [Filtra] → [Exibe]
+Frame 2:             [Captura]     → [Decodifica] → [Filtra] → ...
+<span class="com">-- sempre 4 frames em estagios diferentes simultaneamente</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Paralelismo de Dados</h3>
+            <p>
+              A mesma operacao e aplicada a particoes diferentes de um dataset simultaneamente.
+              Ideal para arrays, matrizes e tensores. E o modelo dominante em GPUs (SIMT: Single
+              Instruction Multiple Thread) e em NumPy (vetorizacao SIMD) e Apache Spark
+              (RDDs particionados entre workers).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Paralelismo de Tarefas</h3>
+            <p>
+              Diferentes tarefas independentes executam simultaneamente em cores distintos.
+              Requer que as tarefas nao tenham dependencias entre si. Implementado com thread pools,
+              <code class="code-inline">ForkJoinPool</code> (Java),
+              <code class="code-inline">ProcessPoolExecutor</code> (Python) e OpenMP sections.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Paralelismo de Pipeline</h3>
+            <p>
+              O processamento e dividido em estagios sequenciais que executam sobrepostos &mdash;
+              como uma linha de montagem. Enquanto o estagio 1 processa o item N+1, o estagio 2
+              processa o item N. Usado em processamento de video, compiladores e nos proprios
+              pipelines de instrucao dos processadores modernos.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 3. LEI DE AMDAHL -->
+      <section>
+        <h2 id="lei-amdahl" class="section-title">3. Lei de Amdahl &mdash; O Limite do Paralelismo</h2>
+        <p>
+          A Lei de Amdahl (1967) define o ganho maximo de velocidade possivel ao paralelizar
+          um programa. E a lei mais importante &mdash; e mais ignorada &mdash; em computacao paralela.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">matematica &mdash; formula e suas implicacoes praticas</div>
+          <pre class="example"><span class="com">-- Speedup maximo com N processadores:</span>
+<span class="com">-- S(N) = 1 / (1 - P + P/N)</span>
+<span class="com">-- P = fracao paralelizavel do programa (0 a 1)</span>
+<span class="com">-- N = numero de processadores</span>
+
+<span class="com">-- Programa com 90% paralelizavel (P = 0.9):</span>
+N=1:   S = 1 / (0.1 + 0.9/1)    =  1.0x
+N=2:   S = 1 / (0.1 + 0.9/2)    =  1.82x
+N=4:   S = 1 / (0.1 + 0.9/4)    =  3.08x
+N=8:   S = 1 / (0.1 + 0.9/8)    =  4.71x
+N=16:  S = 1 / (0.1 + 0.9/16)   =  6.40x
+N=∞:   S = 1 / 0.1               = 10.0x  ← limite absoluto!
+
+<span class="com">-- INSIGHT: dobrar os cores NAO dobra a velocidade.</span>
+<span class="com">-- Os 10% sequenciais limitam o speedup a 10x, nao importa quantos cores.</span>
+<span class="com">-- Reduzir a parte sequencial e mais valioso que adicionar mais cores.</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>O Que a Lei Revela</h3>
+            <p>
+              Um programa com apenas 5% de codigo sequencial so pode escalar ate 20x, independente
+              de quantos cores sejam adicionados. A parte sequencial inclui: I/O serial,
+              sincronizacao entre workers, operacoes de reducao (merge de resultados) e
+              codigo de coordenacao entre tarefas.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Lei de Gustafson &mdash; A Contrapartida</h3>
+            <p>
+              Gustafson (1988) reformulou o problema: em vez de escalar o mesmo problema,
+              use mais processadores para resolver <strong>problemas maiores</strong> no mesmo tempo.
+              "Scaled speedup": o que seria impossível processar em 1 hora num core fica possível
+              num core-hora distribuído. MapReduce e o modelo de Gustafson em acao.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 4. PARALELISMO EM CPU -->
+      <section>
+        <h2 id="openmp" class="section-title">4. Paralelismo em CPU &mdash; OpenMP e Fork/Join</h2>
+        <p>
+          Para programas CPU-bound em C, C++ e Fortran, OpenMP e o padrao da industria. Diretivas
+          de compilador transformam loops sequenciais em paralelos com minimas alteracoes ao codigo.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">c &mdash; OpenMP: paralelizar um loop com uma diretiva</div>
+          <pre class="example"><span class="com">// Compilar: gcc -fopenmp programa.c -o programa</span>
+#include &lt;omp.h&gt;
+
+<span class="kw">int</span> main() {
+    <span class="kw">double</span> soma = <span class="num">0.0</span>;
+    <span class="kw">int</span> n = <span class="num">1000000</span>;
+    <span class="kw">double</span> arr[n];  <span class="com">/* preencher array... */</span>
+
+    <span class="com">// OpenMP divide o loop entre os cores disponíveis</span>
+    <span class="com">// reduction(+:soma): cada thread calcula parcial, runtime combina</span>
+    #pragma omp parallel for reduction(+:soma) schedule(static)
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i < n; i++) {
+        soma += arr[i];
+    }
+    <span class="com">// Thread-safe automaticamente pela clausula reduction</span>
+    printf(<span class="str">"Soma: %f\n"</span>, soma);
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">java &mdash; ForkJoinPool e parallel streams</div>
+          <pre class="example"><span class="kw">import</span> java.util.Arrays;
+<span class="kw">import</span> java.util.stream.IntStream;
+
+<span class="com">// Parallel Stream: usa ForkJoinPool common pool automaticamente</span>
+<span class="kw">double</span> soma = IntStream.range(<span class="num">0</span>, <span class="num">1_000_000</span>)
+    .parallel()                   <span class="com">// ativa paralelismo</span>
+    .mapToDouble(i -> arr[i])
+    .sum();
+
+<span class="com">// ForkJoinPool customizado para controlar o grau de paralelismo</span>
+ForkJoinPool pool = <span class="kw">new</span> ForkJoinPool(<span class="num">8</span>);  <span class="com">// 8 threads</span>
+<span class="kw">double</span> resultado = pool.submit(() ->
+    Arrays.stream(arr).parallel().sum()
+).get();</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 5. PARALELISMO EM GPU -->
+      <section>
+        <h2 id="gpu" class="section-title">5. Paralelismo Massivo em GPU</h2>
+        <p>
+          Uma GPU moderna tem <strong>10.000+ nucleos CUDA</strong> versus 16&ndash;64 de uma CPU topo.
+          Cada nucleo e mais simples, mas todos executam a mesma instrucao em dados diferentes &mdash;
+          modelo SIMT (Single Instruction, Multiple Threads). Para operacoes massivamente paralelas
+          sobre arrays, a GPU supera a CPU em 10&ndash;100x.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">cuda c++ &mdash; adicao de vetores: um elemento por thread</div>
+          <pre class="example"><span class="com">// __global__: funcao executada na GPU, chamada pela CPU</span>
+__global__ <span class="kw">void</span> <span class="fn">vetorAdd</span>(<span class="kw">float</span>* A, <span class="kw">float</span>* B, <span class="kw">float</span>* C, <span class="kw">int</span> n) {
+    <span class="kw">int</span> i = blockIdx.x * blockDim.x + threadIdx.x;
+    <span class="com">// Cada thread calcula seu indice e processa UM elemento</span>
+    <span class="kw">if</span> (i < n) C[i] = A[i] + B[i];
+}
+
+<span class="kw">int</span> main() {
+    <span class="kw">int</span> n = <span class="num">1024</span> * <span class="num">1024</span>;  <span class="com">// 1 milhao de elementos</span>
+    <span class="kw">float</span> *d_A, *d_B, *d_C;
+    cudaMalloc(&d_A, n * <span class="kw">sizeof</span>(<span class="kw">float</span>));
+    cudaMalloc(&d_B, n * <span class="kw">sizeof</span>(<span class="kw">float</span>));
+    cudaMalloc(&d_C, n * <span class="kw">sizeof</span>(<span class="kw">float</span>));
+
+    <span class="com">// Lançar 1024 blocos de 1024 threads = 1.048.576 threads simultaneas</span>
+    vetorAdd&lt;&lt;&lt;<span class="num">1024</span>, <span class="num">1024</span>&gt;&gt;&gt;(d_A, d_B, d_C, n);
+
+    <span class="com">// Na CPU sequencial: 1M iteracoes. Na GPU: todas ao mesmo tempo.</span>
+    <span class="com">// CUDA cuida do escalonamento nos cores automaticamente.</span>
+}</pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Quando GPU vence CPU:</strong> operacoes sobre arrays grandes e regulares
+            (produto de matrizes, convolucoes, reducoes). <strong>Quando CPU vence GPU:</strong>
+            algoritmos com muitas ramificacoes condicionais (if/else por elemento), acesso irregular
+            a memoria (arvores, grafos com ponteiros) e tarefas de baixa latencia &mdash;
+            a transferencia de dados CPU&lrarr;GPU tem overhead de centenas de microsegundos.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 6. QUANDO PARALELIZAR -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">6. Quando Paralelizar</h2>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Ideal Para Paralelizar
+            </h3>
+            <ul>
+              <li>Treinamento de modelos ML/DL: operacoes de matriz que ja expressam paralelismo de dados</li>
+              <li>Processamento de imagens e video: pixels sao independentes entre si</li>
+              <li>Simulacoes fisicas e numericas (CFD, Monte Carlo, meteorologia, financas quantitativas)</li>
+              <li>Compressao e criptografia em lote: cada bloco e independente</li>
+              <li>Renderizacao 3D: cada raio de luz e independente (ray tracing embarassingly parallel)</li>
+              <li>Processamento de grandes datasets (Spark, MapReduce) em clusters</li>
+            </ul>
+          </div>
+          <div class="panel panel--positive">
+            <h3 class="panel-title">
+              <span data-svg="check" aria-hidden="true"></span>
+              Algoritmos Naturalmente Paralelizaveis
+            </h3>
+            <ul>
+              <li><strong>Embarassingly parallel:</strong> sem dependencias entre trabalhos (batch de imagens)</li>
+              <li>Map/filter sobre colecoes de elementos independentes</li>
+              <li>Produto de matrizes e operacoes de algebra linear (BLAS)</li>
+              <li>Busca em espaco de estados: diferentes ramos da arvore em paralelo</li>
+              <li>Geracao de numeros pseudoaleatorios em lote com seeds independentes</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Nao Paralelizar Quando
+            </h3>
+            <ul>
+              <li>A tarefa e I/O-bound: use concorrencia (async/await) em vez de threads de CPU</li>
+              <li>O dataset e pequeno: overhead de criacao de threads supera o ganho da paralelizacao</li>
+              <li>O algoritmo tem dependencias fortes entre passos (recorrencias: LSTM puro, Fibonacci)</li>
+              <li>A parte paralelizavel e inferior a 50% (Lei de Amdahl limita o ganho a 2x)</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3 class="panel-title">
+              <span data-svg="xmark" aria-hidden="true"></span>
+              Armadilhas do Paralelismo
+            </h3>
+            <ul>
+              <li><strong>False sharing:</strong> threads em cores diferentes escrevem em posicoes adjacentes da mesma cache line, causando invalidades de cache constantes</li>
+              <li><strong>Load imbalance:</strong> um worker recebe muito mais trabalho que os outros &mdash; os demais ficam ociosos esperando</li>
+              <li><strong>Memory bandwidth:</strong> GPUs e CPUs multi-core sao frequentemente limitadas pela banda de memoria, nao pelo numero de cores</li>
+              <li><strong>Overhead de sincronizacao:</strong> barreiras e reducoes frequentes anulam o ganho do paralelismo</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 7. TOPICOS AVANCADOS -->
+      <section>
+        <h2 id="avancado" class="section-title">7. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>MPI &mdash; Paralelismo em Clusters Distribuidos</h3>
+            <p>
+              Message Passing Interface e o padrao para paralelismo em supercomputacao.
+              Cada processo tem sua propria memoria; comunicacao exclusivamente via mensagens
+              (<code class="code-inline">MPI_Send</code>, <code class="code-inline">MPI_Bcast</code>,
+              <code class="code-inline">MPI_Reduce</code>). Roda em milhares de nos de forma
+              coordenada. Usado em simulacoes de dinamica de fluidos, previsao do tempo e
+              modelagem climatica em supercomputadores.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>SIMD &mdash; Paralelismo em Nivel de Instrucao</h3>
+            <p>
+              Single Instruction Multiple Data: a CPU processa multiplos valores com
+              uma unica instrucao via registradores vetoriais largos (SSE: 128 bits, AVX: 256 bits,
+              AVX-512: 512 bits). Auto-vetorizacao de compiladores com
+              <code class="code-inline">-O2</code>. NumPy, OpenBLAS e o proprio GCC exploram SIMD
+              para operacoes de array sem escrever uma linha de codigo SIMD explicita.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>GPU em Deep Learning &mdash; Tensor Cores</h3>
+            <p>
+              GPUs modernas (NVIDIA H100, A100) tem Tensor Cores especializados em multiplicacoes
+              de matrizes FP16/BF16/INT8. PyTorch e TensorFlow compilam operacoes para cuBLAS e
+              cuDNN automaticamente. O GPT-3 foi treinado em 10.000 GPUs A100 com paralelismo
+              de dados, pipeline e tensor combinados.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>MapReduce e Apache Spark</h3>
+            <p>
+              MapReduce (Google, 2004) formalizou o processamento paralelo distribuido em
+              <em>map</em> (transformar dados em paralelo) e <em>reduce</em> (agregar resultados).
+              Apache Spark evoluiu o modelo com DAGs em memoria, Spark ML e Structured Streaming.
+              Processa petabytes em centenas de nos com tolerancia a falhas automatica via lineage.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Paralelize o gargalo, nao o codigo todo.</strong> Profiling antes de paralelizar
+            e obrigatorio: <code class="code-inline">perf</code> (Linux),
+            <code class="code-inline">gprof</code> (GCC), <code class="code-inline">cProfile</code>
+            (Python), <code class="code-inline">Nsight Compute</code> (CUDA/GPU).
+            Em 90% dos casos, 10% do codigo consome 90% do tempo.
+            Paralelizar a parte errada e trabalho inutil que adiciona complexidade e sincronizacao
+            sem beneficio mensuravel de performance.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- 8. ECOSSISTEMA E FERRAMENTAS -->
+      <section>
+        <h2 id="ecossistema" class="section-title">8. Ecossistema e Ferramentas</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>OpenMP</h3>
+            <p>
+              API de paralelismo para C, C++ e Fortran com diretivas de compilador
+              (<code class="code-inline">#pragma omp</code>). Suportada por GCC, Clang e MSVC.
+              Modelo fork-join: threads criadas na entrada da regiao paralela, destruidas ao final.
+              Ideal para loops numericos, simulacoes cientificas e HPC sem precisar reescrever o codigo.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>MPI (Open MPI / MPICH)</h3>
+            <p>
+              Padrao para computacao distribuida em clusters. Processos completamente isolados
+              comunicam-se via passagem de mensagens. Open MPI e MPICH sao as implementacoes
+              open-source dominantes. Roda em supercomputadores com dezenas de milhares de nos.
+              Binding para Python: <code class="code-inline">mpi4py</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>NVIDIA CUDA / cuBLAS / cuDNN</h3>
+            <p>
+              CUDA e a plataforma de programacao GPU da NVIDIA. cuBLAS fornece operacoes de
+              algebra linear otimizadas para GPU (GEMM, GEMV). cuDNN implementa primitivos de
+              deep learning (convolucoes, batch norm, multi-head attention). PyTorch e TensorFlow
+              usam cuBLAS/cuDNN de forma transparente via <code class="code-inline">.to('cuda')</code>.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Apache Spark</h3>
+            <p>
+              Motor de processamento distribuido para big data. DataFrames sao particionados entre
+              workers e processados em paralelo. Lazy evaluation: operacoes sao otimizadas por
+              Catalyst antes de executar. Versoes recentes incluem Spark Connect, Delta Lake e
+              integracao com Pandas via Arrow.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>Python &mdash; multiprocessing e Ray</h3>
+            <p>
+              <code class="code-inline">multiprocessing.Pool</code> contorna o GIL com processos
+              separados. Ray e um framework distribuido que escala de um laptop a um cluster AWS
+              com a mesma API &mdash; ideal para RL, hyperparameter search e servico de modelos.
+              <code class="code-inline">Joblib</code> e popular para paralelismo de sklearn.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Java &mdash; ForkJoinPool e Parallel Streams</h3>
+            <p>
+              <code class="code-inline">ForkJoinPool</code> implementa work-stealing: threads
+              ociosas "roubam" tarefas de threads sobrecarregadas, mantendo balanceamento automatico.
+              <code class="code-inline">Arrays.parallelSort()</code>,
+              <code class="code-inline">parallelStream()</code> e
+              <code class="code-inline">RecursiveTask</code> sao os pontos de entrada mais comuns
+              para paralelismo de dados em Java.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>
+              PACHECO, Peter S. <strong>An Introduction to Parallel Programming</strong>.
+              Burlington: Morgan Kaufmann, 2011.
+              Cobre MPI, Pthreads e OpenMP com exemplos praticos e progressivos.
+            </li>
+            <li>
+              AMDAHL, Gene M. <strong>Validity of the Single Processor Approach to Achieving
+              Large-Scale Computing Capabilities</strong>.
+              AFIPS Spring Joint Computer Conference, 1967.
+              O artigo original que define a Lei de Amdahl.
+            </li>
+            <li>
+              NVIDIA CORPORATION. <strong>CUDA C++ Programming Guide</strong>.
+              Disponivel em:
+              <a href="https://docs.nvidia.com/cuda/cuda-c-programming-guide/" target="_blank" rel="noopener">docs.nvidia.com/cuda</a>.
+              Acesso em: 2026.
+            </li>
+            <li>
+              ZAHARIA, Matei et al. <strong>Resilient Distributed Datasets: A Fault-Tolerant
+              Abstraction for In-Memory Cluster Computing</strong>.
+              USENIX NSDI, 2012.
+              O artigo original do Apache Spark.
+            </li>
+            <li>
+              HENNESSY, John L.; PATTERSON, David A. <strong>Computer Architecture: A Quantitative
+              Approach</strong>. 6. ed. Burlington: Morgan Kaufmann, 2017.
+              Cap. 4: Data-Level Parallelism in Vector, SIMD, and GPU Architectures.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue explorando paradigmas de programacao:</p>
+        <ul class="link-list">
+          <li>
+            <a href="/html/programacao/Concorrente_Paralela/concorrente.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Programacao Concorrente &mdash; threads, goroutines e o Actor Model
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/particionamento.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Particionamento &mdash; paralelismo no nivel de dados em bancos de dados
+            </a>
+          </li>
+          <li>
+            <a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card">
+              <span data-svg="seta-direita" aria-hidden="true"></span>
+              Sharding &mdash; escala horizontal e distribuicao de dados
+            </a>
+          </li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Making the common case fast." &mdash; Lei de Amdahl em pratica: paralelize o gargalo, nao tudo.
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

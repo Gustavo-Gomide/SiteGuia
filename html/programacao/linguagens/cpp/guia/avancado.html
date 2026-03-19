@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ Avancado: templates, concepts, coroutines, move semantics, metaprogramacao, multithreading com C++20 e memory model." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ Avancado</h1>
+          <p>Template metaprogramming, concepts (C++20), variadic templates, coroutines, move semantics profundo, SFINAE vs Concepts, multithreading com std::thread/mutex/atomic, memory ordering e jthread (C++20).</p>
+        </div>
+        <p class="intro-highlight">
+          O C++ avancado e sobre zero-cost abstractions em tempo de compilacao — concepts, consteval e templates garantem a mesma performance que codigo hand-rolled, mas com seguranca de tipos e expressividade de linguagens modernas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="templates">Templates Avancados e Variadic Templates</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; variadic templates, fold expressions e template specialization</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;type_traits&gt;</span>
+
+<span class="com">// Fold expression (C++17) — soma de N argumentos</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span>... <span class="tp">Ts</span>&gt;
+<span class="kw">auto</span> <span class="fn">soma</span>(<span class="tp">Ts</span>... args) {
+  <span class="kw">return</span> (... + args);    <span class="com">// unary left fold: a + b + c + d</span>
+}
+
+<span class="com">// Imprimir qualquer numero de argumentos (fold sobre &lt;&lt;)</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span>... <span class="tp">Args</span>&gt;
+<span class="kw">void</span> <span class="fn">log</span>(<span class="tp">Args</span>&amp;&amp;... args) {
+  (std::<span class="fn">print</span>(<span class="str">"{} "</span>, std::<span class="fn">forward</span>&lt;<span class="tp">Args</span>&gt;(args)), ...);  <span class="com">// comma fold</span>
+  std::<span class="fn">println</span>();
+}
+
+<span class="com">// Template class parcialmente especializado</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">struct</span> <span class="tp">Wrapper</span> {
+  <span class="tp">T</span> valor;
+  <span class="kw">void</span> <span class="fn">mostrar</span>() <span class="kw">const</span> { std::<span class="fn">println</span>(<span class="str">"Wrapper({})"</span>, valor); }
+};
+
+<span class="com">// Especializacao total para bool</span>
+<span class="kw">template</span>&lt;&gt;
+<span class="kw">struct</span> <span class="tp">Wrapper</span>&lt;<span class="kw">bool</span>&gt; {
+  <span class="kw">bool</span> valor;
+  <span class="kw">void</span> <span class="fn">mostrar</span>() <span class="kw">const</span> {
+    std::<span class="fn">println</span>(<span class="str">"BoolWrapper({})"</span>, valor ? <span class="str">"true"</span> : <span class="str">"false"</span>);
+  }
+};
+
+<span class="com">// if constexpr — branch em tempo de compilacao</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">void</span> <span class="fn">processar</span>(<span class="tp">T</span> v) {
+  <span class="kw">if constexpr</span> (std::<span class="fn">is_integral_v</span>&lt;<span class="tp">T</span>&gt;) {
+    std::<span class="fn">println</span>(<span class="str">"inteiro: {}"</span>, v);
+  } <span class="kw">else if constexpr</span> (std::<span class="fn">is_floating_point_v</span>&lt;<span class="tp">T</span>&gt;) {
+    std::<span class="fn">println</span>(<span class="str">"float: {:.4f}"</span>, v);
+  } <span class="kw">else</span> {
+    std::<span class="fn">println</span>(<span class="str">"outro tipo"</span>);
+  }
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, <span class="fn">soma</span>(<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>, <span class="num">4</span>, <span class="num">5</span>));  <span class="com">// 15</span>
+  <span class="fn">log</span>(<span class="str">"cpp"</span>, <span class="num">42</span>, <span class="num">3.14</span>, <span class="kw">true</span>);
+  <span class="fn">processar</span>(<span class="num">42</span>);
+  <span class="fn">processar</span>(<span class="num">3.14</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="concepts">Concepts (C++20)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; concepts, requires expressions e constrained templates</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;concepts&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;numeric&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ranges&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// --- Conceito customizado --- </span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">concept</span> <span class="tp">Numerico</span> = std::<span class="tp">integral</span>&lt;<span class="tp">T</span>&gt; || std::<span class="tp">floating_point</span>&lt;<span class="tp">T</span>&gt;;
+
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">concept</span> <span class="tp">Container</span> = <span class="kw">requires</span>(<span class="tp">T</span> c) {
+  c.<span class="fn">begin</span>();
+  c.<span class="fn">end</span>();
+  c.<span class="fn">size</span>();
+  <span class="kw">typename</span> <span class="tp">T</span>::value_type;
+};
+
+<span class="com">// Template restringido por dois concepts</span>
+<span class="kw">template</span>&lt;<span class="tp">Container</span> <span class="tp">C</span>&gt;
+  <span class="kw">requires</span> <span class="tp">Numerico</span>&lt;<span class="kw">typename</span> <span class="tp">C</span>::<span class="tp">value_type</span>&gt;
+<span class="kw">auto</span> <span class="fn">media</span>(<span class="kw">const</span> <span class="tp">C</span>&amp; c) -&gt; <span class="kw">double</span> {
+  <span class="kw">if</span> (c.<span class="fn">size</span>() == <span class="num">0</span>) <span class="kw">return</span> <span class="num">0.0</span>;
+  <span class="kw">return</span> <span class="kw">static_cast</span>&lt;<span class="kw">double</span>&gt;(std::<span class="fn">accumulate</span>(
+    c.<span class="fn">begin</span>(), c.<span class="fn">end</span>(), <span class="kw">typename</span> <span class="tp">C</span>::value_type{}))
+    / <span class="kw">static_cast</span>&lt;<span class="kw">double</span>&gt;(c.<span class="fn">size</span>());
+}
+
+<span class="com">// Conceito com requires composto (requires clause)</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">concept</span> <span class="tp">Comparable</span> = <span class="kw">requires</span>(<span class="tp">T</span> a, <span class="tp">T</span> b) {
+  { a &lt;  b } -&gt; std::<span class="tp">convertible_to</span>&lt;<span class="kw">bool</span>&gt;;
+  { a &gt;  b } -&gt; std::<span class="tp">convertible_to</span>&lt;<span class="kw">bool</span>&gt;;
+  { a == b } -&gt; std::<span class="tp">convertible_to</span>&lt;<span class="kw">bool</span>&gt;;
+};
+
+<span class="kw">template</span>&lt;<span class="tp">Comparable</span> <span class="tp">T</span>&gt;
+<span class="tp">T</span> <span class="fn">clamp</span>(<span class="tp">T</span> val, <span class="tp">T</span> lo, <span class="tp">T</span> hi) {
+  <span class="kw">return</span> val &lt; lo ? lo : val &gt; hi ? hi : val;
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  std::<span class="tp">vector</span>&lt;<span class="kw">double</span>&gt; v = { <span class="num">1.0</span>, <span class="num">2.0</span>, <span class="num">3.0</span>, <span class="num">4.0</span>, <span class="num">5.0</span> };
+  std::<span class="fn">println</span>(<span class="str">"media = {}"</span>, <span class="fn">media</span>(v));
+
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, <span class="fn">clamp</span>(<span class="num">15</span>, <span class="num">0</span>, <span class="num">10</span>));  <span class="com">// 10</span>
+  std::<span class="fn">println</span>(<span class="str">"{}"</span>, <span class="fn">clamp</span>(-<span class="num">5</span>, <span class="num">0</span>, <span class="num">10</span>)); <span class="com">// 0</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="coroutines">Coroutines (C++20)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; generator com co_yield e task com co_await</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;coroutine&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;optional&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// Generator simples — retorna valores lazy com co_yield</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">struct</span> <span class="tp">Generator</span> {
+  <span class="kw">struct</span> <span class="tp">promise_type</span> {
+    std::<span class="tp">optional</span>&lt;<span class="tp">T</span>&gt; valor;
+
+    <span class="tp">Generator</span>     <span class="fn">get_return_object</span>() { <span class="kw">return</span> <span class="tp">Generator</span>{ <span class="kw">this</span> }; }
+    std::<span class="tp">suspend_always</span> <span class="fn">initial_suspend</span>() { <span class="kw">return</span> {}; }
+    std::<span class="tp">suspend_always</span> <span class="fn">final_suspend</span>() <span class="kw">noexcept</span> { <span class="kw">return</span> {}; }
+    <span class="kw">void</span>           <span class="fn">return_void</span>()  {}
+    <span class="kw">void</span>           <span class="fn">unhandled_exception</span>() { std::<span class="fn">rethrow_exception</span>(std::<span class="fn">current_exception</span>()); }
+
+    std::<span class="tp">suspend_always</span> <span class="fn">yield_value</span>(<span class="tp">T</span> v) {
+      valor = v;
+      <span class="kw">return</span> {};
+    }
+  };
+
+  <span class="kw">using</span> <span class="tp">handle_t</span> = std::<span class="tp">coroutine_handle</span>&lt;<span class="tp">promise_type</span>&gt;;
+  <span class="tp">handle_t</span> h;
+
+  <span class="kw">explicit</span> <span class="tp">Generator</span>(<span class="tp">promise_type</span>* p) : h{ <span class="tp">handle_t</span>::<span class="fn">from_promise</span>(*p) } {}
+  ~<span class="fn">Generator</span>() { <span class="kw">if</span> (h) h.<span class="fn">destroy</span>(); }
+
+  <span class="com">// Move-only</span>
+  <span class="tp">Generator</span>(<span class="tp">Generator</span>&amp;&amp; o) : h{ o.h } { o.h = <span class="kw">nullptr</span>; }
+
+  <span class="kw">bool</span> <span class="fn">next</span>() {
+    h.<span class="fn">resume</span>();
+    <span class="kw">return</span> !h.<span class="fn">done</span>();
+  }
+  <span class="tp">T</span> <span class="fn">value</span>() <span class="kw">const</span> { <span class="kw">return</span> *h.<span class="fn">promise</span>().valor; }
+};
+
+<span class="com">// Gerador de numeros de Fibonacci lazy</span>
+<span class="tp">Generator</span>&lt;<span class="kw">long long</span>&gt; <span class="fn">fibonacci</span>() {
+  <span class="kw">long long</span> a = <span class="num">0</span>, b = <span class="num">1</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">co_yield</span> a;
+    <span class="kw">auto</span> c = a + b;
+    a = b;
+    b = c;
+  }
+}
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="kw">auto</span> fib = <span class="fn">fibonacci</span>();
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; ++i) {
+    fib.<span class="fn">next</span>();
+    std::<span class="fn">print</span>(<span class="str">"{} "</span>, fib.<span class="fn">value</span>());
+  }
+  std::<span class="fn">println</span>();   <span class="com">// 0 1 1 2 3 5 8 13 21 34</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="threads">Multithreading e Sincronizacao</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; jthread, mutex, condition_variable, atomic e memory_order</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;thread&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;mutex&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;condition_variable&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;atomic&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;queue&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// --- Fila thread-safe com producer/consumer ---</span>
+<span class="kw">template</span>&lt;<span class="kw">typename</span> <span class="tp">T</span>&gt;
+<span class="kw">class</span> <span class="tp">FilaSegura</span> {
+  std::<span class="tp">queue</span>&lt;<span class="tp">T</span>&gt;           fila_;
+  std::<span class="tp">mutex</span>              mtx_;
+  std::<span class="tp">condition_variable</span> cv_;
+  std::<span class="tp">atomic</span>&lt;<span class="kw">bool</span>&gt;       encerrado_{ <span class="kw">false</span> };
+
+<span class="kw">public</span>:
+  <span class="kw">void</span> <span class="fn">push</span>(<span class="tp">T</span> item) {
+    {
+      std::<span class="tp">lock_guard</span>&lt;std::<span class="tp">mutex</span>&gt; lk{ mtx_ };
+      fila_.<span class="fn">emplace</span>(std::<span class="fn">move</span>(item));
+    }
+    cv_.<span class="fn">notify_one</span>();              <span class="com">// acorda um consumidor</span>
+  }
+
+  std::<span class="tp">optional</span>&lt;<span class="tp">T</span>&gt; <span class="fn">pop</span>() {
+    std::<span class="tp">unique_lock</span>&lt;std::<span class="tp">mutex</span>&gt; lk{ mtx_ };
+    cv_.<span class="fn">wait</span>(lk, [<span class="kw">this</span>] { <span class="kw">return</span> !fila_.<span class="fn">empty</span>() || encerrado_; });
+    <span class="kw">if</span> (fila_.<span class="fn">empty</span>()) <span class="kw">return</span> std::<span class="fn">nullopt</span>;  <span class="com">// encerrado</span>
+    <span class="tp">T</span> val = std::<span class="fn">move</span>(fila_.<span class="fn">front</span>());
+    fila_.<span class="fn">pop</span>();
+    <span class="kw">return</span> val;
+  }
+
+  <span class="kw">void</span> <span class="fn">encerrar</span>() {
+    encerrado_.<span class="fn">store</span>(<span class="kw">true</span>, std::<span class="tp">memory_order</span>::<span class="tp">release</span>);
+    cv_.<span class="fn">notify_all</span>();
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  <span class="tp">FilaSegura</span>&lt;<span class="kw">int</span>&gt; fila;
+
+  <span class="com">// jthread (C++20) — cancela automaticamente no destrutor via stop_token</span>
+  std::<span class="tp">jthread</span> produtor([&amp;fila](std::<span class="tp">stop_token</span> st) {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span> &amp;&amp; !st.<span class="fn">stop_requested</span>(); ++i) {
+      fila.<span class="fn">push</span>(i);
+      std::<span class="tp">this_thread</span>::<span class="fn">sleep_for</span>(std::<span class="tp">chrono</span>::<span class="tp">milliseconds</span>(<span class="num">5</span>));
+    }
+    fila.<span class="fn">encerrar</span>();
+  });
+
+  std::<span class="tp">jthread</span> consumidor([&amp;fila] {
+    <span class="kw">while</span> (<span class="kw">auto</span> v = fila.<span class="fn">pop</span>()) {
+      std::<span class="fn">println</span>(<span class="str">"recv: {}"</span>, *v);
+    }
+  });
+
+  <span class="com">// jthread faz join automatico ao sair do escopo</span>
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; std::atomic e memory ordering</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;atomic&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;thread&gt;</span>
+
+std::<span class="tp">atomic</span>&lt;<span class="kw">int</span>&gt; contador(<span class="num">0</span>);
+
+<span class="kw">void</span> <span class="fn">incrementar</span>() {
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">1000</span>; ++i)
+    contador.<span class="fn">fetch_add</span>(<span class="num">1</span>, std::<span class="tp">memory_order</span>::<span class="tp">relaxed</span>);
+  <span class="com">// relaxed: maximo desempenho, sem sincronizacao de outras variaveis</span>
+}
+
+<span class="com">// Compare-And-Swap — base de lock-free structures</span>
+<span class="kw">bool</span> <span class="fn">tentarSwap</span>(std::<span class="tp">atomic</span>&lt;<span class="kw">int</span>&gt;&amp; atm, <span class="kw">int</span> esperado, <span class="kw">int</span> desejado) {
+  <span class="kw">return</span> atm.<span class="fn">compare_exchange_strong</span>(
+    esperado, desejado,
+    std::<span class="tp">memory_order</span>::<span class="tp">acq_rel</span>,    <span class="com">// sucesso: acquire + release</span>
+    std::<span class="tp">memory_order</span>::<span class="tp">acquire</span>);   <span class="com">// falha: acquire</span>
+}
+
+<span class="com">/*
+  Memory orders:
+  relaxed    — sem ordenacao; apenas atomicidade (contadores)
+  acquire    — leitura com barreira — nada depois pode subir acima
+  release    — escrita com barreira — nada antes pode descer abaixo
+  acq_rel    — acquire + release (RMW: read-modify-write)
+  seq_cst    — ordem total global — mais lento, padrao de atomic
+*/</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="consteval">constexpr, consteval e Computacao em Compile-Time</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ &mdash; consteval (C++20) e constexpr containers</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;array&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string_view&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// consteval — deve ser avaliado em compile-time (erro se chamado em runtime)</span>
+<span class="kw">consteval int</span> <span class="fn">fatorial</span>(<span class="kw">int</span> n) {
+  <span class="kw">return</span> (n &lt;= <span class="num">1</span>) ? <span class="num">1</span> : n * <span class="fn">fatorial</span>(n - <span class="num">1</span>);
+}
+<span class="kw">static_assert</span>(<span class="fn">fatorial</span>(<span class="num">6</span>) == <span class="num">720</span>);     <span class="com">// verificado em compile-time</span>
+
+<span class="com">// constexpr array gerado em compile-time</span>
+<span class="kw">consteval auto</span> <span class="fn">gerar_quadrados</span>() {
+  std::<span class="tp">array</span>&lt;<span class="kw">int</span>, <span class="num">10</span>&gt; arr{};
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; ++i) arr[i] = i * i;
+  <span class="kw">return</span> arr;
+}
+<span class="kw">constexpr auto</span> QUADRADOS = <span class="fn">gerar_quadrados</span>();
+
+<span class="com">// constexpr hash simples (FNV-1a) para strings literais</span>
+<span class="kw">constexpr</span> std::<span class="tp">uint64_t</span> <span class="fn">hash_fnv</span>(std::<span class="tp">string_view</span> s) {
+  <span class="kw">constexpr</span> std::<span class="tp">uint64_t</span> prime  = <span class="num">1099511628211ULL</span>;
+  <span class="kw">constexpr</span> std::<span class="tp">uint64_t</span> offset = <span class="num">14695981039346656037ULL</span>;
+  <span class="kw">auto</span> h = offset;
+  <span class="kw">for</span> (<span class="kw">char</span> c : s) { h ^= <span class="kw">static_cast</span>&lt;<span class="kw">unsigned char</span>&gt;(c); h *= prime; }
+  <span class="kw">return</span> h;
+}
+<span class="kw">static_assert</span>(<span class="fn">hash_fnv</span>(<span class="str">"hello"</span>) != <span class="fn">hash_fnv</span>(<span class="str">"world"</span>));
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  std::<span class="fn">println</span>(<span class="str">"5! = {}"</span>, <span class="fn">fatorial</span>(<span class="num">5</span>));      <span class="com">// 120 — zero runtime cost</span>
+  <span class="kw">for</span> (<span class="kw">auto</span> q : QUADRADOS) std::<span class="fn">print</span>(<span class="str">"{} "</span>, q);
+  std::<span class="fn">println</span>();  <span class="com">// 0 1 4 9 16 25 36 49 64 81</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MEYERS, Scott. <strong>Effective Modern C++</strong>. O'Reilly Media, 2014.</li>
+            <li>JOSUTTIS, Nicolai M. <strong>C++20: The Complete Guide</strong>. Nicolai Josuttis, 2022.</li>
+            <li>CPPREFERENCE. <strong>Coroutines (C++20)</strong>. Disponível em: &lt;https://en.cppreference.com/w/cpp/language/coroutines&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do C++</a></li>
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Concepts transforma erros de template que antes exigiam decodificar paginas de output do compilador em mensagens claras: "T nao satisfaz o conceito Numerico".</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pascal em banco de dados: SQLDB, Zeos, transacoes, repositorios e boas praticas de acesso a dados." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Pascal - Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">☰</span><span class="close-icon">&times;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Pascal - Aplicacoes em Banco de Dados</strong></p></div>
+
+      <section>
+        <h2 class="section-title" id="pascal-e-persistencia-relacional">Pascal e Persistencia Relacional</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="pascal" aria-hidden="true"></span></div>
+          <h1>Modelagem de dados com seguranca transacional</h1>
+          <p>Pascal possui bibliotecas maduras para conectar, consultar e manter consistencia em sistemas de dados empresariais.</p>
+        </div>
+        <p class="intro-highlight">Em ambiente corporativo, qualidade de dados vale mais que velocidade de prototipo: Pascal ajuda a codificar regras com tipagem forte e transacoes explicitas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Conceitos Essenciais</h2>
+        <p>Trabalhar com banco nao e apenas executar SQL. E controlar conexao, transacao, isolamento, erros e mapeamento de tipos entre linguagem e schema.</p>
+        <p>No ecossistema Pascal, as opcoes comuns sao <strong>SQLDB</strong> (FPC), <strong>ZeosLib</strong> (multibanco) e, no Delphi, <strong>FireDAC</strong>. O objetivo e encapsular persistencia em repositorios para nao espalhar SQL na aplicacao inteira.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Pipeline de Acesso a Dados</h2>
+        <svg viewBox="0 0 900 220" role="img" aria-label="Fluxo de acesso a banco" class="w-full">
+          <rect x="20" y="70" width="150" height="80" rx="10" fill="currentColor" opacity="0.14"></rect>
+          <text x="95" y="115" text-anchor="middle" fill="currentColor">Servico</text>
+          <rect x="200" y="70" width="170" height="80" rx="10" fill="currentColor" opacity="0.14"></rect>
+          <text x="285" y="115" text-anchor="middle" fill="currentColor">Repositorio</text>
+          <rect x="400" y="70" width="150" height="80" rx="10" fill="currentColor" opacity="0.14"></rect>
+          <text x="475" y="115" text-anchor="middle" fill="currentColor">Driver</text>
+          <rect x="580" y="70" width="150" height="80" rx="10" fill="currentColor" opacity="0.14"></rect>
+          <text x="655" y="115" text-anchor="middle" fill="currentColor">Transacao</text>
+          <rect x="760" y="70" width="120" height="80" rx="10" fill="currentColor" opacity="0.14"></rect>
+          <text x="820" y="115" text-anchor="middle" fill="currentColor">RDBMS</text>
+          <line x1="170" y1="110" x2="200" y2="110" stroke="currentColor" stroke-width="2"></line>
+          <line x1="370" y1="110" x2="400" y2="110" stroke="currentColor" stroke-width="2"></line>
+          <line x1="550" y1="110" x2="580" y2="110" stroke="currentColor" stroke-width="2"></line>
+          <line x1="730" y1="110" x2="760" y2="110" stroke="currentColor" stroke-width="2"></line>
+        </svg>
+        <div class="callout"><p><span data-svg="info" aria-hidden="true"></span> Mantenha transacoes no nivel de caso de uso, nao no nivel de componente de UI.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sintaxe-uso">Exemplo com SQLDB e Transacao</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pascal - insercao com commit/rollback</div>
+          <pre class="example"><span class="com">{ Exemplo didatico de persistencia segura }</span>
+<span class="kw">program</span> CadastroSQL;
+
+<span class="kw">uses</span>
+  SysUtils, Classes, sqldb, sqlite3conn;
+
+<span class="kw">procedure</span> <span class="fn">InserirUsuario</span>(const nome: <span class="tp">String</span>);
+<span class="kw">var</span>
+  conn: <span class="tp">TSQLite3Connection</span>;
+  tr: <span class="tp">TSQLTransaction</span>;
+  q: <span class="tp">TSQLQuery</span>;
+<span class="kw">begin</span>
+  conn := <span class="tp">TSQLite3Connection</span>.Create(<span class="kw">nil</span>);
+  tr := <span class="tp">TSQLTransaction</span>.Create(<span class="kw">nil</span>);
+  q := <span class="tp">TSQLQuery</span>.Create(<span class="kw">nil</span>);
+  <span class="kw">try</span>
+    conn.DatabaseName := <span class="str">'app.db'</span>;
+    conn.Transaction := tr;
+    q.DataBase := conn;
+    q.Transaction := tr;
+    conn.Open;
+    tr.StartTransaction;
+
+    q.SQL.Text := <span class="str">'insert into usuario(nome) values (:nome)'</span>;
+    q.Params.ParamByName(<span class="str">'nome'</span>).AsString := nome;
+    q.ExecSQL;
+
+    tr.Commit;
+    <span class="fn">WriteLn</span>(<span class="str">'Usuario inserido com sucesso.'</span>);
+  <span class="kw">except</span>
+    <span class="kw">on</span> E: <span class="tp">Exception</span> <span class="kw">do</span>
+    <span class="kw">begin</span>
+      tr.Rollback;
+      <span class="fn">WriteLn</span>(<span class="str">'Erro: '</span>, E.Message);
+    <span class="kw">end</span>;
+  <span class="kw">end</span>;
+  q.Free;
+  tr.Free;
+  conn.Free;
+<span class="kw">end</span>;
+
+<span class="kw">begin</span>
+  <span class="fn">InserirUsuario</span>(<span class="str">'Ada'</span>);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Casos de Uso Reais</h2>
+        <ul>
+          <li>Sistemas ERP e financeiro com integridade transacional rigorosa.</li>
+          <li>Aplicacoes desktop conectadas a PostgreSQL, MySQL e SQLite.</li>
+          <li>Servicos de conciliacao de dados e auditoria interna.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos Avancados</h2>
+        <div class="panel">
+          <h3 class="panel-title">Performance e consistencia</h3>
+          <p>Adote prepared statements, indexacao orientada por consulta, migracoes versionadas e leitura de plano de execucao. Trate concorrencia com isolamento adequado e lock otimista quando possivel.</p>
+        </div>
+        <div class="callout"><p><span data-svg="alerta" aria-hidden="true"></span> Armadilha classica: abrir conexao por registro processado. Prefira pool e lotes transacionais.</p></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de Abordagens</h2>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Tecnica</th><th>Vantagem</th><th>Limite</th></tr></thead>
+            <tbody>
+              <tr><td>SQL direto</td><td>Controle total</td><td>Maior responsabilidade manual</td></tr>
+              <tr><td>ORM leve (mORMot)</td><td>Produtividade e padrao</td><td>Curva de configuracao inicial</td></tr>
+              <tr><td>Componentes visuais data-aware</td><td>Rapidez para CRUD</td><td>Risco de acoplamento com UI</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>FREE PASCAL TEAM. <strong>SQLDB User Guide</strong>. Disponivel em: <a href="https://www.freepascal.org/docs-html/fcl/sqldb/index.html" target="_blank" rel="noopener">freepascal.org/docs-html/fcl/sqldb/index.html</a>. Acesso em: 13 mar. 2026.</li>
+          <li>ZEOSLIB PROJECT. <strong>Zeos Database Objects</strong>. Disponivel em: <a href="https://sourceforge.net/p/zeoslib/wiki/Home/" target="_blank" rel="noopener">sourceforge.net/p/zeoslib/wiki/Home/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Documentation</strong>. Disponivel em: <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">postgresql.org/docs</a>. Acesso em: 13 mar. 2026.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> APIs web com Pascal</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI desktop e dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Persistencia confiavel e o alicerce de qualquer sistema que precisa sobreviver ao tempo.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

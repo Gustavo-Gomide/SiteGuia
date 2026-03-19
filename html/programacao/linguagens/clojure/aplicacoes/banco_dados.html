@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Aplicacoes de Clojure com banco de dados: next.jdbc, HoneySQL, migracoes, transacoes, pools, modelagem, tuning e padroes para producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Aplicacoes com Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure: Aplicacoes com Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Persistencia robusta em Clojure</h1>
+          <p>Clojure integra naturalmente com o ecossistema JDBC da JVM e permite separar SQL, dominio e transporte com excelente controle de transacao.</p>
+        </div>
+        <p class="intro-highlight">Uma stack tipica combina next.jdbc para acesso, HoneySQL para gerar queries, migracoes versionadas e observabilidade de latencia por operacao.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Conceitos essenciais</h2>
+        <p>Pense no banco como uma maquina transacional que garante integridade. A aplicacao Clojure deve entregar comandos claros, controlar fronteiras de transacao e evitar logica acoplada ao formato fisico de tabela.</p>
+        <ul>
+          <li>Query explicita em SQL ou DSL transparente.</li>
+          <li>Mapeamento previsivel de tipos entre JDBC e dados Clojure.</li>
+          <li>Transacoes curtas para reduzir lock contention.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Fluxo interno de uma operacao de escrita</h2>
+        <svg viewBox="0 0 920 180" role="img" aria-label="Fluxo write path: handler, validacao, transacao, commit">
+          <rect x="20" y="50" width="150" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="58" y="92" fill="currentColor">Handler</text>
+          <rect x="210" y="50" width="150" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="244" y="92" fill="currentColor">Dominio</text>
+          <rect x="400" y="50" width="170" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="434" y="92" fill="currentColor">Transacao</text>
+          <rect x="610" y="50" width="130" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="647" y="92" fill="currentColor">SQL</text>
+          <rect x="780" y="50" width="120" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="815" y="92" fill="currentColor">Commit</text>
+          <path d="M170 85 L210 85" stroke="currentColor" stroke-width="2"></path>
+          <path d="M360 85 L400 85" stroke="currentColor" stroke-width="2"></path>
+          <path d="M570 85 L610 85" stroke="currentColor" stroke-width="2"></path>
+          <path d="M740 85 L780 85" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+        <p>Esse desenho ajuda a manter responsabilidade unica por camada e facilita troubleshooting quando ha rollback, timeout ou deadlock.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso">Uso pratico com next.jdbc e HoneySQL</h2>
+        <pre class="example"><code><span class="kw">(ns</span> app.db
+  <span class="tp">(:require</span>
+    [next.jdbc <span class="str">:as</span> jdbc]
+    [honey.sql <span class="str">:as</span> sql]
+    [honey.sql.helpers <span class="str">:as</span> h]))
+
+(<span class="kw">def</span> ds
+  (jdbc/get-datasource
+    {:dbtype <span class="str">"postgresql"</span>
+     :dbname <span class="str">"app"</span>
+     :user <span class="str">"app_user"</span>
+     :password <span class="str">"***"</span>}))
+
+(<span class="kw">defn</span> cria-usuario! [tx {:keys [email nome]}]
+  (<span class="kw">let</span> [q (-> (h/insert-into :usuarios)
+              (h/columns :email :nome)
+              (h/values [[email nome]])
+              (h/returning :id :email :nome)
+              sql/format)]
+    (jdbc/execute-one! tx q)))
+
+(<span class="kw">defn</span> cadastra! [payload]
+  (jdbc/with-transaction [tx ds]
+    (cria-usuario! tx payload)))</code></pre>
+        <p>A estrategia de passar <code class="code-inline">tx</code> explicitamente simplifica testes e evita abrir transacao em lugares inesperados.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Padroes de aplicacao</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>OLTP API</h3><p>CRUD transacional com isolamento e constraints no schema.</p></div>
+          <div class="card"><h3>ETL incremental</h3><p>Batch por janelas de tempo com checkpoint em tabela de controle.</p></div>
+          <div class="card"><h3>Auditoria</h3><p>Event log append-only para rastreabilidade de alteracoes.</p></div>
+          <div class="card"><h3>CQRS leve</h3><p>Separacao entre comandos de escrita e consultas agregadas.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos avancados</h2>
+        <div class="panel">
+          <h3 class="panel-title">Performance e confiabilidade</h3>
+          <ul>
+            <li>Use pool HikariCP com tamanho orientado por throughput e latencia.</li>
+            <li>Prefira consultas paginadas ou por cursor para grandes volumes.</li>
+            <li>Aplique idempotencia em comandos externos e retries com cuidado.</li>
+            <li>Instrumente SQL lento e cardinalidade ruim de indice.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Evite N+1 queries escondidas em loops de negocio. Colete IDs, consulte em lote e recomponha dados no dominio.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de bibliotecas de persistencia</h2>
+        <table class="table">
+          <thead><tr><th>Biblioteca</th><th>Perfil</th><th>Vantagem</th></tr></thead>
+          <tbody>
+            <tr><td>next.jdbc</td><td>Baixo nivel moderno</td><td>Controle fino e simplicidade</td></tr>
+            <tr><td>clojure.java.jdbc</td><td>Legado</td><td>Base instalada antiga</td></tr>
+            <tr><td>HugSQL</td><td>SQL-first</td><td>Queries em arquivos e boa rastreabilidade</td></tr>
+            <tr><td>HoneySQL</td><td>DSL SQL</td><td>Composicao programatica e segura</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>NEXT.JDBC. Documentation. Disponivel em: <a href="https://cljdoc.org/d/com.github.seancorfield/next.jdbc" target="_blank" rel="noopener">https://cljdoc.org/d/com.github.seancorfield/next.jdbc</a>. Acesso em: 13 mar. 2026.</li>
+          <li>HONEYSQL. User Guide. Disponivel em: <a href="https://cljdoc.org/d/com.github.seancorfield/honeysql" target="_blank" rel="noopener">https://cljdoc.org/d/com.github.seancorfield/honeysql</a>. Acesso em: 13 mar. 2026.</li>
+          <li>POSTGRESQL. Documentation. Disponivel em: <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">https://www.postgresql.org/docs/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>KLEPPMANN, M. Designing Data-Intensive Applications. O'Reilly, 2017.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> Clojure com banco de dados brilha quando modelagem de dominio, transacao e observabilidade caminham juntas.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks de Clojure</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/projetos_boas_praticas.html">Projetos e Boas Praticas</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/terminal_cli.html">Aplicacoes CLI com Clojure</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

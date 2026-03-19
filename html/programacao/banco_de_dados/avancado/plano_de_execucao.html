@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Plano de Execução SQL: EXPLAIN, leitura de árvores de execução, Full Table Scan, Index Seek e custo de queries." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Plano de Execução | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Plano de Execucao SQL</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Plano de Execucao SQL</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Plano de Execucao</h1>
+          <p>O mapa que o banco usa para encontrar seus dados — aprenda a le-lo antes de otimizar qualquer coisa.</p>
+        </div>
+        <p class="intro-highlight">
+          Voce escreve SQL declarativo: diz ao banco <em>O QUE</em> quer, nao <em>COMO</em> buscar.
+          O otimizador gera um <strong>plano de execucao</strong> com a rota de menor custo estimado.
+          Entender esse plano e o pre-requisito para qualquer otimizacao de performance — sem ele, voce
+          esta adivinhar no escuro. Com <code class="code-inline">EXPLAIN ANALYZE</code> voce ve custo,
+          linhas estimadas vs reais, tempo por no e onde o banco esta desperdicando I/O.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O OTIMIZADOR -->
+      <section>
+        <h2 id="otimizador" class="section-title">1. O Otimizador de Consultas</h2>
+        <p>
+          SQL e uma linguagem <strong>declarativa</strong> — voce descreve o resultado que quer, nao
+          o algoritmo para obtê-lo. O otimizador e o componente do SGBD que converte essa descricao
+          num plano de execucao fisico eficiente.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ciclo-do-otimizador.txt</div>
+          <pre class="example"><span class="com">Ciclo de vida de uma query no PostgreSQL:</span>
+
+  1. PARSER           ->  Verifica sintaxe, cria AST (arvore sintatica)
+  2. ANALYZER         ->  Resolve nomes de tabelas e colunas
+  3. REWRITER         ->  Expande views, aplica regras de rewrite
+  4. PLANNER          ->  Gera multiplos planos candidatos
+     |                    Estima custo de cada um usando:
+     |                      - pg_statistic: histogramas, NDV (valores distintos)
+     |                      - Fator de correlacao de colunas
+     |                      - Parametros de custo de I/O e CPU
+     v
+  5. EXECUTOR         ->  Executa o plano de menor custo estimado</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Estatisticas do Catálogo</h3>
+            <p>
+              O otimizador usa estatisticas armazenadas em <code class="code-inline">pg_statistic</code>
+              (PostgreSQL) ou <code class="code-inline">information_schema.TABLE_STATISTICS</code> (MySQL)
+              para estimar quantas linhas cada operacao vai processar. Estatisticas desatualizadas =
+              estimativas erradas = planos ruins. Execute <code class="code-inline">ANALYZE</code> ou deixe
+              o autovacuum fazê-lo automaticamente.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Planner de Custo</h3>
+            <p>
+              O custo nao e tempo em segundos — e uma unidade relativa de esforco (I/O + CPU).
+              O PostgreSQL usa <code class="code-inline">seq_page_cost = 1.0</code> como base.
+              Um Index Scan tem custo de acesso aleatorio ao disco
+              (<code class="code-inline">random_page_cost = 4.0</code> por default). O otimizador
+              escolhe o plano de menor custo total estimado.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Quando o Otimizador Erra</h3>
+            <p>
+              O otimizador pode errar quando: (1) estatisticas desatualizadas — estimativas de
+              cardinalidade erradas; (2) correlacoes entre colunas ignoradas por padrao; (3) muitos JOINs
+              — o espaco de planos cresce exponencialmente. Nesses casos, <code class="code-inline">EXPLAIN ANALYZE</code>
+              mostra a diferenca entre linhas estimadas e linhas reais — um signal direto de problema estatistico.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O COMANDO EXPLAIN -->
+      <section>
+        <h2 id="explain" class="section-title">2. O Comando EXPLAIN</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">explain-comandos.sql</div>
+          <pre class="example"><span class="com">-- PostgreSQL: plano estimado (nao executa a query)</span>
+<span class="kw">EXPLAIN SELECT</span> * <span class="kw">FROM</span> pedidos <span class="kw">WHERE</span> total &gt; <span class="num">100</span>;
+
+<span class="com">-- PostgreSQL: plano + execucao real (CUIDADO em producao para queries pesadas)</span>
+<span class="kw">EXPLAIN ANALYZE SELECT</span> * <span class="kw">FROM</span> pedidos <span class="kw">WHERE</span> total &gt; <span class="num">100</span>;
+
+<span class="com">-- PostgreSQL: formato JSON (para ferramentas como explain.depesz.com)</span>
+<span class="kw">EXPLAIN</span> (ANALYZE, FORMAT JSON, BUFFERS)
+<span class="kw">SELECT</span> p.id, c.nome
+<span class="kw">FROM</span> pedidos p <span class="kw">JOIN</span> clientes c <span class="kw">ON</span> p.cliente_id = c.id
+<span class="kw">WHERE</span> p.data_criacao &gt;= <span class="str">'2024-01-01'</span>;
+
+<span class="com">-- MySQL: EXPLAIN + EXPLAIN ANALYZE (MySQL 8.0.18+)</span>
+<span class="kw">EXPLAIN</span> FORMAT=JSON <span class="kw">SELECT</span> * <span class="kw">FROM</span> pedidos <span class="kw">WHERE</span> total &gt; <span class="num">100</span>;
+<span class="kw">EXPLAIN ANALYZE SELECT</span> * <span class="kw">FROM</span> pedidos <span class="kw">WHERE</span> total &gt; <span class="num">100</span>;
+
+<span class="com">-- SQL Server: exibir plano de execucao textual</span>
+<span class="kw">SET SHOWPLAN_ALL ON</span>; <span class="kw">GO</span>
+<span class="kw">SELECT</span> * <span class="kw">FROM</span> pedidos <span class="kw">WHERE</span> total &gt; <span class="num">100</span>; <span class="kw">GO</span>
+<span class="kw">SET SHOWPLAN_ALL OFF</span>; <span class="kw">GO</span></pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>EXPLAIN vs EXPLAIN ANALYZE:</strong> EXPLAIN mostra estimativas sem executar —
+            seguro em producao. EXPLAIN ANALYZE executa a query de fato e retorna tempos reais.
+            Para queries de escrita (INSERT/UPDATE/DELETE), EXPLAIN ANALYZE executa a modificacao —
+            envolva em uma transacao e faca rollback se precisar analisar sem alterar dados.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- LENDO O PLANO -->
+      <section>
+        <h2 id="lendo-plano" class="section-title">3. Lendo o Plano de Execucao</h2>
+        <p>
+          O plano e uma <strong>arvore de operacoes</strong>. Leitura: do no mais profundo (mais indentado)
+          para o no raiz. O no raiz e a operacao final (resultado ao cliente). Cada no filho alimenta o pai.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">explain-analyze-output.txt</div>
+          <pre class="example"><span class="com">EXPLAIN ANALYZE</span>
+<span class="kw">SELECT</span> p.id, c.nome <span class="kw">FROM</span> pedidos p <span class="kw">JOIN</span> clientes c <span class="kw">ON</span> p.cliente_id = c.id
+<span class="kw">WHERE</span> p.total &gt; <span class="num">100</span>;
+
+<span class="com">Resultado:</span>
+Hash Join
+  (cost=150.00..320.00 rows=1200 width=20)   <- estimativas do planner
+  (actual time=5.2..12.8 rows=1187 loops=1)  <- execucao real
+  Hash Cond: (p.cliente_id = c.id)
+  -> Seq Scan on pedidos  p
+       (cost=0..125.00 rows=1200 width=16)
+       (actual time=0.05..4.1  rows=1187 loops=1)
+       Filter: (total > 100)
+       Rows Removed by Filter: 313
+  -> Hash
+       (cost=10.00..10.00 rows=1000 width=12)
+       Buckets: 1024  Batches: 1  Memory Usage: 53kB
+       -> Seq Scan on clientes  c
+            (cost=0..10.00 rows=1000 width=12)
+            (actual time=0.01..0.4 rows=1000 loops=1)
+
+Planning Time: 0.3 ms
+Execution Time: 12.9 ms
+
+<span class="com">Interpretacao:</span>
+<span class="com">- rows estimado (1200) ~= real (1187): estatisticas OK</span>
+<span class="com">- Seq Scan em clientes: tabela pequena (1000 linhas), aceitavel</span>
+<span class="com">- Seq Scan em pedidos com Filter: crieria criando indice em pedidos.total</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- DICIONÁRIO DO EXPLAIN -->
+      <section>
+        <h2 id="dicionario" class="section-title">4. Dicionario do EXPLAIN</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Seq Scan / Full Table Scan</h3>
+            <p>
+              O banco le <strong>todas</strong> as paginas da tabela sequencialmente para encontrar as
+              linhas que satisfazem o filtro. E inevitavel quando: (1) nao ha indice na coluna filtrada;
+              (2) a query retorna mais de 20-30% da tabela (nesse caso, o banco prefere Seq Scan ao
+              I/O aleatorio do Index Scan).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Index Seek vs Index Scan</h3>
+            <p>
+              <strong>Index Seek (PostgreSQL: Index Scan com range preciso):</strong> vai direto ao
+              no folha correto da arvore B-Tree. Leitura em O(log n). Melhor caso.<br>
+              <strong>Index Scan (completo):</strong> le o indice de ponta a ponta. Melhor que Seq Scan
+              em tabelas grandes, pior que Seek.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Hash Join vs Nested Loop</h3>
+            <p>
+              <strong>Hash Join:</strong> constroi hash table da menor relacao em memoria; eficiente para
+              tabelas grandes sem indice no JOIN. <strong>Nested Loop:</strong> para cada linha da tabela
+              outer, busca na inner — eficiente quando a inner e pequena OU quando ha indice no predicado
+              de JOIN.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Custo e Rows Estimados</h3>
+            <p>
+              <code class="code-inline">cost=X..Y</code>: X = custo de startup (ate retornar a 1a linha),
+              Y = custo total estimado. Se <code class="code-inline">rows</code> estimado difere muito
+              do <code class="code-inline">actual rows</code>, as estatisticas estao desatualizadas — execute
+              <code class="code-inline">ANALYZE tabela</code> para corrigir.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- QUANDO ANALISAR -->
+      <section>
+        <h2 id="quando-analisar" class="section-title">5. Quando Analisar o Plano</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Analise o plano quando...</h3>
+            <ul>
+              <li>Query esta aparecendo no slow query log / pg_stat_statements com tempo elevado.</li>
+              <li>Voce criou um indice e quer confirmar que o banco esta usando-o.</li>
+              <li>Linhas retornadas pelo plano diferem muito do numero real (estatisticas desatualizadas).</li>
+              <li>Antes de colocar em producao uma query nova em tabelas grandes (> 10M linhas).</li>
+              <li>Apos mudancas no schema (adicionar/remover indice, mudar tipos de coluna).</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Nao precisa analisar quando...</h3>
+            <ul>
+              <li>Tabela tem menos de 100.000 linhas — o banco e rapido o suficiente de qualquer forma.</li>
+              <li>Query ja esta com tempo medido abaixo do SLA — nao ha problema a resolver.</li>
+              <li>Seq Scan em tabela pequena — e o comportamento esperado e otimo.</li>
+              <li>O gargalo esta na aplicacao ou na rede, nao no banco.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Partition Pruning no Plano</h3>
+            <p>
+              Em tabelas particionadas, o EXPLAIN deve mostrar apenas as particoes relevantes — nao
+              todas. Se voce ve todas as particoes no plano, o pruning nao esta funcionando (verifique
+              se a funcao na coluna de particao esta impedindo o pruning).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Parallel Query</h3>
+            <p>
+              PostgreSQL 9.6+ pode executar Seq Scans e Hash Joins em multiplos workers paralelos.
+              O plano mostra nos <code class="code-inline">Gather</code> e <code class="code-inline">Parallel Seq Scan</code>.
+              Configuravel via <code class="code-inline">max_parallel_workers_per_gather</code>.
+              Nao ajuda em queries com muitos INDEXes pequenos.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>JIT Compilation</h3>
+            <p>
+              PostgreSQL 11+ usa LLVM para compilar expressoes de filtro em codigo nativo (JIT).
+              O EXPLAIN ANALYZE mostra <code class="code-inline">JIT: Functions: N / Inlining: true</code>.
+              Beneficio em queries com muita aritmetica ou filtros complexos em grandes volumes;
+              overhead em queries simples curtas.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Bitmap Heap Scan</h3>
+            <p>
+              Hibrido entre Index Scan e Seq Scan. O PostgreSQL usa o indice para construir um bitmap
+              das paginas com linhas relevantes, depois le essas paginas em ordem sequencial. Mais
+              eficiente que Index Scan quando a query retorna muitas linhas espalhadas em varias paginas.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Nao force planos com hints de query</strong> (ex: <code class="code-inline">/*+ INDEX(tabela idx) */</code>
+            no MySQL/Oracle). Hints "consertam" o sintoma mas escondem o problema real (estatisticas
+            desatualizadas, indice faltando, modelo de dados errado). Prefira corrigir as estatisticas
+            ou criar o indice correto — o otimizador vai adaptar automaticamente quando os dados mudam.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ferramentas de Analise</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>explain.depesz.com</h3>
+            <p>Visualizador online de planos PostgreSQL. Cole a saida do EXPLAIN ANALYZE e veja nos custosos destacados em vermelho. Exibe percentual de tempo por no, rows estimado vs real, buffers usados. Gratuito e sem necessidade de conta.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>pgMustard</h3>
+            <p>Ferramenta SaaS que analisa planos PostgreSQL e gera texto explicativo em linguagem natural: "Este no esta tomando 78% do tempo total. Considere adicionar um indice na coluna X." Tier gratuito disponivel.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>MySQL EXPLAIN FORMAT=JSON</h3>
+            <p>O MySQL 8+ expoe informacoes muito mais ricas no formato JSON que no formato tabulado padrao — incluindo custo por operacao, loops, buffer usage e use de indices. Combine com EXPLAIN ANALYZE para ver tempos reais.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>SQL Server Execution Plan (SSMS)</h3>
+            <p>O SQL Server Management Studio exibe planos graficos com setas proporcionais ao volume de dados. Nós em vermelho destacam avisos (Missing Index, Implicit Conversion). O botao "Include Actual Execution Plan" equivale ao EXPLAIN ANALYZE.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>auto_explain (PostgreSQL)</h3>
+            <p>Extensao que loga automaticamente o EXPLAIN ANALYZE de queries que excedem um threshold de tempo. Configuravel por sessao ou globalmente. Essencial para capturar planos ruins em producao sem instrumentacao manual.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>pg_stat_statements</h3>
+            <p>Extensao PostgreSQL que acumula estatisticas de execucao de todas as queries (tempo total, chamadas, I/O de buffer). Primeiro passo para identificar as queries que merecem EXPLAIN ANALYZE — foca no que realmente importa em producao.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Docs: Using EXPLAIN</strong>. Disponivel em: https://www.postgresql.org/docs/current/using-explain.html. Acesso em: 2026.</li>
+            <li>MYSQL. <strong>MySQL Reference Manual: EXPLAIN Statement</strong>. Disponivel em: https://dev.mysql.com/doc/refman/8.0/en/explain.html. Acesso em: 2026.</li>
+            <li>MICROSOFT. <strong>SQL Server: Execution Plans</strong>. Disponivel em: https://learn.microsoft.com/sql/relational-databases/performance/execution-plans. Acesso em: 2026.</li>
+            <li>RAMAKRISHNAN, Raghu; GEHRKE, Johannes. <strong>Database Management Systems</strong>. 3. ed. McGraw-Hill, 2003.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/avancado/otimizacao_de_consultas.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Otimizacao de Consultas - SARGable, N+1, Indices</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/particionamento.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Particionamento - Partition Pruning em Tabelas Gigantes</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Sharding - Escala Horizontal Multi-Servidor</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A query mais rapida e aquela que o banco nao precisa fazer." - Axioma de Performance em BD
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para Web: Flutter Web, Shelf para APIs REST, WebSockets com shelf_web_socket, geracao de HTML/CSS com dart:html, compilacao para JavaScript e WebAssembly." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Desenvolvimento Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart para Desenvolvimento Web</h1>
+          <p>Dart para web tem dois papeis complementares: <strong>Flutter Web</strong> renderiza interfaces ricas cross-platform (Canvas 2D, CanvasKit/WASM), e <strong>Shelf</strong> constroe servidores HTTP, APIs REST e middlewares no lado do servidor. Dart tambem pode ser compilado diretamente para JavaScript via <code>dart compile js</code> com tree-shaking agressivo, ou para WebAssembly (WASM) via Flutter Web para maximo desempenho no browser.</p>
+        </div>
+        <p class="intro-highlight">
+          Flutter Web 3.x usa <strong>CanvasKit</strong> por default — renderizacao via WebAssembly + WebGL com fidelidade pixel-perfect ao mobile. Para SEO e carregamento rapido, o modo <strong>HTML renderer</strong> gera DOM nativo, mais leve para conteudo estatico.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shelf-api">Shelf — API REST Completa</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Shelf &mdash; API REST com autenticacao JWT e validacao</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:convert'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+<span class="kw">import</span> <span class="str">'package:shelf/shelf.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:shelf/shelf_io.dart'</span> <span class="kw">as</span> io;
+<span class="kw">import</span> <span class="str">'package:shelf_router/shelf_router.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:dart_jsonwebtoken/dart_jsonwebtoken.dart'</span>;
+
+<span class="com">// Middleware JWT</span>
+<span class="tp">Middleware</span> <span class="fn">jwtAuth</span>(<span class="tp">String</span> segredo) => (handler) => (req) <span class="kw">async</span> {
+  <span class="kw">final</span> authHeader = req.headers[<span class="str">'authorization'</span>];
+  <span class="kw">if</span> (authHeader == <span class="kw">null</span> || !authHeader.<span class="fn">startsWith</span>(<span class="str">'Bearer '</span>)) {
+    <span class="kw">return</span> <span class="tp">Response</span>.unauthorized(<span class="str">'{"erro":"Token ausente"}'</span>);
+  }
+  <span class="kw">try</span> {
+    <span class="kw">final</span> jwt = <span class="tp">JWT</span>.<span class="fn">verify</span>(authHeader.<span class="fn">substring</span>(<span class="num">7</span>), <span class="tp">SecretKey</span>(segredo));
+    <span class="kw">return</span> handler(req.<span class="fn">change</span>(context: {<span class="str">'usuario'</span>: jwt.payload}));
+  } <span class="kw">on</span> <span class="tp">JWTException</span> <span class="kw">catch</span> (e) {
+    <span class="kw">return</span> <span class="tp">Response</span>.forbidden(<span class="str">'{"erro":"${e.message}"}'</span>);
+  }
+};
+
+<span class="com">// Middleware CORS</span>
+<span class="tp">Middleware</span> <span class="fn">cors</span>({<span class="tp">String</span> allowedOrigin = <span class="str">'*'</span>}) => (handler) => (req) <span class="kw">async</span> {
+  <span class="kw">final</span> headers = {
+    <span class="str">'Access-Control-Allow-Origin'</span>:  allowedOrigin,
+    <span class="str">'Access-Control-Allow-Methods'</span>: <span class="str">'GET, POST, PUT, DELETE, OPTIONS'</span>,
+    <span class="str">'Access-Control-Allow-Headers'</span>: <span class="str">'Authorization, Content-Type'</span>,
+  };
+  <span class="kw">if</span> (req.method == <span class="str">'OPTIONS'</span>) <span class="kw">return</span> <span class="tp">Response</span>.ok(<span class="str">''</span>, headers: headers);
+  <span class="kw">final</span> resp = <span class="kw">await</span> handler(req);
+  <span class="kw">return</span> resp.<span class="fn">change</span>(headers: {...resp.headers, ...headers});
+};
+
+<span class="com">// Controller de produtos</span>
+<span class="kw">class</span> <span class="tp">ProdutosController</span> {
+  <span class="kw">final</span> <span class="tp">ProdutoRepository</span> _repo;
+  <span class="tp">ProdutosController</span>(<span class="kw">this</span>._repo);
+
+  <span class="tp">Router</span> <span class="kw">get</span> router {
+    <span class="kw">final</span> r = <span class="tp">Router</span>();
+    r.<span class="fn">get</span>(<span class="str">'/produtos'</span>, <span class="fn">_listar</span>);
+    r.<span class="fn">get</span>(<span class="str">'/produtos/&lt;id&gt;'</span>, <span class="fn">_buscar</span>);
+    r.<span class="fn">post</span>(<span class="str">'/produtos'</span>, <span class="fn">_criar</span>);
+    r.<span class="fn">put</span>(<span class="str">'/produtos/&lt;id&gt;'</span>, <span class="fn">_atualizar</span>);
+    r.<span class="fn">delete</span>(<span class="str">'/produtos/&lt;id&gt;'</span>, <span class="fn">_deletar</span>);
+    <span class="kw">return</span> r;
+  }
+
+  <span class="tp">Future</span>&lt;<span class="tp">Response</span>&gt; <span class="fn">_listar</span>(<span class="tp">Request</span> req) <span class="kw">async</span> {
+    <span class="kw">final</span> pagina = <span class="tp">int</span>.<span class="fn">tryParse</span>(req.url.queryParameters[<span class="str">'page'</span>] ?? <span class="str">'1'</span>) ?? <span class="num">1</span>;
+    <span class="kw">final</span> lista  = <span class="kw">await</span> _repo.<span class="fn">listar</span>(pagina: pagina, limite: <span class="num">20</span>);
+    <span class="kw">return</span> <span class="fn">_json</span>({<span class="str">'dados'</span>: lista.<span class="fn">map</span>((p) => p.<span class="fn">toJson</span>()).<span class="fn">toList</span>(), <span class="str">'pagina'</span>: pagina});
+  }
+
+  <span class="tp">Future</span>&lt;<span class="tp">Response</span>&gt; <span class="fn">_buscar</span>(<span class="tp">Request</span> req, <span class="tp">String</span> id) <span class="kw">async</span> {
+    <span class="kw">final</span> resultado = <span class="kw">await</span> _repo.<span class="fn">buscarPorId</span>(id);
+    <span class="kw">return</span> <span class="kw">switch</span> (resultado) {
+      <span class="tp">Success</span>(:final value) => <span class="fn">_json</span>(value.<span class="fn">toJson</span>()),
+      <span class="tp">Failure</span>(:final error) => <span class="tp">Response</span>.notFound(<span class="fn">_errorBody</span>(error)),
+    };
+  }
+
+  <span class="tp">Future</span>&lt;<span class="tp">Response</span>&gt; <span class="fn">_criar</span>(<span class="tp">Request</span> req) <span class="kw">async</span> {
+    <span class="kw">final</span> body = jsonDecode(<span class="kw">await</span> req.<span class="fn">readAsString</span>());
+    <span class="kw">if</span> (body[<span class="str">'nome'</span>] <span class="kw">is!</span> <span class="tp">String</span>) {
+      <span class="kw">return</span> <span class="tp">Response</span>(<span class="num">422</span>, body: <span class="fn">_errorBody</span>(<span class="str">'campo nome obrigatorio'</span>));
+    }
+    <span class="kw">final</span> novo = <span class="kw">await</span> _repo.<span class="fn">criar</span>(
+      nome:  body[<span class="str">'nome'</span>],
+      preco: (body[<span class="str">'preco'</span>] <span class="kw">as</span> <span class="tp">num</span>).<span class="fn">toDouble</span>(),
+    );
+    <span class="kw">return</span> <span class="fn">_json</span>(novo.<span class="fn">toJson</span>(), status: <span class="num">201</span>);
+  }
+
+  <span class="tp">Response</span> <span class="fn">_json</span>(<span class="kw">dynamic</span> data, {<span class="tp">int</span> status = <span class="num">200</span>}) => <span class="tp">Response</span>(
+    status, body: jsonEncode(data),
+    headers: {<span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>},
+  );
+  <span class="tp">String</span> <span class="fn">_errorBody</span>(<span class="tp">String</span> msg) => jsonEncode({<span class="str">'erro'</span>: msg});
+}
+
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">main</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> ctrl   = <span class="tp">ProdutosController</span>(<span class="tp">ProdutoRepositoryImpl</span>());
+  <span class="kw">final</span> handler = <span class="tp">Pipeline</span>()
+    .<span class="fn">addMiddleware</span>(<span class="fn">logRequests</span>())
+    .<span class="fn">addMiddleware</span>(<span class="fn">cors</span>())
+    .<span class="fn">addMiddleware</span>(<span class="fn">jwtAuth</span>(<span class="tp">Platform</span>.environment[<span class="str">'JWT_SECRET'</span>]!))
+    .<span class="fn">addHandler</span>(ctrl.router.call);
+
+  <span class="kw">final</span> server = <span class="kw">await</span> io.<span class="fn">serve</span>(handler, <span class="tp">InternetAddress</span>.anyIPv4, <span class="num">8080</span>);
+  print(<span class="str">'API em http://localhost:${server.port}'</span>);
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Shelf &mdash; WebSockets com shelf_web_socket</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:shelf_web_socket/shelf_web_socket.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:web_socket_channel/web_socket_channel.dart'</span>;
+
+<span class="kw">final</span> _clientes = &lt;<span class="tp">WebSocketChannel</span>&gt;{};
+
+<span class="tp">Handler</span> wsHandler = <span class="fn">webSocketHandler</span>((<span class="tp">WebSocketChannel</span> channel) {
+  _clientes.<span class="fn">add</span>(channel);
+  print(<span class="str">'Cliente conectado. Total: ${_clientes.length}'</span>);
+
+  channel.stream.<span class="fn">listen</span>(
+    (msg) {
+      <span class="com">// Broadcast para todos os outros clientes</span>
+      <span class="kw">for</span> (<span class="kw">final</span> cl <span class="kw">in</span> _clientes) {
+        <span class="kw">if</span> (cl != channel) cl.sink.<span class="fn">add</span>(msg);
+      }
+    },
+    onDone: () {
+      _clientes.<span class="fn">remove</span>(channel);
+      print(<span class="str">'Cliente desconectado. Total: ${_clientes.length}'</span>);
+    },
+  );
+});
+
+<span class="com">// Montar rota WebSocket junto com API REST</span>
+<span class="kw">final</span> router = <span class="tp">Router</span>()
+  ..<span class="fn">mount</span>(<span class="str">'/ws'</span>, wsHandler)
+  ..<span class="fn">mount</span>(<span class="str">'/api'</span>, apiHandler);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="flutter-web">Flutter Web — Configuracao e Build</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Flutter Web: build e renderizadores</div>
+          <pre class="example"><span class="com"># Habilitar plataforma web</span>
+flutter config --enable-web
+flutter create --platforms=web meu_app
+
+<span class="com"># Rodar no Chrome (hot reload)</span>
+flutter run -d chrome
+flutter run -d chrome --web-renderer html       <span class="com"># DOM nativo — menor bundle</span>
+flutter run -d chrome --web-renderer canvaskit  <span class="com"># WebGL — fidelidade total</span>
+
+<span class="com"># Build de producao</span>
+flutter build web
+flutter build web --web-renderer canvaskit      <span class="com"># default em producao</span>
+flutter build web --web-renderer html --release
+flutter build web --wasm                        <span class="com"># WebAssembly (Dart 3.3+)</span>
+
+<span class="com"># Servir localmente</span>
+cd build/web
+python -m http.server 8080</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Flutter Web &mdash; SEO com MetaData e navegacao URL</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:flutter/material.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:go_router/go_router.dart'</span>;
+<span class="com">// import 'package:flutter_web_plugins/flutter_web_plugins.dart';</span>
+
+<span class="com">// Usar URL path (sem #) para SEO</span>
+<span class="com">// usePathUrlStrategy(); // em main()</span>
+
+<span class="kw">final</span> _router = <span class="tp">GoRouter</span>(
+  routes: [
+    <span class="tp">GoRoute</span>(path: <span class="str">'/'</span>,           builder: (_, __) => <span class="kw">const</span> <span class="tp">HomePage</span>()),
+    <span class="tp">GoRoute</span>(path: <span class="str">'/produtos'</span>,  builder: (_, __) => <span class="kw">const</span> <span class="tp">ProdutosPage</span>()),
+    <span class="tp">GoRoute</span>(
+      path: <span class="str">'/produtos/:id'</span>,
+      builder: (ctx, state) => <span class="tp">ProdutoDetalhe</span>(id: state.pathParameters[<span class="str">'id'</span>]!),
+    ),
+    <span class="tp">GoRoute</span>(path: <span class="str">'/404'</span>, builder: (_, __) => <span class="kw">const</span> <span class="tp">NotFoundPage</span>()),
+  ],
+  errorBuilder: (_, __) => <span class="kw">const</span> <span class="tp">NotFoundPage</span>(),
+);
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="fn">WidgetsFlutterBinding</span>.<span class="fn">ensureInitialized</span>();
+  <span class="fn">runApp</span>(<span class="tp">MaterialApp</span>.router(routerConfig: _router));
+}
+
+<span class="com">// Responsive layout com LayoutBuilder</span>
+<span class="kw">class</span> <span class="tp">ResponsiveLayout</span> <span class="kw">extends</span> <span class="tp">StatelessWidget</span> {
+  <span class="kw">const</span> <span class="tp">ResponsiveLayout</span>({<span class="kw">super</span>.key, <span class="kw">required</span> <span class="kw">this</span>.mobile, <span class="kw">required</span> <span class="kw">this</span>.desktop});
+  <span class="kw">final</span> <span class="tp">Widget</span> mobile, desktop;
+
+  <span class="kw">@override</span>
+  <span class="tp">Widget</span> <span class="fn">build</span>(<span class="tp">BuildContext</span> ctx) =>
+    <span class="tp">LayoutBuilder</span>(builder: (_, constraints) =>
+      constraints.maxWidth &lt; <span class="num">768</span> ? mobile : desktop);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>Flutter for Web</strong>. Disponível em: &lt;https://docs.flutter.dev/platform-integration/web/intro&gt;. Acesso em: 2025.</li>
+            <li>DART. <strong>Shelf package</strong>. Disponível em: &lt;https://pub.dev/packages/shelf&gt;. Acesso em: 2025.</li>
+            <li>DART. <strong>shelf_router package</strong>. Disponível em: &lt;https://pub.dev/packages/shelf_router&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks Dart</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart para Mobile</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Para APIs Dart em producao, considere usar <strong>Dart Edge</strong> (deploy no Cloudflare Workers/Deno Deploy) ou containerizar o servidor Shelf com Docker — Dart compila para um binario estatico pequeno ideal para containers mínimos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

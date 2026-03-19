@@ -1,0 +1,171 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Arquitetura interna do Windows NT: HAL, Executive, subsistemas Win32 e WOW64, objetos kernel, NTOSKRNL e o modelo híbrido de microkernel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Arquitetura do Windows | Windows | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — ARQUITETURA DO WINDOWS NT ═══════════════════ -->
+      <section>
+        <h2 id="arquitetura-nt" class="section-title">Arquitetura do Windows NT</h2>
+        <div class="section-divider"></div>
+        <p class="intro-highlight">
+          O kernel do Windows NT é classificado como híbrido. O HAL isola diferenças de hardware, o Executive implementa todas as funções do kernel em modo privilegiado, e os subsistemas de usuário (Win32, WSL, POSIX) rodam em modo de usuário comunicando-se via LPC/ALPC.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — CAMADAS DA ARQUITETURA ═══════════════════ -->
+      <section>
+        <h2 id="camadas-arquitetura" class="section-title">Camadas da Arquitetura</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Diagrama de Camadas do Windows NT</div>
+          <pre class="code-block">┌─────────────────────────────────────────────────────────┐
+│                  Aplicações (User Mode)                  │
+│  Win32 apps │ .NET apps │ UWP apps │ Console apps        │
+├──────────────┬──────────────────────────────────────────┤
+│  Subsistemas │  Win32 (csrss.exe, user32.dll, gdi32.dll)│
+│  de Ambiente │  POSIX (via WSL 2 — kernel Linux real)   │
+│  (User Mode) │  WOW64 (apps 32-bit em OS 64-bit)        │
+├──────────────┴──────────────────────────────────────────┤
+│              NTDLL.DLL — user-mode stubs                 │
+│         (transição para modo kernel via syscall)         │
+├─────────────────────────────────────────────────────────┤
+│              Kernel Mode (Ring 0)                        │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │              NTOSKRNL.EXE                         │   │
+│  │  Executive: I/O Manager, Object Manager,          │   │
+│  │  Process Manager, Memory Manager, Security        │   │
+│  │  Reference Monitor, Cache Manager, PnP Manager    │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │  Kernel: scheduling, interrupts, sync primitives │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │  Win32k.sys — subsistema gráfico no kernel mode  │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │  Drivers: armazenamento, rede, dispositivos       │   │
+│  ├──────────────────────────────────────────────────┤   │
+│  │  HAL — Hardware Abstraction Layer                 │   │
+│  └──────────────────────────────────────────────────┘   │
+├─────────────────────────────────────────────────────────┤
+│              Hardware (CPU, RAM, Disco, GPU)             │
+└─────────────────────────────────────────────────────────┘</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — COMPONENTES DO EXECUTIVE ═══════════════════ -->
+      <section>
+        <h2 id="componentes-executive" class="section-title">Componentes do Executive</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Componente</th>
+                <th>Responsabilidade</th>
+                <th>Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Object Manager</td><td>Gerencia todos os objetos do kernel (processos, threads, handles)</td><td>Usa namespace \ObjectTypes; refcount automático</td></tr>
+              <tr><td>Process Manager</td><td>Criação e terminação de processos e threads</td><td>CreateProcess() → NtCreateProcess()</td></tr>
+              <tr><td>Memory Manager</td><td>Paginação, VAD (Virtual Address Descriptor), AWE, large pages</td><td>Working sets, page faults, zero-page thread</td></tr>
+              <tr><td>I/O Manager</td><td>IRP (I/O Request Packets) roteados para driver stack</td><td>Stacked drivers, filter drivers, miniport drivers</td></tr>
+              <tr><td>Cache Manager</td><td>Cache de arquivo: seções mapeadas por memória</td><td>Compartilha páginas com Memory Manager</td></tr>
+              <tr><td>Security Reference Monitor</td><td>Impersonation, ACL checks, audit trail</td><td>Integração com LSASS (Local Security Authority)</td></tr>
+              <tr><td>Plug and Play Manager</td><td>Detecta e carrega drivers para hardware novo</td><td>Usa INF files; devnode tree</td></tr>
+              <tr><td>Power Manager</td><td>Gestão de estados de energia (S1-S5, C-states, D-states)</td><td>Coordena com drivers via IRPs de power</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — MODELO DE OBJETOS DO KERNEL ═══════════════════ -->
+      <section>
+        <h2 id="modelo-objetos" class="section-title">Modelo de Objetos do Kernel</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Objetos do Kernel NT (conceitual)</div>
+          <pre class="code-block">// Tudo no kernel NT é um objeto com:
+// - tipo (OBJECT_TYPE)
+// - header (OBJECT_HEADER) com refcount, handles, nome
+// - corpo (tipo-específico)
+
+// Tipos de objetos comuns:
+// Process  — criado por CreateProcess()
+// Thread   — criado por CreateThread()
+// File     — criado por CreateFile()
+// Event    — sincronização (Set/Wait/Pulse)
+// Mutex    — exclusão mútua (wait é recursivo)
+// Semaphore — semáforo contável
+// Section  — memória mapeada em arquivo
+// Token    — representação de identidade/privilege
+
+// Ver objetos via Sysinternals WinObj ou Process Hacker
+// Handles são referências ao Object Manager namespace
+// Ex: \Device\HarddiskVolume3\Windows\notepad.exe</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — SEGURANÇA: TOKENS E INTEGRIDADE ═══════════════════ -->
+      <section>
+        <h2 id="seguranca-tokens" class="section-title">Segurança: Tokens e Integridade</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Tokens de Acesso</h3>
+            <p>Cada processo/thread tem um access token com SID do usuário, grupos, privilégios (SeDebugPrivilege, SeBackupPrivilege...) e nível de integridade.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Níveis de Integridade (IL)</h3>
+            <p>Low (IE protected mode), Medium (apps normais), High (admin elevado), System (serviços), Trusted Installer; controle de escrita entre níveis.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">UAC (User Account Control)</h3>
+            <p>Split token: admin comum roda com token Medium; ações elevadas geram prompt pedindo token High.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">LSASS</h3>
+            <p>Local Security Authority Subsystem gerencia autenticação, Kerberos, NTLM e guarda hashes/tickets (alvo de mimikatz e credential dumping).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <a href="/html/sistemas/windows/introducao_windows.html">Introdução ao Windows</a>
+        <a href="/html/sistemas/windows/servicos_windows.html">Serviços do Windows</a>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O NT Executive prova que um kernel híbrido pode ser ao mesmo tempo robusto e extensível."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

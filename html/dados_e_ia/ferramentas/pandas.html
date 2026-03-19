@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Guia prático de pandas: carregar, limpar, transformar, agrupar e juntar dados com exemplos e armadilhas comuns.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>pandas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area animacao-entrada">
+      <h1>pandas</h1>
+      <p><strong>Guia Prático</strong> — Do CSV ao relatório: carregar, inspecionar, limpar, transformar, agregar, juntar tabelas e exportar. Aqui a ideia é você aprender o fluxo real que aparece em trabalho e projetos.</p>
+
+      <div class="Colored_border_anim_card_box"><p><strong>pandas</strong></p></div>
+      <h2 class="section-title">Visao Geral</h2>
+
+      <section>
+        <h2 id="primeiros-passos">1. Do arquivo ao DataFrame (fluxo real)</h2>
+        <div class="card">
+          <h3>Carregar e inspecionar</h3>
+          <pre class="example">import pandas as pd
+
+df = pd.read_csv("dados.csv")
+print(df.head())
+print(df.info())
+print(df.describe(include="all"))</pre>
+          <p><em>Se você não inspeciona (head/info/describe), você sempre vai “descobrir” bugs tarde.</em></p>
+
+          <h3>Conceitos</h3>
+          <ul>
+            <li><strong>Series:</strong> uma coluna (1D) com índice.</li>
+            <li><strong>DataFrame:</strong> tabela (2D) com colunas e índice.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="operacoes">2. Operações que você vai usar todo dia</h2>
+        <div class="card">
+          <h3 id="selecionar-filtrar">2.1 Selecionar, filtrar e criar colunas</h3>
+          <pre class="example"># Seleção de colunas
+df[["cliente", "valor"]]
+
+# Filtrar linhas
+df_filtrado = df.loc[df["valor"] &gt; 100]
+
+# Criar coluna derivada
+df["ticket_medio"] = df["valor"] / df["itens"]</pre>
+
+          <h3 id="missing">2.2 Missing e tipos</h3>
+          <pre class="example"># Quantidade de valores ausentes por coluna
+df.isna().sum()
+
+# Remover linhas sem valor
+df = df.dropna(subset=["valor"])
+
+# Otimizar/organizar tipo
+df["categoria"] = df["categoria"].astype("category")</pre>
+
+          <h3 id="groupby">2.3 GroupBy (agregação)</h3>
+          <pre class="example">resumo = (
+  df.groupby("categoria", as_index=False)
+    .agg(vendas_total=("valor", "sum"), ticket_medio=("valor", "mean"), n=("valor", "size"))
+)
+print(resumo)</pre>
+
+          <h3 id="merge">2.4 Merge/Join (unir tabelas)</h3>
+          <pre class="example">clientes = pd.read_csv("clientes.csv")
+
+# how="left": mantém todas as linhas de df
+df2 = df.merge(clientes, on="cliente_id", how="left")</pre>
+
+          <h3 id="datas">2.5 Datas e resample</h3>
+          <pre class="example">df["data"] = pd.to_datetime(df["data"])
+
+serie = (
+  df.set_index("data")
+    .resample("D")["valor"]
+    .sum()
+)
+print(serie.head())</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="boas-praticas">3. Boas práticas (pandas de produção)</h2>
+        <div class="card">
+          <ul>
+            <li><strong>Evite vazamento:</strong> se for ML, split antes de calcular estatísticas (média/escala).</li>
+            <li><strong>Use .loc</strong> para atribuir e filtrar (menos armadilhas).</li>
+            <li><strong>Prefira vetorização:</strong> evite <strong>apply</strong> sem necessidade.</li>
+            <li><strong>Formato:</strong> Parquet para volume e performance; CSV para compatibilidade.</li>
+            <li><strong>Memória:</strong> considere <strong>category</strong> para strings repetidas.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="erros-comuns">4. Erros comuns (e como não cair)</h2>
+        <div class="card">
+          <ul>
+            <li><strong>SettingWithCopyWarning:</strong> evite “cadeias” de indexação; use <strong>.loc</strong> e/ou crie cópia.</li>
+            <li><strong>Datas como string:</strong> converta com <strong>to_datetime</strong> antes de resample/janelas.</li>
+            <li><strong>Join explodindo linhas:</strong> chaves duplicadas geram multiplicação; valide unicidade.</li>
+          </ul>
+        </div>
+      </section>
+      <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>MCKINNEY, Wes. <strong>Python for Data Analysis</strong>. O'Reilly, 2022.</li><li>VANDERPLAS, Jake. <strong>Python Data Science Handbook</strong>. O'Reilly, 2016.</li><li>WICKHAM, Hadley; GROLEMUND, Garrett. <strong>R for Data Science</strong>. O'Reilly, 2017.</li></ul></div></section>
+      <div class="callout"><p>pandas transforma dados tabulares em analise pratica e rapida.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Modelagem de dados limpa simplifica toda a analise.</p></div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

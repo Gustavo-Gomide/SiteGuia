@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Componentes conexos em grafos: BFS/DFS e Union-Find para encontrar grupos de vértices conectados. Python. Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Componentes Conexos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Componentes Conexos</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Componentes Conexos</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Componentes Conexos: grupos de vértices alcançáveis</h1>
+          <p>Identificar quais vértices fazem parte de quais grupos  a operação fundamental para detectar sub-redes isoladas.</p>
+        </div>
+        <p class="intro-highlight">
+          Em um grafo não-direcionado, um <strong>componente conexo</strong> é um subconjunto maximal de vértices onde existe caminho entre qualquer par. Se o grafo for completamente conectado, ele tem exatamente 1 componente. Se houver ilhas isoladas, cada ilha é um componente separado. Encontrar componentes conexos é O(V + E) via BFS ou DFS  ou O(α(V)) por operação com Union-Find.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-e" class="section-title">Visualização</h2>
+        <div class="svg-flow-wrapper">
+          <svg viewBox="0 0 440 160" role="img" aria-label="Grafo com dois componentes conexos: {A,B,C} e {D,E}">
+            <defs><style>
+              .cc-c1 { fill: rgba(var(--accent-rgb),0.2); stroke: var(--accent); stroke-width: 2; }
+              .cc-c2 { fill: rgba(var(--danger-rgb),0.2); stroke: var(--danger); stroke-width: 2; }
+              .cc-e1 { stroke: var(--accent); stroke-width: 1.5; }
+              .cc-e2 { stroke: var(--danger); stroke-width: 1.5; }
+              .cc-txt { fill: var(--text-primary); font-size: 13px; font-weight: bold; text-anchor: middle; dominant-baseline: central; }
+              .cc-lbl { fill: var(--text-secondary); font-size: 10px; text-anchor: middle; }
+            </style></defs>
+            <!-- Component 1: A-B-C -->
+            <line x1="80" y1="80" x2="150" y2="40" class="cc-e1"/>
+            <line x1="80" y1="80" x2="150" y2="120" class="cc-e1"/>
+            <line x1="150" y1="40" x2="150" y2="120" class="cc-e1"/>
+            <circle cx="80"  cy="80"  r="18" class="cc-c1"/><text x="80"  y="80"  class="cc-txt">A</text>
+            <circle cx="150" cy="40"  r="18" class="cc-c1"/><text x="150" y="40"  class="cc-txt">B</text>
+            <circle cx="150" cy="120" r="18" class="cc-c1"/><text x="150" y="120" class="cc-txt">C</text>
+            <text x="115" y="150" class="cc-lbl" style="fill:var(--accent);">Componente 1</text>
+            <!-- Component 2: D-E -->
+            <line x1="290" y1="60" x2="290" y2="120" class="cc-e2"/>
+            <circle cx="290" cy="60"  r="18" class="cc-c2"/><text x="290" y="60"  class="cc-txt">D</text>
+            <circle cx="290" cy="120" r="18" class="cc-c2"/><text x="290" y="120" class="cc-txt">E</text>
+            <text x="290" y="150" class="cc-lbl" style="fill:var(--danger);">Componente 2</text>
+            <!-- Isolated F -->
+            <circle cx="390" cy="80" r="18" style="fill: rgba(var(--warn-rgb,234,179,8),0.15); stroke: rgba(234,179,8,0.7); stroke-width: 2;"/>
+            <text x="390" y="80" class="cc-txt">F</text>
+            <text x="390" y="110" class="cc-lbl" style="fill:rgba(234,179,8,0.9);">Componente 3</text>
+          </svg>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            Grafos direcionados têm <strong>componentes fortemente conexos (SCC)</strong>  grupos onde qualquer vértice pode alcançar qualquer outro. Para isso use Kosaraju ou Tarjan.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="implementacao" class="section-title">Implementação em Python</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">componentes_conexos.py</div>
+          <pre class="example"><span class="kw">from</span> collections <span class="kw">import</span> deque, defaultdict
+
+<span class="kw">def</span> <span class="tp">componentes_conexos</span>(grafo):
+    <span class="str">"""Retorna lista de componentes conexos (cada um é um set de vértices)."""</span>
+    visitado = <span class="tp">set</span>()
+    componentes = []
+
+    <span class="kw">def</span> <span class="tp">bfs</span>(inicio):
+        comp, fila = <span class="tp">set</span>(), deque([inicio])
+        visitado.add(inicio)
+        <span class="kw">while</span> fila:
+            v = fila.popleft()
+            comp.add(v)
+            <span class="kw">for</span> viz <span class="kw">in</span> grafo[v]:
+                <span class="kw">if</span> viz <span class="kw">not in</span> visitado:
+                    visitado.add(viz); fila.append(viz)
+        <span class="kw">return</span> comp
+
+    <span class="kw">for</span> v <span class="kw">in</span> grafo:
+        <span class="kw">if</span> v <span class="kw">not in</span> visitado:
+            componentes.append(bfs(v))
+
+    <span class="kw">return</span> componentes
+
+<span class="com"># Exemplo: dois componentes + vértice isolado</span>
+g = defaultdict(<span class="tp">list</span>)
+<span class="kw">for</span> u, v <span class="kw">in</span> [(<span class="str">'A'</span>,<span class="str">'B'</span>),(<span class="str">'B'</span>,<span class="str">'C'</span>),(<span class="str">'D'</span>,<span class="str">'E'</span>)]:
+    g[u].append(v); g[v].append(u)
+g[<span class="str">'F'</span>]  <span class="com"># vértice isolado</span>
+<span class="tp">print</span>(componentes_conexos(g))
+<span class="com"># [{'A','B','C'}, {'D','E'}, {'F'}]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="complexidade" class="section-title">Complexidade</h2>
+        <div class="scroll-x">
+          <table class="trace-table">
+            <thead><tr><th>Método</th><th>Tempo</th><th>Espaço</th></tr></thead>
+            <tbody>
+              <tr><td>BFS/DFS</td><td>O(V + E)</td><td>O(V)</td></tr>
+              <tr><td>Union-Find (path compression)</td><td>O(V  α(V))</td><td>O(V)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos-de-uso" class="section-title">Aplicações</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Detecção de ilhas</h3><p>Em mapas de pixels, identificar regiões contíguas de mesma cor (flood fill).</p></div>
+          <div class="card"><h3>Redes de computadores</h3><p>Verificar se todos os hosts estão alcançáveis  detectar sub-redes isoladas.</p></div>
+          <div class="card"><h3>Análise de grafos sociais</h3><p>Identificar grupos desconectados em redes sociais ou de colaboração.</p></div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="atencao" aria-hidden="true"></span>
+            <strong>Atenção:</strong> Para grafos direcionados, componentes conexos (alcançabilidade unilateral) são diferentes de componentes <em>fortemente</em> conexos (alcançabilidade bilateral). Não confunda  use Kosaraju ou Tarjan para SCCs em dígrafos.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Cormen, T. et al. <em>Introduction to Algorithms</em>, 4ª ed. MIT Press, 2022. Seção 20.3.</li>
+            <li>Sedgewick, R.; Wayne, K. <em>Algorithms</em>, 4ª ed. Addison-Wesley, 2011. Cap. 4.1.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Componentes conexos são a base para entender a topologia de qualquer grafo  antes de executar qualquer algoritmo complexo, saber quantos grupos existem é fundamental.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um BFS ou DFS revela em O(V+E) toda a estrutura de conectividade de um grafo  simples, mas poderoso."  fundamentos de algoritmos em grafos
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R para GUIs Desktop: Shiny local como app desktop, electricShine, RGtk2, tcltk, gWidgets2 e geração de relatórios Quarto como aplicações standalone." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para GUI Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para GUI Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Interfaces Gráficas Desktop</h1>
+          <p>Shiny como app local, empacotamento com electricShine/Electron, bindings GTK+ com RGtk2, tcltk nativo da instalação base e gWidgets2 portável.</p>
+        </div>
+        <p class="intro-highlight">
+          Criar GUIs nativas não é o ponto forte de R — a linguagem foi projetada para análise interativa, não para software de desktop de uso geral. Contudo, há casos legítimos onde um analista precisa distribuir uma ferramenta de análise para usuários não-técnicos. As abordagens van da mais simples (Shiny local) à mais robusta (Electron wrapper).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="shiny-local">Shiny como Aplicação Desktop</h2>
+        <p>
+          A abordagem mais pragmática: executar Shiny localmente com <code>shiny::runApp()</code> e abrir automaticamente no browser padrão. Para o usuário final, parece um aplicativo — mas é apenas uma página web servida em <code>localhost</code>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">launch.R — inicializador de app desktop</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"shiny"</span>)
+
+<span class="com"># Detectar porta livre dinamicamente</span>
+porta_livre &lt;- <span class="kw">function</span>() {
+  con &lt;- <span class="fn">serverSocket</span>(<span class="num">0</span>)
+  <span class="kw">on.exit</span>(<span class="fn">close</span>(con))
+  <span class="fn">sockopt</span>(con)$port
+}
+
+<span class="com"># Abrir no browser assim que Shiny estiver pronto</span>
+<span class="fn">shinyApp</span>(
+  ui     = source(<span class="str">"ui.R"</span>, local = <span class="kw">TRUE</span>)$value,
+  server = source(<span class="str">"server.R"</span>, local = <span class="kw">TRUE</span>)$value,
+  options = <span class="fn">list</span>(
+    port    = <span class="fn">porta_livre</span>(),
+    launch.browser = <span class="kw">TRUE</span>,     <span class="com"># abre o browser automaticamente</span>
+    quiet   = <span class="kw">TRUE</span>
+  )
+)</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">launch.bat — launcher para Windows (duplo-clique)</div>
+          <pre class="example">@echo off
+<span class="com">:: Launcher para Windows — empacote com o R portátil</span>
+SET R_HOME=%~dp0R
+SET PATH=%R_HOME%\bin;%PATH%
+
+Rscript.exe "%~dp0launch.R"
+if errorlevel 1 (
+  echo Erro ao iniciar a aplicacao. Verifique os logs.
+  pause
+)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="electricshine">electricShine — Empacotamento com Electron</h2>
+        <p>
+          <strong>electricShine</strong> empacota uma aplicação Shiny junto com um runtime R portátil em um executável nativo usando Electron — o mesmo framework usado pelo VS Code e Slack. O resultado é um <code>.exe</code> (Windows) ou <code>.dmg</code> (macOS) que o usuário instala sem precisar ter R.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">build-electron.R</div>
+          <pre class="example"><span class="com"># install.packages("electricShine")</span>
+<span class="fn">library</span>(<span class="str">"electricShine"</span>)
+
+<span class="fn">electrify</span>(
+  app_name       = <span class="str">"AnáliseDados"</span>,
+  product_name   = <span class="str">"Análise de Dados Corporativos"</span>,
+  app_dir        = <span class="str">"./meu_shiny_app"</span>,   <span class="com"># pasta com app.R ou ui.R + server.R</span>
+  cran_like_url  = <span class="str">"https://cran.rstudio.com"</span>,
+  r_version      = <span class="str">"4.4.1"</span>,
+  build_path     = <span class="str">"./dist"</span>,
+  package_json   = <span class="fn">list</span>(
+    author      = <span class="str">"Equipe Análise"</span>,
+    version     = <span class="str">"1.0.0"</span>,
+    description = <span class="str">"Dashboard analítico para equipe comercial"</span>
+  )
+)
+
+<span class="com"># Resultado: ./dist/AnáliseDados-win32-x64/ com AnáliseDados.exe</span></pre>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>electricShine gera instaladores grandes</strong> (200–600 MB) porque inclui R portátil completo. Para ferramentas internas corporativas isso é aceitável. Para distribuição pública, considere Shiny deploiado em servidor ou shinylive (WebAssembly).
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tcltk">tcltk — GUI Nativa Incluída no R Base</h2>
+        <p>
+          <strong>tcltk</strong> é parte da instalação padrão de R — sem instalar pacotes adicionais. Baseado no toolkit Tcl/Tk, cria janelas nativas mas com visual dos anos 2000. Útil para scripts simples que precisam de mínima interação do usuário.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tcltk-dialogo.R — seletor de arquivo com GUI</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"tcltk"</span>)
+
+<span class="com"># Janela simples de seleção de arquivo</span>
+arquivo &lt;- <span class="fn">tkgetOpenFile</span>(
+  title      = <span class="str">"Selecione o arquivo CSV"</span>,
+  filetypes  = <span class="fn">list</span>(<span class="fn">c</span>(<span class="str">"Arquivos CSV"</span>, <span class="str">".csv"</span>),
+                    <span class="fn">c</span>(<span class="str">"Todos os arquivos"</span>, <span class="str">"*"</span>))
+)
+
+<span class="kw">if</span> (<span class="fn">nchar</span>(arquivo) == <span class="num">0</span>) <span class="fn">stop</span>(<span class="str">"Nenhum arquivo selecionado"</span>)
+
+<span class="com"># Janela com input simples</span>
+janela &lt;- <span class="fn">tktoplevel</span>()
+<span class="fn">tkwm.title</span>(janela, <span class="str">"Configurar Análise"</span>)
+
+<span class="com"># Label + Entry</span>
+<span class="fn">tklabel</span>(janela, text = <span class="str">"Número de clusters:"</span>) |&gt; <span class="fn">tkgrid</span>()
+k_var &lt;- <span class="fn">tclVar</span>(<span class="str">"3"</span>)
+<span class="fn">tkentry</span>(janela, textvariable = k_var) |&gt; <span class="fn">tkgrid</span>()
+
+<span class="com"># Botão OK</span>
+ok_fn &lt;- <span class="kw">function</span>() {
+  k &lt;&lt;- <span class="fn">as.integer</span>(<span class="fn">tclvalue</span>(k_var))
+  <span class="fn">tkdestroy</span>(janela)
+}
+<span class="fn">tkbutton</span>(janela, text = <span class="str">"OK"</span>, command = ok_fn) |&gt; <span class="fn">tkgrid</span>()
+<span class="fn">tkwait.window</span>(janela)
+
+<span class="fn">message</span>(<span class="str">"Arquivo: "</span>, arquivo, <span class="str">" | k = "</span>, k)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gwidgets2">gWidgets2 — Toolkit Abstrato Portável</h2>
+        <p>
+          <strong>gWidgets2</strong> abstrai o toolkit subjacente (RGtk2, tcltk). O mesmo código funciona com diferentes backends de GUI sem modificação.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">gwidgets2-app.R</div>
+          <pre class="example"><span class="com"># Requer: install.packages(c("gWidgets2", "gWidgets2tcltk"))</span>
+<span class="fn">library</span>(<span class="str">"gWidgets2"</span>)
+<span class="fn">options</span>(guiToolkit = <span class="str">"tcltk"</span>)
+
+<span class="com"># Janela principal</span>
+w &lt;- <span class="fn">gwindow</span>(<span class="str">"Calculadora Estatística"</span>, width = <span class="num">400</span>, height = <span class="num">300</span>)
+g &lt;- <span class="fn">ggroup</span>(container = w, horizontal = <span class="kw">FALSE</span>)
+
+<span class="com"># Widgets</span>
+glabel(<span class="str">"Insira os valores (separados por vírgula):"</span>, container = g)
+entrada    &lt;- <span class="fn">gedit</span>(<span class="str">""</span>, container = g)
+resultado  &lt;- <span class="fn">glabel</span>(<span class="str">"Resultado aqui..."</span>, container = g)
+
+<span class="com"># Botões em linha</span>
+g_botoes &lt;- <span class="fn">ggroup</span>(container = g, horizontal = <span class="kw">TRUE</span>)
+<span class="fn">gbutton</span>(<span class="str">"Média"</span>, container = g_botoes, handler = <span class="kw">function</span>(...) {
+  vals &lt;- <span class="fn">as.numeric</span>(<span class="fn">strsplit</span>(<span class="fn">svalue</span>(entrada), <span class="str">","</span>)[[<span class="num">1</span>]])
+  <span class="fn">svalue</span>(resultado) &lt;- <span class="fn">paste</span>(<span class="str">"Média:"</span>, <span class="fn">round</span>(<span class="fn">mean</span>(vals), <span class="num">4</span>))
+})
+<span class="fn">gbutton</span>(<span class="str">"Desvio Padrão"</span>, container = g_botoes, handler = <span class="kw">function</span>(...) {
+  vals &lt;- <span class="fn">as.numeric</span>(<span class="fn">strsplit</span>(<span class="fn">svalue</span>(entrada), <span class="str">","</span>)[[<span class="num">1</span>]])
+  <span class="fn">svalue</span>(resultado) &lt;- <span class="fn">paste</span>(<span class="str">"DP:"</span>, <span class="fn">round</span>(<span class="fn">sd</span>(vals), <span class="num">4</span>))
+})</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="quarto-pdf">Quarto — Relatórios como "Aplicação"</h2>
+        <p>
+          Para muitos casos de uso, o que o usuário precisa não é uma GUI interativa mas sim um relatório HTML/PDF gerado automaticamente com inputs parametrizados. <strong>Quarto com parâmetros</strong> é frequentemente a solução mais adequada para distribuir análises para usuários não-técnicos.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">relatorio.qmd — com parâmetros interativos</div>
+          <pre class="example">---
+title: "Relatório de Vendas"
+format:
+  html:
+    theme: cosmo
+    toc: true
+  pdf:
+    toc: false
+params:
+  regiao: "Sul"
+  ano: 2024
+execute:
+  echo: false
+  warning: false
+---
+
+```{r}
+#| label: setup
+library(tidyverse)
+dados &lt;- read_csv("vendas.csv") |&gt;
+  filter(regiao == params$regiao, lubridate::year(data) == params$ano)
+```
+
+## Vendas em `r params$regiao` — `r params$ano`
+
+Total de registros: `r nrow(dados)`
+
+```{r}
+#| label: grafico
+#| fig-cap: "Evolução mensal de vendas"
+dados |&gt;
+  count(mes = lubridate::floor_date(data, "month"), wt = valor) |&gt;
+  ggplot(aes(mes, n)) +
+  geom_col(fill = "steelblue") +
+  labs(x = NULL, y = "Valor Total (R$)")
+```</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal — renderizar com parâmetros</div>
+          <pre class="example"><span class="com"># Renderizar para PDF com parâmetros específicos</span>
+quarto render relatorio.qmd -P regiao:Nordeste -P ano:2023 --to pdf
+
+<span class="com"># Loop para gerar relatório para cada região</span>
+Rscript -e "
+regioes &lt;- c('Norte','Nordeste','Sul','Sudeste','Centro-Oeste')
+for (r in regioes) {
+  quarto::quarto_render('relatorio.qmd',
+    output_file = paste0('relatorio-', r, '.pdf'),
+    execute_params = list(regiao = r, ano = 2024))
+}"</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>CHANG, Winston et al. <strong>shiny: Web Application Framework for R</strong>. Posit Software, 2024. Disponível em: <a href="https://shiny.posit.co/" target="_blank" rel="noopener">shiny.posit.co</a></li>
+          <li>ALLAIRE, J.J. et al. <strong>Quarto: An Open-Source Scientific and Technical Publishing System</strong>. Posit Software, 2024. Disponível em: <a href="https://quarto.org/" target="_blank" rel="noopener">quarto.org</a></li>
+          <li>VERZANI, John. <strong>Programming Graphical User Interfaces in R</strong>. CRC Press, 2014. ISBN: 978-1-4665-1572-2</li>
+          <li>ELECTRICSHINE. <strong>electricShine: Create Standalone R Applications</strong>. R package, 2024. Disponível em: <a href="https://github.com/chasemc/electricShine" target="_blank" rel="noopener">github.com/chasemc/electricShine</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Web com Shiny</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Mobile</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "A ferramenta certa para a audiência certa: Shiny + electricShine transforma uma análise R em um produto que qualquer analista pode usar sem tocar em código." — padrão de distribuição de ferramentas analíticas</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

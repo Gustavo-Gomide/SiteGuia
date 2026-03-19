@@ -1,0 +1,222 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Threads: execução concorrente dentro de um processo — modelos de threading (1:1, N:1, M:N), criação com pthreads e std::thread, problemas de concorrência e Green Threads." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Threads | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Threads</h1>
+            <p class="page-subtitle">Linhas de execução concorrentes dentro de um processo — stack própria, memória compartilhada e o preço da sincronização.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Uma <strong>thread</strong> é a menor unidade de execução escalonável pelo kernel. Diferentemente de processos, threads de um mesmo processo compartilham heap, segmento de texto e descritores de arquivos, mas cada uma possui sua própria stack, program counter e conjunto de registradores. Isso torna a criação muito mais barata que um <code class="code-inline">fork()</code>, ao custo de exigir sincronização explícita sempre que dados compartilhados são acessados.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — MODELOS ═══════════════════ -->
+      <section id="modelos">
+        <h2>Modelos de Threading</h2>
+        <p>A relação entre threads de usuário e threads do kernel define o modelo de threading e impacta diretamente desempenho e portabilidade:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Modelo</th><th>Mapeamento</th><th>Vantagens</th><th>Desvantagens</th><th>Exemplos</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>User-Level (N:1)</strong></td>
+                <td>N threads de usuário para 1 thread de kernel</td>
+                <td>Troca de contexto rapidíssima (sem syscall), portável</td>
+                <td>Bloqueio de uma bloqueia todo o processo; sem paralelismo real em multicore</td>
+                <td>Green threads antigas (Python 2, Ruby MRI com GIL)</td>
+              </tr>
+              <tr>
+                <td><strong>Kernel-Level (1:1)</strong></td>
+                <td>1 thread de usuário para 1 thread de kernel</td>
+                <td>Paralelismo real em multicore, bloqueio independente</td>
+                <td>Overhead de syscall na criação e troca de contexto</td>
+                <td>POSIX pthreads, Java threads (OpenJDK HotSpot), .NET CLR</td>
+              </tr>
+              <tr>
+                <td><strong>Thread Pool (M:N)</strong></td>
+                <td>M threads de usuário para N threads de kernel (M &gt; N)</td>
+                <td>Equilíbrio entre custo de criação e paralelismo; ajuste fino</td>
+                <td>Complexidade de implementação; difícil de depurar</td>
+                <td>Go goroutines (runtime agenda M goroutines em N OS threads), Erlang</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p><strong>Python e o GIL:</strong> O CPython possui um Global Interpreter Lock que permite apenas uma thread executar bytecode por vez, tornando-o efetivamente 1:CPU para código puro Python — threads são úteis apenas para I/O-bound.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — PTHREADS ═══════════════════ -->
+      <section id="pthreads">
+        <h2>Criação e Uso — pthreads</h2>
+        <p>A API POSIX threads é a interface padrão para threads em C/C++ em sistemas Unix/Linux:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — pthread_create, mutex, contador compartilhado</div>
+          <pre class="code-block">#include &lt;stdio.h&gt;
+#include &lt;pthread.h&gt;
+
+#define N_THREADS 4
+#define INCREMENTOS 100000
+
+static long contador = 0;
+static pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+
+void *incrementar(void *arg) {
+    for (int i = 0; i &lt; INCREMENTOS; i++) {
+        pthread_mutex_lock(&amp;mtx);
+        contador++;
+        pthread_mutex_unlock(&amp;mtx);
+    }
+    return NULL;
+}
+
+int main(void) {
+    pthread_t tids[N_THREADS];
+
+    for (int i = 0; i &lt; N_THREADS; i++)
+        pthread_create(&amp;tids[i], NULL, incrementar, NULL);
+
+    for (int i = 0; i &lt; N_THREADS; i++)
+        pthread_join(tids[i], NULL);
+
+    printf("contador = %ld (esperado %d)\n",
+           contador, N_THREADS * INCREMENTOS);
+    return 0;
+}
+/* Compilar: gcc -o demo demo.c -lpthread */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — STD::THREAD ═══════════════════ -->
+      <section id="stdthread">
+        <h2>std::thread em C++</h2>
+        <p>O C++11 padronizou threads na biblioteca padrão, eliminando dependência direta de pthreads e oferecendo RAII com <code class="code-inline">std::lock_guard</code>:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++11 — std::thread, std::mutex, std::lock_guard</div>
+          <pre class="code-block">#include &lt;iostream&gt;
+#include &lt;thread&gt;
+#include &lt;mutex&gt;
+#include &lt;vector&gt;
+
+constexpr int N_THREADS   = 4;
+constexpr int INCREMENTOS = 100000;
+
+static long       contador = 0;
+static std::mutex mtx;
+
+void incrementar() {
+    for (int i = 0; i &lt; INCREMENTOS; i++) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx); /* RAII: unlock automático */
+        contador++;
+    }
+}
+
+int main() {
+    std::vector&lt;std::thread&gt; threads;
+    threads.reserve(N_THREADS);
+
+    for (int i = 0; i &lt; N_THREADS; i++)
+        threads.emplace_back(incrementar);
+
+    for (auto &amp;t : threads)
+        t.join();
+
+    std::cout &lt;&lt; "contador = " &lt;&lt; contador
+              &lt;&lt; " (esperado " &lt;&lt; N_THREADS * INCREMENTOS &lt;&lt; ")\n";
+}
+/* Compilar: g++ -std=c++17 -o demo demo.cpp */</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — PROBLEMAS ═══════════════════ -->
+      <section id="problemas">
+        <h2>Problemas Clássicos de Concorrência</h2>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Problema</th><th>Definição</th><th>Como se manifesta</th><th>Como evitar</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Race Condition</strong></td>
+                <td>Resultado depende da ordem não determinística de execução de threads</td>
+                <td>Contador com resultado errado; leitura de dado parcialmente escrito</td>
+                <td>Mutex, operações atômicas (<code class="code-inline">std::atomic</code>)</td>
+              </tr>
+              <tr>
+                <td><strong>Deadlock</strong></td>
+                <td>Duas ou mais threads esperam indefinidamente por recursos que a outra segura</td>
+                <td>Programa congela; uso de CPU cai a zero</td>
+                <td>Lock ordering, try-lock com timeout, algoritmo do Banqueiro</td>
+              </tr>
+              <tr>
+                <td><strong>Livelock</strong></td>
+                <td>Threads continuam executando (sem progresso real) respondendo uma à outra</td>
+                <td>CPU alta, mas nenhuma tarefa avança; similar a dois humanos num corredor</td>
+                <td>Backoff aleatório, prioridade diferenciada</td>
+              </tr>
+              <tr>
+                <td><strong>Starvation</strong></td>
+                <td>Uma thread nunca obtém o recurso por ser constantemente preterida</td>
+                <td>Thread de baixa prioridade nunca executa enquanto outras estão ativas</td>
+                <td>Fairness no lock (fila FIFO), aging de prioridade</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja também os mecanismos de proteção de dados compartilhados em
+          <a href="/html/sistemas/processos/mutex_semaforos.html">Mutex e Semáforos</a> e
+          <a href="/html/sistemas/processos/processos.html">Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Threads são a forma mais rápida de criar bugs não-reproduzíveis — use-as com critério."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

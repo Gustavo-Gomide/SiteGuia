@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Particionamento em banco de dados: partition pruning, tipos Range/List/Hash e exclusão eficiente de partições." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Particionamento | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Particionamento de Dados</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">Particionamento de Dados</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+          <h1>Particionamento</h1>
+          <p>Como dividir tabelas de bilhoes de linhas sem matar o banco — e sem mudar uma linha de SQL.</p>
+        </div>
+        <p class="intro-highlight">
+          Uma tabela de logs com 2 bilhoes de registros ocupa 800 GB. Uma query de auditoria
+          <code class="code-inline">WHERE data_log BETWEEN '2024-01-01' AND '2024-03-31'</code> sem
+          particao faz Full Scan de 800 GB. Com particionamento por mes, o banco le apenas as 3 particoes
+          relevantes — menos de 2 GB. Particionamento e sobre <strong>eliminar dados irrelevantes antes
+          de qualquer indice entrar em cena</strong>. E a tecnica mais poderosa para gerenciar dados em
+          escala que um engenheiro de banco precisa dominar.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PARTICAO VS TABELA VS SHARDING -->
+      <section>
+        <h2 id="conceito" class="section-title">1. Particao vs Tabela vs Sharding</h2>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Confusao comum:</strong> Particionamento e sharding sao coisas diferentes.
+            Particionamento divide uma tabela <strong>dentro de um unico servidor</strong> — transparente
+            para a aplicacao, o mesmo SQL funciona sem mudancas. Sharding distribui os dados por
+            <strong>multiplos servidores</strong> e exige mudancas na camada de aplicacao.
+          </p>
+        </div>
+        <div class="scroll-x"><div class="protocol-comparison"><table>
+          <thead>
+            <tr>
+              <th>Criterio</th>
+              <th>Tabela Normal</th>
+              <th>Particionada</th>
+              <th>Sharding</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Localizacao</td>
+              <td>Um arquivo de dados</td>
+              <td>N arquivos, 1 servidor</td>
+              <td>N servidores</td>
+            </tr>
+            <tr>
+              <td>Transparencia SQL</td>
+              <td>Total</td>
+              <td>Total (mesmo SQL)</td>
+              <td>Parcial (depende do router)</td>
+            </tr>
+            <tr>
+              <td>Escala</td>
+              <td>Disco do servidor</td>
+              <td>Disco do servidor</td>
+              <td>Multi-servidor (horizontal)</td>
+            </tr>
+            <tr>
+              <td>Complexidade</td>
+              <td>Nenhuma</td>
+              <td>Media (DDL)</td>
+              <td>Alta (infra + codigo)</td>
+            </tr>
+            <tr>
+              <td>Quando usar</td>
+              <td>Tabelas &lt; 100M linhas</td>
+              <td>100M–10B linhas</td>
+              <td>&gt; 10B linhas ou write bottleneck</td>
+            </tr>
+          </tbody>
+        </table></div></div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PARTITION PRUNING -->
+      <section>
+        <h2 id="pruning" class="section-title">2. Partition Pruning</h2>
+        <p>
+          O mecanismo central que torna o particionamento util. Quando o otimizador consegue determinar
+          pela clausula WHERE quais particoes sao relevantes, ele simplesmente ignora todas as outras —
+          sem leitura, sem I/O, sem CPU. Isso e o <strong>partition pruning</strong>.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">partition-pruning.txt</div>
+          <pre class="example"><span class="com">Tabela: logs_evento (particionada por RANGE em data_log, particao por mes)</span>
+<span class="com">Particoes: logs_2023_01, logs_2023_02, ..., logs_2024_12</span>
+
+<span class="kw">SELECT</span> COUNT(*) <span class="kw">FROM</span> logs_evento
+<span class="kw">WHERE</span> data_log <span class="kw">BETWEEN</span> <span class="str">'2024-01-01'</span> <span class="kw">AND</span> <span class="str">'2024-03-31'</span>;
+
+<span class="com">Sem particao: Seq Scan em 2 bilhoes de linhas (800 GB)</span>
+<span class="com">Com particao: Pruning elimina 21 particoes, le apenas 3 (logs_2024_01..03)</span>
+<span class="com">Resultado: 150ms vs 8min</span>
+
+<span class="com">EXPLAIN mostra o pruning em acao (PostgreSQL):</span>
+Append
+  -&gt; Seq Scan on logs_2024_01  (cost=0..45321.00)
+  -&gt; Seq Scan on logs_2024_02  (cost=0..44218.00)
+  -&gt; Seq Scan on logs_2024_03  (cost=0..41534.00)
+<span class="com">As outras 21 particoes nem aparecem no plano.</span></pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Pruning Estatico</h3>
+            <p>
+              Ocorre quando a clausula WHERE usa uma constante literal
+              (<code class="code-inline">WHERE data = '2024-01-15'</code>). O otimizador determina
+              as particoes relevantes em tempo de planejamento — antes de executar. Melhor caso:
+              plano gerado ja sem as particoes desnecessarias.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Pruning Dinamico</h3>
+            <p>
+              Ocorre com parametros de prepared statements
+              (<code class="code-inline">WHERE data = $1</code>). O otimizador nao sabe o valor
+              em tempo de planejamento, entao o pruning acontece em tempo de execucao.
+              PostgreSQL 11+ e MySQL 8+ suportam dynamic pruning automaticamente.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Armadilhas do Pruning</h3>
+            <p>
+              Funcao na coluna de particao desabilita o pruning:
+              <code class="code-inline">WHERE YEAR(data_log) = 2024</code> faz Full Scan.
+              Use sempre a coluna diretamente:
+              <code class="code-inline">WHERE data_log BETWEEN '2024-01-01' AND '2024-12-31'</code>.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO CRIAR PARTICOES -->
+      <section>
+        <h2 id="criar-particoes" class="section-title">3. Como Criar Particoes</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">particoes-postgresql.sql</div>
+          <pre class="example"><span class="com">-- PostgreSQL 10+ (declarative partitioning)</span>
+<span class="kw">CREATE TABLE</span> logs_evento (
+  id          <span class="type">BIGSERIAL</span>,
+  data_log    <span class="type">DATE</span> <span class="kw">NOT NULL</span>,
+  tipo        <span class="type">VARCHAR(50)</span>,
+  descricao   <span class="type">TEXT</span>
+) <span class="kw">PARTITION BY RANGE</span> (data_log);
+
+<span class="com">-- Criando particoes manualmente</span>
+<span class="kw">CREATE TABLE</span> logs_2024_01 <span class="kw">PARTITION OF</span> logs_evento
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-01-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-02-01'</span>);
+
+<span class="kw">CREATE TABLE</span> logs_2024_02 <span class="kw">PARTITION OF</span> logs_evento
+  <span class="kw">FOR VALUES FROM</span> (<span class="str">'2024-02-01'</span>) <span class="kw">TO</span> (<span class="str">'2024-03-01'</span>);
+
+<span class="com">-- Indices sao criados por particao (PostgreSQL cria automaticamente)</span>
+<span class="kw">CREATE INDEX</span> ON logs_evento (data_log);
+<span class="com">-- Cria um indice em cada particao individualmente</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">particoes-mysql.sql</div>
+          <pre class="example"><span class="com">-- MySQL 8+ — particionamento por RANGE com TO_DAYS</span>
+<span class="kw">CREATE TABLE</span> logs_evento (
+  id          <span class="type">BIGINT UNSIGNED AUTO_INCREMENT</span>,
+  data_log    <span class="type">DATE</span> <span class="kw">NOT NULL</span>,
+  tipo        <span class="type">VARCHAR(50)</span>,
+  descricao   <span class="type">TEXT</span>,
+  <span class="kw">PRIMARY KEY</span> (id, data_log)  <span class="com">-- coluna de particao deve estar na PK</span>
+)
+<span class="kw">PARTITION BY RANGE</span> (<span class="type">TO_DAYS</span>(data_log)) (
+  PARTITION p2024_01 <span class="kw">VALUES LESS THAN</span> (<span class="type">TO_DAYS</span>(<span class="str">'2024-02-01'</span>)),
+  PARTITION p2024_02 <span class="kw">VALUES LESS THAN</span> (<span class="type">TO_DAYS</span>(<span class="str">'2024-03-01'</span>)),
+  PARTITION p2024_03 <span class="kw">VALUES LESS THAN</span> (<span class="type">TO_DAYS</span>(<span class="str">'2024-04-01'</span>)),
+  PARTITION p_futuro <span class="kw">VALUES LESS THAN MAXVALUE</span>
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ESTRATEGIAS DE DIVISAO -->
+      <section>
+        <h2 id="estrategias" class="section-title">4. Estrategias de Divisao</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>RANGE (Intervalo)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- Ideal para dados temporais</span>
+<span class="kw">PARTITION BY RANGE</span> (data_criacao)
+<span class="com">-- Cada particao = 1 mes/ano/dia</span>
+<span class="com">-- Pruning excelente em range queries</span>
+<span class="com">-- Suporta DROP PARTITION (instantaneo)</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>LIST (Lista de Valores)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- Ideal para categorias fixas</span>
+<span class="kw">PARTITION BY LIST</span> (regiao)
+  PARTITION norte <span class="kw">VALUES IN</span> (<span class="str">'AM'</span>, <span class="str">'PA'</span>)
+  PARTITION sul   <span class="kw">VALUES IN</span> (<span class="str">'RS'</span>, <span class="str">'SC'</span>)
+<span class="com">-- Pruning por valor exato</span>
+<span class="com">-- Bom para multi-tenancy</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>HASH (Distribuicao Uniforme)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- Distribui uniformemente</span>
+<span class="kw">PARTITION BY HASH</span> (cliente_id)
+  <span class="kw">PARTITIONS</span> <span class="num">8</span>
+<span class="com">-- NAO suporta pruning por range</span>
+<span class="com">-- Bom para balancear I/O</span>
+<span class="com">-- Sem suporte a DROP PARTITION</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>RANGE-HASH Composto</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">sql</div>
+              <pre class="example"><span class="com">-- PostgreSQL: sub-particoes</span>
+<span class="kw">PARTITION BY RANGE</span> (ano)
+  SUBPARTITION <span class="kw">BY HASH</span> (regiao_id)
+<span class="com">-- Range pruning + distribuicao</span>
+<span class="com">-- Complexidade mais alta</span>
+<span class="com">-- Casos de uso muito grandes</span></pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O DELETE INSTANTANEO -->
+      <section>
+        <h2 id="delete-instantaneo" class="section-title">5. O DELETE Instantaneo</h2>
+        <p>
+          A vantagem mais subestimada do particionamento por RANGE temporal: deletar um mes inteiro
+          de dados antigos leva <strong>milissegundos</strong> em vez de horas — e nao gera nenhuma
+          fragmentacao de indice.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">delete-vs-drop.sql</div>
+          <pre class="example"><span class="com">-- SEM particao: deletar 1 mes de logs (250 milhoes de linhas)</span>
+<span class="kw">DELETE FROM</span> logs_evento
+<span class="kw">WHERE</span> data_log &lt; <span class="str">'2023-01-01'</span>;
+<span class="com">-- Tempo: 4-8 horas, lock na tabela, fragmenta indices, enorme redo log</span>
+
+<span class="com">-- COM particao: drop atomico de uma particao inteira</span>
+<span class="kw">ALTER TABLE</span> logs_evento <span class="kw">DETACH PARTITION</span> logs_2022_12;
+<span class="kw">DROP TABLE</span> logs_2022_12;
+<span class="com">-- Tempo: &lt; 100ms, zero fragmentacao, zero redo log, zero impacto em outras particoes</span>
+
+<span class="com">-- MySQL equivalente:</span>
+<span class="kw">ALTER TABLE</span> logs_evento <span class="kw">DROP PARTITION</span> p2022_12;
+<span class="com">-- Instantaneo tambem</span></pre>
+        </div>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Politica de retencao automatica:</strong> Com partition pruning, um job agendado
+            pode fazer <code class="code-inline">ALTER TABLE ... DROP PARTITION</code> toda primeira
+            madrugada do mes para manter apenas os ultimos 12 meses — sem impacto operational, sem
+            janela de manutencao.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">6. Quando Particionar</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="check" aria-hidden="true"></span> Particione quando...</h3>
+            <ul>
+              <li>Tabela tem mais de 100 milhoes de linhas e queries sempre filtram por um campo de data ou categoria.</li>
+              <li>Voce precisa de politica de retencao — deletar dados antigos periodicamente.</li>
+              <li>Tabela tem hot data (ultimos 3 meses) e cold data (historico) — particoes podem estar em tablespaces de storage diferente.</li>
+              <li>Manutenção como <code class="code-inline">VACUUM</code> / <code class="code-inline">ANALYZE</code> demora demais em tabela monolitica.</li>
+              <li>Necessidade de paralelismo de queries — cada particao pode ser processada em paralelo.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="xmark" aria-hidden="true"></span> Nao particione quando...</h3>
+            <ul>
+              <li>Tabela tem menos de 50 milhoes de linhas — overhead de particao supera o beneficio.</li>
+              <li>Queries raramente filtram pela coluna de particao — voce so adiciona complexidade sem pruning.</li>
+              <li>Coluna de particao tem baixa cardinalidade (ex: booleano, status com 3 valores).</li>
+              <li>JOINs frequentes entre particoes — pode ser mais lento que uma tabela unica com bom indice.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANCADO -->
+      <section>
+        <h2 id="avancado" class="section-title">7. Topicos Avancados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Indices em Particoes</h3>
+            <p>
+              No PostgreSQL, indices sao locais — criados por particao. Um indice global em tabela
+              particionada e chamado de <strong>partitioned index</strong>. Indices locais sao mais
+              eficientes para queries com pruning; indices globais permitem unicidade global
+              (ex: PK que inclua a coluna de particao).
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Particoes Default</h3>
+            <p>
+              No PostgreSQL 11+, voce pode criar uma particao DEFAULT que recebe linhas que nao se
+              encaixam em nenhuma particao definida. Essencial para evitar erros em inserts com valores
+              nao previstos. Porem, a existencia da particao default degrada o pruning em
+              <em>algumas</em> situacoes — meça antes de usar.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Partition Exchange (MySQL)</h3>
+            <p>
+              MySQL permite carregar dados em uma tabela comum (sem lock) e depois trocar
+              atomicamente com uma particao via <code class="code-inline">ALTER TABLE ... EXCHANGE PARTITION</code>.
+              Tecnica usada para bulk-loading em producao — sem downtime, sem lock na tabela principal
+              durante o carregamento.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Tablespace por Particao</h3>
+            <p>
+              PostgreSQL e Oracle permitem criar particoes em tablespaces diferentes. Dados quentes
+              (ultimos 3 meses) em SSD NVMe; dados frios (ano passado) em HDD mais barato; dados
+              historicos (2+ anos) em armazenamento por objeto (ex: S3 via FDW). Tiered storage
+              nativo sem mover a tabela.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Armadilha de JOINs:</strong> JOINs entre tabelas particionadas por chaves diferentes
+            podem resultar em Partition Wise Join (eficiente) ou em um produto cartesiano de planos
+            (catastrofico). Sempre verifique o EXPLAIN de queries com JOINs envolvendo tabelas
+            particionadas antes de ir para producao.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">8. Ferramentas e Referencias</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>pg_partman</h3>
+            <p>Extensao PostgreSQL que automatiza a criacao de novas particoes (ex: criar a particao do proximo mes automaticamente) e a remocao de particoes antigas segundo politica configuravel. Essencial para tabelas de series temporais em producao.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>MySQL Partitioning Guide</h3>
+            <p>Documentacao oficial do MySQL sobre particionamento. Cobre RANGE, LIST, HASH, KEY e subparticionamento. Inclui limitacoes importantes: sem foreign keys em tabelas particionadas, coluna de particao deve estar na PRIMARY KEY.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>TimescaleDB</h3>
+            <p>Extensao PostgreSQL open-source especializada em time-series que usa particionamento por tempo (hypertables) automaticamente. Adiciona compressao nativa, continuous aggregates e data tiering. Transparente para SQL — o mesmo codigo funciona.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Citus (PostgreSQL)</h3>
+            <p>Extensao que transforma PostgreSQL em banco distribuido usando sharding + particionamento. As particoes sao distribuidas entre nos workers automaticamente. Mantido pela Microsoft, disponivel como Azure Cosmos DB for PostgreSQL.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>AWS RDS Partitioning</h3>
+            <p>RDS Aurora MySQL e Aurora PostgreSQL suportam particionamento nativo com as mesmas sintaxes das versoes open-source. Aurora adiciona automatic failover sem perder particoes — storage separado do compute.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>EXPLAIN ANALYZE</h3>
+            <p>Principal ferramenta para validar se o pruning esta funcionando. No plano de execucao, particoes nao usadas nao aparecem. Se voce ve todas as particoes no plano, sua query nao esta aproveitando o particionamento.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERENCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referencias Bibliograficas</h2>
+        <div class="panel">
+          <ul>
+            <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <strong>PostgreSQL Docs: Table Partitioning</strong>. Disponivel em: https://www.postgresql.org/docs/current/ddl-partitioning.html. Acesso em: 2026.</li>
+            <li>MYSQL. <strong>MySQL Reference Manual: Partitioning</strong>. Disponivel em: https://dev.mysql.com/doc/refman/8.0/en/partitioning.html. Acesso em: 2026.</li>
+            <li>KLEPPMANN, Martin. <strong>Designing Data-Intensive Applications</strong>. O'Reilly Media, 2017.</li>
+            <li>SILBERSCHATZ, Abraham; KORTH, Henry F.; SUDARSHAN, S. <strong>Sistema de Banco de Dados</strong>. 6. ed. Rio de Janeiro: Elsevier, 2012.</li>
+            <li>TIMESCALE. <strong>TimescaleDB Docs: Hypertables</strong>. Disponivel em: https://docs.timescale.com/latest/using-timescaledb/hypertables. Acesso em: 2026.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/avancado/sharding.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Sharding - Escala Horizontal Multi-Servidor</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/otimizacao_de_consultas.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Otimizacao de Consultas - Indices e SARGable</a></li>
+          <li><a href="/html/programacao/banco_de_dados/avancado/plano_de_execucao.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Plano de Execucao - Lendo o EXPLAIN</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Partitioning is about managing data, not just storing it." - Principio de Design de BD
+        </p>
+      </div>
+
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

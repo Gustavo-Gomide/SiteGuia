@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Guia prático de scikit-learn: workflow correto, pipelines com ColumnTransformer, avaliação e erros comuns como vazamento de dados.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>scikit-learn | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area animacao-entrada">
+      <h1>scikit-learn</h1>
+      <p><strong>Guia Prático</strong> — Aqui você aprende o jeito certo de treinar modelos no scikit-learn: pipeline, validação, métricas e como não cair em vazamento de dados.</p>
+
+      <div class="Colored_border_anim_card_box"><p><strong>scikit-learn</strong></p></div>
+      <h2 class="section-title">Visao Geral</h2>
+
+      <section>
+        <h2 id="workflow">1. Workflow padrão</h2>
+        <div class="card">
+          <ol>
+            <li>Separe treino e teste (ou use validação cruzada).</li>
+            <li>Faça <strong>pipeline</strong>: pré-processamento + modelo.</li>
+            <li>Avalie com métricas certas e analise erros.</li>
+            <li>Só depois faça tuning (Grid/Random Search).</li>
+          </ol>
+          <p><em>Regra de ouro: nunca “fit” do pré-processamento no dataset inteiro antes do split.</em></p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="pipelines">2. Pipeline completo (numérico + categórico)</h2>
+        <div class="card">
+          <h3>Por que pipeline?</h3>
+          <p>Para garantir que imputação/escala/one-hot usem apenas o treino e sejam replicadas no teste.</p>
+          <h3>Exemplo</h3>
+          <pre class="example">from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LogisticRegression
+
+X = df.drop(columns=["alvo"])
+y = df["alvo"]
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y,
+)
+
+num_cols = ["idade", "renda"]
+cat_cols = ["cidade", "plano"]
+
+num_pipe = Pipeline(steps=[
+  ("imputer", SimpleImputer(strategy="median")),
+  ("scaler", StandardScaler()),
+])
+
+cat_pipe = Pipeline(steps=[
+  ("imputer", SimpleImputer(strategy="most_frequent")),
+  ("onehot", OneHotEncoder(handle_unknown="ignore")),
+])
+
+prep = ColumnTransformer([
+  ("num", num_pipe, num_cols),
+  ("cat", cat_pipe, cat_cols),
+])
+
+clf = Pipeline(steps=[
+  ("prep", prep),
+  ("model", LogisticRegression(max_iter=200)),
+])
+
+clf.fit(X_train, y_train)</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="avaliacao">3. Avaliação (sem se enganar)</h2>
+        <div class="card">
+          <pre class="example">from sklearn.metrics import classification_report, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
+
+print(clf.score(X_test, y_test))
+print(classification_report(y_test, clf.predict(X_test)))
+
+ConfusionMatrixDisplay.from_estimator(clf, X_test, y_test)
+plt.show()</pre>
+          <ul>
+            <li><strong>Métrica certa:</strong> com desbalanceamento, accuracy engana; prefira F1/AUC.</li>
+            <li><strong>Erros reais:</strong> analise falsos positivos/negativos para guiar features/threshold.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="erros-comuns">4. Erros comuns</h2>
+        <div class="card">
+          <ul>
+            <li><strong>Vazamento:</strong> pré-processar antes do split sem pipeline infla métricas.</li>
+            <li><strong>Categorias novas:</strong> use <strong>handle_unknown="ignore"</strong> no OneHotEncoder.</li>
+            <li><strong>Sem baseline:</strong> compare com modelo simples antes de complicar.</li>
+          </ul>
+        </div>
+      </section>
+      <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>PEDREGOSA, F. et al. <strong>Scikit-learn: Machine Learning in Python</strong>. JMLR, 2011.</li><li>GERON, Aurelien. <strong>Hands-On Machine Learning with Scikit-Learn, Keras, and TensorFlow</strong>. O'Reilly, 2022.</li><li>JAMES, Gareth et al. <strong>An Introduction to Statistical Learning</strong>. Springer, 2013.</li></ul></div></section>
+      <div class="callout"><p>Scikit-learn fornece fluxo completo para ML classico com boa ergonomia.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Baseline forte vem antes de modelo complexo.</p></div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

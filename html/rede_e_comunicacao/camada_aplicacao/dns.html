@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="DNS: resolução recursiva, tipos de registro (A, AAAA, MX, CNAME, NS, TXT, SRV, PTR), TTL e segurança (DNSSEC, DoH, DoT)." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>DNS | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">DNS &mdash; Domain Name System</h1>
+          <p class="page-subtitle">A agenda de contatos da internet: traduz nomes de domínio em endereços IP</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>DNS</strong> (RFC 1034/1035) é um banco de dados distribuído e hierárquico que resolve nomes de domínio (<code class="code-inline">example.com</code>) em endereços IP. Opera na porta 53 (UDP para consultas &le;512 bytes; TCP para zone transfers e respostas DNSSEC grandes). É o protocolo mais crítico da internet &mdash; sem DNS, quase nada funciona.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="resolucao" class="section-title">Processo de Resolução Recursiva</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>Resolução de www.example.com</span></div>
+          <pre class="code-block">Browser
+  &darr; cache miss?
+Stub Resolver (SO)
+  &darr; cache miss?
+Recursive Resolver (ISP ou 8.8.8.8 ou 1.1.1.1)
+  &darr; cache miss?
+  &darr; pergunta: quem resolve .com?
+Root Nameserver (13 clusters: a.root-servers.net &sdot;&sdot;&sdot; m.root-servers.net)
+  &uarr; "vai ao TLD .com: a.gtld-servers.net"
+  &darr;
+TLD Nameserver (.com)
+  &uarr; "vai ao authoritative: ns1.example.com"
+  &darr;
+Authoritative Nameserver (para example.com)
+  &uarr; A record: 93.184.216.34
+  &darr;
+Recursive Resolver (cacheia com TTL)
+  &darr;
+Browser recebe 93.184.216.34</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="records" class="section-title">Tipos de Registro DNS</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Tipo</th><th>Descrição</th><th>Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>A</td><td>IPv4 address</td><td><code class="code-inline">example.com. A 93.184.216.34</code></td></tr>
+              <tr><td>AAAA</td><td>IPv6 address</td><td><code class="code-inline">example.com. AAAA 2606:2800:220:1:248:1893:25c8:1946</code></td></tr>
+              <tr><td>CNAME</td><td>Alias para outro nome (canonical name)</td><td><code class="code-inline">www.example.com. CNAME example.com.</code></td></tr>
+              <tr><td>MX</td><td>Mail exchange (servidor de e-mail); tem prioridade</td><td><code class="code-inline">example.com. MX 10 mail.example.com.</code></td></tr>
+              <tr><td>NS</td><td>Nameserver autoritatívo para a zona</td><td><code class="code-inline">example.com. NS ns1.example.com.</code></td></tr>
+              <tr><td>TXT</td><td>Texto livre; SPF, DKIM, DMARC, verificações de domínio</td><td><code class="code-inline">example.com. TXT "v=spf1 include:_spf.google.com ~all"</code></td></tr>
+              <tr><td>PTR</td><td>Reverse DNS (IP &rarr; nome); zona in-addr.arpa</td><td><code class="code-inline">34.216.184.93.in-addr.arpa. PTR example.com.</code></td></tr>
+              <tr><td>SRV</td><td>Localização de serviço (prioridade, peso, porta)</td><td><code class="code-inline">_http._tcp.example.com. SRV 10 20 80 web.example.com.</code></td></tr>
+              <tr><td>SOA</td><td>Start of Authority; informações da zona (serial, refresh, retry)</td><td>Um por zona</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="seguranca" class="section-title">Segurança DNS</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">DNSSEC</h3>
+            <p>Adiciona assinaturas criptográficas (RSA/ECDSA) aos registros DNS. O validador verifica a cadeia de confiança até o root. Protege contra cache poisoning (Kaminsky attack). Não criptografa &mdash; apenas autentica.</p>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">DoH e DoT</h3>
+            <ul>
+              <li><strong>DoT (DNS over TLS, porta 853):</strong> encapsula consultas DNS em TLS; perceptivelmente últil no nível de rede (ISP vê que é DNS mas não o conteúdo)</li>
+              <li><strong>DoH (DNS over HTTPS, porta 443):</strong> encapsula DNS em HTTPS; indiferenciável de tráfego web; maior privacidade; usado por Chrome, Firefox e Windows 11</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">DNS Cache Poisoning</h3>
+            <p>Atacante injeta respostas falsas no cache do resolver para redirecionar tráfego. Mitigado por: port randomization (Djkstra, 2008), DNSSEC, 0x20 bit randomization.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="dhcp.html"><strong>DHCP</strong></a>, <a href="http.html"><strong>HTTP</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "DNS é o protocolo mais subestimado da infraestrutura. Tudo falha quando o DNS falha &mdash; mesmo que a rede esteja perfeita."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

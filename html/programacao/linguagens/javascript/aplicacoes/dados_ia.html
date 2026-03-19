@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="JavaScript para Dados e IA: TensorFlow.js, ONNX Runtime Web, Transformers.js, ml5.js e analise de dados no browser e Node.js." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>JavaScript — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>JavaScript &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="javascript" aria-hidden="true"></span></div>
+          <h1>JavaScript para Dados e IA</h1>
+          <p>TensorFlow.js no browser e Node.js, ONNX Runtime Web, Transformers.js com modelos HuggingFace e analise de dados com Arquero e D3.</p>
+        </div>
+        <p class="intro-highlight">
+          JavaScript permite executar modelos de machine learning diretamente no browser via WebGL/WebGPU, garantindo privacidade total dos dados do usuário. O Transformers.js da Hugging Face porta a API popular do Python para JS com suporte a WebAssembly e WebGPU.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tfjs">TensorFlow.js: Redes Neurais no Browser</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + TensorFlow.js &mdash; MLP de classificacao treinado no browser</div>
+          <pre class="example"><span class="kw">import</span> * <span class="kw">as</span> tf <span class="kw">from</span> <span class="str">"@tensorflow/tfjs"</span>;
+
+<span class="com">// Dataset XOR</span>
+<span class="kw">const</span> xs = tf.<span class="fn">tensor2d</span>([[<span class="num">0</span>,<span class="num">0</span>],[<span class="num">0</span>,<span class="num">1</span>],[<span class="num">1</span>,<span class="num">0</span>],[<span class="num">1</span>,<span class="num">1</span>]]);
+<span class="kw">const</span> ys = tf.<span class="fn">tensor2d</span>([[<span class="num">0</span>],[<span class="num">1</span>],[<span class="num">1</span>],[<span class="num">0</span>]]);
+
+<span class="com">// Construindo modelo sequencial</span>
+<span class="kw">const</span> modelo = tf.sequential({
+  layers: [
+    tf.layers.<span class="fn">dense</span>({ inputShape: [<span class="num">2</span>], units: <span class="num">8</span>, activation: <span class="str">"relu"</span> }),
+    tf.layers.<span class="fn">dense</span>({ units: <span class="num">4</span>, activation: <span class="str">"relu"</span> }),
+    tf.layers.<span class="fn">dense</span>({ units: <span class="num">1</span>, activation: <span class="str">"sigmoid"</span> }),
+  ],
+});
+
+modelo.<span class="fn">compile</span>({
+  optimizer: tf.train.<span class="fn">adam</span>(<span class="num">0.01</span>),
+  loss:      <span class="str">"binaryCrossentropy"</span>,
+  metrics:   [<span class="str">"accuracy"</span>],
+});
+
+<span class="com">// Treinar com callback de progresso</span>
+<span class="kw">await</span> modelo.<span class="fn">fit</span>(xs, ys, {
+  epochs:   <span class="num">500</span>,
+  verbose:  <span class="num">0</span>,
+  <span class="fn">callbacks</span>: {
+    <span class="fn">onEpochEnd</span>(epoch, logs) {
+      <span class="kw">if</span> (epoch % <span class="num">100</span> === <span class="num">0</span>)
+        <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">`Época ${epoch}: loss=${logs.loss.toFixed(4)}`</span>);
+    },
+  },
+});
+
+<span class="com">// Predição</span>
+<span class="kw">const</span> pred = modelo.<span class="fn">predict</span>(tf.<span class="fn">tensor2d</span>([[<span class="num">0</span>,<span class="num">1</span>],[<span class="num">1</span>,<span class="num">1</span>]]));
+pred.<span class="fn">print</span>(); <span class="com">// ~[[0.99], [0.01]]</span>
+
+<span class="com">// Salvar modelo (IndexedDB no browser)</span>
+<span class="kw">await</span> modelo.<span class="fn">save</span>(<span class="str">"indexeddb://meu-modelo"</span>);
+<span class="com">// Carregar modelo salvo</span>
+<span class="kw">const</span> carregado = <span class="kw">await</span> tf.<span class="fn">loadLayersModel</span>(<span class="str">"indexeddb://meu-modelo"</span>);
+
+<span class="com">// Transferir aprendizado: MobileNet para classificação</span>
+<span class="kw">const</span> mobilenet = <span class="kw">await</span> tf.<span class="fn">loadGraphModel</span>(
+  <span class="str">"https://tfhub.dev/google/tfjs-model/imagenet/mobilenet_v3_small_100_224/classification/5/default/1"</span>,
+  { fromTFHub: <span class="kw">true</span> }
+);
+<span class="com">// Extrair features de uma imagem</span>
+<span class="kw">const</span> img    = document.<span class="fn">getElementById</span>(<span class="str">"img"</span>);
+<span class="kw">const</span> tensor = tf.<span class="fn">browser</span>.<span class="fn">fromPixels</span>(img)
+  .<span class="fn">resizeBilinear</span>([<span class="num">224</span>, <span class="num">224</span>])
+  .<span class="fn">toFloat</span>()
+  .<span class="fn">div</span>(<span class="num">255</span>)
+  .<span class="fn">expandDims</span>(<span class="num">0</span>);
+<span class="kw">const</span> logits = mobilenet.<span class="fn">predict</span>(tensor);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transformers">Transformers.js: LLMs no Browser</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + Transformers.js &mdash; NLP: sentimento, traducao e embeddings</div>
+          <pre class="example"><span class="kw">import</span> { pipeline, env } <span class="kw">from</span> <span class="str">"@xenova/transformers"</span>;
+
+<span class="com">// Configurar cache local (Node.js)</span>
+env.cacheDir = <span class="str">"./.cache"</span>;
+
+<span class="com">// Análise de sentimento no browser (sem servidor!)</span>
+<span class="kw">const</span> sentimento = <span class="kw">await</span> <span class="fn">pipeline</span>(
+  <span class="str">"sentiment-analysis"</span>,
+  <span class="str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>
+);
+
+<span class="kw">const</span> resultado = <span class="kw">await</span> <span class="fn">sentimento</span>(<span class="str">"I love JavaScript!"</span>);
+<span class="fn">console</span>.<span class="fn">log</span>(resultado); <span class="com">// [{ label: "POSITIVE", score: 0.9997 }]</span>
+
+<span class="com">// Embeddings para busca semântica</span>
+<span class="kw">const</span> extractor = <span class="kw">await</span> <span class="fn">pipeline</span>(
+  <span class="str">"feature-extraction"</span>,
+  <span class="str">"Xenova/all-MiniLM-L6-v2"</span>
+);
+
+<span class="kw">async function</span> <span class="fn">embedding</span>(texto) {
+  <span class="kw">const</span> saida = <span class="kw">await</span> <span class="fn">extractor</span>(texto, { pooling: <span class="str">"mean"</span>, normalize: <span class="kw">true</span> });
+  <span class="kw">return</span> <span class="tp">Array</span>.<span class="fn">from</span>(saida.data);
+}
+
+<span class="kw">function</span> <span class="fn">similaridadeCosseno</span>(a, b) {
+  <span class="kw">const</span> dot    = a.<span class="fn">reduce</span>((s, ai, i) => s + ai * b[i], <span class="num">0</span>);
+  <span class="kw">const</span> normA  = <span class="tp">Math</span>.<span class="fn">sqrt</span>(a.<span class="fn">reduce</span>((s, ai) => s + ai * ai, <span class="num">0</span>));
+  <span class="kw">const</span> normB  = <span class="tp">Math</span>.<span class="fn">sqrt</span>(b.<span class="fn">reduce</span>((s, bi) => s + bi * bi, <span class="num">0</span>));
+  <span class="kw">return</span> dot / (normA * normB);
+}
+
+<span class="kw">const</span> [e1, e2] = <span class="kw">await</span> <span class="tp">Promise</span>.<span class="fn">all</span>([
+  <span class="fn">embedding</span>(<span class="str">"Como fazer café?"</span>),
+  <span class="fn">embedding</span>(<span class="str">"Qual a receita para preparar café?"</span>),
+]);
+<span class="fn">console</span>.<span class="fn">log</span>(<span class="fn">similaridadeCosseno</span>(e1, e2).<span class="fn">toFixed</span>(<span class="num">4</span>)); <span class="com">// ~0.92</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dados">Analise de Dados com Arquero</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JavaScript + Arquero &mdash; DataFrame com groupby, join e agg</div>
+          <pre class="example"><span class="kw">import</span> aq <span class="kw">from</span> <span class="str">"arquero"</span>;
+
+<span class="com">// Criar DataFrame de array de objetos</span>
+<span class="kw">const</span> vendas = aq.<span class="fn">from</span>([
+  { produto: <span class="str">"A"</span>, regiao: <span class="str">"Sul"</span>,   valor: <span class="num">120</span>, mes: <span class="num">1</span> },
+  { produto: <span class="str">"B"</span>, regiao: <span class="str">"Norte"</span>, valor: <span class="num">80</span>,  mes: <span class="num">1</span> },
+  { produto: <span class="str">"A"</span>, regiao: <span class="str">"Sul"</span>,   valor: <span class="num">200</span>, mes: <span class="num">2</span> },
+  { produto: <span class="str">"B"</span>, regiao: <span class="str">"Norte"</span>, valor: <span class="num">150</span>, mes: <span class="num">2</span> },
+  { produto: <span class="str">"A"</span>, regiao: <span class="str">"Norte"</span>, valor: <span class="num">90</span>,  mes: <span class="num">2</span> },
+]);
+
+<span class="com">// Agrupamento e agregação</span>
+<span class="kw">const</span> resumo = vendas
+  .<span class="fn">groupby</span>(<span class="str">"produto"</span>, <span class="str">"regiao"</span>)
+  .<span class="fn">rollup</span>({
+    total_vendas: aq.<span class="fn">op</span>().<span class="fn">sum</span>(<span class="str">"valor"</span>),
+    media_mensal: aq.<span class="fn">op</span>().<span class="fn">mean</span>(<span class="str">"valor"</span>),
+    contagem:     aq.<span class="fn">op</span>().<span class="fn">count</span>(),
+  })
+  .<span class="fn">orderby</span>(aq.<span class="fn">desc</span>(<span class="str">"total_vendas"</span>));
+
+resumo.<span class="fn">print</span>();
+
+<span class="com">// Filtro e derivação de coluna</span>
+<span class="kw">const</span> top = vendas
+  .<span class="fn">filter</span>(aq.<span class="fn">escape</span>(d => d.valor > <span class="num">100</span>))
+  .<span class="fn">derive</span>({ valor_com_iva: aq.<span class="fn">escape</span>(d => d.valor * <span class="num">1.12</span>) });
+
+top.<span class="fn">print</span>();
+
+<span class="com">// Ler CSV (Node.js)</span>
+<span class="kw">import</span> { readFileSync } <span class="kw">from</span> <span class="str">"node:fs"</span>;
+<span class="kw">const</span> dados = aq.<span class="fn">fromCSV</span>(<span class="fn">readFileSync</span>(<span class="str">"dados.csv"</span>, <span class="str">"utf8"</span>));
+<span class="fn">console</span>.<span class="fn">log</span>(dados.<span class="fn">numRows</span>(), dados.<span class="fn">numCols</span>());</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>TENSORFLOW. <strong>TensorFlow.js — Machine Learning for the Web and Beyond</strong>. Disponível em: &lt;https://www.tensorflow.org/js&gt;. Acesso em: 2025.</li>
+            <li>HUGGING FACE. <strong>Transformers.js Documentation</strong>. Disponível em: &lt;https://huggingface.co/docs/transformers.js&gt;. Acesso em: 2025.</li>
+            <li>ARQUERO. <strong>Arquero — Query processing of array-backed data tables</strong>. Disponível em: &lt;https://uwdata.github.io/arquero/&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript: CLIs com Commander e Ink</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> JavaScript para Jogos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Transformers.js executa modelos ONNX no browser via WebAssembly — privacidade total dos dados</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

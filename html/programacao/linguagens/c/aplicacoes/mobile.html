@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para desenvolvimento mobile: Android NDK com JNI, iOS via Objective-C bridging, SDL2 mobile e código nativo de alta performance em smartphones." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Mobile</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="mobile" aria-hidden="true"></span></div>
+          <h1>C para Mobile</h1>
+          <p>Android NDK/JNI, iOS via bridging e SDL2 mobile — como levar o desempenho máximo do C para smartphones e tablets.</p>
+        </div>
+        <p class="intro-highlight">
+          O kernel Linux do Android é C. O runtime ART do Android usa código nativo C/C++. Codecs de vídeo (libvpx, libaom), engines de criptografia (OpenSSL no Android) e engines de jogos como o motor do Clash of Clans são escritos em C/C++. JNI (Java Native Interface) é a ponte que conecta o mundo Java/Kotlin do Android com o código nativo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="jni">Android NDK + JNI: Código C Chamado do Kotlin/Java</h2>
+        <p>JNI permite que código Kotlin/Java chame funções C/C++ de forma direta. O NDK cross-compila o código C para as arquiteturas alvo (armeabi-v7a, arm64-v8a, x86_64) e empacota as <code>.so</code> no APK.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; implementação JNI (native-lib.c)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;jni.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;math.h&gt;</span>
+
+<span class="com">/*
+ * Convenção de nomes JNI:
+ * Java_&lt;nome.do.pacote&gt;_&lt;Classe&gt;_&lt;método&gt;
+ * underscores duplos substituem maiúsculas no pacote
+ */</span>
+
+<span class="com">/* Retorna uma string para o Kotlin */</span>
+JNIEXPORT <span class="tp">jstring</span> JNICALL
+<span class="fn">Java_br_dev_exemplo_MainActivity_stringNativa</span>(
+    <span class="tp">JNIEnv</span> *env, <span class="tp">jobject</span> this_obj)
+{
+    (<span class="tp">void</span>)this_obj;
+    <span class="kw">return</span> <span class="fn">(*env)</span>-&gt;<span class="fn">NewStringUTF</span>(env, <span class="str">"Olá do C via JNI!"</span>);
+}
+
+<span class="com">/* Processar array de floats — ex: normalização de vetor */</span>
+JNIEXPORT <span class="tp">jfloatArray</span> JNICALL
+<span class="fn">Java_br_dev_exemplo_MainActivity_normalizarVetor</span>(
+    <span class="tp">JNIEnv</span> *env, <span class="tp">jobject</span> this_obj,
+    <span class="tp">jfloatArray</span> entrada)
+{
+    (<span class="tp">void</span>)this_obj;
+    <span class="tp">jsize</span> len = <span class="fn">(*env)</span>-&gt;<span class="fn">GetArrayLength</span>(env, entrada);
+    <span class="tp">jfloat</span> *arr = <span class="fn">(*env)</span>-&gt;<span class="fn">GetFloatArrayElements</span>(env, entrada, NULL);
+
+    <span class="tp">double</span> mag = <span class="num">0.0</span>;
+    <span class="kw">for</span> (<span class="tp">jsize</span> i = <span class="num">0</span>; i &lt; len; i++) mag += (<span class="tp">double</span>)arr[i] * arr[i];
+    mag = <span class="fn">sqrt</span>(mag);
+
+    <span class="tp">jfloatArray</span> saida = <span class="fn">(*env)</span>-&gt;<span class="fn">NewFloatArray</span>(env, len);
+    <span class="tp">jfloat</span> *out = <span class="fn">(*env)</span>-&gt;<span class="fn">GetFloatArrayElements</span>(env, saida, NULL);
+
+    <span class="kw">for</span> (<span class="tp">jsize</span> i = <span class="num">0</span>; i &lt; len; i++)
+        out[i] = (mag &gt; <span class="num">0.0</span>) ? (<span class="tp">jfloat</span>)(arr[i] / mag) : <span class="num">0.0f</span>;
+
+    <span class="fn">(*env)</span>-&gt;<span class="fn">ReleaseFloatArrayElements</span>(env, entrada, arr, JNI_ABORT);
+    <span class="fn">(*env)</span>-&gt;<span class="fn">ReleaseFloatArrayElements</span>(env, saida,   out, <span class="num">0</span>);
+    <span class="kw">return</span> saida;
+}
+
+<span class="com">/* Fibonacci recursivo — benchmark típico JNI vs Kotlin */</span>
+JNIEXPORT <span class="tp">jlong</span> JNICALL
+<span class="fn">Java_br_dev_exemplo_MainActivity_fibonacci</span>(
+    <span class="tp">JNIEnv</span> *env, <span class="tp">jobject</span> this_obj, <span class="tp">jint</span> n)
+{
+    (<span class="tp">void</span>)env; (<span class="tp">void</span>)this_obj;
+    <span class="kw">if</span> (n &lt;= <span class="num">1</span>) <span class="kw">return</span> (<span class="tp">jlong</span>)n;
+    <span class="tp">long long</span> a = <span class="num">0</span>, b = <span class="num">1</span>;
+    <span class="kw">for</span> (<span class="tp">int</span> i = <span class="num">2</span>; i &lt;= n; i++) {
+        <span class="tp">long long</span> t = a + b; a = b; b = t;
+    }
+    <span class="kw">return</span> (<span class="tp">jlong</span>)b;
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Kotlin &mdash; chamando os métodos nativos (MainActivity.kt)</div>
+          <pre class="example"><span class="kw">class</span> <span class="tp">MainActivity</span> : AppCompatActivity() {
+
+    <span class="kw">external fun</span> <span class="fn">stringNativa</span>(): <span class="tp">String</span>
+    <span class="kw">external fun</span> <span class="fn">normalizarVetor</span>(entrada: <span class="tp">FloatArray</span>): <span class="tp">FloatArray</span>
+    <span class="kw">external fun</span> <span class="fn">fibonacci</span>(n: <span class="tp">Int</span>): <span class="tp">Long</span>
+
+    <span class="kw">companion object</span> {
+        <span class="kw">init</span> { System.<span class="fn">loadLibrary</span>(<span class="str">"native-lib"</span>) }
+    }
+
+    <span class="kw">override fun</span> <span class="fn">onCreate</span>(savedInstanceState: <span class="tp">Bundle</span>?) {
+        <span class="kw">super</span>.<span class="fn">onCreate</span>(savedInstanceState)
+        <span class="fn">setContentView</span>(R.layout.activity_main)
+
+        binding.tvSaudacao.text = <span class="fn">stringNativa</span>()
+
+        <span class="kw">val</span> vetor = floatArrayOf(<span class="num">3.0f</span>, <span class="num">4.0f</span>, <span class="num">0.0f</span>)
+        <span class="kw">val</span> norm  = <span class="fn">normalizarVetor</span>(vetor)
+        <span class="com">// norm ≈ [0.6, 0.8, 0.0]</span>
+
+        <span class="kw">val</span> fib = <span class="fn">fibonacci</span>(<span class="num">50</span>)  <span class="com">// muito mais rápido que Kotlin puro</span>
+        binding.tvFib.text = <span class="str">"fib(50) = $fib"</span>
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cmake-ndk">CMakeLists.txt para Android NDK</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CMake &mdash; build de biblioteca nativa no NDK</div>
+          <pre class="example"><span class="com"># app/CMakeLists.txt</span>
+cmake_minimum_required(VERSION <span class="num">3.22</span>)
+project(MeuProjeto)
+
+<span class="fn">add_library</span>(
+    native-lib      <span class="com"># nome da .so</span>
+    SHARED          <span class="com"># biblioteca compartilhada</span>
+    native-lib.c    <span class="com"># fontes</span>
+    vetor.c
+)
+
+<span class="com"># Bibliotecas NDK disponíveis</span>
+<span class="fn">find_library</span>(log-lib  log)          <span class="com"># __android_log_print</span>
+<span class="fn">find_library</span>(android-lib android)   <span class="com"># AAssetManager, ANativeWindow</span>
+
+<span class="fn">target_link_libraries</span>(
+    native-lib
+    <span class="fn">PRIVATE</span>
+        ${log-lib}
+        ${android-lib}
+        m       <span class="com"># libm: sqrt, sin, cos</span>
+)
+
+<span class="fn">target_compile_options</span>(native-lib PRIVATE
+    -O2 -Wall -Wextra
+    -fvisibility=hidden    <span class="com"># esconder símbolos não-JNI</span>
+)
+
+<span class="com"># build.gradle (trecho)</span>
+<span class="com"># android {</span>
+<span class="com">#   defaultConfig {</span>
+<span class="com">#     externalNativeBuild { cmake { path "CMakeLists.txt" } }</span>
+<span class="com">#     ndk { abiFilters "arm64-v8a", "x86_64" }</span>
+<span class="com">#   }</span>
+<span class="com"># }</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sdl2-mobile">SDL2 em Android e iOS</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Android via SDL2</h3>
+            <p>SDL2 inclui uma Activity Java (<code>SDLActivity.java</code>) que inicializa a JVM, carrega a <code>libSDL2.so</code> e chama <code>SDL_main()</code> do seu código C. Toda a lógica da aplicação permanece em C puro; o Java serve apenas como wrapper.</p>
+            <p><strong>Passos:</strong> Copiar o template Android do SDL2, colocar seus fontes C em <code>app/jni/src/</code>, configurar o CMakeLists, fazer <code>./gradlew assembleDebug</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>iOS via SDL2</h3>
+            <p>No iOS, SDL2 usa o template Xcode fornecido (<code>Org.libsdl.app</code>). Seu <code>main()</code> em C substitui o <code>main()</code> padrão do Objective-C. O Xcode compila como <code>.ipa</code> com suporte a Retina, multitoque e Game Controller.</p>
+            <p><strong>Restrição:</strong> App Store proíbe JIT; não use <code>mmap(PROT_WRITE|PROT_EXEC)</code>. SDL2 é totalmente compatível com as regras da App Store.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Cross-platform com SDL2</h3>
+            <p>O mesmo código C compila para Windows, Linux, macOS, Android e iOS. Apenas o <code>CMakeLists.txt</code> muda. Ideal para jogos indie, emuladores e ferramentas de processamento de mídia.</p>
+            <p><strong>Performance:</strong> Em Android, SDL2 usa <code>OpenGL ES 3.x</code> ou Vulkan como backend de renderização. Em iOS, usa Metal via camada de compatibilidade OpenGL ES.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>Android NDK Guides: JNI Tips</strong>. Disponível em: &lt;https://developer.android.com/training/articles/perf-jni&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>Android NDK: CMake</strong>. Disponível em: &lt;https://developer.android.com/ndk/guides/cmake&gt;. Acesso em: 2025.</li>
+            <li>SDL WIKI. <strong>SDL2: Android</strong>. Disponível em: &lt;https://wiki.libsdl.org/SDL2/README/android&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Dados e IA</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Embarcados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "The fastest Android apps are the ones that use the least Java." &mdash; filosofia Android NDK</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

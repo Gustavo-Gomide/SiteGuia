@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Syscalls: a interface entre aplicações e o kernel — categorias, mecanismo de execução, tabela de syscalls POSIX e exemplos em C e Python." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Chamadas de Sistema | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Chamadas de Sistema (Syscalls)</h1>
+            <p class="page-subtitle">A única porta de entrada ao kernel — mecanismo, categorias e exemplos</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Chamadas de sistema são o mecanismo pelo qual todo programa de usuário solicita serviços do kernel: abrir arquivos, alocar memória, criar processos, enviar dados pela rede. Essa fronteira existe porque o kernel precisa ser protegido — uma aplicação não pode ler a memória de outra nem invadir o hardware. A syscall é a única passagem controlada de ring 3 para ring 0, onde o kernel valida a requisição, executa o serviço com privilégio completo e devolve o resultado ao solicitante.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — MECANISMO ═══════════════════ -->
+      <section id="mecanismo">
+        <h2 class="section-title">Mecanismo de Execução em x86-64</h2>
+        <div class="section-divider"></div>
+        <p>Em x86-64 Linux, a instrução <code class="code-inline">syscall</code> é o ponto de entrada. O número da syscall é colocado em <code class="code-inline">RAX</code>; os argumentos vão em <code class="code-inline">RDI</code>, <code class="code-inline">RSI</code>, <code class="code-inline">RDX</code>, <code class="code-inline">R10</code>, <code class="code-inline">R8</code>, <code class="code-inline">R9</code> (até seis). O processador salva o estado do processo, troca para ring 0 e desvia para o handler registrado via <code class="code-inline">MSR_LSTAR</code>. O retorno ocorre via instrução <code class="code-inline">sysret</code>.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Assembly x86-64 — write() manual sem libc</div>
+          <pre class="code-block">section .data
+    msg db "ola, mundo", 0x0a   ; string + newline
+    msg_len equ $ - msg
+
+section .text
+    global _start
+
+_start:
+    ; syscall write(1, msg, msg_len)
+    mov rax, 1          ; syscall number: write
+    mov rdi, 1          ; fd = stdout
+    mov rsi, msg        ; ponteiro para o buffer
+    mov rdx, msg_len    ; quantidade de bytes
+    syscall             ; trap para ring 0
+
+    ; syscall exit(0)
+    mov rax, 60         ; syscall number: exit
+    xor rdi, rdi        ; status = 0
+    syscall</pre>
+        </div>
+        <p>A libc não é obrigatória — qualquer programa pode invocar syscalls diretamente em assembly ou via wrappers de baixo nível. A libc apenas fornece wrappers convenientes que traduzem convenções POSIX para números de syscall específicos do kernel.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — CATEGORIAS ═══════════════════ -->
+      <section id="categorias">
+        <h2 class="section-title">Categorias de Syscalls</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Categoria</th>
+                <th>Syscalls principais</th>
+                <th>Função</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Processos</td>
+                <td><code class="code-inline">fork</code>, <code class="code-inline">execve</code>, <code class="code-inline">exit</code>, <code class="code-inline">wait4</code>, <code class="code-inline">getpid</code>, <code class="code-inline">clone</code></td>
+                <td>Criar, substituir, encerrar e aguardar processos; criar threads (clone)</td>
+              </tr>
+              <tr>
+                <td>Memória</td>
+                <td><code class="code-inline">mmap</code>, <code class="code-inline">munmap</code>, <code class="code-inline">brk</code>, <code class="code-inline">mprotect</code>, <code class="code-inline">madvise</code></td>
+                <td>Mapear/desalocar regiões de memória virtual; ajustar heap; definir permissões</td>
+              </tr>
+              <tr>
+                <td>Arquivos</td>
+                <td><code class="code-inline">open</code>, <code class="code-inline">read</code>, <code class="code-inline">write</code>, <code class="code-inline">close</code>, <code class="code-inline">stat</code>, <code class="code-inline">lseek</code>, <code class="code-inline">dup2</code></td>
+                <td>Abrir, ler, escrever, fechar arquivos e consultar metadados</td>
+              </tr>
+              <tr>
+                <td>Rede</td>
+                <td><code class="code-inline">socket</code>, <code class="code-inline">bind</code>, <code class="code-inline">listen</code>, <code class="code-inline">accept</code>, <code class="code-inline">connect</code>, <code class="code-inline">sendto</code>, <code class="code-inline">recvfrom</code></td>
+                <td>Criar sockets, estabelecer conexões TCP/UDP, enviar e receber dados</td>
+              </tr>
+              <tr>
+                <td>Sinais</td>
+                <td><code class="code-inline">kill</code>, <code class="code-inline">signal</code>, <code class="code-inline">sigaction</code>, <code class="code-inline">sigprocmask</code>, <code class="code-inline">pause</code></td>
+                <td>Enviar sinais entre processos; registrar handlers de sinal</td>
+              </tr>
+              <tr>
+                <td>Tempo</td>
+                <td><code class="code-inline">gettimeofday</code>, <code class="code-inline">clock_gettime</code>, <code class="code-inline">nanosleep</code>, <code class="code-inline">timer_create</code></td>
+                <td>Obter hora do sistema; suspender processo por intervalo; criar timers</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — EXEMPLOS C E PYTHON ═══════════════════ -->
+      <section id="exemplos">
+        <h2 class="section-title">Exemplos em C e Python</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — open / read / write / close</div>
+          <pre class="code-block">#include &lt;fcntl.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;stdio.h&gt;
+
+int main(void) {
+    // open(path, flags) → retorna file descriptor
+    int fd = open("/etc/hostname", O_RDONLY);
+    if (fd == -1) { perror("open"); return 1; }
+
+    char buf[128];
+    // read(fd, buf, n) → bytes lidos
+    ssize_t n = read(fd, buf, sizeof(buf) - 1);
+    if (n > 0) {
+        buf[n] = '\0';
+        // write(fd, buf, n) → escreve em stdout (fd=1)
+        write(1, buf, n);
+    }
+
+    close(fd);   // libera o file descriptor
+    return 0;
+}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Python — os.open / os.read / os.write / os.close</div>
+          <pre class="code-block">import os
+
+# os.open chama a syscall open diretamente (diferente do built-in open())
+fd = os.open("/etc/hostname", os.O_RDONLY)
+
+# os.read chama a syscall read
+data = os.read(fd, 128)
+
+# os.write chama a syscall write (fd=1 = stdout)
+os.write(1, data)
+
+os.close(fd)
+
+# Para inspecionar as syscalls em tempo real:
+# $ strace python3 script.py</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">strace — syscalls de um "ls /tmp" simplificado</div>
+          <pre class="code-block">$ strace -e trace=openat,read,write,close ls /tmp 2&gt;&amp;1 | head -20
+
+execve("/usr/bin/ls", ["ls", "/tmp"], ...) = 0
+openat(AT_FDCWD, "/etc/ld.so.cache", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1..."..., 832)    = 832
+close(3)                               = 0
+openat(AT_FDCWD, "/lib/x86_64-linux-gnu/libc.so.6", O_RDONLY|O_CLOEXEC) = 3
+read(3, "\177ELF\2\1\1..."..., 832)    = 832
+close(3)                               = 0
+openat(AT_FDCWD, "/tmp", O_RDONLY|O_DIRECTORY|O_CLOEXEC) = 3
+read(3, ...directory entries...)       = 256
+write(1, "arquivo1  arquivo2  arquivo3\n", 28) = 28
+close(3)                               = 0
++++ exited with 0 +++</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — CUSTO E OTIMIZAÇÃO ═══════════════════ -->
+      <section id="custo-otimizacao">
+        <h2 class="section-title">Custo e Otimização de Syscalls</h2>
+        <div class="section-divider"></div>
+        <p>Cada syscall envolve um <em>mode switch</em>: o processador salva o estado do processo, muda para ring 0 e executa o handler — depois reverte. Esse ciclo custa tipicamente <strong>100 a 1000 ns</strong> dependendo do processador, do tipo de syscall e se há mitigações ativas para vulnerabilidades (Spectre/Meltdown aumentaram o custo com PTI).</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">vDSO — Virtual Dynamic Shared Object</h3>
+            <p>Para syscalls de leitura intensiva como <code class="code-inline">gettimeofday</code> e <code class="code-inline">clock_gettime</code>, o kernel mapeia uma região de memória compartilhada no espaço de usuário com dados atualizados periodicamente. A aplicação lê diretamente sem entrar no kernel — latência cai de ~100 ns para ~5 ns.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">io_uring</h3>
+            <p>Introduzido no Linux 5.1, <code class="code-inline">io_uring</code> implementa uma fila de submissão e uma fila de completude compartilhadas entre userspace e kernel. Centenas de operações de I/O podem ser submetidas e coletadas com zero ou uma syscall, eliminando o overhead por operação de I/O de alta frequência.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Batching e Polling</h3>
+            <p>Técnicas como <code class="code-inline">epoll</code> (aguardar múltiplos fds de uma vez), <code class="code-inline">sendmmsg</code>/<code class="code-inline">recvmmsg</code> (enviar/receber múltiplos pacotes em uma syscall) e o modo SQPOLL do io_uring (um thread do kernel faz polling sem que o userspace precise fazer syscall) reduzem o número total de mode switches.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">eBPF</h3>
+            <p><code class="code-inline">eBPF</code> permite injetar programas verificados no kernel que executam em ring 0 sem syscall por chamada. Usado para observabilidade (bpftrace), filtragem de pacotes (XDP) e segurança (seccomp-bpf): movem lógica para dentro do kernel eliminando round-trips.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se também em
+          <a href="/html/sistemas/fundamentos/estrutura_so.html">Estrutura de SO</a> e
+          <a href="/html/sistemas/processos/processos.html">Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Syscalls são a única API que realmente importa — todo programa que faz algo real passa por elas."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

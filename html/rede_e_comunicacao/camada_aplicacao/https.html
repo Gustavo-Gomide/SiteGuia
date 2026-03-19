@@ -1,0 +1,103 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="HTTPS e TLS: handshake TLS 1.3, certificados X.509, PKI, HSTS, OCSP e boas práticas de segurança." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>HTTPS e TLS | Camada de Aplicação | Redes | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Camada de Aplicação</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">HTTPS e TLS</h1>
+          <p class="page-subtitle">HTTP sobre TLS: confidencialidade, integridade e autenticação para toda a web</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>HTTPS</strong> é HTTP encapsulado em <strong>TLS</strong> (Transport Layer Security &mdash; RFC 8446 para TLS 1.3). O TLS garante: <em>confidencialidade</em> (criptografia AES-GCM/ChaCha20), <em>integridade</em> (HMAC/AEAD) e <em>autenticação</em> do servidor (certificado X.509). TLS 1.3 eliminou algoritmos fracos (RSA key exchange, SHA-1, RC4) e reduziu o handshake para 1-RTT (0-RTT possível).
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="handshake" class="section-title">Handshake TLS 1.3 (1-RTT)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header"><span>Fluxo simplificado do TLS 1.3</span></div>
+          <pre class="code-block">Cliente                                    Servidor
+  |                                           |
+  |-- ClientHello (TLS 1.3, key_share) -----&gt; |  # suportes de suites e chave Diffie-Hellman
+  |                                           |
+  |&lt;-- ServerHello + EncryptedExtensions ---  |  # suite escolhida + chave DH do servidor
+  |     + Certificate + CertificateVerify     |  # certificado X.509 do servidor
+  |     + Finished (tudo criptografado!)      |  # MAC sobre o handshake
+  |                                           |
+  |-- Finished -----------------------------&gt; |  # cliente confirma
+  |                                           |
+  |&lt;===== Dados da aplicação criptografados ==|</pre>
+        </div>
+        <p class="note">Em TLS 1.3, o servidor começa a criptografar após o ServerHello. Em TLS 1.2, eram necessários 2-RTT e o Certificate vinha em texto plano.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="pki" class="section-title">PKI e Certificados X.509</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Hierarquia PKI</h3>
+            <ul>
+              <li><strong>Root CA:</strong> Autoridade Certificadora raiz; certificado auto-assinado; embutida nos SOs e browsers; lista de confiabilidade (Mozilla NSS, Microsoft, Apple)</li>
+              <li><strong>Intermediate CA:</strong> CA intermediária assinada pelo root; emite certificados de servidores. Separar root do Intermediate limita o impacto de comprometi-mento</li>
+              <li><strong>Certificado de servidor:</strong> emitido pela Intermediate CA; validado pela chain of trust até o Root</li>
+              <li><strong>Tipos de validação:</strong> DV (Domain Validation &mdash; apenas domínio, automatável via ACME/Let&apos;s Encrypt); OV (Organization Validation); EV (Extended Validation &mdash; valida legal)</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Renovação e Revogação</h3>
+            <ul>
+              <li><strong>Let&apos;s Encrypt + ACME:</strong> certificados DV gratuitos; renovados automaticamente a cada 90 dias via certbot ou acme.sh</li>
+              <li><strong>OCSP (Online Certificate Status Protocol):</strong> consulta em tempo real se certificado foi revogado</li>
+              <li><strong>OCSP Stapling:</strong> servidor anexa a resposta OCSP ao handshake TLS; cliente não precisa consultar o OCSP diretamente; melhora privacidade e perfomance</li>
+              <li><strong>CRL (Certificate Revocation List):</strong> lista publicada pela CA de certificados revogados; mais pesada que OCSP; download periódico</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">HSTS e Segurança Web</h3>
+            <ul>
+              <li><strong>HSTS (HTTP Strict Transport Security):</strong> header que informa o browser para só acessar via HTTPS; com <code class="code-inline">includeSubDomains; preload</code> é incluído na lista global do Chrome/Firefox</li>
+              <li><strong>Certificate Pinning:</strong> aplicações móveis fixam o certificado esperado; protege contra CAs comprometidas; difícil de manter em escala</li>
+              <li><strong>CT (Certificate Transparency):</strong> todos os certificados emitidos devem ser registrados em logs públícos auditados; detecta emissão não-autorizada</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Continue: <a href="http.html"><strong>HTTP</strong></a>, <a href="../fundamentos/seguranca_basica.html"><strong>Segurança Básica</strong></a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Em 2024, &gt;95% do tráfego web usa HTTPS. O cadeado é o mínimo. Mas TLS 1.3 + HSTS + CT é o padrão que realmente protege."
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Banco de dados com Kotlin: Exposed DSL, DAO, HikariCP connection pool e migrações com Flyway." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Banco de Dados | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Banco de Dados</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Banco de Dados</h1>
+					<p>O acesso a banco de dados em Kotlin é idiomático com Exposed: um ORM que oferece tanto DSL SQL type-safe quanto camada DAO orientada a entidades. HikariCP gerencia o pool de conexões e Flyway cuida das migrações estruturadas.</p>
+				</div>
+				<p class="intro-highlight">Kotlin transforma o acesso a banco de dados em algo expressivo: blocos <code>transaction { }</code>, queries type-safe via objetos Kotlin e data classes mapeadas sem reflexão ou anotações excessivas.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="exposed-dsl">Exposed DSL — SQL Type-Safe</h2>
+				<p>Na API DSL do Exposed, tabelas são objetos Kotlin singleton. As queries são expressas em Kotlin puro e verificadas em tempo de compilação — sem strings SQL soltas e sem risco de injeção.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Exposed DSL CRUD</div>
+					<pre class="example"><span class="kw">import</span> org.jetbrains.exposed.sql.*
+<span class="kw">import</span> org.jetbrains.exposed.sql.transactions.transaction
+
+<span class="kw">object</span> <span class="fn">Produtos</span> : Table(<span class="str">"produtos"</span>) {
+    <span class="kw">val</span> id = <span class="fn">integer</span>(<span class="str">"id"</span>).<span class="fn">autoIncrement</span>()
+    <span class="kw">val</span> nome = <span class="fn">varchar</span>(<span class="str">"nome"</span>, <span class="str">256</span>)
+    <span class="kw">val</span> preco = <span class="fn">double</span>(<span class="str">"preco"</span>)
+    <span class="kw">val</span> estoque = <span class="fn">integer</span>(<span class="str">"estoque"</span>).<span class="fn">default</span>(<span class="str">0</span>)
+    <span class="kw">override val</span> primaryKey = <span class="fn">PrimaryKey</span>(id)
+}
+
+<span class="kw">fun</span> <span class="fn">main</span>() {
+    Database.<span class="fn">connect</span>(<span class="str">"jdbc:postgresql://localhost:5432/app"</span>,
+        driver = <span class="str">"org.postgresql.Driver"</span>,
+        user = <span class="str">"admin"</span>, password = <span class="str">"senha"</span>)
+
+    <span class="fn">transaction</span> {
+        SchemaUtils.<span class="fn">create</span>(Produtos)
+
+        <span class="com">// INSERT</span>
+        Produtos.<span class="fn">insert</span> {
+            it[nome] = <span class="str">"Teclado Mecânico"</span>
+            it[preco] = <span class="str">299.90</span>
+            it[estoque] = <span class="str">50</span>
+        }
+
+        <span class="com">// SELECT com filtro e ordenação</span>
+        <span class="kw">val</span> caros = Produtos
+            .<span class="fn">selectAll</span>()
+            .<span class="fn">where</span> { Produtos.preco <span class="fn">greaterThan</span> <span class="str">100.0</span> }
+            .<span class="fn">orderBy</span>(Produtos.preco to SortOrder.DESC)
+            .<span class="fn">map</span> { row -&gt; row[Produtos.nome] to row[Produtos.preco] }
+        println(caros)
+
+        <span class="com">// UPDATE</span>
+        Produtos.<span class="fn">update</span>({ Produtos.estoque <span class="fn">less</span> <span class="str">10</span> }) {
+            it[estoque] = <span class="str">100</span>
+        }
+
+        <span class="com">// DELETE</span>
+        Produtos.<span class="fn">deleteWhere</span> { preco <span class="fn">less</span> <span class="str">0.0</span> }
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="exposed-dao">Exposed DAO — Entidades</h2>
+				<p>A API DAO do Exposed mapeia linhas de tabela em objetos Kotlin <code>Entity</code>. Relacionamentos (<code>hasMany</code>, <code>belongsTo</code>) são lazy por padrão, evitando N+1 com <code>with()</code> de eager loading.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Exposed DAO</div>
+					<pre class="example"><span class="kw">import</span> org.jetbrains.exposed.dao.*
+<span class="kw">import</span> org.jetbrains.exposed.dao.id.IntIdTable
+<span class="kw">import</span> org.jetbrains.exposed.dao.id.EntityID
+
+<span class="kw">object</span> <span class="fn">UserTable</span> : IntIdTable(<span class="str">"users"</span>) {
+    <span class="kw">val</span> nome = <span class="fn">varchar</span>(<span class="str">"nome"</span>, <span class="str">128</span>)
+    <span class="kw">val</span> email = <span class="fn">varchar</span>(<span class="str">"email"</span>, <span class="str">256</span>).<span class="fn">uniqueIndex</span>()
+}
+
+<span class="kw">class</span> <span class="fn">User</span>(id: EntityID&lt;Int&gt;) : IntEntity(id) {
+    <span class="kw">companion object</span> : <span class="fn">IntEntityClass</span>&lt;User&gt;(UserTable)
+    <span class="kw">var</span> nome <span class="kw">by</span> UserTable.nome
+    <span class="kw">var</span> email <span class="kw">by</span> UserTable.email
+}
+
+<span class="fn">transaction</span> {
+    SchemaUtils.<span class="fn">create</span>(UserTable)
+
+    <span class="com">// CREATE</span>
+    <span class="kw">val</span> u = User.<span class="fn">new</span> {
+        nome = <span class="str">"Beatriz"</span>
+        email = <span class="str">"bea@email.com"</span>
+    }
+
+    <span class="com">// FIND</span>
+    <span class="kw">val</span> todos = User.<span class="fn">all</span>().<span class="fn">toList</span>()
+    <span class="kw">val</span> porId = User.<span class="fn">findById</span>(<span class="str">1</span>)
+    <span class="kw">val</span> porEmail = User.<span class="fn">find</span> { UserTable.email <span class="fn">eq</span> <span class="str">"bea@email.com"</span> }.<span class="fn">firstOrNull</span>()
+
+    <span class="com">// UPDATE</span>
+    porEmail?.nome = <span class="str">"Beatriz Lima"</span>
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="hikari-pool">HikariCP — Pool de Conexões</h2>
+				<p>HikariCP é o pool de conexões JDBC mais rápido. Em produção, conecte o Exposed ao HikariCP em vez de strings diretas para gerenciar conexões com timeouts, pool size e health checks.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — HikariCP + Exposed</div>
+					<pre class="example"><span class="kw">import</span> com.zaxxer.hikari.HikariConfig
+<span class="kw">import</span> com.zaxxer.hikari.HikariDataSource
+
+<span class="kw">fun</span> <span class="fn">criarDataSource</span>(): HikariDataSource {
+    <span class="kw">val</span> config = <span class="fn">HikariConfig</span>().apply {
+        jdbcUrl = <span class="str">"jdbc:postgresql://localhost:5432/appdb"</span>
+        driverClassName = <span class="str">"org.postgresql.Driver"</span>
+        username = <span class="str">"admin"</span>
+        password = System.<span class="fn">getenv</span>(<span class="str">"DB_PASSWORD"</span>)
+        maximumPoolSize = <span class="str">10</span>
+        minimumIdle = <span class="str">2</span>
+        connectionTimeout = <span class="str">30_000</span>
+        idleTimeout = <span class="str">600_000</span>
+        maxLifetime = <span class="str">1_800_000</span>
+    }
+    <span class="kw">return</span> <span class="fn">HikariDataSource</span>(config)
+}
+
+<span class="com">// Conectar Exposed ao pool</span>
+<span class="kw">val</span> ds = <span class="fn">criarDataSource</span>()
+Database.<span class="fn">connect</span>(ds)
+
+<span class="com">// A partir daqui, todas as transactions usam o pool</span>
+<span class="fn">transaction</span> {
+    <span class="com">// queries normais</span>
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="flyway-migration">Flyway — Migrações de Banco</h2>
+				<p>Flyway gerencia o histórico de evolução do schema. Scripts SQL nomeados (<code>V1__descricao.sql</code>) são aplicados em ordem, acompanhados de uma tabela de histórico. Integra com Ktor via hook de inicialização.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">SQL — V1__create_users.sql</div>
+					<pre class="example"><span class="com">-- src/main/resources/db/migration/V1__create_users.sql</span>
+<span class="kw">CREATE TABLE</span> users (
+    id    SERIAL       PRIMARY KEY,
+    nome  VARCHAR(128) NOT NULL,
+    email VARCHAR(256) NOT NULL UNIQUE,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+<span class="kw">CREATE INDEX</span> idx_users_email ON users(email);</pre>
+				</div>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Flyway integrado ao Ktor</div>
+					<pre class="example"><span class="kw">import</span> org.flywaydb.core.Flyway
+
+<span class="kw">fun</span> Application.<span class="fn">configurarBancoDados</span>() {
+    <span class="kw">val</span> ds = <span class="fn">criarDataSource</span>()
+
+    <span class="com">// Executar migrações pendentes no startup</span>
+    <span class="fn">Flyway</span>.<span class="fn">configure</span>()
+        .<span class="fn">dataSource</span>(ds)
+        .<span class="fn">locations</span>(<span class="str">"classpath:db/migration"</span>)
+        .<span class="fn">baselineOnMigrate</span>(<span class="kw">true</span>)
+        .<span class="fn">load</span>()
+        .<span class="fn">migrate</span>()
+
+    Database.<span class="fn">connect</span>(ds)
+}
+
+<span class="com">// Chamado no module() da aplicação:</span>
+<span class="com">// fun Application.module() { configurarBancoDados(); ... }</span></pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>JETBRAINS. <strong>Exposed — Kotlin SQL Library</strong>. Disponível em: <a href="https://github.com/JetBrains/Exposed/wiki" target="_blank" rel="noopener">github.com/JetBrains/Exposed/wiki</a>. Acesso em: mar. 2026.</li>
+						<li>HIKARICP. <strong>HikariCP — A solid, high-performance, JDBC connection pool</strong>. Disponível em: <a href="https://github.com/brettwooldridge/HikariCP" target="_blank" rel="noopener">github.com/brettwooldridge/HikariCP</a>. Acesso em: mar. 2026.</li>
+						<li>FLYWAY. <strong>Flyway database migrations</strong>. Disponível em: <a href="https://flywaydb.org/documentation/" target="_blank" rel="noopener">flywaydb.org/documentation</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="../guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+					<li><a href="web.html">Web com Kotlin</a></li>
+					<li><a href="dados_ia.html">Dados e IA</a></li>
+					<li><a href="mobile.html">Mobile Android</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Exposed + HikariCP + Flyway formam uma tríade sólida: DSL type-safe, pool eficiente e schema versionado.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

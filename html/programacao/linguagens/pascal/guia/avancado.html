@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pascal Avançado: ponteiros e memória manual com New/Dispose, OOP em Object Pascal com class, constructor, destructor, virtual/override, interfaces, generics, exceptions e streams binários." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Pascal — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Pascal &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="pascal" aria-hidden="true"></span></div>
+          <h1>Pascal — Avançado</h1>
+          <p>Object Pascal moderno: OOP completo com herança, polimorfismo e interfaces, gerenciamento manual de memória, generics, exceções e manipulação de arquivos binários.</p>
+        </div>
+        <p class="intro-highlight">
+          Object Pascal (o dialeto usado pelo Delphi e Free Pascal) é uma das implementações mais completas de OOP disponíveis. Classes, interfaces, delegação, generics e RTTI coexistem com o acesso de baixo nível que torna Pascal adequado para sistemas embarcados e software crítico.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ponteiros">Ponteiros e Gerenciamento Manual de Memória</h2>
+        <div class="panel">
+          <p>Pascal suporta ponteiros explícitos (<code>^Tipo</code>). <code>New</code> aloca no heap, <code>Dispose</code> libera. O símbolo <code>^</code> serve tanto para declarar tipo ponteiro quanto para desreferenciar.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ponteiros.pas — Alocação manual e listas encadeadas</div>
+          <pre class="example"><span class="kw">program</span> Ponteiros;
+
+<span class="kw">type</span>
+  <span class="com">{ Ponteiro para inteiro }</span>
+  <span class="tp">PInt</span> = ^<span class="tp">Integer</span>;
+
+  <span class="com">{ Nó de lista encadeada }</span>
+  <span class="tp">PNo</span> = ^<span class="tp">TNo</span>;
+  <span class="tp">TNo</span> = <span class="kw">record</span>
+    Valor   : <span class="tp">Integer</span>;
+    Proximo : <span class="tp">PNo</span>;
+  <span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">InserirFrente</span>(<span class="kw">var</span> lista: <span class="tp">PNo</span>; valor: <span class="tp">Integer</span>);
+<span class="kw">var</span>
+  novo: <span class="tp">PNo</span>;
+<span class="kw">begin</span>
+  <span class="fn">New</span>(novo);         <span class="com">{ aloca TNo no heap }</span>
+  novo^.Valor   := valor;
+  novo^.Proximo := lista;
+  lista := novo;   <span class="com">{ novo nó é a nova cabeça }</span>
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">ImprimirLista</span>(lista: <span class="tp">PNo</span>);
+<span class="kw">var</span>
+  atual: <span class="tp">PNo</span>;
+<span class="kw">begin</span>
+  atual := lista;
+  <span class="kw">while</span> atual <> <span class="kw">nil</span> <span class="kw">do</span>
+  <span class="kw">begin</span>
+    <span class="fn">Write</span>(atual^.Valor, <span class="str">' '</span>);
+    atual := atual^.Proximo;
+  <span class="kw">end</span>;
+  <span class="fn">WriteLn</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">LiberarLista</span>(<span class="kw">var</span> lista: <span class="tp">PNo</span>);
+<span class="kw">var</span>
+  atual, proximo: <span class="tp">PNo</span>;
+<span class="kw">begin</span>
+  atual := lista;
+  <span class="kw">while</span> atual <> <span class="kw">nil</span> <span class="kw">do</span>
+  <span class="kw">begin</span>
+    proximo := atual^.Proximo;
+    <span class="fn">Dispose</span>(atual);   <span class="com">{ libera memória do nó }</span>
+    atual := proximo;
+  <span class="kw">end</span>;
+  lista := <span class="kw">nil</span>;
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  lista    : <span class="tp">PNo</span>;
+  pInteiro : <span class="tp">PInt</span>;
+
+<span class="kw">begin</span>
+  <span class="com">{ Uso básico de ponteiro }</span>
+  <span class="fn">New</span>(pInteiro);
+  pInteiro^ := <span class="num">42</span>;    <span class="com">{ ^ desreferencia }</span>
+  <span class="fn">WriteLn</span>(<span class="str">'Valor: '</span>, pInteiro^);
+  <span class="fn">Dispose</span>(pInteiro);
+  pInteiro := <span class="kw">nil</span>;   <span class="com">{ boa prática: nil após dispose }</span>
+
+  <span class="com">{ Lista encadeada }</span>
+  lista := <span class="kw">nil</span>;
+  <span class="fn">InserirFrente</span>(lista, <span class="num">10</span>);
+  <span class="fn">InserirFrente</span>(lista, <span class="num">20</span>);
+  <span class="fn">InserirFrente</span>(lista, <span class="num">30</span>);
+  <span class="fn">ImprimirLista</span>(lista);    <span class="com">{ 30 20 10 }</span>
+  <span class="fn">LiberarLista</span>(lista);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="oop">Object Pascal — OOP Completo</h2>
+        <div class="panel">
+          <p>Object Pascal estende Pascal com <code>class</code>. Diferente do <code>record</code>, uma <code>class</code> é alocada no heap por padrão. O construtor (<code>constructor Create</code>) inicializa, o destrutor (<code>destructor Destroy</code>) libera recursos. O compilador não gerencia a vida do objeto — você é responsável por chamar <code>.Free</code>.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">oop_hierarquia.pas — Classes, herança e polimorfismo</div>
+          <pre class="example"><span class="kw">program</span> OOP;
+
+<span class="kw">uses</span> SysUtils;
+
+<span class="kw">type</span>
+  <span class="com">{ ── Classe base abstrata ─────────────────────────────────── }</span>
+  <span class="tp">TAnimal</span> = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FNome  : <span class="tp">String</span>;
+    FIdade : <span class="tp">Integer</span>;
+  <span class="kw">protected</span>
+    <span class="kw">function</span> <span class="fn">GetDescricao</span>: <span class="tp">String</span>; <span class="kw">virtual</span>; <span class="kw">abstract</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const nome: <span class="tp">String</span>; idade: <span class="tp">Integer</span>);
+    <span class="kw">destructor</span> <span class="fn">Destroy</span>; <span class="kw">override</span>;
+
+    <span class="kw">procedure</span> <span class="fn">Falar</span>; <span class="kw">virtual</span>; <span class="kw">abstract</span>;
+    <span class="kw">procedure</span> <span class="fn">ExibirInfo</span>;
+
+    <span class="kw">property</span> Nome  : <span class="tp">String</span>  <span class="kw">read</span> FNome;
+    <span class="kw">property</span> Idade : <span class="tp">Integer</span> <span class="kw">read</span> FIdade;
+  <span class="kw">end</span>;
+
+  <span class="com">{ ── Subclasse Cachorro ──────────────────────────────────── }</span>
+  <span class="tp">TCachorro</span> = <span class="kw">class</span>(<span class="tp">TAnimal</span>)
+  <span class="kw">private</span>
+    FRaca : <span class="tp">String</span>;
+  <span class="kw">protected</span>
+    <span class="kw">function</span> <span class="fn">GetDescricao</span>: <span class="tp">String</span>; <span class="kw">override</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const nome, raca: <span class="tp">String</span>; idade: <span class="tp">Integer</span>);
+    <span class="kw">procedure</span> <span class="fn">Falar</span>; <span class="kw">override</span>;
+    <span class="kw">property</span> Raca: <span class="tp">String</span> <span class="kw">read</span> FRaca;
+  <span class="kw">end</span>;
+
+  <span class="com">{ ── Subclasse Gato ─────────────────────────────────────── }</span>
+  <span class="tp">TGato</span> = <span class="kw">class</span>(<span class="tp">TAnimal</span>)
+  <span class="kw">protected</span>
+    <span class="kw">function</span> <span class="fn">GetDescricao</span>: <span class="tp">String</span>; <span class="kw">override</span>;
+  <span class="kw">public</span>
+    <span class="kw">procedure</span> <span class="fn">Falar</span>; <span class="kw">override</span>;
+  <span class="kw">end</span>;
+
+<span class="com">{ ── Implementações ────────────────────────────────────────── }</span>
+<span class="kw">constructor</span> <span class="tp">TAnimal</span>.<span class="fn">Create</span>(const nome: <span class="tp">String</span>; idade: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  <span class="kw">inherited</span> <span class="fn">Create</span>;   <span class="com">{ chama TObject.Create }</span>
+  FNome  := nome;
+  FIdade := idade;
+<span class="kw">end</span>;
+
+<span class="kw">destructor</span> <span class="tp">TAnimal</span>.<span class="fn">Destroy</span>;
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(<span class="str">'Destruindo '</span>, FNome);
+  <span class="kw">inherited</span> <span class="fn">Destroy</span>;   <span class="com">{ sempre chamar inherited }</span>
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TAnimal</span>.<span class="fn">ExibirInfo</span>;
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(<span class="fn">GetDescricao</span>, <span class="str">' | Idade: '</span>, FIdade, <span class="str">' anos'</span>);
+<span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TCachorro</span>.<span class="fn">Create</span>(const nome, raca: <span class="tp">String</span>; idade: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  <span class="kw">inherited</span> <span class="fn">Create</span>(nome, idade);
+  FRaca := raca;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TCachorro</span>.<span class="fn">GetDescricao</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Format</span>(<span class="str">'Cachorro: %s (%s)'</span>, [FNome, FRaca]);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TCachorro</span>.<span class="fn">Falar</span>;
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(FNome, <span class="str">': Au au!'</span>);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TGato</span>.<span class="fn">GetDescricao</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="str">'Gato: '</span> + FNome;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TGato</span>.<span class="fn">Falar</span>;
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(FNome, <span class="str">': Miau!'</span>);
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  animais : <span class="kw">array of</span> <span class="tp">TAnimal</span>;
+  i       : <span class="tp">Integer</span>;
+
+<span class="kw">begin</span>
+  <span class="com">{ Polimorfismo — array de TAnimal com objetos de subclasses }</span>
+  <span class="fn">SetLength</span>(animais, <span class="num">3</span>);
+  animais[<span class="num">0</span>] := <span class="tp">TCachorro</span>.<span class="fn">Create</span>(<span class="str">'Rex'</span>, <span class="str">'Labrador'</span>, <span class="num">3</span>);
+  animais[<span class="num">1</span>] := <span class="tp">TGato</span>.<span class="fn">Create</span>(<span class="str">'Mimi'</span>, <span class="num">2</span>);
+  animais[<span class="num">2</span>] := <span class="tp">TCachorro</span>.<span class="fn">Create</span>(<span class="str">'Bolt'</span>, <span class="str">'Dálmata'</span>, <span class="num">5</span>);
+
+  <span class="kw">for</span> i := <span class="num">0</span> <span class="kw">to</span> <span class="fn">High</span>(animais) <span class="kw">do</span>
+  <span class="kw">begin</span>
+    animais[i].<span class="fn">ExibirInfo</span>;
+    animais[i].<span class="fn">Falar</span>;
+    animais[i].<span class="fn">Free</span>;   <span class="com">{ liberar memória }</span>
+  <span class="kw">end</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="interfaces">Interfaces</h2>
+        <div class="panel">
+          <p>Interfaces em Object Pascal são contratos puros — sem implementação, sem estado. Uma classe pode implementar múltiplas interfaces (Pascal não tem herança múltipla de classe). Use <code>as</code> para conversão e <code>is</code> para checagem de tipo.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">interfaces.pas — Contratos e implementações múltiplas</div>
+          <pre class="example"><span class="kw">program</span> Interfaces;
+
+<span class="kw">uses</span> SysUtils;
+
+<span class="kw">type</span>
+  <span class="com">{ Interfaces — inicia com I por convenção }</span>
+  <span class="tp">ISerializable</span> = <span class="kw">interface</span>
+    <span class="kw">function</span> <span class="fn">ToJSON</span>: <span class="tp">String</span>;
+    <span class="kw">procedure</span> <span class="fn">FromJSON</span>(const json: <span class="tp">String</span>);
+  <span class="kw">end</span>;
+
+  <span class="tp">IComparavel</span> = <span class="kw">interface</span>
+    <span class="kw">function</span> <span class="fn">ComparaCom</span>(outro: <span class="tp">IComparavel</span>): <span class="tp">Integer</span>;
+  <span class="kw">end</span>;
+
+  <span class="com">{ Classe implementa AMBAS as interfaces }</span>
+  <span class="tp">TProduto</span> = <span class="kw">class</span>(<span class="tp">TObject</span>, <span class="tp">ISerializable</span>, <span class="tp">IComparavel</span>)
+  <span class="kw">private</span>
+    FNome  : <span class="tp">String</span>;
+    FPreco : <span class="tp">Double</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const nome: <span class="tp">String</span>; preco: <span class="tp">Double</span>);
+    <span class="com">{ ISerializable }</span>
+    <span class="kw">function</span>  <span class="fn">ToJSON</span>: <span class="tp">String</span>;
+    <span class="kw">procedure</span> <span class="fn">FromJSON</span>(const json: <span class="tp">String</span>);
+    <span class="com">{ IComparavel }</span>
+    <span class="kw">function</span> <span class="fn">ComparaCom</span>(outro: <span class="tp">IComparavel</span>): <span class="tp">Integer</span>;
+    <span class="kw">property</span> Nome  : <span class="tp">String</span>  <span class="kw">read</span> FNome;
+    <span class="kw">property</span> Preco : <span class="tp">Double</span>  <span class="kw">read</span> FPreco;
+  <span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TProduto</span>.<span class="fn">Create</span>(const nome: <span class="tp">String</span>; preco: <span class="tp">Double</span>);
+<span class="kw">begin</span>
+  FNome  := nome;
+  FPreco := preco;
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TProduto</span>.<span class="fn">ToJSON</span>: <span class="tp">String</span>;
+<span class="kw">begin</span>
+  Result := <span class="fn">Format</span>(<span class="str">'{"nome":"%s","preco":%.2f}'</span>, [FNome, FPreco]);
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TProduto</span>.<span class="fn">FromJSON</span>(const json: <span class="tp">String</span>);
+<span class="kw">begin</span>
+  <span class="com">{ implementação simplificada }</span>
+  <span class="fn">WriteLn</span>(<span class="str">'Deserializando: '</span>, json);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TProduto</span>.<span class="fn">ComparaCom</span>(outro: <span class="tp">IComparavel</span>): <span class="tp">Integer</span>;
+<span class="kw">var</span>
+  outroProd: <span class="tp">TProduto</span>;
+<span class="kw">begin</span>
+  outroProd := outro <span class="kw">as</span> <span class="tp">TProduto</span>;   <span class="com">{ cast de interface para classe }</span>
+  <span class="kw">if</span> FPreco < outroProd.Preco <span class="kw">then</span> Result := -<span class="num">1</span>
+  <span class="kw">else if</span> FPreco > outroProd.Preco <span class="kw">then</span> Result := <span class="num">1</span>
+  <span class="kw">else</span> Result := <span class="num">0</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">SerializarQualquer</span>(obj: <span class="tp">ISerializable</span>);
+<span class="kw">begin</span>
+  <span class="fn">WriteLn</span>(<span class="str">'JSON: '</span>, obj.<span class="fn">ToJSON</span>);
+<span class="kw">end</span>;
+
+<span class="kw">var</span>
+  p1, p2 : <span class="tp">TProduto</span>;
+
+<span class="kw">begin</span>
+  p1 := <span class="tp">TProduto</span>.<span class="fn">Create</span>(<span class="str">'Teclado'</span>, <span class="num">299.90</span>);
+  p2 := <span class="tp">TProduto</span>.<span class="fn">Create</span>(<span class="str">'Mouse'</span>, <span class="num">149.90</span>);
+
+  <span class="fn">SerializarQualquer</span>(p1);
+  <span class="fn">SerializarQualquer</span>(p2);
+
+  <span class="kw">if</span> p1.<span class="fn">ComparaCom</span>(p2) > <span class="num">0</span> <span class="kw">then</span>
+    <span class="fn">WriteLn</span>(p1.Nome, <span class="str">' é mais caro que '</span>, p2.Nome);
+
+  <span class="com">{ verify: is operador verifica se objeto implementa interface }</span>
+  <span class="kw">if</span> p1 <span class="kw">is</span> <span class="tp">TProduto</span> <span class="kw">then</span>
+    <span class="fn">WriteLn</span>(<span class="str">'p1 é um TProduto'</span>);
+
+  p1.<span class="fn">Free</span>;
+  p2.<span class="fn">Free</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generics">Generics — Tipos Paramétricos (FPC 2.2+)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">generics.pas — Classes e procedures genéricas</div>
+          <pre class="example"><span class="kw">program</span> Generics;
+
+<span class="kw">uses</span> SysUtils, Generics.Collections;
+
+<span class="kw">type</span>
+  <span class="com">{ Pilha genérica }</span>
+  <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt; = <span class="kw">class</span>
+  <span class="kw">private</span>
+    FDados : <span class="kw">array of</span> <span class="tp">T</span>;
+    FTopo  : <span class="tp">Integer</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(capacidade: <span class="tp">Integer</span> = <span class="num">16</span>);
+    <span class="kw">procedure</span> <span class="fn">Empilhar</span>(const valor: <span class="tp">T</span>);
+    <span class="kw">function</span>  <span class="fn">Desempilhar</span>: <span class="tp">T</span>;
+    <span class="kw">function</span>  <span class="fn">Topo</span>: <span class="tp">T</span>;
+    <span class="kw">function</span>  <span class="fn">EstaVazia</span>: <span class="tp">Boolean</span>;
+    <span class="kw">property</span>  Tamanho: <span class="tp">Integer</span> <span class="kw">read</span> FTopo;
+  <span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt;.<span class="fn">Create</span>(capacidade: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  <span class="fn">SetLength</span>(FDados, capacidade);
+  FTopo := <span class="num">0</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt;.<span class="fn">Empilhar</span>(const valor: <span class="tp">T</span>);
+<span class="kw">begin</span>
+  <span class="kw">if</span> FTopo >= <span class="fn">Length</span>(FDados) <span class="kw">then</span>
+    <span class="fn">SetLength</span>(FDados, <span class="fn">Length</span>(FDados) * <span class="num">2</span>);
+  FDados[FTopo] := valor;
+  <span class="fn">Inc</span>(FTopo);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt;.<span class="fn">Desempilhar</span>: <span class="tp">T</span>;
+<span class="kw">begin</span>
+  <span class="kw">if</span> EstaVazia <span class="kw">then</span>
+    <span class="kw">raise</span> <span class="tp">Exception</span>.<span class="fn">Create</span>(<span class="str">'Pilha vazia!'</span>);
+  <span class="fn">Dec</span>(FTopo);
+  Result := FDados[FTopo];
+<span class="kw">end</span>;
+
+<span class="kw">function</span>  <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt;.<span class="fn">Topo</span>: <span class="tp">T</span>; <span class="kw">begin</span> Result := FDados[FTopo - <span class="num">1</span>]; <span class="kw">end</span>;
+<span class="kw">function</span>  <span class="tp">TPilha</span>&lt;<span class="tp">T</span>&gt;.<span class="fn">EstaVazia</span>: <span class="tp">Boolean</span>; <span class="kw">begin</span> Result := FTopo = <span class="num">0</span>; <span class="kw">end</span>;
+
+<span class="com">{ Usando TDictionary de Generics.Collections (biblioteca padrão FPC) }</span>
+<span class="kw">var</span>
+  pilhaInt  : <span class="tp">TPilha</span>&lt;<span class="tp">Integer</span>&gt;;
+  pilhaStr  : <span class="tp">TPilha</span>&lt;<span class="tp">String</span>&gt;;
+  dici      : <span class="tp">TDictionary</span>&lt;<span class="tp">String</span>, <span class="tp">Integer</span>&gt;;
+  lista     : <span class="tp">TList</span>&lt;<span class="tp">Double</span>&gt;;
+
+<span class="kw">begin</span>
+  pilhaInt := <span class="tp">TPilha</span>&lt;<span class="tp">Integer</span>&gt;.<span class="fn">Create</span>;
+  pilhaInt.<span class="fn">Empilhar</span>(<span class="num">10</span>);
+  pilhaInt.<span class="fn">Empilhar</span>(<span class="num">20</span>);
+  pilhaInt.<span class="fn">Empilhar</span>(<span class="num">30</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'Topo: '</span>, pilhaInt.<span class="fn">Desempilhar</span>);   <span class="com">{ 30 }</span>
+
+  dici := <span class="tp">TDictionary</span>&lt;<span class="tp">String</span>, <span class="tp">Integer</span>&gt;.<span class="fn">Create</span>;
+  dici.<span class="fn">Add</span>(<span class="str">'alpha'</span>, <span class="num">1</span>);
+  dici.<span class="fn">Add</span>(<span class="str">'beta'</span>,  <span class="num">2</span>);
+  <span class="fn">WriteLn</span>(<span class="str">'alpha = '</span>, dici[<span class="str">'alpha'</span>]);
+
+  pilhaInt.<span class="fn">Free</span>;
+  dici.<span class="fn">Free</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="excecoes">Exceções — try-except-finally</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">excecoes.pas — Tratamento e criação de exceções</div>
+          <pre class="example"><span class="kw">program</span> Excecoes;
+
+<span class="kw">uses</span> SysUtils;
+
+<span class="kw">type</span>
+  <span class="com">{ Exceção customizada }</span>
+  <span class="tp">EValidacao</span> = <span class="kw">class</span>(<span class="tp">Exception</span>)
+  <span class="kw">private</span>
+    FCampo : <span class="tp">String</span>;
+  <span class="kw">public</span>
+    <span class="kw">constructor</span> <span class="fn">Create</span>(const campo, mensagem: <span class="tp">String</span>);
+    <span class="kw">property</span> Campo: <span class="tp">String</span> <span class="kw">read</span> FCampo;
+  <span class="kw">end</span>;
+
+<span class="kw">constructor</span> <span class="tp">EValidacao</span>.<span class="fn">Create</span>(const campo, mensagem: <span class="tp">String</span>);
+<span class="kw">begin</span>
+  <span class="kw">inherited</span> <span class="fn">Create</span>(mensagem);
+  FCampo := campo;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">ValidarIdade</span>(idade: <span class="tp">Integer</span>);
+<span class="kw">begin</span>
+  <span class="kw">if</span> idade < <span class="num">0</span> <span class="kw">then</span>
+    <span class="kw">raise</span> <span class="tp">EValidacao</span>.<span class="fn">Create</span>(<span class="str">'idade'</span>, <span class="fn">Format</span>(<span class="str">'Idade %d inválida'</span>, [idade]));
+  <span class="kw">if</span> idade > <span class="num">150</span> <span class="kw">then</span>
+    <span class="kw">raise</span> <span class="tp">EValidacao</span>.<span class="fn">Create</span>(<span class="str">'idade'</span>, <span class="str">'Idade superior a 150 não é válida'</span>);
+<span class="kw">end</span>;
+
+<span class="kw">function</span> <span class="fn">AbrirArquivo</span>(const caminho: <span class="tp">String</span>): <span class="tp">TextFile</span>;
+<span class="kw">var</span>
+  f : <span class="tp">TextFile</span>;
+<span class="kw">begin</span>
+  <span class="fn">AssignFile</span>(f, caminho);
+  <span class="fn">Reset</span>(f);    <span class="com">{ raise EInOutError se arquivo não existe }</span>
+  Result := f;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">ProcessarComRecursos</span>;
+<span class="kw">var</span>
+  obj : <span class="tp">TObject</span>;
+<span class="kw">begin</span>
+  obj := <span class="tp">TObject</span>.<span class="fn">Create</span>;
+  <span class="kw">try</span>
+    <span class="com">{ código que pode lançar exceção }</span>
+    <span class="fn">ValidarIdade</span>(-<span class="num">5</span>);
+    <span class="fn">WriteLn</span>(<span class="str">'Nunca chega aqui'</span>);
+  <span class="kw">except</span>
+    <span class="kw">on</span> e: <span class="tp">EValidacao</span> <span class="kw">do</span>
+      <span class="fn">WriteLn</span>(<span class="str">'Erro no campo '</span>, e.Campo, <span class="str">': '</span>, e.Message);
+    <span class="kw">on</span> e: <span class="tp">EInOutError</span> <span class="kw">do</span>
+      <span class="fn">WriteLn</span>(<span class="str">'Erro de I/O: '</span>, e.Message);
+    <span class="kw">on</span> e: <span class="tp">Exception</span> <span class="kw">do</span>
+      <span class="fn">WriteLn</span>(<span class="str">'Erro genérico: '</span>, e.Message);
+  <span class="kw">end</span>;
+
+  <span class="kw">try</span>
+    <span class="com">{ finally SEMPRE executa — mesmo com exceção }</span>
+    <span class="fn">ValidarIdade</span>(<span class="num">200</span>);
+  <span class="kw">finally</span>
+    obj.<span class="fn">Free</span>;   <span class="com">{ liberado mesmo se ValidarIdade lançar }</span>
+    <span class="fn">WriteLn</span>(<span class="str">'Recurso liberado'</span>);
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">begin</span>
+  <span class="fn">ProcessarComRecursos</span>;
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquivos-binarios">Streams e Arquivos Binários</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">arquivos.pas — TFileStream e serialização binária</div>
+          <pre class="example"><span class="kw">program</span> ArquivosBinarios;
+
+<span class="kw">uses</span> SysUtils, Classes;
+
+<span class="kw">type</span>
+  <span class="tp">TRegistro</span> = <span class="kw">packed record</span>   <span class="com">{ packed: sem padding }</span>
+    ID    : <span class="tp">Integer</span>;
+    Nome  : <span class="kw">array</span>[<span class="num">0</span>..<span class="num">49</span>] <span class="kw">of</span> <span class="tp">AnsiChar</span>;   <span class="com">{ tamanho fixo }</span>
+    Valor : <span class="tp">Double</span>;
+  <span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">EscreverRegistros</span>(const caminho: <span class="tp">String</span>);
+<span class="kw">var</span>
+  fs  : <span class="tp">TFileStream</span>;
+  reg : <span class="tp">TRegistro</span>;
+  i   : <span class="tp">Integer</span>;
+<span class="kw">begin</span>
+  fs := <span class="tp">TFileStream</span>.<span class="fn">Create</span>(caminho, fmCreate);
+  <span class="kw">try</span>
+    <span class="kw">for</span> i := <span class="num">1</span> <span class="kw">to</span> <span class="num">5</span> <span class="kw">do</span>
+    <span class="kw">begin</span>
+      <span class="fn">FillChar</span>(reg, <span class="fn">SizeOf</span>(reg), <span class="num">0</span>);     <span class="com">{ zerar memória }</span>
+      reg.ID    := i;
+      reg.Valor := i * <span class="num">1.5</span>;
+      <span class="fn">StrPCopy</span>(reg.Nome, <span class="fn">Format</span>(<span class="str">'Item %d'</span>, [i]));
+      fs.<span class="fn">WriteBuffer</span>(reg, <span class="fn">SizeOf</span>(reg));  <span class="com">{ escreve exatamente SizeOf bytes }</span>
+    <span class="kw">end</span>;
+  <span class="kw">finally</span>
+    fs.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">procedure</span> <span class="fn">LerRegistros</span>(const caminho: <span class="tp">String</span>);
+<span class="kw">var</span>
+  fs  : <span class="tp">TFileStream</span>;
+  reg : <span class="tp">TRegistro</span>;
+<span class="kw">begin</span>
+  fs := <span class="tp">TFileStream</span>.<span class="fn">Create</span>(caminho, fmOpenRead);
+  <span class="kw">try</span>
+    <span class="kw">while</span> fs.Position < fs.Size <span class="kw">do</span>
+    <span class="kw">begin</span>
+      fs.<span class="fn">ReadBuffer</span>(reg, <span class="fn">SizeOf</span>(reg));
+      <span class="fn">WriteLn</span>(<span class="fn">Format</span>(<span class="str">'ID=%d Nome=%-10s Valor=%.1f'</span>,
+        [reg.ID, reg.Nome, reg.Valor]));
+    <span class="kw">end</span>;
+  <span class="kw">finally</span>
+    fs.<span class="fn">Free</span>;
+  <span class="kw">end</span>;
+<span class="kw">end</span>;
+
+<span class="kw">begin</span>
+  <span class="fn">EscreverRegistros</span>(<span class="str">'dados.bin'</span>);
+  <span class="fn">LerRegistros</span>(<span class="str">'dados.bin'</span>);
+<span class="kw">end</span>.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>FREE PASCAL TEAM. <strong>Free Pascal Reference Guide — Classes and Objects</strong>. 2024. Disponível em: <a href="https://www.freepascal.org/docs-html/ref/refch6.html" target="_blank" rel="noopener">https://www.freepascal.org/docs-html/ref/refch6.html</a></li>
+            <li>EMBARCADERO. <strong>Delphi Object Pascal Style Guide</strong>. 2023. Disponível em: <a href="https://docwiki.embarcadero.com" target="_blank" rel="noopener">https://docwiki.embarcadero.com</a></li>
+            <li>FREE PASCAL TEAM. <strong>Free Pascal Generics Documentation</strong>. 2024. Disponível em: <a href="https://www.freepascal.org/docs-html/ref/refch15.html" target="_blank" rel="noopener">https://www.freepascal.org/docs-html/ref/refch15.html</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/guia/fundamentos.html">Pascal — Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/guia/ecossistema_tooling.html">Pascal — Ecossistema</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/pascal/aplicacoes/gui_desktop.html">Pascal — GUI com Lazarus</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O padrão <code>try...finally...Free</code> em Object Pascal é o equivalente manual de RAII — libere sempre os recursos independente de exceções.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

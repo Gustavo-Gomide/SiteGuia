@@ -1,0 +1,176 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Memento: padrão comportamental para capturar e restaurar o estado de um objeto sem violar encapsulamento (undo)." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Memento | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Snapshot do estado para desfazer sem violar encapsulamento</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Memento</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">Memento captura o estado interno de um objeto em um snapshot (Memento) sem expor seus detalhes. Um Caretaker guarda esses snapshots e os devolve ao Originator para restaurar estados anteriores — sem violar o encapsulamento.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Três participantes</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Participante</th>
+                <th>Função</th>
+                <th>Analogia</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Originator</strong></td>
+                <td>Cria e restaura Mementos do próprio estado.</td>
+                <td>Editor de texto</td>
+              </tr>
+              <tr>
+                <td><strong>Memento</strong></td>
+                <td>Snapshot imutável do estado do Originator.</td>
+                <td>Arquivo de backup</td>
+              </tr>
+              <tr>
+                <td><strong>Caretaker</strong></td>
+                <td>Armazena Mementos sem inspecioná-los.</td>
+                <td>Pilha de undo, histórico de versões</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — undo em editor</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// MEMENTO — snapshot imutável
+class EditorMemento {
+  constructor(readonly conteudo: string, readonly posicaoCursor: number) {}
+}
+
+// ORIGINATOR
+class Editor {
+  private conteudo = '';
+  private cursor = 0;
+
+  escrever(texto: string): void {
+    this.conteudo += texto;
+    this.cursor = this.conteudo.length;
+  }
+
+  salvar(): EditorMemento {
+    return new EditorMemento(this.conteudo, this.cursor);
+  }
+
+  restaurar(m: EditorMemento): void {
+    this.conteudo = m.conteudo;
+    this.cursor = m.posicaoCursor;
+  }
+
+  imprimir(): void { console.log(this.conteudo); }
+}
+
+// CARETAKER
+class Historico {
+  private pilha: EditorMemento[] = [];
+
+  salvar(editor: Editor): void { this.pilha.push(editor.salvar()); }
+
+  desfazer(editor: Editor): void {
+    const estado = this.pilha.pop();
+    if (estado) editor.restaurar(estado);
+  }
+}
+
+// Uso
+const editor = new Editor();
+const historico = new Historico();
+
+editor.escrever('Olá');
+historico.salvar(editor);
+editor.escrever(' mundo');
+editor.imprimir(); // 'Olá mundo'
+
+historico.desfazer(editor);
+editor.imprimir(); // 'Olá'</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Precisa de undo/redo. Snapshotting de estado para rollback transacional. Histórico de versões de documento.</p>
+          </div>
+          <div class="card">
+            <h3>Encapsulamento seguro</h3>
+            <p>O Originator controla o que vai no Memento. O Caretaker não vê os detalhes internos do estado.</p>
+          </div>
+          <div class="card">
+            <h3>Custo de memória</h3>
+            <p>Cada snapshot consome memória. Para estados grandes, considere salvar apenas diffs (delta encoding).</p>
+          </div>
+          <div class="card">
+            <h3>vs Command</h3>
+            <p>Command implementa undo executando a operação inversa. Memento guarda e restaura estado direto. Escolha por custo.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Memento e <a href="/html/engenharia_software/design/design_patterns/behavioral/command.html">Command</a> são complementares para undo/redo complexos: Command para operações invertíveis, Memento para snapshots completos.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Memento externaliza o estado sem expor a estrutura interna — quem guarda não precisa entender o que guardou."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

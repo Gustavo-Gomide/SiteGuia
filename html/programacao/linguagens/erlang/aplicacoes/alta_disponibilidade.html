@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Erlang Alta Disponibilidade: releases OTP, supervisor trees em produção, logging com logger/SASL, health checks, hot upgrades e deploy em produção." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Erlang — Alta Disponibilidade | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Erlang &mdash; Alta Disponibilidade</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="erlang" aria-hidden="true"></span></div>
+          <h1>Erlang — Alta Disponibilidade</h1>
+          <p>Erlang foi construído para os switches AXD301 da Ericsson que alcançaram <strong>99.9999999% de uptime</strong> (nove noves) — menos de 31 milissegundos de downtime por ano. Isso não é acidente: é o resultado de releases bem estruturados, árvores de supervisão, hot upgrades e monitoramento de saúde embutidos no OTP.</p>
+        </div>
+        <p class="intro-highlight">
+          Alta disponibilidade em Erlang não vem de hardware redundante ou de código sem bugs — vem da capacidade de <strong>detectar falhas e se recuperar</strong> automaticamente, atualizar código sem parar, e distribuir carga por múltiplos nós. O hardware pode falhar; o sistema continua.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="releases">OTP Releases — Empacotamento para Produção</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de release com rebar3</div>
+          <pre class="example"><span class="com">%% rebar.config — configurar release</span>
+{relx, [
+    {release, {meu_sistema, <span class="str">"1.0.0"</span>},
+     [meu_sistema,     <span class="com">% aplicação principal</span>
+      sasl,            <span class="com">% System Architecture Support Libraries (logs)</span>
+      runtime_tools,   <span class="com">% rastreamento em produção</span>
+      observer]},      <span class="com">% GUI (opcional, dev)</span>
+
+    {mode, prod},
+    {extended_start_script, true},  <span class="com">% gera bin/meu_sistema start|stop|console|attach</span>
+
+    {sys_config, <span class="str">"config/sys.config"</span>},
+    {vm_args,    <span class="str">"config/vm.args"</span>}
+]}.
+
+<span class="com">%% config/sys.config — configuração das aplicações</span>
+[
+    {meu_sistema, [
+        {porta, 8080},
+        {db_pool_size, 10}
+    ]},
+    {sasl, [
+        {sasl_error_logger, {file, <span class="str">"log/sasl.log"</span>}},
+        {errlog_type, all}
+    ]},
+    {kernel, [
+        {logger_level, info}
+    ]}
+].
+
+<span class="com">%% config/vm.args — argumentos da BEAM</span>
+<span class="com">%% -name meu_sistema@servidor.com</span>
+<span class="com">%% -setcookie segredomuitoseguro</span>
+<span class="com">%% +K true                  % kernel poll (epoll/kqueue)</span>
+<span class="com">%% +A 64                    % threads async (I/O)</span>
+<span class="com">%% -env ERL_MAX_PORTS 65536</span>
+<span class="com">%% +P 10000000              % máximo de processos</span>
+<span class="com">%% +Q 65536                 % máximo de portas</span>
+<span class="com">%% +sbwt none               % não desperdiçar CPU em busy-wait</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Build e start do release</div>
+          <pre class="example"><span class="com"># Gerar release</span>
+rebar3 as prod release
+rebar3 as prod tar            <span class="com"># gera _build/prod/rel/meu_sistema/meu_sistema-1.0.0.tar.gz</span>
+
+<span class="com"># Estrutura gerada:</span>
+<span class="com"># _build/prod/rel/meu_sistema/</span>
+<span class="com">#   bin/meu_sistema          ← script de controle</span>
+<span class="com">#   lib/                     ← todas as dependências</span>
+<span class="com">#   releases/1.0.0/          ← arquivos de release</span>
+<span class="com">#   erts-X.X/                ← BEAM embutida (sem Erlang instalado no servidor)</span>
+
+<span class="com"># Comandos de controle</span>
+bin/meu_sistema start         <span class="com"># daemon</span>
+bin/meu_sistema foreground    <span class="com"># foreground com console</span>
+bin/meu_sistema console       <span class="com"># foreground com shell erl</span>
+bin/meu_sistema attach        <span class="com"># conectar ao nó já rodando</span>
+bin/meu_sistema stop
+bin/meu_sistema restart
+bin/meu_sistema status        <span class="com"># pid e informações do nó</span>
+bin/meu_sistema remote_console <span class="com"># shell remoto no nó em produção</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="supervisor-trees">Árvores de Supervisão em Produção</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Hierarquia de supervisores para máxima resiliência</div>
+          <pre class="example">-module(meu_sistema_app).
+-behaviour(application).
+-export([start/2, stop/1]).
+
+start(_Type, _Args) -&gt;
+    meu_sistema_sup:start_link().
+
+stop(_State) -&gt; ok.
+
+<span class="com">%%====================================================================</span>
+-module(meu_sistema_sup).
+-behaviour(supervisor).
+-export([start_link/0, init/1]).
+
+start_link() -&gt;
+    supervisor:start_link({local, ?MODULE}, ?MODULE, []).
+
+init([]) -&gt;
+    SupFlags = #{strategy =&gt; one_for_one, intensity =&gt; 3, period =&gt; 10},
+    Filhos = [
+        <span class="com">%% Supervisor de conexões HTTP</span>
+        #{id      =&gt; http_sup,
+          start   =&gt; {http_sup, start_link, []},
+          type    =&gt; supervisor,     <span class="com">% supervisor filho!</span>
+          restart =&gt; permanent,
+          shutdown =&gt; infinity},
+
+        <span class="com">%% Pool de workers de banco de dados</span>
+        #{id      =&gt; db_pool_sup,
+          start   =&gt; {db_pool_sup, start_link, [#{size =&gt; 10}]},
+          type    =&gt; supervisor,
+          restart =&gt; permanent,
+          shutdown =&gt; infinity},
+
+        <span class="com">%% Cache em memória</span>
+        #{id      =&gt; cache,
+          start   =&gt; {cache_server, start_link, []},
+          type    =&gt; worker,
+          restart =&gt; permanent,
+          shutdown =&gt; 5000}
+    ],
+    {ok, {SupFlags, Filhos}}.
+
+<span class="com">%% Inspecionar árvore em produção</span>
+<span class="com">%% supervisor:which_children(meu_sistema_sup).</span>
+<span class="com">%% supervisor:count_children(meu_sistema_sup).</span>
+<span class="com">%% supervisor:get_childspec(meu_sistema_sup, cache).</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="logging">Logging com OTP logger</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Logger OTP 21+ — configuração e uso em produção</div>
+          <pre class="example"><span class="com">%% Usar logger (OTP 21+) — substitui error_logger e lager</span>
+-include_lib(<span class="str">"kernel/include/logger.hrl"</span>).
+
+<span class="com">%% Macros disponíveis: ?LOG_DEBUG, ?LOG_INFO, ?LOG_NOTICE,</span>
+<span class="com">%%                     ?LOG_WARNING, ?LOG_ERROR, ?LOG_CRITICAL</span>
+
+processar_pedido(Pedido) -&gt;
+    ?LOG_INFO(#{evento =&gt; pedido_recebido, id =&gt; maps:get(id, Pedido)}),
+    try
+        Resultado = executar(Pedido),
+        ?LOG_INFO(#{evento =&gt; pedido_ok, id =&gt; maps:get(id, Pedido)}),
+        {ok, Resultado}
+    catch
+        error:Motivo:Stack -&gt;
+            ?LOG_ERROR(#{evento =&gt; pedido_falhou,
+                         id    =&gt; maps:get(id, Pedido),
+                         motivo =&gt; Motivo,
+                         stack =&gt; Stack}),
+            {error, Motivo}
+    end.
+
+<span class="com">%% Configurar handlers no sys.config</span>
+<span class="com">%% {kernel, [</span>
+<span class="com">%%   {logger, [</span>
+<span class="com">%%     {handler, default, logger_std_h, #{</span>
+<span class="com">%%       level =&gt; info,</span>
+<span class="com">%%       config =&gt; #{file =&gt; "log/app.log", max_no_bytes =&gt; 10485760,</span>
+<span class="com">%%                   max_no_files =&gt; 5}</span>
+<span class="com">%%     }}</span>
+<span class="com">%%   ]},</span>
+<span class="com">%%   {logger_level, info}</span>
+<span class="com">%% ]}</span>
+
+<span class="com">%% Adicionar handler em runtime</span>
+logger:add_handler(
+    arquivo_log,
+    logger_std_h,
+    #{config =&gt; #{file =&gt; <span class="str">"log/erros.log"</span>}, level =&gt; error}
+).</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="health-checks">Health Checks e Auto-Recuperação</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Watchdog, heartbeat e monitoramento de saúde</div>
+          <pre class="example">-module(health_monitor).
+-behaviour(gen_server).
+-export([start_link/0, status/0]).
+-export([init/1, handle_call/3, handle_cast/2, handle_info/2,
+         terminate/2, code_change/3]).
+
+-define(INTERVALO, 30000).  <span class="com">% checar a cada 30s</span>
+
+start_link() -&gt;
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
+
+status() -&gt;
+    gen_server:call(?MODULE, status).
+
+init([]) -&gt;
+    self() ! checar,
+    {ok, #{cheques =&gt; 0, falhas =&gt; 0}}.
+
+handle_info(checar, Estado) -&gt;
+    NovoEstado = executar_checagens(Estado),
+    erlang:send_after(?INTERVALO, self(), checar),
+    {noreply, NovoEstado}.
+
+executar_checagens(Estado) -&gt;
+    Checks = [
+        checar_processo(banco_conexoes),
+        checar_processo(cache_server),
+        checar_memoria(200 * 1024 * 1024),   <span class="com">% 200 MB máximo</span>
+        checar_mailbox(banco_conexoes, 1000)  <span class="com">% mailbox não deve acumular</span>
+    ],
+    Falhas = [F || {falha, F} &lt;- Checks],
+    case Falhas of
+        [] -&gt; ok;
+        _  -&gt; ?LOG_WARNING(#{evento =&gt; health_check_falhou, falhas =&gt; Falhas})
+    end,
+    Estado#{cheques := maps:get(cheques, Estado) + 1,
+            falhas  := maps:get(falhas, Estado) + length(Falhas)}.
+
+checar_processo(Nome) -&gt;
+    case whereis(Nome) of
+        undefined -&gt; {falha, {processo_morto, Nome}};
+        Pid       -&gt;
+            case erlang:process_info(Pid, status) of
+                {status, _} -&gt; ok;
+                _            -&gt; {falha, {processo_inativo, Nome}}
+            end
+    end.
+
+checar_memoria(MaxBytes) -&gt;
+    [{total, Total} | _] = erlang:memory(),
+    case Total &gt; MaxBytes of
+        true  -&gt; {falha, {memoria_alta, Total, MaxBytes}};
+        false -&gt; ok
+    end.
+
+checar_mailbox(Nome, Max) -&gt;
+    case whereis(Nome) of
+        undefined -&gt; ok;
+        Pid       -&gt;
+            {message_queue_len, N} = erlang:process_info(Pid, message_queue_len),
+            case N &gt; Max of
+                true  -&gt; {falha, {mailbox_cheia, Nome, N}};
+                false -&gt; ok
+            end
+    end.
+
+handle_call(status, _From, Estado) -&gt;
+    {reply, Estado, Estado};
+handle_call(_, _, Estado) -&gt; {reply, ok, Estado}.
+handle_cast(_, Estado) -&gt; {noreply, Estado}.
+terminate(_, _) -&gt; ok.
+code_change(_, Estado, _) -&gt; {ok, Estado}.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Erlang/OTP. <strong>OTP System Documentation — Release Handling</strong>. Disponível em: &lt;https://www.erlang.org/doc/system/release_handling.html&gt;. Acesso em: 2026.</li>
+            <li>LOGAN, M.; MERRITT, E.; CARLSSON, R. <strong>Erlang and OTP in Action</strong>. Cap. 11-12. Manning, 2010.</li>
+            <li>Erlang/OTP. <strong>Kernel logger</strong>. Disponível em: &lt;https://www.erlang.org/doc/apps/kernel/logger.html&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="sistemas_distribuidos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Sistemas Distribuídos em Erlang</a></li>
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> OTP Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A filosofia <strong>"let it crash"</strong> significa que você escreve código para o caminho feliz, sem tratar cada erro possível, e deixa o Supervisor reconstruir o estado. Mas isso só funciona se as <strong>árvores de supervisão forem bem projetadas</strong>: granularidade adequada (um processo por conexão, não um por aplicação), intensity/period calibrados para não entrar em restart loop, e shutdown ordenado para liberar recursos limpos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

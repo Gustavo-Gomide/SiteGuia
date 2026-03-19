@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Fundamentos de Go: tipos, variáveis, funções, structs, interfaces, slices, maps, controle de fluxo e tratamento de erros." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Fundamentos | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Fundamentos</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Fundamentos</h1>
+          <p>Os fundamentos do Go cobrem o sistema de tipos (tipos primitivos, structs, interfaces e ponteiros), slices e maps como estruturas de dados centrais, funções com múltiplos retornos, controle de fluxo e o padrão idiomático de tratamento de erros com <code>(value, error)</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          Em Go, <strong>tudo o que você declara deve ser usado</strong> — uma variável não usada é erro de compilação. Da mesma forma, imports não usados causam erro. Essa regra força o código a ser limpo por construção: sem variáveis fantasma, sem imports acumulados. É frustrante no início e libertador depois.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos-variaveis">Tipos e Variáveis</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tipos primitivos, declaração e inferência</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// Declaração explícita</span>
+    <span class="kw">var</span> nome string = <span class="str">"Go"</span>
+    <span class="kw">var</span> versao int = 22
+    <span class="kw">var</span> preco float64 = 3.14
+    <span class="kw">var</span> ativo bool = true
+
+    <span class="com">// Inferência de tipo — := (short variable declaration)</span>
+    linguagem := <span class="str">"Go"</span>       <span class="com">// string</span>
+    ano       := 2009        <span class="com">// int</span>
+    pi        := 3.14159     <span class="com">// float64</span>
+
+    <span class="com">// Múltipla atribuição</span>
+    a, b := 10, 20
+    a, b = b, a              <span class="com">// swap idiomático</span>
+
+    <span class="com">// Zero values — tipos têm valor padrão (não há null/undefined)</span>
+    <span class="kw">var</span> n int      <span class="com">// 0</span>
+    <span class="kw">var</span> s string   <span class="com">// ""</span>
+    <span class="kw">var</span> f float64  <span class="com">// 0.0</span>
+    <span class="kw">var</span> b2 bool    <span class="com">// false</span>
+
+    <span class="com">// Constantes</span>
+    <span class="kw">const</span> MaxConn = 100
+    <span class="kw">const</span> Pi = 3.14159265358979
+
+    <span class="com">// iota — contadores em const block</span>
+    <span class="kw">const</span> (
+        Domingo = iota  <span class="com">// 0</span>
+        Segunda         <span class="com">// 1</span>
+        Terca           <span class="com">// 2</span>
+        Quarta          <span class="com">// 3</span>
+    )
+
+    fmt.Println(nome, versao, linguagem, ano, pi, a, b, n, s, f, b2, ativo, Pi, MaxConn, Quarta)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes">Funções</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Funções, múltiplos retornos, variádicas e closures</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="com">// Função com múltiplos retornos (idioma central de Go)</span>
+<span class="kw">func</span> <span class="fn">dividir</span>(a, b float64) (float64, error) {
+    <span class="kw">if</span> b == 0 {
+        <span class="kw">return</span> 0, fmt.Errorf(<span class="str">"divisão por zero"</span>)
+    }
+    <span class="kw">return</span> a / b, nil
+}
+
+<span class="com">// Named return values</span>
+<span class="kw">func</span> <span class="fn">minMax</span>(nums []int) (min, max int) {
+    min, max = nums[0], nums[0]
+    <span class="kw">for</span> _, v := <span class="kw">range</span> nums {
+        <span class="kw">if</span> v < min { min = v }
+        <span class="kw">if</span> v > max { max = v }
+    }
+    <span class="kw">return</span>   <span class="com">// naked return — retorna min e max</span>
+}
+
+<span class="com">// Função variádica</span>
+<span class="kw">func</span> <span class="fn">soma</span>(nums ...int) int {
+    total := 0
+    <span class="kw">for</span> _, n := <span class="kw">range</span> nums {
+        total += n
+    }
+    <span class="kw">return</span> total
+}
+
+<span class="com">// Funções como valores (first-class)</span>
+<span class="kw">func</span> <span class="fn">aplicar</span>(nums []int, f <span class="kw">func</span>(int) int) []int {
+    resultado := make([]int, len(nums))
+    <span class="kw">for</span> i, v := <span class="kw">range</span> nums {
+        resultado[i] = f(v)
+    }
+    <span class="kw">return</span> resultado
+}
+
+<span class="com">// Closure</span>
+<span class="kw">func</span> <span class="fn">contador</span>() <span class="kw">func</span>() int {
+    n := 0
+    <span class="kw">return</span> <span class="kw">func</span>() int {
+        n++
+        <span class="kw">return</span> n
+    }
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    res, err := dividir(10, 3)
+    <span class="kw">if</span> err != nil {
+        fmt.Println(<span class="str">"Erro:"</span>, err)
+    } <span class="kw">else</span> {
+        fmt.Printf(<span class="str">"%.4f\n"</span>, res)
+    }
+
+    fmt.Println(minMax([]int{5, 2, 8, 1, 9}))   <span class="com">// 1 9</span>
+    fmt.Println(soma(1, 2, 3, 4, 5))             <span class="com">// 15</span>
+
+    nums := []int{1, 2, 3, 4, 5}
+    dobrados := aplicar(nums, <span class="kw">func</span>(n int) int { <span class="kw">return</span> n * 2 })
+    fmt.Println(dobrados)    <span class="com">// [2 4 6 8 10]</span>
+
+    c := contador()
+    fmt.Println(c(), c(), c())  <span class="com">// 1 2 3</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="structs-interfaces">Structs e Interfaces</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Definir structs, métodos e interfaces implícitas</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"math"</span>
+)
+
+<span class="com">// Interface — satisfeita implicitamente</span>
+<span class="kw">type</span> Forma <span class="kw">interface</span> {
+    Area() float64
+    Perimetro() float64
+}
+
+<span class="com">// Struct com campos</span>
+<span class="kw">type</span> Circulo <span class="kw">struct</span> {
+    Raio float64
+}
+
+<span class="com">// Métodos sobre struct — pointer receiver para mutação</span>
+<span class="kw">func</span> (c Circulo) <span class="fn">Area</span>() float64      { <span class="kw">return</span> math.Pi * c.Raio * c.Raio }
+<span class="kw">func</span> (c Circulo) <span class="fn">Perimetro</span>() float64  { <span class="kw">return</span> 2 * math.Pi * c.Raio }
+
+<span class="kw">type</span> Retangulo <span class="kw">struct</span> {
+    Largura, Altura float64
+}
+
+<span class="kw">func</span> (r Retangulo) <span class="fn">Area</span>() float64      { <span class="kw">return</span> r.Largura * r.Altura }
+<span class="kw">func</span> (r Retangulo) <span class="fn">Perimetro</span>() float64 { <span class="kw">return</span> 2 * (r.Largura + r.Altura) }
+
+<span class="com">// Função que aceita qualquer Forma</span>
+<span class="kw">func</span> <span class="fn">descrever</span>(f Forma) {
+    fmt.Printf(<span class="str">"Área: %.2f, Perímetro: %.2f\n"</span>, f.Area(), f.Perimetro())
+}
+
+<span class="com">// Struct embedding (composição, não herança)</span>
+<span class="kw">type</span> Animal <span class="kw">struct</span> {
+    Nome string
+}
+
+<span class="kw">func</span> (a Animal) <span class="fn">Apresentar</span>() string {
+    <span class="kw">return</span> <span class="str">"Eu sou "</span> + a.Nome
+}
+
+<span class="kw">type</span> Cachorro <span class="kw">struct</span> {
+    Animal          <span class="com">// embedding — herda métodos de Animal</span>
+    Raca string
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    c := Circulo{Raio: 5}
+    r := Retangulo{Largura: 4, Altura: 6}
+
+    descrever(c)    <span class="com">// Circulo satisfaz Forma implicitamente</span>
+    descrever(r)
+
+    <span class="com">// Slice de interfaces</span>
+    formas := []Forma{c, r}
+    <span class="kw">for</span> _, f := <span class="kw">range</span> formas {
+        fmt.Printf(<span class="str">"%.2f\n"</span>, f.Area())
+    }
+
+    <span class="com">// Struct embedding</span>
+    d := Cachorro{Animal: Animal{Nome: <span class="str">"Rex"</span>}, Raca: <span class="str">"Labrador"</span>}
+    fmt.Println(d.Apresentar())  <span class="com">// d.Animal.Apresentar() promovido</span>
+    fmt.Println(d.Nome)          <span class="com">// campo promovido</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="slices-maps">Slices e Maps</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Arrays, slices crescentes e maps hash</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// Slice — fatia de array dinâmica</span>
+    nums := []int{1, 2, 3, 4, 5}
+    nums = append(nums, 6, 7)               <span class="com">// cresce</span>
+    fmt.Println(nums[2:5])                  <span class="com">// [3 4 5] — fatiamento [low:high]</span>
+
+    <span class="com">// make — aloca slice com len e cap</span>
+    s := make([]int, 3, 10)    <span class="com">// len=3, cap=10</span>
+    fmt.Println(len(s), cap(s))
+
+    <span class="com">// copy</span>
+    src := []int{1, 2, 3}
+    dst := make([]int, len(src))
+    copy(dst, src)
+
+    <span class="com">// Iterar com range</span>
+    <span class="kw">for</span> i, v := <span class="kw">range</span> nums {
+        fmt.Printf(<span class="str">"[%d]=%d "</span>, i, v)
+    }
+    fmt.Println()
+
+    <span class="com">// Slice de strings</span>
+    linguagens := []string{<span class="str">"Go"</span>, <span class="str">"Rust"</span>, <span class="str">"Python"</span>}
+    linguagens = append(linguagens, <span class="str">"Kotlin"</span>)
+
+    <span class="com">// 2D slice</span>
+    matriz := [][]int{
+        {1, 2, 3},
+        {4, 5, 6},
+        {7, 8, 9},
+    }
+    fmt.Println(matriz[1][2])  <span class="com">// 6</span>
+
+    <span class="com">// Map</span>
+    idades := map[string]int{
+        <span class="str">"Alice"</span>: 30,
+        <span class="str">"Bob"</span>:   25,
+    }
+    idades[<span class="str">"Carol"</span>] = 28
+
+    <span class="com">// Lookup com ok-idiom</span>
+    idade, ok := idades[<span class="str">"Alice"</span>]
+    <span class="kw">if</span> ok {
+        fmt.Printf(<span class="str">"Alice tem %d anos\n"</span>, idade)
+    }
+
+    <span class="com">// Deletar</span>
+    delete(idades, <span class="str">"Bob"</span>)
+
+    <span class="com">// Iterar mapa (ordem não determinística!)</span>
+    <span class="kw">for</span> nome, idade := <span class="kw">range</span> idades {
+        fmt.Printf(<span class="str">"%s: %d\n"</span>, nome, idade)
+    }
+
+    <span class="com">// make map</span>
+    contagem := make(map[string]int)
+    palavras := []string{<span class="str">"go"</span>, <span class="str">"e"</span>, <span class="str">"go"</span>, <span class="str">"c"</span>, <span class="str">"go"</span>}
+    <span class="kw">for</span> _, p := <span class="kw">range</span> palavras {
+        contagem[p]++
+    }
+    fmt.Println(contagem)  <span class="com">// map[c:1 e:1 go:3]</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="controle-fluxo">Controle de Fluxo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">if, for, switch, defer e ponteiros</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> <span class="str">"fmt"</span>
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// if com statement de inicialização</span>
+    <span class="kw">if</span> n := 42; n%2 == 0 {
+        fmt.Println(<span class="str">"par"</span>)
+    } <span class="kw">else</span> {
+        fmt.Println(<span class="str">"ímpar"</span>)
+    }
+
+    <span class="com">// for — único laço em Go (3 formas)</span>
+    <span class="kw">for</span> i := 0; i < 5; i++ {        <span class="com">// C-style</span>
+        fmt.Print(i, <span class="str">" "</span>)
+    }
+    fmt.Println()
+
+    <span class="kw">for</span> i := 0; i < 10; i += 2 {   <span class="com">// while-style (só condição)</span>
+        fmt.Print(i, <span class="str">" "</span>)
+    }
+    fmt.Println()
+
+    <span class="com">// switch — sem break explícito (não há fallthrough por padrão)</span>
+    dia := 3
+    <span class="kw">switch</span> dia {
+    <span class="kw">case</span> 1, 7:
+        fmt.Println(<span class="str">"fim de semana"</span>)
+    <span class="kw">case</span> 2, 3, 4, 5, 6:
+        fmt.Println(<span class="str">"dia útil"</span>)
+    <span class="kw">default</span>:
+        fmt.Println(<span class="str">"inválido"</span>)
+    }
+
+    <span class="com">// switch sem expressão — substitui if/else if</span>
+    x := 75
+    <span class="kw">switch</span> {
+    <span class="kw">case</span> x >= 90: fmt.Println(<span class="str">"A"</span>)
+    <span class="kw">case</span> x >= 70: fmt.Println(<span class="str">"B"</span>)
+    <span class="kw">default</span>:      fmt.Println(<span class="str">"C"</span>)
+    }
+
+    <span class="com">// defer — executa ao retornar da função (LIFO)</span>
+    defer fmt.Println(<span class="str">"3: limpeza final"</span>)
+    defer fmt.Println(<span class="str">"2: liberando recursos"</span>)
+    fmt.Println(<span class="str">"1: trabalhando..."</span>)
+    <span class="com">// Output: 1, 2, 3</span>
+
+    <span class="com">// Ponteiros</span>
+    v := 42
+    p := &amp;v          <span class="com">// endereço de v</span>
+    *p = 100         <span class="com">// desreferenciar e modificar</span>
+    fmt.Println(v)   <span class="com">// 100</span>
+
+    <span class="com">// Go não tem aritmética de ponteiros — evita bugs</span>
+    <span class="com">// new() aloca zero value</span>
+    q := new(int)
+    *q = 99
+    fmt.Println(*q)  <span class="com">// 99</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="erros">Tratamento de Erros</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Padrão de erros: (value, error), errors.Is/As, wrapping</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"errors"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="com">// Definir tipo de erro customizado</span>
+<span class="kw">type</span> ErrValidacao <span class="kw">struct</span> {
+    Campo   string
+    Mensagem string
+}
+
+<span class="kw">func</span> (e *ErrValidacao) <span class="fn">Error</span>() string {
+    <span class="kw">return</span> fmt.Sprintf(<span class="str">"validação: campo '%s' — %s"</span>, e.Campo, e.Mensagem)
+}
+
+<span class="com">// Sentinel errors</span>
+<span class="kw">var</span> ErrNaoEncontrado = errors.New(<span class="str">"não encontrado"</span>)
+
+<span class="kw">func</span> <span class="fn">buscar</span>(id int) (string, error) {
+    db := map[int]string{1: <span class="str">"Alice"</span>, 2: <span class="str">"Bob"</span>}
+    v, ok := db[id]
+    <span class="kw">if</span> !ok {
+        <span class="kw">return</span> <span class="str">""</span>, fmt.Errorf(<span class="str">"buscar(id=%d): %w"</span>, id, ErrNaoEncontrado)
+    }
+    <span class="kw">return</span> v, nil
+}
+
+<span class="kw">func</span> <span class="fn">validar</span>(nome string) error {
+    <span class="kw">if</span> len(nome) < 3 {
+        <span class="kw">return</span> &amp;ErrValidacao{Campo: <span class="str">"nome"</span>, Mensagem: <span class="str">"mínimo 3 caracteres"</span>}
+    }
+    <span class="kw">return</span> nil
+}
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// Verificação padrão</span>
+    nome, err := buscar(99)
+    <span class="kw">if</span> err != nil {
+        fmt.Println(err)
+    } <span class="kw">else</span> {
+        fmt.Println(nome)
+    }
+
+    <span class="com">// errors.Is — verifica sentinel (atravessa Unwrap)</span>
+    _, err = buscar(99)
+    <span class="kw">if</span> errors.Is(err, ErrNaoEncontrado) {
+        fmt.Println(<span class="str">"recurso não existe"</span>)
+    }
+
+    <span class="com">// errors.As — extrai tipo específico</span>
+    err2 := validar(<span class="str">"Jo"</span>)
+    <span class="kw">var</span> errVal *ErrValidacao
+    <span class="kw">if</span> errors.As(err2, &amp;errVal) {
+        fmt.Printf(<span class="str">"Campo com erro: %s\n"</span>, errVal.Campo)
+    }
+
+    <span class="com">// panic e recover (use raramente)</span>
+    defer <span class="kw">func</span>() {
+        <span class="kw">if</span> r := recover(); r != nil {
+            fmt.Println(<span class="str">"Recuperado de panic:"</span>, r)
+        }
+    }()
+    <span class="com">// panic("algo inesperado")  // descomente para testar</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GO TEAM. <strong>A Tour of Go</strong>. Disponível em: &lt;https://go.dev/tour/&gt;. Acesso em: 2026.</li>
+            <li>DONOVAN, A. A. A.; KERNIGHAN, B. W. <strong>The Go Programming Language</strong>. Addison-Wesley, 2015.</li>
+            <li>GO TEAM. <strong>Go by Example</strong>. Disponível em: &lt;https://gobyexample.com&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Go Avançado — Goroutines e Channels</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O padrão <strong><code>(value, error)</code></strong> em Go é explícito por design. Em Java, uma exceção pode emergir de qualquer ponto da pilha invisível para o chamador. Em Go, toda função que pode falhar <em>anuncia</em> isso na assinatura — o compilador força você a lidar com o erro ou descartá-lo (<code>_</code>) conscientemente. Não é belo, mas é auditável: você pode ler qualquer código Go e entender exatamente o que pode falhar.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,213 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Autenticação web moderna: fatores, MFA, passwordless, passkeys, SSO e melhores práticas de implementação segura." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Autenticação Web | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Autenticação Web</strong></p>
+      </div>
+
+      <section>
+        <h2 id="fatores" class="section-title">Fatores de Autenticação</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Autenticação Web</h1>
+          <p>Fatores de autenticação, MFA, passkeys e protocolos modernos de identidade.</p>
+        </div>
+
+        <p class="intro-highlight">Autenticação prova que você é quem diz ser. Os fatores de autenticação são classificados em três categorias fundamentais. Combinar dois ou mais é a base do MFA — Multi-Factor Authentication.</p>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Fator</th><th>Tipo</th><th>Exemplos</th><th>Fraqueza</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Conhecimento</strong></td>
+                <td>Algo que você <em>sabe</em></td>
+                <td>Senha, PIN, pergunta secreta</td>
+                <td>Phishing, vazamentos, brute force</td>
+              </tr>
+              <tr>
+                <td><strong>Posse</strong></td>
+                <td>Algo que você <em>tem</em></td>
+                <td>OTP (SMS/TOTP), chave física (YubiKey), smartphone</td>
+                <td>SIM swap, roubo do dispositivo, phishing em tempo real</td>
+              </tr>
+              <tr>
+                <td><strong>Inerência</strong></td>
+                <td>Algo que você <em>é</em></td>
+                <td>Impressão digital, reconhecimento facial, iris</td>
+                <td>Spoofing biométrico; imutável se vazado</td>
+              </tr>
+              <tr>
+                <td><strong>Localização</strong></td>
+                <td>Onde você <em>está</em></td>
+                <td>IP geolocalizado, rede corporativa</td>
+                <td>VPN/proxy; fator adicional, não standalone</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="mfa" class="section-title">MFA — Multi-Factor Authentication</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>SMS / Email OTP</h3>
+            <p>Código de uso único enviado por SMS ou email. Conveniente mas vulnerável a SIM swap, ataques de interceptação SS7 e phishing.</p>
+            <p><strong>Nível:</strong> Básico</p>
+          </div>
+          <div class="card">
+            <h3>TOTP (Time-based OTP)</h3>
+            <p>Apps como Google Authenticator / Authy geram códigos a cada 30s baseados em HMAC-SHA1 + timestamp (RFC 6238). Não depende de rede.</p>
+            <p><strong>Nível:</strong> Bom</p>
+          </div>
+          <div class="card card--success">
+            <h3>FIDO2 / WebAuthn</h3>
+            <p>Criptografia de chave pública. A chave privada nunca sai do dispositivo. Resistente a phishing — a chave é vinculada ao domínio. Hardware keys (YubiKey) ou biometria do dispositivo.</p>
+            <p><strong>Nível:</strong> Excelente</p>
+          </div>
+          <div class="card">
+            <h3>Push Notification</h3>
+            <p>App de autenticação envia notificação ao smartphone para aprovar/rejeitar. Vulnerável a MFA fatigue attack (bombardear aprovações até o usuário aceitar).</p>
+            <p><strong>Nível:</strong> Bom</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="passwordless" class="section-title">Autenticação Passwordless e Passkeys</h2>
+        <div class="section-divider"></div>
+
+        <div class="message-block">
+          <p><strong>Passkeys</strong> são a implementação consumer de FIDO2. Vinculam a autenticação ao dispositivo e ao domínio — eliminam phishing de senha por design. Suportadas nativamente em iOS 16+, Android 9+, Windows 11 e todos os browsers modernos.</p>
+        </div>
+
+        <pre class="code-block">
+// Registro de Passkey (WebAuthn API — simplificado):
+const credential = await navigator.credentials.create({
+  publicKey: {
+    challenge: serverChallenge,   // bytes aleatórios do servidor
+    rp: { name: "Minha App", id: "minhaapp.com" },
+    user: { id: userId, name: "user@email.com", displayName: "User" },
+    pubKeyCredParams: [{ alg: -7, type: "public-key" }],  // ES256
+    authenticatorSelection: {
+      residentKey: "required",         // passkey salva no dispositivo
+      userVerification: "required"     // exige biometria/PIN local
+    }
+  }
+});
+// Servidor armazena a chave pública e o credential ID
+
+// Login:
+const assertion = await navigator.credentials.get({
+  publicKey: { challenge: serverChallenge, rpId: "minhaapp.com" }
+});
+// Servidor verifica assinatura com a chave pública armazenada</pre>
+      </section>
+
+      <section>
+        <h2 id="sso" class="section-title">SSO — Single Sign-On</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Como funciona</p>
+            <p>O usuário autentica uma vez em um Identity Provider (IdP) central. As aplicações (Service Providers) confiam no IdP e recebem tokens/asserções de identidade sem exigir nova senha.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Protocolos</p>
+            <ul>
+              <li><strong>SAML 2.0</strong> — XML, enterprise, federação</li>
+              <li><strong>OpenID Connect / OAuth 2.0</strong> — JSON/JWT, web/mobile</li>
+              <li><strong>Kerberos</strong> — redes Windows/Active Directory</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Benefícios</p>
+            <ul>
+              <li>Uma senha gerenciada centralmente</li>
+              <li>MFA aplicado no IdP — proteção para todas as apps</li>
+              <li>Revogação centralizada de acesso</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Riscos</p>
+            <ul>
+              <li>Single point of failure — IdP comprometido = tudo comprometido</li>
+              <li>Misconfigurações no trust de SP</li>
+              <li>Privilege escalation via claims/roles no token</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="boas-praticas" class="section-title">Boas Práticas de Autenticação</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Prática</th><th>Detalhe</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Hash de senhas com algoritmo correto</td><td>Use bcrypt (cost ≥ 12), Argon2id ou scrypt. Nunca MD5, SHA1 ou SHA256 puros sem salt</td></tr>
+              <tr><td>Comprimento mínimo de senha</td><td>NIST 800-63B recomenda mínimo 8 caracteres; melhor 12+ sem regras complexas de composição</td></tr>
+              <tr><td>Verificar senhas vazadas</td><td>Integrar HIBP API; bloquear ou alertar uso de senhas em lists de breach</td></tr>
+              <tr><td>Rate limiting em endpoints de auth</td><td>Login, reset de senha, verificação de MFA — todos precisam ter throttle por IP e por conta</td></tr>
+              <tr><td>Mensagens de erro genéricas</td><td>"Credenciais inválidas" — não revelar se email existe ou não (user enumeration)</td></tr>
+              <tr><td>Expiração e rotação de sessão</td><td>Sessões expiram por inatividade; regenerar session ID após login; invalidar no logout</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>A tendência atual aponta para o fim das senhas. Passkeys oferecem experiência de usuário melhor (nenhuma senha para lembrar) e segurança muito superior. Se sua aplicação precisa de senhas hoje, combine com TOTP ou FIDO2. O risco de senha fraca ou reutilizada nunca será zero enquanto senhas existirem.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A melhor senha é aquela que não existe — passkeys são o futuro da autenticação segura."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

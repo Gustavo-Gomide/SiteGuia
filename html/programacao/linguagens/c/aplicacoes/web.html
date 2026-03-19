@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C para desenvolvimento web: servidores HTTP com libmicrohttpd, CGI, libevent, nginx modules e a arquitetura do servidor web mais usado do mundo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C &mdash; Desenvolvimento Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="servidor" aria-hidden="true"></span></div>
+          <h1>C na Web</h1>
+          <p>libmicrohttpd, libevent, CGI/FastCGI, nginx modules e os fundamentos de servidores HTTP de alta performance escritos em C.</p>
+        </div>
+        <p class="intro-highlight">
+          nginx e Apache HTTPD &mdash; os dois servidores web mais usados do planeta &mdash; são escritos em C. Redis, Memcached (que alimenta Facebook/Twitter em escala) e o runtime do PHP também. Entender C para web é entender a camada de infraestrutura que suporta toda a internet.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="microhttpd">libmicrohttpd: Servidor HTTP Embutido</h2>
+        <p>libmicrohttpd é uma biblioteca GNU para criar servidores HTTP dentro de qualquer aplicação C. Usada para REST APIs em dispositivos embarcados, microserviços de baixíssima latência e serviços internos em sistemas distribuídos.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; servidor HTTP com roteamento manual</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;microhttpd.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdint.h&gt;</span>
+
+<span class="kw">#define</span> PORTA <span class="num">8080</span>
+
+<span class="kw">static</span> <span class="tp">enum</span> MHD_Result <span class="fn">handle_request</span>(
+    <span class="tp">void</span> *cls,
+    <span class="kw">struct</span> MHD_Connection *conn,
+    <span class="kw">const</span> <span class="tp">char</span> *url,
+    <span class="kw">const</span> <span class="tp">char</span> *method,
+    <span class="kw">const</span> <span class="tp">char</span> *version,
+    <span class="kw">const</span> <span class="tp">char</span> *upload_data,
+    <span class="tp">size_t</span>      *upload_size,
+    <span class="tp">void</span>       **con_cls)
+{
+    (<span class="tp">void</span>)cls; (<span class="tp">void</span>)version; (<span class="tp">void</span>)upload_data;
+    (<span class="tp">void</span>)upload_size; (<span class="tp">void</span>)con_cls;
+
+    <span class="kw">const</span> <span class="tp">char</span> *body;
+    <span class="tp">unsigned</span> <span class="tp">int</span> status = MHD_HTTP_OK;
+
+    <span class="kw">if</span> (<span class="fn">strcmp</span>(url, <span class="str">"/"</span>) == <span class="num">0</span>) {
+        body = <span class="str">"{\"msg\":\"Bem-vindo ao servidor C!\"}"</span>;
+    } <span class="kw">else if</span> (<span class="fn">strcmp</span>(url, <span class="str">"/status"</span>) == <span class="num">0</span>) {
+        body = <span class="str">"{\"status\":\"ok\",\"uptime\":true}"</span>;
+    } <span class="kw">else</span> {
+        body   = <span class="str">"{\"erro\":\"rota nao encontrada\"}"</span>;
+        status = MHD_HTTP_NOT_FOUND;
+    }
+
+    <span class="kw">struct</span> MHD_Response *resp = <span class="fn">MHD_create_response_from_buffer</span>(
+        <span class="fn">strlen</span>(body), (<span class="tp">void</span> *)body, MHD_RESPMEM_PERSISTENT
+    );
+    <span class="fn">MHD_add_response_header</span>(resp, <span class="str">"Content-Type"</span>, <span class="str">"application/json"</span>);
+    <span class="fn">MHD_add_response_header</span>(resp, <span class="str">"Access-Control-Allow-Origin"</span>, <span class="str">"*"</span>);
+
+    <span class="tp">enum</span> MHD_Result ret = <span class="fn">MHD_queue_response</span>(conn, status, resp);
+    <span class="fn">MHD_destroy_response</span>(resp);
+    (<span class="tp">void</span>)method;
+    <span class="kw">return</span> ret;
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="kw">struct</span> MHD_Daemon *daemon = <span class="fn">MHD_start_daemon</span>(
+        MHD_USE_INTERNAL_POLLING_THREAD | MHD_USE_EPOLL,
+        PORTA, NULL, NULL,
+        &amp;handle_request, NULL,
+        MHD_OPTION_THREAD_POOL_SIZE, (<span class="tp">unsigned</span> <span class="tp">int</span>)<span class="num">4</span>,
+        MHD_OPTION_END
+    );
+    <span class="kw">if</span> (!daemon) { <span class="fn">fprintf</span>(stderr, <span class="str">"Erro ao iniciar daemon\n"</span>); <span class="kw">return</span> <span class="num">1</span>; }
+    <span class="fn">printf</span>(<span class="str">"Servidor em http://localhost:%d\n"</span>, PORTA);
+    <span class="fn">getchar</span>();  <span class="com">/* aguardar Enter para encerrar */</span>
+    <span class="fn">MHD_stop_daemon</span>(daemon);
+    <span class="kw">return</span> <span class="num">0</span>;
+}
+<span class="com">/* gcc -o srv servidor.c $(pkg-config --cflags --libs libmicrohttpd) */</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="libevent">libevent: I/O Assíncrono Event-Driven</h2>
+        <p>libevent usa o melhor mecanismo de polling disponível no SO (epoll no Linux, kqueue no macOS, IOCP no Windows) de forma transparente. É a base do Tor, Memcached e muitos proxies de alta performance.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; servidor TCP assíncrono com libevent (evento de leitura)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;event2/event.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;event2/bufferevent.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;event2/listener.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;arpa/inet.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="kw">static</span> <span class="tp">void</span> <span class="fn">cb_read</span>(<span class="kw">struct</span> bufferevent *bev, <span class="tp">void</span> *ctx) {
+    (<span class="tp">void</span>)ctx;
+    <span class="tp">char</span> buf[<span class="num">512</span>];
+    <span class="tp">size_t</span> n;
+    <span class="kw">while</span> ((n = <span class="fn">bufferevent_read</span>(bev, buf, <span class="kw">sizeof</span>(buf) - <span class="num">1</span>)) &gt; <span class="num">0</span>) {
+        buf[n] = <span class="str">'\0'</span>;
+        <span class="fn">fprintf</span>(stdout, <span class="str">"Recebido: %s"</span>, buf);
+        <span class="com">/* Echo de volta */</span>
+        <span class="fn">bufferevent_write</span>(bev, buf, n);
+    }
+}
+
+<span class="kw">static</span> <span class="tp">void</span> <span class="fn">cb_accept</span>(<span class="kw">struct</span> evconnlistener *lsn,
+                       <span class="tp">evutil_socket_t</span> fd,
+                       <span class="kw">struct</span> sockaddr *addr, <span class="tp">int</span> len, <span class="tp">void</span> *ctx) {
+    (<span class="tp">void</span>)lsn; (<span class="tp">void</span>)addr; (<span class="tp">void</span>)len;
+    <span class="kw">struct</span> event_base *base = ctx;
+    <span class="kw">struct</span> bufferevent *bev = <span class="fn">bufferevent_socket_new</span>(
+        base, fd, BEV_OPT_CLOSE_ON_FREE);
+    <span class="fn">bufferevent_setcb</span>(bev, cb_read, NULL, NULL, NULL);
+    <span class="fn">bufferevent_enable</span>(bev, EV_READ | EV_WRITE);
+    <span class="fn">printf</span>(<span class="str">"Nova conexão aceita\n"</span>);
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="kw">struct</span> event_base *base = <span class="fn">event_base_new</span>();
+
+    <span class="kw">struct</span> sockaddr_in sin = {
+        .sin_family = AF_INET,
+        .sin_port   = <span class="fn">htons</span>(<span class="num">9000</span>),
+        .sin_addr   = {.s_addr = INADDR_ANY}
+    };
+    <span class="kw">struct</span> evconnlistener *lsn = <span class="fn">evconnlistener_new_bind</span>(
+        base, cb_accept, base,
+        LEV_OPT_CLOSE_ON_FREE | LEV_OPT_REUSEABLE,
+        <span class="num">128</span>,
+        (<span class="kw">struct</span> sockaddr *)&amp;sin, <span class="kw">sizeof</span>(sin)
+    );
+
+    <span class="fn">printf</span>(<span class="str">"Echo server em :9000\n"</span>);
+    <span class="fn">event_base_dispatch</span>(base);  <span class="com">/* loop de eventos */</span>
+    <span class="fn">evconnlistener_free</span>(lsn);
+    <span class="fn">event_base_free</span>(base);
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cgi">CGI e FastCGI em C</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; CGI puro (stdin/stdout como protocolo)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;stdio.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;stdlib.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string.h&gt;</span>
+
+<span class="com">/* Decodificar URL encoding: %2B → + */</span>
+<span class="tp">void</span> <span class="fn">url_decode</span>(<span class="tp">char</span> *dst, <span class="kw">const</span> <span class="tp">char</span> *src, <span class="tp">size_t</span> max) {
+    <span class="tp">size_t</span> i = <span class="num">0</span>;
+    <span class="kw">while</span> (*src &amp;&amp; i &lt; max - <span class="num">1</span>) {
+        <span class="kw">if</span> (*src == <span class="str">'%'</span> &amp;&amp; src[<span class="num">1</span>] &amp;&amp; src[<span class="num">2</span>]) {
+            <span class="tp">char</span> hex[<span class="num">3</span>] = {src[<span class="num">1</span>], src[<span class="num">2</span>], <span class="str">'\0'</span>};
+            dst[i++] = (<span class="tp">char</span>) <span class="fn">strtol</span>(hex, NULL, <span class="num">16</span>);
+            src += <span class="num">3</span>;
+        } <span class="kw">else if</span> (*src == <span class="str">'+'</span>) {
+            dst[i++] = <span class="str">' '</span>; src++;
+        } <span class="kw">else</span> {
+            dst[i++] = *src++;
+        }
+    }
+    dst[i] = <span class="str">'\0'</span>;
+}
+
+<span class="tp">int</span> <span class="fn">main</span>(<span class="tp">void</span>) {
+    <span class="com">/* CGI: variáveis de ambiente fornecem metadados */</span>
+    <span class="kw">const</span> <span class="tp">char</span> *method   = <span class="fn">getenv</span>(<span class="str">"REQUEST_METHOD"</span>);
+    <span class="kw">const</span> <span class="tp">char</span> *qs       = <span class="fn">getenv</span>(<span class="str">"QUERY_STRING"</span>);
+    <span class="kw">const</span> <span class="tp">char</span> *clen_str = <span class="fn">getenv</span>(<span class="str">"CONTENT_LENGTH"</span>);
+
+    <span class="fn">printf</span>(<span class="str">"Content-Type: text/html\r\n\r\n"</span>);
+    <span class="fn">printf</span>(<span class="str">"&lt;!DOCTYPE html&gt;&lt;html&gt;&lt;body&gt;\n"</span>);
+    <span class="fn">printf</span>(<span class="str">"&lt;h1&gt;Ola do CGI em C!&lt;/h1&gt;\n"</span>);
+
+    <span class="kw">if</span> (method) <span class="fn">printf</span>(<span class="str">"&lt;p&gt;Method: %s&lt;/p&gt;\n"</span>, method);
+    <span class="kw">if</span> (qs &amp;&amp; *qs) {
+        <span class="tp">char</span> decoded[<span class="num">512</span>];
+        <span class="fn">url_decode</span>(decoded, qs, <span class="kw">sizeof</span>(decoded));
+        <span class="fn">printf</span>(<span class="str">"&lt;p&gt;Query: %s&lt;/p&gt;\n"</span>, decoded);
+    }
+
+    <span class="kw">if</span> (method &amp;&amp; <span class="fn">strcmp</span>(method, <span class="str">"POST"</span>) == <span class="num">0</span> &amp;&amp; clen_str) {
+        <span class="tp">int</span> clen = <span class="fn">atoi</span>(clen_str);
+        <span class="kw">if</span> (clen &gt; <span class="num">0</span> &amp;&amp; clen &lt; <span class="num">4096</span>) {
+            <span class="tp">char</span> body[<span class="num">4096</span>];
+            <span class="tp">int</span> lido = (<span class="tp">int</span>) <span class="fn">fread</span>(body, <span class="num">1</span>, (<span class="tp">size_t</span>)clen, stdin);
+            body[lido] = <span class="str">'\0'</span>;
+            <span class="fn">printf</span>(<span class="str">"&lt;p&gt;Body: %s&lt;/p&gt;\n"</span>, body);
+        }
+    }
+
+    <span class="fn">printf</span>(<span class="str">"&lt;/body&gt;&lt;/html&gt;\n"</span>);
+    <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="nginx">Arquitetura do nginx: Módulo em C</h2>
+
+        <div class="panel">
+          <p class="panel-title">Como o nginx usa C</p>
+          <p>nginx define sua arquitetura inteiramente em C. Um módulo nginx é uma <code>ngx_module_t</code> — uma struct com ponteiros de função. O framework chama esses hooks durante o ciclo de vida da requisição: <code>postconfiguration</code>, <code>create_conf</code>, <code>merge_conf</code> e o handler propriamente dito.</p>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C &mdash; esqueleto de módulo nginx (handler simples)</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;ngx_config.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ngx_core.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;ngx_http.h&gt;</span>
+
+<span class="kw">static</span> <span class="tp">ngx_int_t</span> <span class="fn">ngx_hello_handler</span>(<span class="tp">ngx_http_request_t</span> *r) {
+    <span class="kw">static</span> <span class="tp">u_char</span> resp[] = <span class="str">"Ola do modulo C nginx!"</span>;
+
+    r-&gt;headers_out.status           = NGX_HTTP_OK;
+    r-&gt;headers_out.content_length_n = <span class="kw">sizeof</span>(resp) - <span class="num">1</span>;
+    <span class="fn">ngx_http_send_header</span>(r);
+
+    <span class="tp">ngx_buf_t</span> *b = <span class="fn">ngx_pcalloc</span>(r-&gt;pool, <span class="kw">sizeof</span>(<span class="tp">ngx_buf_t</span>));
+    b-&gt;pos  = resp; b-&gt;last = resp + <span class="kw">sizeof</span>(resp) - <span class="num">1</span>;
+    b-&gt;in_memory = <span class="num">1</span>; b-&gt;last_buf = <span class="num">1</span>;
+
+    <span class="tp">ngx_chain_t</span> out = {b, NULL};
+    <span class="kw">return</span> <span class="fn">ngx_http_output_filter</span>(r, &amp;out);
+}
+
+<span class="kw">static</span> <span class="tp">ngx_http_module_t</span> ngx_hello_module_ctx = {
+    NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL
+};
+
+<span class="tp">ngx_module_t</span> ngx_hello_module = {
+    NGX_MODULE_V1,
+    &amp;ngx_hello_module_ctx,
+    NULL,           <span class="com">/* commands */</span>
+    NGX_HTTP_MODULE,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NGX_MODULE_V1_PADDING
+};</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GNU PROJECT. <strong>libmicrohttpd: A library for HTTP server programming</strong>. Disponível em: &lt;https://www.gnu.org/software/libmicrohttpd/&gt;. Acesso em: 2025.</li>
+            <li>NIALL DOUGLAS; JOEY PAPATHEODOROU. <strong>libevent Documentation</strong>. Disponível em: &lt;https://libevent.org/&gt;. Acesso em: 2025.</li>
+            <li>NGINX INC. <strong>Development Guide — nginx</strong>. Disponível em: &lt;https://nginx.org/en/docs/dev/development_guide.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C com Banco de Dados</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> C para Mobile (NDK)</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "nginx handles millions of concurrent connections with a fraction of the memory that Apache uses." &mdash; Igor Sysoev</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

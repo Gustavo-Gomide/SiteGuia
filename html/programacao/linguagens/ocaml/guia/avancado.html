@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="OCaml Avançado: sistema de módulos com functor e signature, tipos algébricos, GADTs, funções de ordem superior, concorrência com Lwt e Effect handlers." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>OCaml — Avançado</h1>
+          <p>Functors, GADTs, concorrência com Lwt, tipos algébricos polimórficos e o sistema de módulos mais poderoso das linguagens de produção.</p>
+        </div>
+        <p class="intro-highlight">
+          O sistema de módulos de OCaml é considerado o mais expressivo entre linguagens de produção. Functors são "funções sobre módulos" — permitem parametrizar implementações por comportamento, de forma verificada pelo compilador, sem overhead em runtime.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tipos-algébricos">Tipos Algébricos — Variants</h2>
+        <div class="panel">
+          <p>Tipos algébricos (também chamados de <em>sum types</em> ou <em>variants</em>) são o coração expressivo de OCaml. Permitem modelar dados com estrutura precisa, sem null pointers, sem casting, sem erros de tipo em runtime.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">variants.ml — Tipos algébricos completos</div>
+          <pre class="example"><span class="com">(* Enumeração simples *)</span>
+<span class="kw">type</span> <span class="tp">cor</span> = <span class="tp">Vermelho</span> | <span class="tp">Verde</span> | <span class="tp">Azul</span> | <span class="tp">Outro</span> <span class="kw">of</span> <span class="tp">string</span>
+
+<span class="kw">let</span> <span class="fn">nome_cor</span> = <span class="kw">function</span>
+  | <span class="tp">Vermelho</span>  -> <span class="str">"vermelho"</span>
+  | <span class="tp">Verde</span>     -> <span class="str">"verde"</span>
+  | <span class="tp">Azul</span>      -> <span class="str">"azul"</span>
+  | <span class="tp">Outro</span> s  -> s
+
+<span class="com">(* Tipo com dados associados — expressões de calculadora *)</span>
+<span class="kw">type</span> <span class="tp">expr</span> =
+  | <span class="tp">Num</span>    <span class="kw">of</span> <span class="tp">float</span>
+  | <span class="tp">Var</span>    <span class="kw">of</span> <span class="tp">string</span>
+  | <span class="tp">Add</span>    <span class="kw">of</span> <span class="tp">expr</span> * <span class="tp">expr</span>
+  | <span class="tp">Mul</span>    <span class="kw">of</span> <span class="tp">expr</span> * <span class="tp">expr</span>
+  | <span class="tp">Neg</span>    <span class="kw">of</span> <span class="tp">expr</span>
+  | <span class="tp">Let</span>    <span class="kw">of</span> <span class="tp">string</span> * <span class="tp">expr</span> * <span class="tp">expr</span>  <span class="com">(* let x = e1 in e2 *)</span>
+
+<span class="com">(* Avaliador recursivo *)</span>
+<span class="kw">let rec</span> <span class="fn">eval</span> env = <span class="kw">function</span>
+  | <span class="tp">Num</span> n          -> n
+  | <span class="tp">Var</span> x          -> <span class="tp">List</span>.<span class="fn">assoc</span> x env
+  | <span class="tp">Add</span> (e1, e2)   -> <span class="fn">eval</span> env e1 +. <span class="fn">eval</span> env e2
+  | <span class="tp">Mul</span> (e1, e2)   -> <span class="fn">eval</span> env e1 *. <span class="fn">eval</span> env e2
+  | <span class="tp">Neg</span> e          -> -. (<span class="fn">eval</span> env e)
+  | <span class="tp">Let</span> (x, e1, e2) ->
+      <span class="kw">let</span> v = <span class="fn">eval</span> env e1 <span class="kw">in</span>
+      <span class="fn">eval</span> ((x, v) :: env) e2
+
+<span class="com">(* let x = 3 + 4 in x * 2 → 14.0 *)</span>
+<span class="kw">let</span> arvore =
+  <span class="tp">Let</span> (<span class="str">"x"</span>, <span class="tp">Add</span> (<span class="tp">Num</span> <span class="num">3.0</span>, <span class="tp">Num</span> <span class="num">4.0</span>),
+    <span class="tp">Mul</span> (<span class="tp">Var</span> <span class="str">"x"</span>, <span class="tp">Num</span> <span class="num">2.0</span>))
+
+<span class="kw">let</span> () = <span class="fn">Printf.printf</span> <span class="str">"%.1f\n"</span> (<span class="fn">eval</span> [] arvore)  <span class="com">(* 14.0 *)</span>
+
+<span class="com">(* Tipo polimórfico — listas e árvores genéricas *)</span>
+<span class="kw">type</span> <span class="tp">'a arvore_bin</span> =
+  | <span class="tp">Folha</span>
+  | <span class="tp">Nó</span> <span class="kw">of</span> <span class="tp">'a arvore_bin</span> * <span class="tp">'a</span> * <span class="tp">'a arvore_bin</span>
+
+<span class="kw">let rec</span> <span class="fn">inserir</span> v = <span class="kw">function</span>
+  | <span class="tp">Folha</span>          -> <span class="tp">Nó</span> (<span class="tp">Folha</span>, v, <span class="tp">Folha</span>)
+  | <span class="tp">Nó</span> (l, x, r)  ->
+      <span class="kw">if</span>      v < x  <span class="kw">then</span> <span class="tp">Nó</span> (<span class="fn">inserir</span> v l, x, r)
+      <span class="kw">else if</span> v > x  <span class="kw">then</span> <span class="tp">Nó</span> (l, x, <span class="fn">inserir</span> v r)
+      <span class="kw">else</span>                  <span class="tp">Nó</span> (l, x, r)   <span class="com">(* duplicata: ignora *)</span>
+
+<span class="kw">let rec</span> <span class="fn">em_ordem</span> = <span class="kw">function</span>
+  | <span class="tp">Folha</span>         -> []
+  | <span class="tp">Nó</span> (l, x, r) -> <span class="fn">em_ordem</span> l @ [x] @ <span class="fn">em_ordem</span> r
+
+<span class="kw">let</span> bst =
+  [<span class="num">5</span>; <span class="num">3</span>; <span class="num">7</span>; <span class="num">1</span>; <span class="num">4</span>]
+  |> <span class="tp">List</span>.<span class="fn">fold_left</span> (<span class="kw">fun</span> t v -> <span class="fn">inserir</span> v t) <span class="tp">Folha</span>
+  |> <span class="fn">em_ordem</span>
+<span class="com">(* [1; 3; 4; 5; 7] *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="modulos-avancados">Sistema de Módulos — Signature e Functor</h2>
+        <div class="panel">
+          <p>O sistema de módulos de OCaml tem três componentes:</p>
+          <ul>
+            <li><strong>Structure</strong> (<code>struct ... end</code>): implementação — o "corpo" do módulo</li>
+            <li><strong>Signature</strong> (<code>sig ... end</code>): interface — o "contrato" do módulo</li>
+            <li><strong>Functor</strong>: função que recebe módulos como argumento e retorna novos módulos</li>
+          </ul>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">modulos_avancados.ml — Signature, hiding e Functor</div>
+          <pre class="example"><span class="com">(* ── Signature (interface/contrato) ────────────────────────────────── *)</span>
+<span class="kw">module type</span> <span class="tp">PILHA</span> = <span class="kw">sig</span>
+  <span class="kw">type</span> <span class="tp">'a t</span>                           <span class="com">(* tipo abstrato *)</span>
+  <span class="kw">val</span> <span class="fn">vazia</span>  : <span class="tp">'a t</span>
+  <span class="kw">val</span> <span class="fn">empilhar</span> : <span class="tp">'a</span> -> <span class="tp">'a t</span> -> <span class="tp">'a t</span>
+  <span class="kw">val</span> <span class="fn">topo</span>   : <span class="tp">'a t</span> -> <span class="tp">'a option</span>
+  <span class="kw">val</span> <span class="fn">desempilhar</span> : <span class="tp">'a t</span> -> <span class="tp">'a t</span>
+  <span class="kw">val</span> <span class="fn">tamanho</span> : <span class="tp">'a t</span> -> <span class="tp">int</span>
+<span class="kw">end</span>
+
+<span class="com">(* ── Implementação (structure) ──────────────────────────────────────── *)</span>
+<span class="kw">module</span> <span class="tp">PilhaLista</span> : <span class="tp">PILHA</span> = <span class="kw">struct</span>
+  <span class="kw">type</span> <span class="tp">'a t</span> = <span class="tp">'a list</span>
+  <span class="kw">let</span> vazia            = []
+  <span class="kw">let</span> <span class="fn">empilhar</span> x xs   = x :: xs
+  <span class="kw">let</span> <span class="fn">topo</span>             = <span class="kw">function</span> [] -> <span class="tp">None</span> | x :: _ -> <span class="tp">Some</span> x
+  <span class="kw">let</span> <span class="fn">desempilhar</span>      = <span class="kw">function</span> [] -> [] | _ :: xs -> xs
+  <span class="kw">let</span> <span class="fn">tamanho</span>          = <span class="tp">List</span>.<span class="fn">length</span>
+<span class="kw">end</span>
+
+<span class="com">(* A assinatura PILHA oculta 'a t = 'a list — encapsulamento real *)</span>
+
+<span class="com">(* ── Functor — função sobre módulos ─────────────────────────────────── *)</span>
+<span class="com">(* Assinatura que qualquer tipo ordenável deve satisfazer *)</span>
+<span class="kw">module type</span> <span class="tp">ORDENAVEL</span> = <span class="kw">sig</span>
+  <span class="kw">type</span> <span class="tp">t</span>
+  <span class="kw">val</span> <span class="fn">compare</span> : <span class="tp">t</span> -> <span class="tp">t</span> -> <span class="tp">int</span>
+<span class="kw">end</span>
+
+<span class="com">(* Functor: recebe módulo ORDENAVEL, retorna módulo com Heap *)</span>
+<span class="kw">module</span> <span class="fn">HeapMin</span> (<span class="tp">Elem</span> : <span class="tp">ORDENAVEL</span>) = <span class="kw">struct</span>
+  <span class="kw">type</span> <span class="tp">heap</span> = <span class="tp">Vazia</span> | <span class="tp">Nó</span> <span class="kw">of</span> <span class="tp">Elem.t</span> * <span class="tp">heap</span> * <span class="tp">heap</span>
+
+  <span class="kw">let</span> vazia = <span class="tp">Vazia</span>
+
+  <span class="kw">let rec</span> <span class="fn">inserir</span> x = <span class="kw">function</span>
+    | <span class="tp">Vazia</span>          -> <span class="tp">Nó</span> (x, <span class="tp">Vazia</span>, <span class="tp">Vazia</span>)
+    | <span class="tp">Nó</span> (r, l, d)  ->
+        <span class="kw">if</span> <span class="tp">Elem</span>.<span class="fn">compare</span> x r <= <span class="num">0</span>
+        <span class="kw">then</span> <span class="tp">Nó</span> (x, <span class="fn">inserir</span> r d, l)
+        <span class="kw">else</span> <span class="tp">Nó</span> (r, <span class="fn">inserir</span> x d, l)
+
+  <span class="kw">let</span> <span class="fn">mínimo</span> = <span class="kw">function</span>
+    | <span class="tp">Vazia</span>     -> <span class="tp">None</span>
+    | <span class="tp">Nó</span>(x,_,_) -> <span class="tp">Some</span> x
+<span class="kw">end</span>
+
+<span class="com">(* Instanciar functor com inteiros *)</span>
+<span class="kw">module</span> <span class="tp">HeapInt</span> = <span class="fn">HeapMin</span>(<span class="kw">struct</span>
+  <span class="kw">type</span> <span class="tp">t</span> = <span class="tp">int</span>
+  <span class="kw">let</span> <span class="fn">compare</span> = <span class="fn">compare</span>
+<span class="kw">end</span>)
+
+<span class="com">(* Instanciar com strings — mesmo functor, tipo diferente *)</span>
+<span class="kw">module</span> <span class="tp">HeapStr</span> = <span class="fn">HeapMin</span>(<span class="tp">String</span>)
+
+<span class="kw">let</span> h = [<span class="num">3</span>; <span class="num">1</span>; <span class="num">4</span>; <span class="num">1</span>; <span class="num">5</span>]
+        |> <span class="tp">List</span>.<span class="fn">fold_left</span> (<span class="kw">fun</span> h x -> <span class="tp">HeapInt</span>.<span class="fn">inserir</span> x h) <span class="tp">HeapInt</span>.vazia
+
+<span class="kw">let</span> () =
+  <span class="kw">match</span> <span class="tp">HeapInt</span>.<span class="fn">mínimo</span> h <span class="kw">with</span>
+  | <span class="tp">Some</span> m -> <span class="fn">Printf.printf</span> <span class="str">"Mínimo: %d\n"</span> m  <span class="com">(* 1 *)</span>
+  | <span class="tp">None</span>   -> <span class="fn">print_endline</span> <span class="str">"Heap vazia"</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcoes-ordem-superior">Funções de Ordem Superior Avançadas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ordem_superior.ml — Map, Filter, Fold, combinadores</div>
+          <pre class="example"><span class="com">(* fold_left é a função mais versátil: implementa tudo *)</span>
+<span class="kw">let</span> <span class="fn">minha_map</span> f xs =
+  <span class="tp">List</span>.<span class="fn">fold_left</span> (<span class="kw">fun</span> acc x -> acc @ [f x]) [] xs
+
+<span class="kw">let</span> <span class="fn">meu_filter</span> pred xs =
+  <span class="tp">List</span>.<span class="fn">fold_left</span> (<span class="kw">fun</span> acc x -> <span class="kw">if</span> pred x <span class="kw">then</span> acc @ [x] <span class="kw">else</span> acc) [] xs
+
+<span class="kw">let</span> <span class="fn">meu_flatten</span> xss =
+  <span class="tp">List</span>.<span class="fn">fold_left</span> (@) [] xss
+
+<span class="com">(* Transducer pattern — composição eficiente de map+filter *)</span>
+<span class="kw">let</span> <span class="fn">transforma</span> ops lista =
+  <span class="tp">List</span>.<span class="fn">fold_left</span>
+    (<span class="kw">fun</span> acc x ->
+      <span class="tp">List</span>.<span class="fn">fold_left</span>
+        (<span class="kw">fun</span> acc' op -> op acc' x)
+        acc
+        ops)
+    []
+    lista
+
+<span class="com">(* Memoização com Hashtbl *)</span>
+<span class="kw">let</span> <span class="fn">memoize</span> f =
+  <span class="kw">let</span> cache = <span class="tp">Hashtbl</span>.<span class="fn">create</span> <span class="num">64</span> <span class="kw">in</span>
+  <span class="kw">fun</span> x ->
+    <span class="kw">match</span> <span class="tp">Hashtbl</span>.<span class="fn">find_opt</span> cache x <span class="kw">with</span>
+    | <span class="tp">Some</span> v -> v
+    | <span class="tp">None</span>   ->
+        <span class="kw">let</span> v = f x <span class="kw">in</span>
+        <span class="tp">Hashtbl</span>.<span class="fn">add</span> cache x v;
+        v
+
+<span class="com">(* Fibonacci com memoização *)</span>
+<span class="kw">let rec</span> <span class="fn">fib_raw</span> n =
+  <span class="kw">if</span> n <= <span class="num">1</span> <span class="kw">then</span> n <span class="kw">else</span> fib (n - <span class="num">1</span>) + fib (n - <span class="num">2</span>)
+<span class="kw">and</span> fib = <span class="fn">memoize</span> fib_raw
+
+<span class="com">(* Continuations (CPS) — evitar stack overflow *)</span>
+<span class="kw">let rec</span> <span class="fn">map_cps</span> f xs k =
+  <span class="kw">match</span> xs <span class="kw">with</span>
+  | []      -> k []
+  | x :: xs -> <span class="fn">map_cps</span> f xs (<span class="kw">fun</span> ys -> k (f x :: ys))
+
+<span class="com">(* Uso: map_cps (fun x -> x * 2) [1;2;3] (fun r -> Printf.printf "%d\n" (List.length r)) *)</span>
+
+<span class="com">(* Funções de Array.* — mais eficientes para dados grandes *)</span>
+<span class="kw">let</span> arr = [|<span class="num">1</span>; <span class="num">2</span>; <span class="num">3</span>; <span class="num">4</span>; <span class="num">5</span>|]   <span class="com">(* [| |] para arrays *)</span>
+<span class="kw">let</span> dobrados_arr = <span class="tp">Array</span>.<span class="fn">map</span> (<span class="kw">fun</span> x -> x * <span class="num">2</span>) arr
+<span class="kw">let</span> total_arr = <span class="tp">Array</span>.<span class="fn">fold_left</span> (+) <span class="num">0</span> arr
+<span class="kw">let</span> () = arr.(<span class="num">0</span>) <- <span class="num">99</span>   <span class="com">(* arrays são mutáveis! *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="lwt">Concorrência com Lwt</h2>
+        <div class="panel">
+          <p><strong>Lwt</strong> (Lightweight Threads) é a biblioteca de I/O assíncrono mais popular em OCaml. Usa <em>promises</em> (tipo <code>'a Lwt.t</code>) em vez de callbacks, com operadores monádicos para composição. Em OCaml 5, <em>effect handlers</em> oferecem uma alternativa mais nativa.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lwt_exemplo.ml — Concorrência cooperativa</div>
+          <pre class="example"><span class="com">(* opam install lwt lwt_ppx *)</span>
+<span class="com">(* No dune: (libraries lwt lwt.unix) + (preprocess (pps lwt_ppx)) *)</span>
+
+<span class="kw">open</span> <span class="tp">Lwt</span>
+<span class="kw">open</span> <span class="tp">Lwt.Syntax</span>   <span class="com">(* let*, let+, and* *)</span>
+
+<span class="com">(* Lwt.t — promessa de valor futuro *)</span>
+<span class="kw">let</span> <span class="fn">esperar_e_retornar</span> n msg : <span class="tp">string Lwt.t</span> =
+  <span class="kw">let</span>* () = <span class="tp">Lwt_unix</span>.<span class="fn">sleep</span> (float_of_int n) <span class="kw">in</span>   <span class="com">(* não bloqueia thread *)</span>
+  <span class="tp">Lwt</span>.<span class="fn">return</span> msg
+
+<span class="com">(* Executar duas promessas em paralelo *)</span>
+<span class="kw">let</span> <span class="fn">paralelo</span> () =
+  <span class="kw">let</span>* (a, b) = <span class="tp">Lwt</span>.<span class="fn">both</span>
+    (<span class="fn">esperar_e_retornar</span> <span class="num">1</span> <span class="str">"primeiro"</span>)
+    (<span class="fn">esperar_e_retornar</span> <span class="num">2</span> <span class="str">"segundo"</span>)
+  <span class="kw">in</span>
+  <span class="fn">Printf.printf</span> <span class="str">"%s e %s\n"</span> a b;
+  <span class="tp">Lwt</span>.<span class="fn">return</span> ()
+
+<span class="com">(* Tratar erros com Lwt.catch *)</span>
+<span class="kw">let</span> <span class="fn">seguro</span> p =
+  <span class="tp">Lwt</span>.<span class="fn">catch</span>
+    (<span class="kw">fun</span> () -> p)
+    (<span class="kw">fun</span> exn ->
+      <span class="fn">Printf.printf</span> <span class="str">"Erro: %s\n"</span> (<span class="fn">Printexc.to_string</span> exn);
+      <span class="tp">Lwt</span>.<span class="fn">return</span> ())
+
+<span class="com">(* Ler arquivo de forma assíncrona *)</span>
+<span class="kw">let</span> <span class="fn">ler_arquivo</span> caminho =
+  <span class="kw">let</span>* ic = <span class="tp">Lwt_io</span>.<span class="fn">open_file</span> ~mode:<span class="tp">Input</span> caminho <span class="kw">in</span>
+  <span class="kw">let</span>* conteudo = <span class="tp">Lwt_io</span>.<span class="fn">read</span> ic <span class="kw">in</span>
+  <span class="kw">let</span>* () = <span class="tp">Lwt_io</span>.<span class="fn">close</span> ic <span class="kw">in</span>
+  <span class="tp">Lwt</span>.<span class="fn">return</span> conteudo
+
+<span class="com">(* Servidor TCP simples com Lwt *)</span>
+<span class="kw">let</span> <span class="fn">servidor</span> port =
+  <span class="kw">let</span> socket = <span class="tp">Lwt_unix</span>.(<span class="fn">socket</span> <span class="tp">PF_INET</span> <span class="tp">SOCK_STREAM</span> <span class="num">0</span>) <span class="kw">in</span>
+  <span class="tp">Lwt_unix</span>.<span class="fn">setsockopt</span> socket <span class="tp">SO_REUSEADDR</span> <span class="kw">true</span>;
+  <span class="tp">Lwt_unix</span>.<span class="fn">bind</span> socket
+    (<span class="tp">ADDR_INET</span> (<span class="tp">Unix</span>.<span class="fn">inet_addr_loopback</span>, port)) |> ignore;
+  <span class="tp">Lwt_unix</span>.<span class="fn">listen</span> socket <span class="num">10</span>;
+  <span class="fn">Printf.printf</span> <span class="str">"Servidor em 127.0.0.1:%d\n%!"</span> port;
+  <span class="kw">let rec</span> <span class="fn">loop</span> () =
+    <span class="kw">let</span>* (client_sock, _addr) = <span class="tp">Lwt_unix</span>.<span class="fn">accept</span> socket <span class="kw">in</span>
+    <span class="kw">let</span> _conn = <span class="tp">Lwt</span>.<span class="fn">async</span> (<span class="kw">fun</span> () ->
+      <span class="kw">let</span>* () = <span class="tp">Lwt_unix</span>.<span class="fn">close</span> client_sock <span class="kw">in</span>
+      <span class="tp">Lwt</span>.<span class="fn">return</span> ()
+    ) <span class="kw">in</span>
+    <span class="fn">loop</span> ()
+  <span class="kw">in</span>
+  <span class="fn">loop</span> ()
+
+<span class="com">(* Executar o loop de eventos *)</span>
+<span class="kw">let</span> () = <span class="tp">Lwt_main</span>.<span class="fn">run</span> (<span class="fn">paralelo</span> ())</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gadts">GADTs — Tipos Algébricos Generalizados</h2>
+        <div class="panel">
+          <p><strong>GADTs</strong> (Generalized Algebraic Data Types) permitem que cada construtor de um tipo refine o parâmetro de tipo. Isso possibilita representar invariantes complexos diretamente no sistema de tipos, eliminando estados impossíveis em tempo de compilação.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">gadts.ml — Tipos que codificam invariantes</div>
+          <pre class="example"><span class="com">(* Exemplo clássico: linguagem com tipos *)</span>
+<span class="kw">type</span> _ <span class="tp">expr</span> =
+  | <span class="tp">Int</span>   : <span class="tp">int</span>                      -> <span class="tp">int expr</span>
+  | <span class="tp">Bool</span>  : <span class="tp">bool</span>                     -> <span class="tp">bool expr</span>
+  | <span class="tp">Add</span>   : <span class="tp">int expr</span> * <span class="tp">int expr</span>      -> <span class="tp">int expr</span>
+  | <span class="tp">If</span>    : <span class="tp">bool expr</span> * <span class="tp">'a expr</span> * <span class="tp">'a expr</span> -> <span class="tp">'a expr</span>
+  | <span class="tp">Eq</span>    : <span class="tp">int expr</span> * <span class="tp">int expr</span>      -> <span class="tp">bool expr</span>
+
+<span class="com">(* eval é totalmente type-safe: retorna o tipo correto *)</span>
+<span class="kw">let rec</span> <span class="fn">eval</span> : <span class="kw">type</span> <span class="tp">a</span>. <span class="tp">a expr</span> -> <span class="tp">a</span> = <span class="kw">function</span>
+  | <span class="tp">Int</span> n          -> n
+  | <span class="tp">Bool</span> b         -> b
+  | <span class="tp">Add</span> (e1, e2)   -> <span class="fn">eval</span> e1 + <span class="fn">eval</span> e2
+  | <span class="tp">If</span> (c, t, f)   -> <span class="kw">if</span> <span class="fn">eval</span> c <span class="kw">then</span> <span class="fn">eval</span> t <span class="kw">else</span> <span class="fn">eval</span> f
+  | <span class="tp">Eq</span> (e1, e2)    -> <span class="fn">eval</span> e1 = <span class="fn">eval</span> e2
+
+<span class="com">(* Uso — o compilador rejeita expressões mal-tipadas *)</span>
+<span class="kw">let</span> prog = <span class="tp">If</span> (<span class="tp">Eq</span> (<span class="tp">Int</span> <span class="num">5</span>, <span class="tp">Int</span> <span class="num">5</span>), <span class="tp">Int</span> <span class="num">42</span>, <span class="tp">Int</span> <span class="num">0</span>)
+<span class="kw">let</span> r : <span class="tp">int</span> = <span class="fn">eval</span> prog   <span class="com">(* 42 *)</span>
+
+<span class="com">(* Add (Int 1, Bool true) — ERRO de compilação! *)
+(* Bool na posição que exige int — capturado pelo tipo *)</span>
+
+<span class="com">(* Exemplo 2: listas com tamanho no tipo *)</span>
+<span class="kw">type</span> _ <span class="tp">lista_sz</span> =
+  | <span class="tp">Nil</span>  : <span class="tp">z lista_sz</span>
+  | <span class="tp">Cons</span> : <span class="tp">'a</span> * <span class="tp">'n lista_sz</span> -> <span class="tp">(s * 'n) lista_sz</span>
+<span class="kw">and</span> <span class="tp">z</span> = <span class="tp">Z</span>
+<span class="kw">and</span> <span class="tp">'n s</span> = <span class="tp">S</span>
+
+<span class="com">(* head só aceita lista não-vazia — verificado em compilação *)</span>
+<span class="kw">let</span> <span class="fn">head</span> (<span class="tp">Cons</span> (x, _) : <span class="tp">(_ s * _) lista_sz</span>) = x</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="effects-ocaml5">Effect Handlers — OCaml 5</h2>
+        <div class="panel">
+          <p>OCaml 5 introduziu <strong>effect handlers</strong> — uma forma de controlar efeitos colaterais (I/O, estado, exceções, corrotinas) de maneira composável. São mais gerais que exceções e mais leves que monads.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">effects.ml — OCaml 5 Effect Handlers (experimental)</div>
+          <pre class="example"><span class="com">(* Requer: OCaml >= 5.0 *)</span>
+<span class="kw">open</span> <span class="tp">Effect</span>
+<span class="kw">open</span> <span class="tp">Effect.Deep</span>
+
+<span class="com">(* Declarar um efeito *)</span>
+<span class="kw">type</span> _ <span class="tp">Effect.t</span> += <span class="tp">Logging</span> : <span class="tp">string</span> -> <span class="tp">unit Effect.t</span>
+
+<span class="com">(* Função que usa o efeito *)</span>
+<span class="kw">let</span> <span class="fn">programa</span> () =
+  <span class="fn">perform</span> (<span class="tp">Logging</span> <span class="str">"iniciando..."</span>);
+  <span class="kw">let</span> x = <span class="num">21</span> + <span class="num">21</span> <span class="kw">in</span>
+  <span class="fn">perform</span> (<span class="tp">Logging</span> (<span class="tp">Printf</span>.<span class="fn">sprintf</span> <span class="str">"resultado: %d"</span> x));
+  x
+
+<span class="com">(* Handler: intercepta o efeito Logging e imprime *)</span>
+<span class="kw">let</span> <span class="fn">com_log</span> f =
+  <span class="fn">match_with</span> f ()
+  { retc = (<span class="kw">fun</span> x -> x);
+    exnc = raise;
+    effc = <span class="kw">fun</span> (<span class="kw">type</span> a) (<span class="tp">eff</span> : a <span class="tp">t</span>) ->
+      <span class="kw">match</span> eff <span class="kw">with</span>
+      | <span class="tp">Logging</span> msg ->
+          <span class="tp">Some</span> (<span class="kw">fun</span> (k : (a, _) <span class="tp">continuation</span>) ->
+            <span class="fn">Printf.printf</span> <span class="str">"[LOG] %s\n"</span> msg;
+            <span class="fn">continue</span> k ()
+          )
+      | _ -> <span class="tp">None</span>
+  }
+
+<span class="com">(* Handler alternativo: silencioso *)</span>
+<span class="kw">let</span> <span class="fn">silencioso</span> f =
+  <span class="fn">match_with</span> f ()
+  { retc = (<span class="kw">fun</span> x -> x);
+    exnc = raise;
+    effc = <span class="kw">fun</span> (<span class="kw">type</span> a) (<span class="tp">eff</span> : a <span class="tp">t</span>) ->
+      <span class="kw">match</span> eff <span class="kw">with</span>
+      | <span class="tp">Logging</span> _ -> <span class="tp">Some</span> (<span class="kw">fun</span> k -> <span class="fn">continue</span> k ())
+      | _          -> <span class="tp">None</span>
+  }
+
+<span class="kw">let</span> () =
+  <span class="fn">Printf.printf</span> <span class="str">"Resultado: %d\n"</span> (<span class="fn">com_log</span> programa)
+  <span class="com">(* [LOG] iniciando...
+     [LOG] resultado: 42
+     Resultado: 42 *)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>LEROY, Xavier. <strong>OCaml Manual — Chapter: The module system</strong>. INRIA, 2024. Disponível em: <a href="https://v2.ocaml.org/manual/moduleexamples.html" target="_blank" rel="noopener">https://v2.ocaml.org/manual/moduleexamples.html</a></li>
+            <li>MINSKY, Yaron; MADHAVAPEDDY, Anil; HICKEY, Jason. <strong>Real World OCaml — First-Class Modules</strong>. 2. ed. O'Reilly, 2022.</li>
+            <li>SIVARAMAKRISHNAN, KC et al. <strong>Retrofitting Effect Handlers onto OCaml</strong>. PLDI 2021. Disponível em: <a href="https://dl.acm.org/doi/10.1145/3453483.3454039" target="_blank" rel="noopener">ACM Digital Library</a></li>
+            <li>JONES, Mark P. <strong>First-class polymorphism with type inference</strong>. POPL 1997.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/fundamentos.html">OCaml — Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/ecossistema_tooling.html">OCaml — Ecossistema</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/web.html">OCaml — Web com Dream</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Functors são funções sobre módulos — a forma mais poderosa de abstração paramétrica verificada por tipos.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

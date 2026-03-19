@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure para Dados e IA: tech.ml.dataset, Tablecloth, Fastmath, Neanderthal BLAS, DL4J, inferência estatística, pipelines de ML e visualização com Oz/Vega." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Clojure — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Clojure — Dados e IA</h1>
+          <p>Clojure está emergindo como linguagem de ciência de dados séria: <strong>tech.ml.dataset</strong> oferece DataFrames imutáveis; <strong>Tablecloth</strong> fornece uma API fluente em cima deles; <strong>Fastmath</strong> dá estatística e álgebra linear; e <strong>Neanderthal</strong> conecta-se ao BLAS/LAPACK nativo para operações vetorizadas de alto desempenho.</p>
+        </div>
+        <p class="intro-highlight">
+          A imutabilidade de Clojure é uma vantagem em ciência de dados: pipelines de transformação de dados são sequências de funções puras — fáceis de testar, reproduzir e depurar no REPL linha a linha.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dataset">tech.ml.dataset e Tablecloth</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">deps.edn — dependências de ciência de dados</div>
+          <pre class="example">{<span class="str">:deps</span>
+ {org.clojure/clojure        {<span class="str">:mvn/version</span> <span class="str">"1.11.1"</span>}
+  techascent/tech.ml.dataset {<span class="str">:mvn/version</span> <span class="str">"7.000"</span>}
+  scicloj/tablecloth          {<span class="str">:mvn/version</span> <span class="str">"7.000"</span>}
+  generateme/fastmath         {<span class="str">:mvn/version</span> <span class="str">"2.4.0"</span>}
+  uncomplicate/neanderthal    {<span class="str">:mvn/version</span> <span class="str">"0.46.0"</span>}
+  scicloj/oz                  {<span class="str">:mvn/version</span> <span class="str">"10.9.581"</span>}}}</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Tablecloth — DataFrame com API fluente</div>
+          <pre class="example">(<span class="kw">ns</span> analise
+  (:require [tablecloth.api <span class="str">:as</span> tc]))
+
+<span class="com">; ── Carregar dados ────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">ds</span>
+  (<span class="fn">tc/dataset</span> <span class="str">"dados/vendas.csv"</span> {<span class="str">:key-fn</span> keyword}))
+
+(<span class="fn">tc/info</span> ds)           <span class="com">; shape, dtypes, missing</span>
+(<span class="fn">tc/head</span> ds <span class="num">5</span>)         <span class="com">; primeiras 5 linhas</span>
+(<span class="fn">tc/shape</span> ds)          <span class="com">; [n-linhas n-colunas]</span>
+
+<span class="com">; ── Selecionar e filtrar ──────────────────────────────────────</span>
+(-&gt; ds
+    (<span class="fn">tc/select-columns</span> [<span class="str">:produto</span> <span class="str">:valor</span> <span class="str">:regiao</span>])
+    (<span class="fn">tc/select-rows</span> #(&gt; (<span class="fn">get</span> % <span class="str">:valor</span>) <span class="num">1000</span>))
+    (<span class="fn">tc/order-by</span> <span class="str">:valor</span> <span class="str">:desc</span>))
+
+<span class="com">; ── Agregar por grupo ─────────────────────────────────────────</span>
+(-&gt; ds
+    (<span class="fn">tc/group-by</span> <span class="str">:regiao</span>)
+    (<span class="fn">tc/aggregate</span> {<span class="str">:total-vendas</span> #(<span class="fn">reduce</span> + (<span class="str">:valor</span> %))
+                   <span class="str">:n-vendas</span>     #(<span class="fn">count</span>   (<span class="str">:valor</span> %))
+                   <span class="str">:ticket-medio</span> #(<span class="fn">/</span> (<span class="fn">reduce</span> + (<span class="str">:valor</span> %))
+                                       (<span class="fn">count</span>   (<span class="str">:valor</span> %)))}))
+
+<span class="com">; ── Adicionar coluna derivada ─────────────────────────────────</span>
+(-&gt; ds
+    (<span class="fn">tc/add-column</span> <span class="str">:valor-com-imposto</span>
+                   (fn [row] (* (<span class="fn">get</span> row <span class="str">:valor</span>) <span class="num">1.12</span>)))
+    (<span class="fn">tc/rename-columns</span> {<span class="str">:produto</span> <span class="str">:nome-produto</span>}))
+
+<span class="com">; ── Join entre datasets ───────────────────────────────────────</span>
+(<span class="fn">tc/left-join</span> ds clientes-ds <span class="str">:cliente-id</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="fastmath">Fastmath — Estatística e Álgebra Linear</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estatísticas descritivas e distribuições</div>
+          <pre class="example">(<span class="kw">ns</span> stats
+  (:require [fastmath.stats  <span class="str">:as</span> st]
+            [fastmath.random <span class="str">:as</span> rng]))
+
+(<span class="kw">def</span> <span class="fn">dados</span> [<span class="num">23.1</span> <span class="num">25.6</span> <span class="num">22.9</span> <span class="num">28.4</span> <span class="num">24.7</span> <span class="num">26.0</span> <span class="num">21.5</span> <span class="num">29.3</span>])
+
+<span class="com">; ── Estatísticas descritivas ─────────────────────────────────</span>
+(<span class="fn">st/mean</span>     dados)   <span class="com">; média aritmética</span>
+(<span class="fn">st/median</span>   dados)   <span class="com">; mediana</span>
+(<span class="fn">st/variance</span> dados)   <span class="com">; variância amostral</span>
+(<span class="fn">st/stddev</span>   dados)   <span class="com">; desvio padrão</span>
+(<span class="fn">st/skewness</span> dados)   <span class="com">; assimetria</span>
+(<span class="fn">st/kurtosis</span> dados)   <span class="com">; curtose</span>
+
+<span class="com">; Quantis e box-plot stats</span>
+(<span class="fn">st/percentile</span> dados <span class="num">25</span>)    <span class="com">; Q1</span>
+(<span class="fn">st/percentile</span> dados <span class="num">75</span>)    <span class="com">; Q3</span>
+
+<span class="com">; ── Correlação e covariância ──────────────────────────────────</span>
+(<span class="fn">st/correlation</span>  x-data y-data)   <span class="com">; Pearson r</span>
+(<span class="fn">st/spearman</span>     x-data y-data)   <span class="com">; Spearman ρ</span>
+(<span class="fn">st/covariance</span>   x-data y-data)
+
+<span class="com">; ── Distribuições ─────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">normal</span> (rng/distribution <span class="str">:normal</span> {<span class="str">:mu</span> <span class="num">0</span> <span class="str">:sigma</span> <span class="num">1</span>}))
+(rng/sample  normal)           <span class="com">; uma amostra</span>
+(rng/sample  normal <span class="num">1000</span>)     <span class="com">; 1000 amostras</span>
+(rng/pdf     normal <span class="num">1.5</span>)      <span class="com">; densidade em x=1.5</span>
+(rng/cdf     normal <span class="num">1.96</span>)     <span class="com">; P(X ≤ 1.96)</span>
+
+<span class="com">; ── Teste t ──────────────────────────────────────────────────</span>
+(<span class="fn">st/t-test</span> grupo-a grupo-b)   <span class="com">; retorna {:t :p-value :df ...}</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ml">Machine Learning com scicloj/clay</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pipeline de ML com tech.ml</div>
+          <pre class="example">(<span class="kw">ns</span> ml-pipeline
+  (:require [tech.v3.dataset         <span class="str">:as</span> ds]
+            [tech.v3.dataset.modelling <span class="str">:as</span> ds-mod]
+            [tech.v3.ml              <span class="str">:as</span> ml]
+            [tech.v3.ml.metrics      <span class="str">:as</span> metrics]
+            [tech.v3.ml.gridsearch   <span class="str">:as</span> gs]))
+
+<span class="com">; Carregar e preparar dataset Iris</span>
+(<span class="kw">def</span> <span class="fn">iris</span>
+  (-&gt; (<span class="fn">ds/->dataset</span> <span class="str">"iris.csv"</span> {<span class="str">:key-fn</span> keyword})
+      (<span class="fn">ds-mod/set-inference-target</span> <span class="str">:species</span>)))
+
+<span class="com">; Train/test split 80/20</span>
+(<span class="kw">def</span> <span class="fn">splits</span> (<span class="fn">ds-mod/train-test-split</span> iris {<span class="str">:test-fraction</span> <span class="num">0.2</span>}))
+(<span class="kw">def</span> <span class="fn">treino</span>  (<span class="str">:train-ds</span> splits))
+(<span class="kw">def</span> <span class="fn">teste</span>   (<span class="str">:test-ds</span>  splits))
+
+<span class="com">; Treinar — Random Forest</span>
+(<span class="kw">def</span> <span class="fn">modelo</span>
+  (<span class="fn">ml/train</span> treino {<span class="str">:model-type</span> <span class="str">:smile.classification/random-forest</span>
+                     <span class="str">:n-trees</span>    <span class="num">100</span>
+                     <span class="str">:max-depth</span>  <span class="num">10</span>}))
+
+<span class="com">; Predizer</span>
+(<span class="kw">def</span> <span class="fn">predicoes</span> (<span class="fn">ml/predict</span> modelo teste))
+
+<span class="com">; Métricas de avaliação</span>
+(<span class="fn">metrics/accuracy</span>           teste predicoes)
+(<span class="fn">metrics/classification-report</span> teste predicoes)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="visualizacao">Visualização com Oz e Vega-Lite</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Oz — visualizações Vega/Vega-Lite no REPL</div>
+          <pre class="example">(<span class="kw">ns</span> viz
+  (:require [oz.core <span class="str">:as</span> oz]))
+
+(<span class="fn">oz/start-server!</span>)   <span class="com">; abre browser com live reload</span>
+
+<span class="com">; Histograma de uma coluna</span>
+(<span class="kw">def</span> <span class="fn">histograma</span>
+  {<span class="str">:data</span>   {<span class="str">:values</span> (<span class="fn">map</span> #({<span class="str">:valor</span> %}) dados)}
+   <span class="str">:mark</span>   <span class="str">"bar"</span>
+   <span class="str">:encoding</span>
+   {<span class="str">:x</span> {<span class="str">:bin</span>  true <span class="str">:field</span> <span class="str">"valor"</span> <span class="str">:type</span> <span class="str">"quantitative"</span>}
+    <span class="str">:y</span> {<span class="str">:aggregate</span> <span class="str">"count"</span> <span class="str">:type</span> <span class="str">"quantitative"</span>}}})
+
+(<span class="fn">oz/view!</span> histograma)
+
+<span class="com">; Scatter plot — correlação entre duas variáveis</span>
+(<span class="kw">def</span> <span class="fn">scatter</span>
+  {<span class="str">:data</span>     {<span class="str">:values</span> registros}
+   <span class="str">:mark</span>     <span class="str">"point"</span>
+   <span class="str">:encoding</span>
+   {<span class="str">:x</span>     {<span class="str">:field</span> <span class="str">"idade"</span>   <span class="str">:type</span> <span class="str">"quantitative"</span>}
+    <span class="str">:y</span>     {<span class="str">:field</span> <span class="str">"salario"</span> <span class="str">:type</span> <span class="str">"quantitative"</span>}
+    <span class="str">:color</span> {<span class="str">:field</span> <span class="str">"cargo"</span>   <span class="str">:type</span> <span class="str">"nominal"</span>}}})
+
+(<span class="fn">oz/view!</span> scatter)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>SciCloj. <strong>Tablecloth User Guide</strong>. Disponível em: &lt;https://scicloj.github.io/tablecloth&gt;. Acesso em: 2025.</li>
+            <li>GENERATEME. <strong>Fastmath Documentation</strong>. Disponível em: &lt;https://generateme.github.io/fastmath&gt;. Acesso em: 2025.</li>
+            <li>TECHASCENT. <strong>tech.ml.dataset API</strong>. Disponível em: &lt;https://techascent.github.io/tech.ml.dataset&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Clojure para Web</a></li>
+          <li><a href="../guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Clojure Avançado</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O REPL transforma ciência de dados: em vez de rodar um script inteiro e esperar, você carrega o CSV uma vez, guarda o dataset num <code>def</code>, e então explora, filtra, agrega, visualiza — tudo de forma incremental. Cada expressão avaliada retorna imediatamente. O ciclo de exploração que levaria 10 reinicializações de script leva 10 segundos no REPL.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

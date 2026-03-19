@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Embedded e IoT com Kotlin: Pi4J GPIO, MQTT com Eclipse Paho, coroutines para sensores e padrões edge." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Kotlin — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Kotlin &mdash; Embedded e IoT</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="kotlin" aria-hidden="true"></span></div>
+					<h1>Kotlin — Embedded e IoT</h1>
+					<p>Kotlin na JVM roda em dispositivos como Raspberry Pi com acesso a GPIO via Pi4J. Coroutines simplificam a leitura contínua de sensores e a publicação MQTT de forma não bloqueante, enquanto Room e WorkManager garantem operação offline confiável.</p>
+				</div>
+				<p class="intro-highlight">A combinação de Kotlin Coroutines com Flow é natural para IoT: streams de sensores são modelados como <code>Flow&lt;Leitura&gt;</code>, permitindo backpressure, transformação e coleta assíncrona sem callbacks aninhados.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="pi4j-gpio">Pi4J — GPIO no Raspberry Pi</h2>
+				<p>Pi4J v2 oferece uma API limpa para controle de GPIO em Kotlin. O contexto é criado via <code>Pi4J.newAutoContext()</code> e os pins são configurados com builders type-safe.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Pi4J LED blink</div>
+					<pre class="example"><span class="kw">import</span> com.pi4j.Pi4J
+<span class="kw">import</span> com.pi4j.io.gpio.digital.*
+<span class="kw">import</span> kotlinx.coroutines.*
+
+<span class="kw">fun</span> <span class="fn">main</span>() = <span class="fn">runBlocking</span> {
+    <span class="kw">val</span> pi4j = Pi4J.<span class="fn">newAutoContext</span>()
+
+    <span class="kw">val</span> ledConfig = DigitalOutput.newConfigBuilder(pi4j)
+        .<span class="fn">id</span>(<span class="str">"led"</span>)
+        .<span class="fn">name</span>(<span class="str">"LED Vermelho"</span>)
+        .<span class="fn">address</span>(<span class="str">18</span>) <span class="com">// GPIO 18</span>
+        .<span class="fn">shutdown</span>(DigitalState.LOW)
+        .<span class="fn">initial</span>(DigitalState.LOW)
+        .<span class="fn">build</span>()
+
+    <span class="kw">val</span> led = pi4j.<span class="fn">create</span>(ledConfig)
+
+    <span class="kw">val</span> btnConfig = DigitalInput.newConfigBuilder(pi4j)
+        .<span class="fn">id</span>(<span class="str">"botao"</span>).<span class="fn">address</span>(<span class="str">17</span>)
+        .<span class="fn">pull</span>(PullResistance.PULL_DOWN)
+        .<span class="fn">build</span>()
+    <span class="kw">val</span> botao = pi4j.<span class="fn">create</span>(btnConfig)
+    botao.<span class="fn">addListener</span> { e -&gt; led.<span class="fn">toggle</span>() }
+
+    <span class="com">// Piscar LED enquanto aguarda</span>
+    <span class="fn">repeat</span>(<span class="str">10</span>) {
+        led.<span class="fn">high</span>(); <span class="fn">delay</span>(<span class="str">500</span>)
+        led.<span class="fn">low</span>();  <span class="fn">delay</span>(<span class="str">500</span>)
+    }
+    pi4j.<span class="fn">shutdown</span>()
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="mqtt-kotlin">MQTT com Eclipse Paho</h2>
+				<p>Eclipse Paho é a implementação MQTT mais usada na JVM. Em Kotlin, wrappers com coroutines transformam os callbacks em código suspendível limpo.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — MQTT Publish e Subscribe</div>
+					<pre class="example"><span class="kw">import</span> org.eclipse.paho.client.mqttv3.*
+<span class="kw">import</span> kotlinx.serialization.json.Json
+<span class="kw">import</span> kotlinx.serialization.Serializable
+
+<span class="kw">@Serializable</span>
+<span class="kw">data class</span> <span class="fn">LeituraSensor</span>(<span class="kw">val</span> id: String, <span class="kw">val</span> valor: Double, <span class="kw">val</span> ts: Long)
+
+<span class="kw">val</span> cliente = <span class="fn">MqttClient</span>(<span class="str">"tcp://broker.mqtt.local:1883"</span>, <span class="str">"kotlin-device-1"</span>)
+<span class="kw">val</span> opcoes = <span class="fn">MqttConnectOptions</span>().<span class="fn">apply</span> {
+    isAutomaticReconnect = <span class="kw">true</span>
+    isCleanSession = <span class="kw">false</span>
+    connectionTimeout = <span class="str">10</span>
+}
+cliente.<span class="fn">connect</span>(opcoes)
+
+<span class="com">// Publicar leitura</span>
+<span class="kw">fun</span> <span class="fn">publicar</span>(leitura: LeituraSensor) {
+    <span class="kw">val</span> payload = Json.<span class="fn">encodeToString</span>(leitura).<span class="fn">toByteArray</span>()
+    cliente.<span class="fn">publish</span>(<span class="str">"sensores/temperatura"</span>, payload, <span class="str">1</span>, <span class="kw">false</span>)
+}
+
+<span class="com">// Subscrever tópico</span>
+cliente.<span class="fn">subscribe</span>(<span class="str">"atuadores/#"</span>, <span class="str">1</span>) { topico, msg -&gt;
+    println(<span class="str">"[$topico] ${String(msg.payload)}"</span>)
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="coroutines-iot">Coroutines para Streams de Sensores</h2>
+				<p><code>Flow</code> modela leituras de sensores como streams reativos. <code>conflate()</code> descarta valores acumulados quando o consumidor é lento; <code>StateFlow</code> mantém sempre o valor mais recente.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — Flow de sensor</div>
+					<pre class="example"><span class="kw">import</span> kotlinx.coroutines.*
+<span class="kw">import</span> kotlinx.coroutines.flow.*
+
+<span class="kw">data class</span> <span class="fn">Leitura</span>(<span class="kw">val</span> temp: Double, <span class="kw">val</span> umidade: Double)
+
+<span class="com">// Simula leituras periódicas de sensor</span>
+<span class="kw">fun</span> <span class="fn">fluxoSensor</span>(): Flow&lt;Leitura&gt; = <span class="fn">flow</span> {
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+        <span class="kw">val</span> leitura = <span class="fn">Leitura</span>(
+            temp = <span class="str">20.0</span> + Math.random() * <span class="str">10</span>,
+            umidade = <span class="str">40.0</span> + Math.random() * <span class="str">20</span>
+        )
+        <span class="fn">emit</span>(leitura)
+        <span class="fn">delay</span>(<span class="str">500</span>)
+    }
+}
+
+<span class="kw">val</span> estadoAtual = <span class="fn">MutableStateFlow</span>(<span class="fn">Leitura</span>(<span class="str">0.0</span>, <span class="str">0.0</span>))
+
+<span class="kw">suspend fun</span> <span class="fn">monitorar</span>() = coroutineScope {
+    <span class="fn">launch</span> {
+        <span class="fn">fluxoSensor</span>()
+            .<span class="fn">conflate</span>() <span class="com">// descarta se consumidor for lento</span>
+            .<span class="fn">filter</span> { it.temp &gt; <span class="str">28.0</span> } <span class="com">// apenas alertas</span>
+            .<span class="fn">collect</span> { leitura -&gt;
+                estadoAtual.<span class="fn">emit</span>(leitura)
+                println(<span class="str">"ALERTA TEMPERATURA: ${leitura.temp}°C"</span>)
+            }
+    }
+}</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="android-things">Padrões Edge com Android</h2>
+				<p>Para dispositivos Android embarcados (quiosques, painéis industriais), WorkManager garante execução periódica de tarefas, Room persiste dados localmente e a sincronização ocorre apenas quando há conectividade.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Kotlin — WorkManager para sincronização IoT</div>
+					<pre class="example"><span class="kw">import</span> androidx.work.*
+<span class="kw">import</span> java.util.concurrent.TimeUnit
+
+<span class="kw">class</span> <span class="fn">SincronizarWorker</span>(ctx: Context, params: WorkerParameters) : <span class="fn">CoroutineWorker</span>(ctx, params) {
+    <span class="kw">override suspend fun</span> <span class="fn">doWork</span>(): Result {
+        <span class="kw">return try</span> {
+            <span class="kw">val</span> leiturasLocal = roomDao.<span class="fn">obterNaoSincronizadas</span>()
+            apiService.<span class="fn">enviarLeituras</span>(leiturasLocal)
+            roomDao.<span class="fn">marcarSincronizadas</span>(leiturasLocal.<span class="fn">map</span> { it.id })
+            Result.<span class="fn">success</span>()
+        } <span class="kw">catch</span> (e: Exception) {
+            Result.<span class="fn">retry</span>()
+        }
+    }
+}
+
+<span class="com">// Agendar sincronização periódica com restrição de rede</span>
+<span class="kw">val</span> restricao = Constraints.Builder()
+    .<span class="fn">setRequiredNetworkType</span>(NetworkType.CONNECTED)
+    .<span class="fn">build</span>()
+
+<span class="kw">val</span> req = PeriodicWorkRequestBuilder&lt;SincronizarWorker&gt;(<span class="str">15</span>, TimeUnit.MINUTES)
+    .<span class="fn">setConstraints</span>(restricao)
+    .<span class="fn">setBackoffCriteria</span>(BackoffPolicy.EXPONENTIAL, <span class="str">30</span>, TimeUnit.SECONDS)
+    .<span class="fn">build</span>()
+
+WorkManager.<span class="fn">getInstance</span>(ctx).<span class="fn">enqueueUniquePeriodicWork</span>(
+    <span class="str">"sincronizar"</span>, ExistingPeriodicWorkPolicy.KEEP, req
+)</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul class="link-list">
+						<li>PI4J. <strong>Pi4J v2 — Java I/O Library for Raspberry Pi</strong>. Disponível em: <a href="https://pi4j.com/documentation/" target="_blank" rel="noopener">pi4j.com/documentation</a>. Acesso em: mar. 2026.</li>
+						<li>ECLIPSE. <strong>Paho MQTT Java Client</strong>. Disponível em: <a href="https://eclipse.dev/paho/index.php?page=clients/java/index.php" target="_blank" rel="noopener">eclipse.dev/paho</a>. Acesso em: mar. 2026.</li>
+						<li>ANDROID. <strong>WorkManager guide</strong>. Disponível em: <a href="https://developer.android.com/topic/libraries/architecture/workmanager" target="_blank" rel="noopener">developer.android.com/workmanager</a>. Acesso em: mar. 2026.</li>
+					</ul>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="terminal_cli.html">Terminal e CLI</a></li>
+					<li><a href="mobile.html">Mobile Android</a></li>
+					<li><a href="gui_desktop.html">GUI Desktop</a></li>
+					<li><a href="../guia/avancado.html">Kotlin Avançado</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Coroutines e Flow transformam streams de sensores em código Kotlin elegante — IoT sem callbacks aninhados nem thread management manual.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e frameworks para LuaJIT: OpenResty, Luarocks, modulos resty e integracao FFI com bibliotecas C." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT - Bibliotecas e Frameworks | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>LuaJIT - Bibliotecas e Frameworks</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">LuaJIT - Bibliotecas e Frameworks</h2>
+        <div class="page-header">
+          <span data-svg="lua" aria-hidden="true"></span>
+          <h1>Escolhendo stack de producao com desempenho e manutencao</h1>
+          <p>Esta pagina organiza as principais opcoes do ecossistema LuaJIT e mostra como combinar produtividade com throughput.</p>
+        </div>
+        <p class="intro-highlight">
+          A melhor stack em LuaJIT nao e a com mais bibliotecas, e sim a que separa claramente orquestracao em Lua e aceleracao pontual em C.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="visao-ecossistema" class="section-title">Conceito central: camadas de biblioteca em LuaJIT</h2>
+        <p>
+          O ecossistema pode ser visto em tres camadas: bibliotecas puras Lua, frameworks orientados a runtime (como OpenResty)
+          e aceleradores via FFI. Essa separacao facilita decidir onde a prioridade e clareza, onde e latencia e onde e portabilidade.
+        </p>
+        <div class="panel">
+          <svg viewBox="0 0 860 220" role="img" aria-label="Camadas do ecossistema LuaJIT" class="w-full">
+            <rect x="30" y="34" width="800" height="48" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="56" y="63" fill="currentColor">Camada 1: bibliotecas Lua puras (utilitarios, validacao, dominio)</text>
+            <rect x="30" y="96" width="800" height="48" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="56" y="125" fill="currentColor">Camada 2: framework/event loop (OpenResty, resty.*)</text>
+            <rect x="30" y="158" width="800" height="48" rx="10" fill="currentColor" opacity="0.08"></rect>
+            <text x="56" y="187" fill="currentColor">Camada 3: aceleracao FFI para hotspots computacionais</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="framework-openresty" class="section-title">OpenResty: framework principal para web orientada a eventos</h2>
+        <p>
+          OpenResty integra Nginx e LuaJIT para executar logica de aplicacao no ciclo de eventos. Ele e dominante em gateways,
+          API edge, autenticacao e roteamento com baixa latencia.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nginx.conf - endpoint com estado compartilhado e resposta Lua</div>
+          <pre class="example"><span class="com"># exemplo didatico simplificado</span>
+lua_shared_dict api_cache 64m;
+
+server {
+  listen 8080;
+  location /health {
+    content_by_lua_block {
+      <span class="kw">local</span> dict = ngx.shared.api_cache
+      <span class="kw">local</span> n = dict:incr(<span class="str">"hits"</span>, 1, 0)
+      ngx.say(<span class="str">"ok hits="</span>, n)
+    }
+  }
+}</pre>
+        </div>
+        <p>
+          O ganho operacional vem de manter o caminho critico sem bloqueios desnecessarios e usar APIs assicronas da familia <code class="code-inline">resty.*</code>.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="categorias-libs" class="section-title">Tipos de bibliotecas e criterios de escolha</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>Bibliotecas puras Lua</strong>
+            <p>Portabilidade alta, setup simples e menor risco de ABI.</p>
+          </div>
+          <div class="card">
+            <strong>Bibliotecas C via LuaRocks</strong>
+            <p>Podem acelerar muito, mas exigem pipeline de build por sistema operacional.</p>
+          </div>
+          <div class="card">
+            <strong>Pacotes resty.*</strong>
+            <p>Feitos para OpenResty, foco em I/O nao bloqueante e integracao com Nginx.</p>
+          </div>
+          <div class="card">
+            <strong>FFI wrappers proprios</strong>
+            <p>Maior controle de desempenho, maior responsabilidade de seguranca e manutencao.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="luarocks-e-resty" class="section-title">Sintaxe de uso: LuaRocks e modulos resty</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell - instalacao reproducivel para LuaJIT (Lua 5.1 ABI)</div>
+          <pre class="example"><span class="com"># arvore local para isolar dependencias</span>
+luarocks --lua-version=5.1 --tree=.rocks <span class="fn">install</span> lua-cjson
+luarocks --lua-version=5.1 --tree=.rocks <span class="fn">install</span> lua-resty-http
+luarocks --lua-version=5.1 --tree=.rocks <span class="fn">install</span> lua-resty-redis</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">OpenResty - cliente HTTP assicrono com resty.http</div>
+          <pre class="example"><span class="kw">local</span> http = <span class="kw">require</span>(<span class="str">"resty.http"</span>)
+<span class="kw">local</span> cli = http.<span class="fn">new</span>()
+
+<span class="kw">local</span> res, err = cli:<span class="fn">request_uri</span>(<span class="str">"https://httpbin.org/get"</span>, {
+  method = <span class="str">"GET"</span>,
+  ssl_verify = <span class="kw">true</span>
+})
+
+<span class="kw">if</span> <span class="kw">not</span> res <span class="kw">then</span>
+  ngx.log(ngx.ERR, <span class="str">"falha HTTP: "</span>, err)
+  <span class="kw">return</span>
+<span class="kw">end</span>
+
+ngx.say(res.status)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ffi-bibliotecas-c" class="section-title">Quando integrar bibliotecas C via FFI</h2>
+        <p>
+          FFI e recomendado quando existe hotspot comprovado em CPU: hashing, compressao, parse de protocolo binario,
+          transformacao vetorial e criptografia. Em operacoes dominadas por rede, o ganho costuma ser pequeno.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - wrapper didatico para SHA256</div>
+          <pre class="example"><span class="kw">local</span> ffi = <span class="kw">require</span>(<span class="str">"ffi"</span>)
+
+ffi.cdef[[
+  <span class="kw">unsigned</span> <span class="kw">char</span> *SHA256(
+    <span class="kw">const</span> <span class="kw">unsigned</span> <span class="kw">char</span> *d,
+    <span class="kw">size_t</span> n,
+    <span class="kw">unsigned</span> <span class="kw">char</span> *md
+  );
+]]
+
+<span class="kw">local</span> crypto = ffi.load(<span class="str">"crypto"</span>)
+<span class="kw">local</span> out = ffi.new(<span class="str">"unsigned char[32]"</span>)
+<span class="kw">local</span> msg = <span class="str">"payload"</span>
+
+crypto.<span class="fn">SHA256</span>(msg, #msg, out)
+print(<span class="str">"hash calculado"</span>)</pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Sempre inclua fallback puro Lua para cenarios sem biblioteca C disponivel na maquina de deploy.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="comparacao-stacks" class="section-title">Comparacao de stacks e trade-offs</h2>
+        <div class="panel">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Stack</th>
+                <th>Ponto forte</th>
+                <th>Risco principal</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>OpenResty + resty.*</td>
+                <td>Escala alta para HTTP e proxy inteligente</td>
+                <td>Curva operacional do ecossistema Nginx</td>
+              </tr>
+              <tr>
+                <td>LuaJIT puro + LuaRocks</td>
+                <td>Flexibilidade para CLI e servicos internos</td>
+                <td>Mais trabalho para infraestrutura web completa</td>
+              </tr>
+              <tr>
+                <td>LuaJIT + FFI seletivo</td>
+                <td>Performance maxima nos hotspots certos</td>
+                <td>Maior custo de manutencao de ABI e build</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fontes" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li><a href="https://openresty.org/en/" target="_blank" rel="noopener">OpenResty Team. OpenResty Official Documentation. 2026.</a></li>
+            <li><a href="https://github.com/luarocks/luarocks" target="_blank" rel="noopener">LuaRocks Authors. LuaRocks Package Manager. 2026.</a></li>
+            <li><a href="https://github.com/openresty/lua-resty-http" target="_blank" rel="noopener">OpenResty. lua-resty-http Repository. 2026.</a></li>
+            <li><a href="https://github.com/openresty/lua-resty-redis" target="_blank" rel="noopener">OpenResty. lua-resty-redis Repository. 2026.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em LuaJIT, bibliotecas certas encurtam caminho; bibliotecas erradas criam gargalo tecnico invisivel.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/ecossistema_tooling.html">LuaJIT - Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/projetos_boas_praticas.html">LuaJIT - Projetos e Boas Praticas</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

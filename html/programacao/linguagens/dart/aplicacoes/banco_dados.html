@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para Banco de Dados: Drift (SQLite type-safe com migrations), sqflite, Hive NoSQL, Isar, Firestore e conexao com PostgreSQL via servidor Shelf." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — Banco de Dados</h1>
+          <p>O ecossistema Dart/Flutter oferece solucoes para cada camada de persistencia: <strong>Drift</strong> para SQLite com codigo type-safe gerado em tempo de compilacao, <strong>Hive</strong> e <strong>Isar</strong> para NoSQL embarcado de alta performance, e acesso a bancos relacionais remotos (PostgreSQL/MySQL) atraves de servidores Shelf + pacotes server-side como <code>postgres</code> e <code>mysql_client</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          Para apps Flutter mobile/desktop, <strong>Drift + SQLite</strong> e a escolha padrao: queries SQL seguras em tempo de compilacao, migrations versionadas, reactivity via Stream e suporte a WAL (Write-Ahead Logging) para concorrencia. Para dados de usuario pouco estruturados, <strong>Hive</strong> e mais simples e rapido.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="drift">Drift — SQLite Type-Safe</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Drift &mdash; Definicao de tabelas e banco</div>
+          <pre class="example"><span class="com">// pubspec.yaml</span>
+<span class="com">// dependencies: drift: ^2.x, sqlite3_flutter_libs:, path_provider:, path:</span>
+<span class="com">// dev_dependencies: drift_dev:, build_runner:</span>
+
+<span class="kw">import</span> <span class="str">'package:drift/drift.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:drift/native.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:path_provider/path_provider.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:path/path.dart'</span> <span class="kw">as</span> p;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+<span class="kw">part</span> <span class="str">'banco.g.dart'</span>;
+
+<span class="com">// Tabela de categorias</span>
+<span class="kw">class</span> <span class="tp">Categorias</span> <span class="kw">extends</span> <span class="tp">Table</span> {
+  <span class="tp">IntColumn</span>    <span class="kw">get</span> id       => <span class="fn">integer</span>().<span class="fn">autoIncrement</span>()();
+  <span class="tp">TextColumn</span>   <span class="kw">get</span> nome     => <span class="fn">text</span>().<span class="fn">withLength</span>(min: <span class="num">1</span>, max: <span class="num">80</span>)();
+  <span class="tp">DateTimeColumn</span><span class="kw">get</span> criado  => <span class="fn">dateTime</span>().<span class="fn">withDefault</span>(<span class="tp">Constant</span>(<span class="tp">DateTime</span>.<span class="fn">now</span>()))();
+}
+
+<span class="com">// Tabela de tarefas</span>
+<span class="kw">class</span> <span class="tp">Tarefas</span> <span class="kw">extends</span> <span class="tp">Table</span> {
+  <span class="tp">IntColumn</span>    <span class="kw">get</span> id         => <span class="fn">integer</span>().<span class="fn">autoIncrement</span>()();
+  <span class="tp">TextColumn</span>   <span class="kw">get</span> titulo     => <span class="fn">text</span>().<span class="fn">withLength</span>(min: <span class="num">1</span>, max: <span class="num">200</span>)();
+  <span class="tp">TextColumn</span>   <span class="kw">get</span> descricao  => <span class="fn">text</span>().<span class="fn">nullable</span>()();
+  <span class="tp">BoolColumn</span>   <span class="kw">get</span> concluida  => <span class="fn">boolean</span>().<span class="fn">withDefault</span>(<span class="kw">const</span> <span class="tp">Constant</span>(<span class="kw">false</span>))();
+  <span class="tp">DateTimeColumn</span><span class="kw">get</span> prazo     => <span class="fn">dateTime</span>().<span class="fn">nullable</span>()();
+  <span class="tp">IntColumn</span>    <span class="kw">get</span> categoriaId => <span class="fn">integer</span>().<span class="fn">references</span>(<span class="tp">Categorias</span>, #id)();
+}
+
+<span class="at">@DriftDatabase</span>(tables: [<span class="tp">Categorias</span>, <span class="tp">Tarefas</span>])
+<span class="kw">class</span> <span class="tp">AppDatabase</span> <span class="kw">extends</span> _$<span class="tp">AppDatabase</span> {
+  <span class="tp">AppDatabase</span>(<span class="tp">QueryExecutor</span> e) : <span class="kw">super</span>(e);
+
+  <span class="at">@override</span>
+  <span class="tp">int</span> <span class="kw">get</span> schemaVersion => <span class="num">2</span>;
+
+  <span class="at">@override</span>
+  <span class="tp">MigrationStrategy</span> <span class="kw">get</span> migration => <span class="tp">MigrationStrategy</span>(
+    onCreate: (m) => m.<span class="fn">createAll</span>(),
+    onUpgrade: (m, from, to) <span class="kw">async</span> {
+      <span class="kw">if</span> (from &lt; <span class="num">2</span>) {
+        <span class="kw">await</span> m.<span class="fn">addColumn</span>(tarefas, tarefas.prazo);
+      }
+    },
+  );
+}
+
+<span class="com">// Fabrica do banco (singleton)</span>
+<span class="tp">AppDatabase</span> <span class="fn">criarBanco</span>() {
+  <span class="kw">late</span> <span class="tp">NativeDatabase</span> native;
+  <span class="kw">final</span> executor = <span class="tp">LazyDatabase</span>(() <span class="kw">async</span> {
+    <span class="kw">final</span> dir  = <span class="kw">await</span> <span class="fn">getApplicationDocumentsDirectory</span>();
+    <span class="kw">final</span> file = <span class="tp">File</span>(p.<span class="fn">join</span>(dir.path, <span class="str">'app.db'</span>));
+    <span class="kw">return</span> <span class="tp">NativeDatabase</span>.createInBackground(file);
+  });
+  <span class="kw">return</span> <span class="tp">AppDatabase</span>(executor);
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Drift &mdash; DAO com queries, inserts, watch e joins</div>
+          <pre class="example"><span class="kw">part of</span> <span class="str">'banco.dart'</span>;
+
+<span class="at">@DriftAccessor</span>(tables: [<span class="tp">Tarefas</span>, <span class="tp">Categorias</span>])
+<span class="kw">class</span> <span class="tp">TarefasDao</span> <span class="kw">extends</span> <span class="tp">DatabaseAccessor</span>&lt;<span class="tp">AppDatabase</span>&gt; <span class="kw">with</span> _$<span class="tp">TarefasDaoMixin</span> {
+  <span class="tp">TarefasDao</span>(<span class="kw">super</span>.db);
+
+  <span class="com">// SELECT com filtro — retorna List</span>
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Tarefa</span>&gt;&gt; <span class="fn">pendentes</span>() =>
+    (select(tarefas)..where((t) => t.concluida.<span class="fn">equals</span>(<span class="kw">false</span>))).<span class="fn">get</span>();
+
+  <span class="com">// Watch — retorna Stream reativo</span>
+  <span class="tp">Stream</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Tarefa</span>&gt;&gt; <span class="fn">watchAll</span>() =>
+    (select(tarefas)..orderBy([(t) => <span class="tp">OrderingTerm</span>.<span class="fn">desc</span>(t.id)])).watch();
+
+  <span class="com">// INSERT com retorno do id</span>
+  <span class="tp">Future</span>&lt;<span class="tp">int</span>&gt; <span class="fn">inserir</span>(<span class="tp">TarefasCompanion</span> entry) =>
+    into(tarefas).<span class="fn">insert</span>(entry);
+
+  <span class="com">// UPDATE parcial</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">marcarConcluida</span>(<span class="tp">int</span> id) =>
+    (update(tarefas)..where((t) => t.id.<span class="fn">equals</span>(id)))
+      .<span class="fn">write</span>(<span class="kw">const</span> <span class="tp">TarefasCompanion</span>(concluida: <span class="tp">Value</span>(<span class="kw">true</span>)));
+
+  <span class="com">// DELETE</span>
+  <span class="tp">Future</span>&lt;<span class="tp">int</span>&gt; <span class="fn">deletar</span>(<span class="tp">int</span> id) =>
+    (delete(tarefas)..where((t) => t.id.<span class="fn">equals</span>(id))).<span class="fn">go</span>();
+
+  <span class="com">// JOIN com categoria</span>
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">TypedResult</span>&gt;&gt; <span class="fn">comCategoria</span>() =>
+    (select(tarefas)
+      .<span class="fn">join</span>([<span class="fn">innerJoin</span>(categorias, categorias.id.<span class="fn">equalsExp</span>(tarefas.categoriaId))])
+    ).<span class="fn">get</span>();
+
+  <span class="com">// Transacao</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">moverCategoria</span>(<span class="tp">int</span> tarefaId, <span class="tp">int</span> novaCategoria) =>
+    transaction(() <span class="kw">async</span> {
+      <span class="kw">await</span> <span class="fn">marcarConcluida</span>(tarefaId);
+      <span class="kw">await</span> (update(tarefas)..where((t) => t.id.<span class="fn">equals</span>(tarefaId)))
+        .<span class="fn">write</span>(<span class="tp">TarefasCompanion</span>(categoriaId: <span class="tp">Value</span>(novaCategoria)));
+    });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="hive">Hive — NoSQL Embarcado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Hive &mdash; boxes, TypeAdapters e criptografia</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:hive_flutter/hive_flutter.dart'</span>;
+<span class="kw">part</span> <span class="str">'configuracao.g.dart'</span>;
+
+<span class="com">// Modelo TypeAdapter (gerado via build_runner)</span>
+<span class="at">@HiveType</span>(typeId: <span class="num">0</span>)
+<span class="kw">class</span> <span class="tp">Configuracao</span> <span class="kw">extends</span> <span class="tp">HiveObject</span> {
+  <span class="at">@HiveField</span>(<span class="num">0</span>) <span class="kw">late</span> <span class="tp">String</span> tema;
+  <span class="at">@HiveField</span>(<span class="num">1</span>) <span class="kw">late</span> <span class="tp">bool</span>   notificacoes;
+  <span class="at">@HiveField</span>(<span class="num">2</span>) <span class="kw">late</span> <span class="tp">String</span> idioma;
+  <span class="at">@HiveField</span>(<span class="num">3</span>) <span class="tp">int</span>?   fonteTamanho;
+}
+
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">inicializarHive</span>() <span class="kw">async</span> {
+  <span class="kw">await</span> <span class="tp">Hive</span>.<span class="fn">initFlutter</span>();
+  <span class="tp">Hive</span>.<span class="fn">registerAdapter</span>(<span class="tp">ConfiguracaoAdapter</span>());
+}
+
+<span class="kw">class</span> <span class="tp">ConfiguracaoRepo</span> {
+  <span class="kw">static</span> <span class="kw">const</span> _boxName = <span class="str">'configuracoes'</span>;
+  <span class="kw">late</span> <span class="tp">Box</span>&lt;<span class="tp">Configuracao</span>&gt; _box;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">abrir</span>() <span class="kw">async</span> {
+    _box = <span class="kw">await</span> <span class="tp">Hive</span>.<span class="fn">openBox</span>&lt;<span class="tp">Configuracao</span>&gt;(_boxName);
+  }
+
+  <span class="tp">Configuracao</span> <span class="fn">ler</span>() => _box.<span class="fn">get</span>(<span class="str">'config'</span>) ?? <span class="tp">Configuracao</span>()
+    ..tema = <span class="str">'dark'</span>
+    ..notificacoes = <span class="kw">true</span>
+    ..idioma = <span class="str">'pt_BR'</span>;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">salvar</span>(<span class="tp">Configuracao</span> cfg) => _box.<span class="fn">put</span>(<span class="str">'config'</span>, cfg);
+
+  <span class="com">// Listenable para reagir a mudancas</span>
+  <span class="tp">ValueListenable</span>&lt;<span class="tp">Box</span>&lt;<span class="tp">Configuracao</span>&gt;&gt; <span class="fn">listenable</span>() => _box.<span class="fn">listenable</span>();
+}
+
+<span class="com">// Box criptografado com AES-256</span>
+<span class="tp">Future</span>&lt;<span class="tp">Box</span>&gt; <span class="fn">abrirBoxSegura</span>(<span class="tp">String</span> nome) <span class="kw">async</span> {
+  <span class="kw">final</span> keySt = <span class="kw">await</span> <span class="tp">FlutterSecureStorage</span>().<span class="fn">read</span>(key: <span class="str">'hive_key_$nome'</span>);
+  <span class="tp">List</span>&lt;<span class="tp">int</span>&gt; chave;
+  <span class="kw">if</span> (keySt == <span class="kw">null</span>) {
+    chave = <span class="tp">Hive</span>.<span class="fn">generateSecureKey</span>();
+    <span class="kw">await</span> <span class="tp">FlutterSecureStorage</span>().<span class="fn">write</span>(key: <span class="str">'hive_key_$nome'</span>, value: <span class="tp">String</span>.<span class="fn">fromCharCodes</span>(chave));
+  } <span class="kw">else</span> {
+    chave = keySt.<span class="fn">codeUnits</span>;
+  }
+  <span class="kw">return</span> <span class="tp">Hive</span>.<span class="fn">openBox</span>(nome, encryptionCipher: <span class="tp">HiveAesCipher</span>(chave));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="isar">Isar — NoSQL de Alta Performance</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + Isar &mdash; Collections, indices e queries reativas</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:isar/isar.dart'</span>;
+<span class="kw">part</span> <span class="str">'nota.g.dart'</span>;
+
+<span class="at">@collection</span>
+<span class="kw">class</span> <span class="tp">Nota</span> {
+  <span class="tp">Id</span> id = <span class="tp">Isar</span>.autoIncrement;
+
+  <span class="at">@Index</span>(type: <span class="tp">IndexType</span>.value)
+  <span class="kw">late</span> <span class="tp">String</span> titulo;
+
+  <span class="kw">late</span> <span class="tp">String</span> conteudo;
+
+  <span class="at">@Index</span>()
+  <span class="tp">DateTime</span>? modificado;
+
+  <span class="at">@Enumerated</span>(<span class="tp">EnumType</span>.name)
+  <span class="tp">Prioridade</span> prioridade = <span class="tp">Prioridade</span>.normal;
+}
+
+<span class="kw">enum</span> <span class="tp">Prioridade</span> { baixa, normal, alta }
+
+<span class="kw">class</span> <span class="tp">NotaRepository</span> {
+  <span class="kw">late</span> <span class="tp">Isar</span> _isar;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">abrir</span>() <span class="kw">async</span> {
+    _isar = <span class="kw">await</span> <span class="tp">Isar</span>.<span class="fn">open</span>([<span class="tp">NotaSchema</span>],
+      name: <span class="str">'notas_db'</span>, directory: <span class="kw">await</span> <span class="fn">_dirPath</span>());
+  }
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">salvar</span>(<span class="tp">Nota</span> nota) =>
+    _isar.<span class="fn">writeTxn</span>(() => _isar.notas.<span class="fn">put</span>(nota));
+
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Nota</span>&gt;&gt; <span class="fn">buscarPorTitulo</span>(<span class="tp">String</span> query) =>
+    _isar.notas
+      .<span class="fn">filter</span>().<span class="fn">tituloContains</span>(query, caseSensitive: <span class="kw">false</span>)
+      .<span class="fn">sortByModificadoDesc</span>()
+      .<span class="fn">findAll</span>();
+
+  <span class="com">// Query reativa — Stream que emite nova lista ao mudar</span>
+  <span class="tp">Stream</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Nota</span>&gt;&gt; <span class="fn">watchAltas</span>() =>
+    _isar.notas
+      .<span class="fn">filter</span>().<span class="fn">prioridadeEqualTo</span>(<span class="tp">Prioridade</span>.alta)
+      .<span class="fn">sortByModificadoDesc</span>()
+      .<span class="fn">watch</span>(fireImmediately: <span class="kw">true</span>);
+
+  <span class="com">// Transacao com multiplas operacoes</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">batchImportar</span>(<span class="tp">List</span>&lt;<span class="tp">Nota</span>&gt; notas) =>
+    _isar.<span class="fn">writeTxn</span>(() => _isar.notas.<span class="fn">putAll</span>(notas));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="postgresql">PostgreSQL no Servidor (Shelf)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + postgres &mdash; Pool de conexoes e queries parametrizadas</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:postgres/postgres.dart'</span>;
+
+<span class="com">// Pool de conexoes (recomendado em producao)</span>
+<span class="kw">final</span> pool = <span class="tp">Pool</span>&lt;<span class="tp">Connection</span>&gt;(
+  <span class="kw">await</span> <span class="tp">Connection</span>.<span class="fn">open</span>(
+    <span class="tp">Endpoint</span>(
+      host:     <span class="tp">Platform</span>.environment[<span class="str">'DB_HOST'</span>]!,
+      port:     <span class="tp">int</span>.<span class="fn">parse</span>(<span class="tp">Platform</span>.environment[<span class="str">'DB_PORT'</span>] ?? <span class="str">'5432'</span>),
+      database: <span class="tp">Platform</span>.environment[<span class="str">'DB_NAME'</span>]!,
+      username: <span class="tp">Platform</span>.environment[<span class="str">'DB_USER'</span>]!,
+      password: <span class="tp">Platform</span>.environment[<span class="str">'DB_PASS'</span>]!,
+    ),
+    settings: <span class="kw">const</span> <span class="tp">ConnectionSettings</span>(sslMode: <span class="tp">SslMode</span>.require),
+  ),
+  size: <span class="num">10</span>,
+);
+
+<span class="kw">class</span> <span class="tp">ProdutoRepositoryImpl</span> {
+  <span class="kw">final</span> <span class="tp">Connection</span> _db;
+  <span class="tp">ProdutoRepositoryImpl</span>(<span class="kw">this</span>._db);
+
+  <span class="com">// Query parametrizada — previne SQL Injection</span>
+  <span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;&gt;&gt; <span class="fn">listar</span>({<span class="tp">int</span> pagina = <span class="num">1</span>}) <span class="kw">async</span> {
+    <span class="kw">final</span> result = <span class="kw">await</span> _db.<span class="fn">execute</span>(
+      <span class="tp">Sql</span>.<span class="fn">named</span>(<span class="str">r'SELECT id, nome, preco FROM produtos ORDER BY id LIMIT @limite OFFSET @offset'</span>),
+      parameters: {<span class="str">'limite'</span>: <span class="num">20</span>, <span class="str">'offset'</span>: (pagina - <span class="num">1</span>) * <span class="num">20</span>},
+    );
+    <span class="kw">return</span> result.map((row) => row.<span class="fn">toColumnMap</span>()).<span class="fn">toList</span>();
+  }
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">inserir</span>(<span class="tp">String</span> nome, <span class="tp">double</span> preco, <span class="tp">String</span> categoriaId) <span class="kw">async</span> {
+    <span class="kw">await</span> _db.<span class="fn">execute</span>(
+      <span class="tp">Sql</span>.<span class="fn">named</span>(<span class="str">r'INSERT INTO produtos (nome, preco, categoria_id) VALUES (@nome, @preco, @cat)'</span>),
+      parameters: {<span class="str">'nome'</span>: nome, <span class="str">'preco'</span>: preco, <span class="str">'cat'</span>: categoriaId},
+    );
+  }
+
+  <span class="com">// Transacao explicita</span>
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">transferirEstoque</span>(<span class="tp">int</span> de, <span class="tp">int</span> para, <span class="tp">int</span> qtd) <span class="kw">async</span> {
+    <span class="kw">await</span> _db.<span class="fn">runTx</span>((tx) <span class="kw">async</span> {
+      <span class="kw">await</span> tx.<span class="fn">execute</span>(
+        <span class="tp">Sql</span>.<span class="fn">named</span>(<span class="str">r'UPDATE produtos SET estoque = estoque - @q WHERE id = @id'</span>),
+        parameters: {<span class="str">'q'</span>: qtd, <span class="str">'id'</span>: de},
+      );
+      <span class="kw">await</span> tx.<span class="fn">execute</span>(
+        <span class="tp">Sql</span>.<span class="fn">named</span>(<span class="str">r'UPDATE produtos SET estoque = estoque + @q WHERE id = @id'</span>),
+        parameters: {<span class="str">'q'</span>: qtd, <span class="str">'id'</span>: para},
+      );
+    });
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Comparativo de Solucoes</h2>
+        <div class="panel">
+          <table class="table">
+            <thead>
+              <tr><th>Banco</th><th>Tipo</th><th>Plataforma</th><th>Destaques</th><th>Quando usar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Drift</td><td>SQLite relacional</td><td>Mobile / Desktop</td><td>Type-safe, migrations, Stream reativo, DAOs</td><td>Dados relacionais, esquema definido</td></tr>
+              <tr><td>sqflite</td><td>SQLite raw</td><td>Mobile</td><td>Acesso direto ao SQLite, leve</td><td>Projetos simples sem gerador</td></tr>
+              <tr><td>Hive</td><td>NoSQL chave-valor</td><td>Mobile / Desktop / Web</td><td>Rapido, criptografia AES, TypeAdapters</td><td>Configuracoes, cache offline</td></tr>
+              <tr><td>Isar</td><td>NoSQL documento</td><td>Mobile / Desktop</td><td>Queries complexas type-safe, multiplos indices, ACID</td><td>Dados semi-estruturados com queries frequentes</td></tr>
+              <tr><td>Firestore</td><td>NoSQL nuvem</td><td>Mobile / Web</td><td>Tempo real, offline sync, escalavel</td><td>Apps colaborativos, dados em nuvem</td></tr>
+              <tr><td>postgres</td><td>PostgreSQL</td><td>Servidor (Shelf)</td><td>Full SQL, joins, indexes, ACID</td><td>Backend Dart com dados relacionais complexos</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DRIFT. <strong>Drift — Reactive persistence library for Flutter and Dart</strong>. Disponível em: &lt;https://drift.simonbinder.eu&gt;. Acesso em: 2025.</li>
+            <li>ISAR. <strong>Isar Database</strong>. Disponível em: &lt;https://isar.dev&gt;. Acesso em: 2025.</li>
+            <li>HIVE. <strong>Hive — Lightweight and blazing fast key-value database</strong>. Disponível em: &lt;https://docs.hivedb.dev&gt;. Acesso em: 2025.</li>
+            <li>DART. <strong>postgres package</strong>. Disponível em: &lt;https://pub.dev/packages/postgres&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart para Mobile</a></li>
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Dados e IA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Drift gera codigo Dart type-safe a partir de definicoes de tabelas — jamais construa strings SQL concatenando variaveis de usuario. Use sempre parametros nomeados (<code>@param</code>) para prevenir injecao SQL.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

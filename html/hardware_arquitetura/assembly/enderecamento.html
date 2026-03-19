@@ -1,0 +1,107 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Modos de endereçamento em assembly x86-64 e ARM: imediato, registrador, direto, indireto, indexado, base+offset." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Endereçamento | Assembly | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="memory"></span>
+          <div>
+            <h1 class="page-title">Modos de Endereçamento</h1>
+            <p class="page-subtitle">Como operandos são especificados: imediato, registrador, memória e suas variações</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O modo de endereçamento define como cada operando de uma instrução é obtido.
+          Na arquitetura x86-64, a fórmula geral para um operando memória é:
+          <code class="code-inline">[base + index * scale + displacement]</code>,
+          onde cada campo é opcional. ARM usa BaseReg + offset (imediato ou registrador) com pre/post-indexing.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — MODOS x86-64 ═══════════════════ -->
+      <section id="modos-x86">
+        <h2 id="modos-x86" class="section-title">Modos de Endereçamento x86-64</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Modo</th><th>Sintaxe (Intel)</th><th>Como funciona</th><th>Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Imediato</td><td><code class="code-inline">42</code>, <code class="code-inline">0xFF</code></td><td>Valor literal embutido na instrução</td><td><code class="code-inline">mov rax, 42</code></td></tr>
+              <tr><td>Registrador</td><td><code class="code-inline">rax</code>, <code class="code-inline">rbx</code></td><td>Operando é o conteúde do registrador</td><td><code class="code-inline">mov rax, rbx</code></td></tr>
+              <tr><td>Direto (memória)</td><td><code class="code-inline">[0x402000]</code></td><td>Endereço literal; acessa mem[addr]</td><td><code class="code-inline">mov rax, [var]</code></td></tr>
+              <tr><td>Indireto</td><td><code class="code-inline">[rax]</code></td><td>Registrador contém endereço; acessa mem[rax]</td><td><code class="code-inline">mov rbx, [rax]</code></td></tr>
+              <tr><td>Base + Offset</td><td><code class="code-inline">[rbp - 8]</code></td><td>Base + deslocamento constante; acessa variáveis locais na pilha</td><td><code class="code-inline">mov rax, [rbp-8]</code></td></tr>
+              <tr><td>Indexado (SIB)</td><td><code class="code-inline">[rbx + rsi*4]</code></td><td>Base + índice × escala (1,2,4,8); acesso a arrays</td><td><code class="code-inline">mov eax, [arr + rcx*4]</code></td></tr>
+              <tr><td>RIP-relativo</td><td><code class="code-inline">[rel label]</code></td><td>Endereço = RIP + deslocamento; usado em código PIC (PIE binaries)</td><td><code class="code-inline">lea rsi, [rel msg]</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — MODOS ARM ═══════════════════ -->
+      <section id="modos-arm">
+        <h2 id="modos-arm" class="section-title">Modos de Endereçamento ARM AArch64</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Modo</th><th>Sintaxe</th><th>O que faz</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Offset imediato</td><td><code class="code-inline">[X1, #16]</code></td><td>X1 + 16; X1 não muda</td></tr>
+              <tr><td>Pre-index</td><td><code class="code-inline">[X1, #16]!</code></td><td>X1 = X1 + 16 antes do acesso; escreve X1 atualizado</td></tr>
+              <tr><td>Post-index</td><td><code class="code-inline">[X1], #16</code></td><td>Acessa X1, depois X1 = X1 + 16</td></tr>
+              <tr><td>Registrador extendido</td><td><code class="code-inline">[X1, X2, LSL #3]</code></td><td>X1 + (X2 &lt;&lt; 3); acesso a array de elementos 64-bit</td></tr>
+              <tr><td>Literal (PC-rel)</td><td><code class="code-inline">LDR X0, =label</code></td><td>Carrega endereço relativo ao PC; assembler expande para ADRP+ADD ou literal pool</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja como os modos são usados na prática em assembly x86-64 em
+          <a href="/html/hardware_arquitetura/assembly/x86_64.html">x86-64</a> e ARM em
+          <a href="/html/hardware_arquitetura/assembly/arm.html">Assembly ARM</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O modo de endereçamento decide onde o dado vive — registrador é sempre a escolha mais rápida."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

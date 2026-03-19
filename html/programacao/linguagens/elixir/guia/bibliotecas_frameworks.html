@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Bibliotecas e Frameworks do Elixir: Phoenix Framework, Ecto para banco de dados, Plug, LiveView, Oban para jobs, Tesla HTTP client, ExUnit para testes e o ecossistema Hex." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Bibliotecas e Frameworks | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Bibliotecas e Frameworks</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Bibliotecas e Frameworks de Elixir</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Bibliotecas e Frameworks</h1>
+          <p>O ecossistema Elixir é centrado no <strong>Phoenix Framework</strong> para web, <strong>Ecto</strong> para persistência, <strong>Oban</strong> para background jobs e <strong>LiveView</strong> para interfaces reativas sem JavaScript. O gerenciador de pacotes <strong>Hex</strong> hospeda milhares de bibliotecas, e o próprio Erlang/OTP fornece dezenas de módulos robustos sem dependências externas.</p>
+        </div>
+        <p class="intro-highlight">
+          Phoenix LiveView revolucionou o desenvolvimento web com Elixir: interfaces reativas com updates em tempo real via WebSocket, zero JavaScript customizado, e a mesma performance e tolerância a falhas dos processos OTP.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="phoenix">Phoenix Framework — Web</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Phoenix Router, Controller e View</div>
+          <pre class="example"><span class="com"># mix.exs — adicionar Phoenix</span>
+defp deps do
+  [
+    {:phoenix, "~> 1.7"},
+    {:phoenix_html, "~> 4.0"},
+    {:phoenix_live_view, "~> 0.20"},
+    {:phoenix_live_reload, "~> 1.4", only: :dev},
+    {:ecto_sql, "~> 3.11"},
+    {:postgrex, ">= 0.0.0"}
+  ]
+end
+
+<span class="com"># router.ex — definir rotas</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.Router</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuAppWeb</span>, <span class="at">:router</span>
+
+  pipeline <span class="at">:browser</span> <span class="kw">do</span>
+    plug <span class="at">:accepts</span>, [<span class="str">"html"</span>]
+    plug <span class="at">:fetch_session</span>
+    plug <span class="at">:fetch_live_flash</span>
+    plug <span class="at">:protect_from_forgery</span>
+    plug <span class="at">:put_secure_browser_headers</span>
+  <span class="kw">end</span>
+
+  pipeline <span class="at">:api</span> <span class="kw">do</span>
+    plug <span class="at">:accepts</span>, [<span class="str">"json"</span>]
+  <span class="kw">end</span>
+
+  scope <span class="str">"/"</span>, <span class="tp">MeuAppWeb</span> <span class="kw">do</span>
+    pipe_through <span class="at">:browser</span>
+    get <span class="str">"/"</span>, <span class="tp">PageController</span>, <span class="at">:home</span>
+    <span class="fn">live</span> <span class="str">"/produtos"</span>, <span class="tp">ProdutoLive.Index</span>
+    <span class="fn">live</span> <span class="str">"/produtos/:id"</span>, <span class="tp">ProdutoLive.Show</span>
+  <span class="kw">end</span>
+
+  scope <span class="str">"/api"</span>, <span class="tp">MeuAppWeb</span> <span class="kw">do</span>
+    pipe_through <span class="at">:api</span>
+    resources <span class="str">"/usuarios"</span>, <span class="tp">UsuarioController</span>, only: [<span class="at">:index</span>, <span class="at">:show</span>, <span class="at">:create</span>]
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Controller</span>
+<span class="kw">defmodule</span> <span class="tp">MeuAppWeb.UsuarioController</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuAppWeb</span>, <span class="at">:controller</span>
+  <span class="kw">alias</span> <span class="tp">MeuApp.Contas</span>
+
+  <span class="kw">def</span> <span class="fn">index</span>(conn, _params) <span class="kw">do</span>
+    usuarios = <span class="tp">Contas</span>.<span class="fn">listar_usuarios</span>()
+    render(conn, <span class="at">:index</span>, usuarios: usuarios)
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">create</span>(conn, %{<span class="str">"usuario"</span> => params}) <span class="kw">do</span>
+    <span class="kw">case</span> <span class="tp">Contas</span>.<span class="fn">criar_usuario</span>(params) <span class="kw">do</span>
+      {<span class="at">:ok</span>, usuario} ->
+        conn
+        |&gt; put_status(<span class="at">:created</span>)
+        |&gt; render(<span class="at">:show</span>, usuario: usuario)
+      {<span class="at">:error</span>, changeset} ->
+        conn
+        |&gt; put_status(<span class="at">:unprocessable_entity</span>)
+        |&gt; render(<span class="at">:error</span>, changeset: changeset)
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ecto">Ecto — Banco de Dados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ecto Schema, Changeset e Query</div>
+          <pre class="example"><span class="com"># Schema — mapeamento para tabela</span>
+<span class="kw">defmodule</span> <span class="tp">MeuApp.Contas.Usuario</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Ecto.Schema</span>
+  <span class="kw">import</span> <span class="tp">Ecto.Changeset</span>
+
+  schema <span class="str">"usuarios"</span> <span class="kw">do</span>
+    field <span class="at">:nome</span>, <span class="at">:string</span>
+    field <span class="at">:email</span>, <span class="at">:string</span>
+    field <span class="at">:senha_hash</span>, <span class="at">:string</span>
+    field <span class="at">:senha</span>, <span class="at">:string</span>, virtual: <span class="kw">true</span>  <span class="com"># não persiste</span>
+    field <span class="at">:ativo</span>, <span class="at">:boolean</span>, default: <span class="kw">true</span>
+    has_many <span class="at">:pedidos</span>, <span class="tp">MeuApp.Loja.Pedido</span>
+    timestamps()  <span class="com"># inserted_at, updated_at</span>
+  <span class="kw">end</span>
+
+  <span class="kw">def</span> <span class="fn">changeset</span>(usuario, attrs) <span class="kw">do</span>
+    usuario
+    |&gt; cast(attrs, [<span class="at">:nome</span>, <span class="at">:email</span>, <span class="at">:senha</span>])
+    |&gt; validate_required([<span class="at">:nome</span>, <span class="at">:email</span>, <span class="at">:senha</span>])
+    |&gt; validate_format(<span class="at">:email</span>, ~r/^[^\s]+@[^\s]+$/)
+    |&gt; validate_length(<span class="at">:senha</span>, min: 8)
+    |&gt; unique_constraint(<span class="at">:email</span>)
+    |&gt; <span class="fn">hash_senha</span>()
+  <span class="kw">end</span>
+
+  defp <span class="fn">hash_senha</span>(%{valid?: <span class="kw">true</span>, changes: %{senha: senha}} = cs) <span class="kw">do</span>
+    put_change(cs, <span class="at">:senha_hash</span>, <span class="tp">Bcrypt</span>.<span class="fn">hash_pwd_salt</span>(senha))
+  <span class="kw">end</span>
+  defp <span class="fn">hash_senha</span>(cs), <span class="kw">do</span>: cs
+<span class="kw">end</span>
+
+<span class="com"># Queries com Ecto.Query</span>
+<span class="kw">import</span> <span class="tp">Ecto.Query</span>
+
+<span class="com"># Buscar por email</span>
+from(u <span class="kw">in</span> <span class="tp">Usuario</span>, where: u.email == ^email, select: u)
+|&gt; <span class="tp">Repo</span>.<span class="fn">one</span>()
+
+<span class="com"># JOIN com pedidos</span>
+from(u <span class="kw">in</span> <span class="tp">Usuario</span>,
+  join: p <span class="kw">in</span> assoc(u, <span class="at">:pedidos</span>),
+  where: p.status == <span class="str">"pendente"</span>,
+  where: u.ativo == <span class="kw">true</span>,
+  order_by: [desc: p.inserted_at],
+  limit: 50,
+  select: %{usuario: u.nome, pedido_id: p.id, total: p.total}
+)
+|&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()
+
+<span class="com"># Aggregations</span>
+from(p <span class="kw">in</span> <span class="tp">Pedido</span>,
+  group_by: p.status,
+  select: %{status: p.status, total: count(p.id), valor: sum(p.total)}
+)
+|&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="liveview">Phoenix LiveView — UI Reativa</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LiveView — contador em tempo real</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MeuAppWeb.ContadorLive</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">MeuAppWeb</span>, <span class="at">:live_view</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">mount</span>(_params, _session, socket) <span class="kw">do</span>
+    {<span class="at">:ok</span>, assign(socket, contador: <span class="num">0</span>, historico: [])}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_event</span>(<span class="str">"incrementar"</span>, _params, socket) <span class="kw">do</span>
+    novo = socket.assigns.contador + <span class="num">1</span>
+    hist = [novo | socket.assigns.historico] |&gt; <span class="tp">Enum</span>.<span class="fn">take</span>(<span class="num">5</span>)
+    {<span class="at">:noreply</span>, assign(socket, contador: novo, historico: hist)}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">handle_event</span>(<span class="str">"resetar"</span>, _, socket) <span class="kw">do</span>
+    {<span class="at">:noreply</span>, assign(socket, contador: <span class="num">0</span>, historico: [])}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="kw">true</span>
+  <span class="kw">def</span> <span class="fn">render</span>(assigns) <span class="kw">do</span>
+    ~H<span class="str">"""
+    &lt;div class="contador"&gt;
+      &lt;h1&gt;Contador: &lt;%= @contador %&gt;&lt;/h1&gt;
+      &lt;button phx-click="incrementar"&gt;+1&lt;/button&gt;
+      &lt;button phx-click="resetar"&gt;Reset&lt;/button&gt;
+      &lt;ul&gt;
+        &lt;%= for n &lt;- @historico do %&gt;
+          &lt;li&gt;&lt;%= n %&gt;&lt;/li&gt;
+        &lt;% end %&gt;
+      &lt;/ul&gt;
+    &lt;/div&gt;
+    """</span>
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># LiveView com subscribe para atualizações em broadcast</span>
+<span class="kw">def</span> <span class="fn">mount</span>(_params, _session, socket) <span class="kw">do</span>
+  <span class="kw">if</span> connected?(socket), <span class="kw">do</span>: <span class="tp">MeuAppWeb.Endpoint</span>.<span class="fn">subscribe</span>(<span class="str">"pedidos:novos"</span>)
+  pedidos = <span class="tp">Loja</span>.<span class="fn">listar_pedidos_recentes</span>()
+  {<span class="at">:ok</span>, assign(socket, pedidos: pedidos)}
+<span class="kw">end</span>
+
+<span class="kw">def</span> <span class="fn">handle_info</span>({<span class="at">:novo_pedido</span>, pedido}, socket) <span class="kw">do</span>
+  pedidos = [pedido | socket.assigns.pedidos] |&gt; <span class="tp">Enum</span>.<span class="fn">take</span>(<span class="num">20</span>)
+  {<span class="at">:noreply</span>, assign(socket, pedidos: pedidos)}
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="outras-libs">Bibliotecas Essenciais do Ecossistema</h2>
+        <div class="panel">
+          <div class="panel-title">Principais bibliotecas Elixir (Hex)</div>
+          <table class="table">
+            <thead><tr><th>Biblioteca</th><th>Categoria</th><th>Descrição</th></tr></thead>
+            <tbody>
+              <tr><td><code>Oban</code></td><td>Background Jobs</td><td>Fila de jobs persistente em PostgreSQL, retry, scheduling, dashboard</td></tr>
+              <tr><td><code>Tesla</code></td><td>HTTP Client</td><td>Cliente HTTP modular com middlewares (logging, retry, auth)</td></tr>
+              <tr><td><code>Finch</code></td><td>HTTP Client</td><td>Cliente HTTP de alta performance baseado em NimblePool</td></tr>
+              <tr><td><code>Jason</code></td><td>JSON</td><td>Fast JSON encode/decode para Elixir</td></tr>
+              <tr><td><code>Absinthe</code></td><td>GraphQL</td><td>Servidor GraphQL completo para Elixir/Phoenix</td></tr>
+              <tr><td><code>Guardian</code></td><td>Auth</td><td>Autenticação JWT para Phoenix</td></tr>
+              <tr><td><code>Swoosh</code></td><td>Email</td><td>Envio de email (SMTP, Mailgun, SendGrid, SES)</td></tr>
+              <tr><td><code>Broadway</code></td><td>Data Pipeline</td><td>Processamento de mensagens em lote com back-pressure (RabbitMQ, SQS, Kafka)</td></tr>
+              <tr><td><code>Nx</code></td><td>Numerical</td><td>Computação numérica de alto desempenho (tensores, GPU via EXLA)</td></tr>
+              <tr><td><code>Axon</code></td><td>ML</td><td>Redes neurais em Elixir sobre Nx</td></tr>
+              <tr><td><code>Req</code></td><td>HTTP Client</td><td>HTTP client simples e moderno, substituto do HTTPoison</td></tr>
+              <tr><td><code>ExUnit</code></td><td>Testes</td><td>Framework de testes nativo do Elixir</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Phoenix Framework. <strong>Phoenix Guides — Controllers, Views, LiveView</strong>. Disponível em: &lt;https://hexdocs.pm/phoenix/overview.html&gt;. Acesso em: 2026.</li>
+            <li>Ecto Project. <strong>Ecto Documentation</strong>. Disponível em: &lt;https://hexdocs.pm/ecto/Ecto.html&gt;. Acesso em: 2026.</li>
+            <li>MCCORD, C. <strong>Programming Phoenix LiveView</strong>. The Pragmatic Bookshelf, 2022.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/phoenix" target="_blank" rel="noopener">HEXDOCS. Phoenix framework.</a></li>
+            <li><a href="https://hexdocs.pm/phoenix_live_view" target="_blank" rel="noopener">HEXDOCS. Phoenix LiveView.</a></li>
+            <li><a href="https://hexdocs.pm/ecto" target="_blank" rel="noopener">HEXDOCS. Ecto.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir Avançado (OTP)</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>Phoenix LiveView</strong> demonstrou que é possível ter interfaces reativas de tempo real com a simplicidade do server-side rendering: o estado vive no servidor em um processo Elixir, atualizações são enviadas como diffs mínimos via WebSocket, e o desenvolvedor escreve apenas HTML + lógica Elixir — sem Redux, sem hooks, sem re-renders desnecessários.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

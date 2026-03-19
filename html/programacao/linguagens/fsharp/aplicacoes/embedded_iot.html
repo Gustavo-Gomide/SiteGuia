@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="F# em embedded e IoT: edge gateways, MQTT, telemetria, processamento local e integracao com hardware via .NET." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>F# - Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>F# - Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Icone F#"><span data-svg="fsharp" aria-hidden="true"></span></div>
+          <h1>F# para Edge, Gateway e IoT</h1>
+          <p>F# raramente roda no firmware de microcontroladores pequenos, mas e excelente no software de borda que coleta, valida e envia dados de sensores para a nuvem.</p>
+        </div>
+        <p class="intro-highlight">Pense em IoT como uma cadeia: <strong>sensor -> gateway -> nuvem</strong>. F# costuma brilhar no gateway, onde regras de negocio, resiliencia e tipagem fazem diferenca.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="arquitetura">Arquitetura Recomendada</h2>
+        <div class="panel">
+          <ul>
+            <li>Firmware em C/C++/Rust para dispositivos restritos.</li>
+            <li>Gateway local em .NET + F# para normalizar telemetria.</li>
+            <li>Broker MQTT para desacoplamento de produtores e consumidores.</li>
+            <li>Envio para cloud (Azure IoT, AWS IoT, Kafka) com retentativa.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">Mensageria MQTT com F#</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Publicar telemetria com MQTTnet</div>
+          <pre class="example">open MQTTnet
+open MQTTnet.Client
+open System.Text
+
+<span class="kw">let</span> payload = <span class="str">"{\"temperatura\": 23.7, \"umidade\": 52}"</span>
+
+task {
+    <span class="kw">let</span> factory = MqttFactory()
+    <span class="kw">let</span> client = factory.CreateMqttClient()
+
+    <span class="kw">let</span> options =
+        MqttClientOptionsBuilder()
+            .WithTcpServer(<span class="str">"broker.local"</span>, 1883)
+            .Build()
+
+    do! client.ConnectAsync(options)
+
+    <span class="kw">let</span> msg =
+        MqttApplicationMessageBuilder()
+            .WithTopic(<span class="str">"fabrica/sensor/linha-1"</span>)
+            .WithPayload(Encoding.UTF8.GetBytes(payload))
+            .WithAtLeastOnceQoS()
+            .Build()
+
+    do! client.PublishAsync(msg)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gpio-edge">Leitura de Hardware no Edge</h2>
+        <p>Em Linux embarcado (como Raspberry Pi), F# pode usar <code>System.Device.Gpio</code> para leitura de pinos e atuar em relays, LEDs e sensores simples.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Leitura de pino digital</div>
+          <pre class="example">open System.Device.Gpio
+
+<span class="kw">use</span> controller = new GpioController()
+<span class="kw">let</span> pin = 17
+
+controller.OpenPin(pin, PinMode.Input)
+<span class="kw">let</span> estado = controller.Read(pin)
+printfn <span class="str">"Estado do pino 17: %A"</span> estado</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boas-praticas">Boas Praticas em IoT com F#</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Idempotencia</h3><p>Mensagens podem chegar duplicadas. Use chave de evento para deduplicar no consumidor.</p></div>
+          <div class="card"><h3>Backpressure</h3><p>Limite taxa de envio quando a nuvem estiver lenta para evitar perda e travamento local.</p></div>
+          <div class="card"><h3>Store-and-forward</h3><p>Persistencia local temporaria para operar offline e reenviar quando houver conectividade.</p></div>
+        </div>
+        <div class="callout">
+          <p><span data-svg="aviso" aria-hidden="true"></span> Nao confunda edge robusto com firmware de tempo real. F# e excelente para orquestracao e regras, nao para hard real-time de micros pequenos.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>MQTTnet. <strong>MQTTnet GitHub</strong>. Disponivel em: &lt;https://github.com/dotnet/MQTTnet&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>Microsoft. <strong>System.Device.Gpio</strong>. Disponivel em: &lt;https://learn.microsoft.com/dotnet/iot/&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>Azure. <strong>Azure IoT Architecture</strong>. Disponivel em: &lt;https://learn.microsoft.com/azure/iot-fundamentals/iot-architecture&gt;. Acesso em: 13 mar. 2026.</li>
+            <li>OASIS. <strong>MQTT Version 5.0</strong>. Disponivel em: &lt;https://docs.oasis-open.org/mqtt/mqtt/v5.0/mqtt-v5.0.html&gt;. Acesso em: 13 mar. 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ferramentas CLI para operacao</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Telemetria para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/fsharp/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em IoT, o valor nao esta no sensor isolado, mas na qualidade da decisao que voce toma com o dado. <strong>F# ajuda a manter essa decisao correta e auditavel</strong>.</p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

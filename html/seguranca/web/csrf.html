@@ -1,0 +1,188 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="CSRF — Cross-Site Request Forgery: como funciona, bypass de proteções, tokens anti-CSRF, SameSite cookies e defesas modernas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>CSRF — Cross-Site Request Forgery | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>CSRF — Cross-Site Request Forgery</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é CSRF?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>CSRF — Cross-Site Request Forgery</h1>
+          <p>Força o browser da vítima a enviar requisições autenticadas sem seu consentimento.</p>
+        </div>
+
+        <p class="intro-highlight">Em um ataque CSRF, o atacante engana o navegador da vítima para enviar requisições autenticadas a outro site sem o consentimento do usuário. O browser inclui automaticamente cookies de sessão em toda requisição — o servidor não consegue distinguir uma requisição legítima de uma forjada se não houver proteção específica.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fluxo" class="section-title">Como o Ataque Funciona</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>1. Vítima autenticada</h3>
+            <p>Usuário está logado em <span class="code-inline">banco.com</span> com cookie de sessão válido no browser.</p>
+          </div>
+          <div class="card">
+            <h3>2. Visita a página maliciosa</h3>
+            <p>Usuário acessa <span class="code-inline">evil.com</span> controlado pelo atacante (link em email, fórum, etc.).</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">3. Requisição forjada</h3>
+            <p>A página do atacante contém HTML/JS que dispara uma requisição para <span class="code-inline">banco.com</span> — ex: transferência de dinheiro.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">4. Browser envia com cookies</h3>
+            <p>O browser inclui automaticamente o cookie de sessão. O servidor autentica a requisição como legítima e executa a ação.</p>
+          </div>
+        </div>
+
+        <pre class="code-block">
+&lt;!-- Exemplo: página evil.com forjando transferência bancária --&gt;
+&lt;html&gt;
+  &lt;body onload="document.forms[0].submit()"&gt;
+    &lt;form action="https://banco.com/transferir" method="POST"&gt;
+      &lt;input type="hidden" name="conta_destino" value="444455556666"&gt;
+      &lt;input type="hidden" name="valor" value="5000"&gt;
+    &lt;/form&gt;
+  &lt;/body&gt;
+&lt;/html&gt;
+&lt;!-- Submete automaticamente assim que a vítima abre a página --&gt;</pre>
+      </section>
+
+      <section>
+        <h2 id="protecoes" class="section-title">Mecanismos de Proteção</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Mecanismo</th><th>Como funciona</th><th>Robustez</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Token Anti-CSRF (Synchronizer Token)</strong></td>
+                <td>Token único por sessão/formulário inserido no form; servidor valida se bate com o da sessão</td>
+                <td>Alta — atacante não tem acesso ao token</td>
+              </tr>
+              <tr>
+                <td><strong>Double Submit Cookie</strong></td>
+                <td>Token idêntico no cookie e no body; servidor compara os dois</td>
+                <td>Média-alta — vulnerável se subdomínio comprometido</td>
+              </tr>
+              <tr>
+                <td><strong>SameSite Cookie</strong></td>
+                <td><span class="code-inline">Strict</span>: bloqueia cookie em todas cross-site; <span class="code-inline">Lax</span>: permite GET mas bloqueia POST cross-site</td>
+                <td>Alta (Strict) / Média (Lax)</td>
+              </tr>
+              <tr>
+                <td><strong>Verificação de Origin/Referer</strong></td>
+                <td>Servidor verifica se Origin header corresponde ao domínio esperado</td>
+                <td>Média — pode ser suprimido; depende de implementação</td>
+              </tr>
+              <tr>
+                <td><strong>Custom Request Headers</strong></td>
+                <td>Exige header customizado (<span class="code-inline">X-Requested-With</span>) — só JS pode enviar com fetch/XHR</td>
+                <td>Média — contorna form submission simples</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="samesite" class="section-title">SameSite Cookie em Detalhe</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Configuração do cookie de sessão:
+Set-Cookie: sessionid=abc123; HttpOnly; Secure; SameSite=Lax
+
+# SameSite=Strict:
+# Cookie NUNCA é enviado em requisições cross-site
+# Problema: usuário clicando link externo para o site perde a sessão
+
+# SameSite=Lax (padrão moderno):
+# Cookie NÃO é enviado em POST/PUT/DELETE cross-site
+# Cookie É enviado em navegação de topo via GET (link normal)
+
+# SameSite=None:
+# Cookie sempre enviado — precisa de Secure
+# Use apenas para casos específicos como embeds de terceiros</pre>
+
+        <div class="message-block">
+          <p>Browsers modernos (Chrome 80+) definem <span class="code-inline">SameSite=Lax</span> como padrão para cookies sem atributo explícito. Isso reduziu drasticamente a superfície de ataque CSRF, mas não elimina completamente — ainda é necessário token CSRF para casos do tipo GET que causem estado.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="bypass" class="section-title">Bypass de CSRF Tokens</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">Remover o token do pedido</h3>
+            <p>Algumas aplicações só validam se o token estiver presente — se removido, aceitam. Teste enviando a requisição sem o parâmetro CSRF.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Token de outro usuário</h3>
+            <p>Se o servidor não verifica que o token pertence à sessão atual (só se é válido em geral), o atacante usa seu próprio token na requisição da vítima.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">XSS + CSRF</h3>
+            <p>XSS pode ler o token anti-CSRF do DOM e usá-lo para montar requisição forjada. XSS bypassa completamente proteção CSRF.</p>
+          </div>
+          <div class="card card--danger">
+            <h3 class="text--danger">Subdomínio comprometido</h3>
+            <p>Double Submit Cookie: se atacante controla subdomínio (<span class="code-inline">evil.app.com</span>), pode setar cookie no domínio pai <span class="code-inline">.app.com</span> para injetar token falso.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>CSRF é especialmente perigoso quando combinado com ações de alto impacto (mudança de email/senha, transferências financeiras). A melhor defesa atual é a combinação de tokens CSRF robustos + <span class="code-inline">SameSite=Strict/Lax</span> nos cookies de sessão. APIs JSON com autenticação via Authorization header (Bearer token) não sofrem CSRF, pois browsers não enviam esse header automaticamente.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "CSRF abusa da confiança que o servidor tem no browser — tokens anti-CSRF provam que a requisição veio de dentro da aplicação."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

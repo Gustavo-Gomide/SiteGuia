@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Integracao de Prolog com bancos de dados: ODBC/PostgreSQL no SWI, transacoes, consistencia e abordagem hibrida SQL + inferencia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Prolog com Banco de Dados | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Prolog com Banco de Dados</strong></p>
+      </div>
+
+      <section>
+        <h2 class="section-title" id="visao-geral">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="prolog" aria-hidden="true"></span></div>
+          <h1>SQL + Inferencia Logica em Arquitetura Hibrida</h1>
+          <p>Use o banco relacional para persistencia e Prolog para regras, consistencia semantica e decisao.</p>
+        </div>
+        <p class="intro-highlight">
+          Integrar Prolog com banco nao significa substituir SQL; significa elevar o nivel da regra de negocio com um motor declarativo que consulta e deduz.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Modelo de Integracao</h2>
+        <p>
+          O banco relacional continua fonte de verdade transacional. Prolog atua como camada de raciocinio: recebe dados, aplica regras e devolve conclusoes ou validacoes.
+        </p>
+        <p>
+          Analogia: SQL organiza e recupera registros; Prolog interpreta o significado dessas relacoes para responder perguntas de mais alto nivel.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="odbc-postgresql">ODBC e PostgreSQL no SWI-Prolog</h2>
+        <p>
+          A biblioteca <code class="code-inline">library(odbc)</code> permite conectar em PostgreSQL (via driver ODBC), executar consultas e mapear linhas para termos Prolog.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">
+            <span>Consulta SQL com ODBC (exemplo didatico)</span>
+          </div>
+          <pre class="example"><code><span class="com">% Exemplo didatico de consulta parametrizada via ODBC.</span>
+<span class="kw">:-</span> <span class="fn">use_module</span>(<span class="str">library(odbc)</span>).
+
+<span class="fn">abrir_conexao</span>(Conn) <span class="kw">:-</span>
+  <span class="fn">odbc_connect</span>(<span class="str">meu_dsn</span>, Conn, [alias(pg), open(once)]).
+
+<span class="fn">buscar_pedidos</span>(Conn, ClienteId, Linhas) <span class="kw">:-</span>
+  <span class="fn">odbc_query</span>(
+    Conn,
+    <span class="str">'SELECT id, status, total FROM pedidos WHERE cliente_id = ?'</span>,
+    Linhas,
+    [parameters([ClienteId])]
+  ).</code></pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mapeamento-fatos-regras">Mapeamento Fato/Regra para Consultas</h2>
+        <p>
+          Depois de buscar dados SQL, converta linhas em fatos temporarios para inferencia. Esse padrao simplifica a leitura da regra e reduz acoplamento ao formato bruto da tabela.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">
+            <span>Mapeando linhas para fatos de dominio</span>
+          </div>
+          <pre class="example"><code><span class="com">% Normaliza a linha SQL em fatos de dominio para inferencia.</span>
+<span class="fn">carrega_pedido</span>(row(Id, Status, Total)) <span class="kw">:-</span>
+  <span class="fn">assertz</span>(pedido(Id, Status, Total)).
+
+<span class="fn">pedido_risco</span>(Id) <span class="kw">:-</span>
+  pedido(Id, <span class="str">atrasado</span>, Total),
+  Total > <span class="str">10000</span>.</code></pre>
+        </div>
+        <p>
+          Em producao, prefira escopo controlado (modulos, transacoes ou contexto de requisicao) para evitar fato residual entre chamadas concorrentes.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transacoes-consistencia">Transacoes e Consistencia</h2>
+        <p>
+          Regras de consistencia podem ser avaliadas antes do commit SQL. Se a inferencia detectar violacao, a transacao e revertida, preservando integridade semantica alem das constraints do schema.
+        </p>
+        <div class="panel">
+          <h3 class="panel-title">Fluxo robusto</h3>
+          <p>1. Iniciar transacao no banco.</p>
+          <p>2. Ler estado relevante e inferir regras em Prolog.</p>
+          <p>3. Aplicar mudancas SQL apenas se as regras forem satisfeitas.</p>
+          <p>4. Commit ou rollback com log de justificativa.</p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="abordagem-hibrida">Abordagem Hibrida: SQL para Dados, Prolog para Decisao</h2>
+        <p>
+          SQL deve continuar responsavel por filtros massivos, joins e agregacoes de alto volume. Prolog entra depois, sobre um subconjunto de dados relevante, para inferir politicas, classificacoes e recomendacoes.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            Essa divisao melhora desempenho e manutenibilidade: cada tecnologia atua onde possui maior expressividade e custo operacional menor.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Padroes Avancados</h2>
+        <p>
+          Projetos maduros adotam cache de resultados inferidos, versionamento de regras e testes de regressao logica acoplados ao pipeline de migracoes SQL.
+        </p>
+        <p>
+          Outra pratica util e armazenar explicacoes da decisao (predicados disparados) junto ao evento de negocio para auditoria e compliance.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>SWI-PROLOG. <em>ODBC Interface</em>. Disponivel em: <a href="https://www.swi-prolog.org/pldoc/man?section=odbc" target="_blank" rel="noopener">https://www.swi-prolog.org/pldoc/man?section=odbc</a>. Acesso em: 13 mar. 2026.</li>
+          <li>POSTGRESQL GLOBAL DEVELOPMENT GROUP. <em>PostgreSQL Documentation</em>. Disponivel em: <a href="https://www.postgresql.org/docs/" target="_blank" rel="noopener">https://www.postgresql.org/docs/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>ODBC. <em>Microsoft ODBC Programmer's Reference</em>. Disponivel em: <a href="https://learn.microsoft.com/sql/odbc/reference/odbc-programmer-s-reference" target="_blank" rel="noopener">https://learn.microsoft.com/sql/odbc/reference/odbc-programmer-s-reference</a>. Acesso em: 13 mar. 2026.</li>
+          <li>DATE, C. J. <em>An Introduction to Database Systems</em>. 8. ed. Pearson, 2003.</li>
+          <li>STERLING, L.; SHAPIRO, E. <em>The Art of Prolog</em>. 2. ed. MIT Press, 1994.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p>
+          <span data-svg="estrela" aria-hidden="true"></span>
+          SQL organiza os fatos; Prolog transforma esses fatos em decisao inteligente e justificavel.
+        </p>
+      </div>
+
+      <ul class="link-list">
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/aplicacoes/web.html">Prolog para Web</a></li>
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/aplicacoes/regras_inferencia.html">Regras e Inferencia</a></li>
+        <li><a class="link-card" href="/html/programacao/linguagens/prolog/guia/bibliotecas_frameworks.html">Bibliotecas e Frameworks</a></li>
+      </ul>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

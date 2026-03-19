@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Perl avançado: referências, estruturas complexas, closures, OOP com bless/package, Moose/Moo, regex avançado, DBI para banco de dados e tratamento de exceções com eval/die." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Perl — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Perl &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="perl" aria-hidden="true"></span></div>
+          <h1>Perl Avançado</h1>
+          <p>Referências, estruturas de dados complexas, OOP, closures, regex avançado, DBI e tratamento de exceções.</p>
+        </div>
+        <p class="intro-highlight">
+          O verdadeiro poder de Perl emerge quando você combina referências para construir estruturas aninhadas, closures para encapsular estado e o sistema de objetos baseado em <code>bless</code> — tudo isso sustentado pelo motor de regex mais sofisticado do ecossistema de linguagens dinâmicas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias-perl">Referências e Estruturas Complexas</h2>
+        <p>
+          Uma <strong>referência</strong> em Perl é um escalar que armazena o endereço de memória de outro dado — escalar, array, hash ou sub-rotina. Referências são o mecanismo que permite criar estruturas aninhadas como arrays de hashes ou hashes de arrays.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">referencias.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+
+<span class="com"># Criar referência com \ (backslash)</span>
+<span class="kw">my</span> <span class="tp">$escalar</span>  = <span class="num">42</span>;
+<span class="kw">my</span> <span class="tp">$ref_esc</span>  = \<span class="tp">$escalar</span>;   <span class="com"># referência para escalar</span>
+
+<span class="kw">my</span> <span class="tp">@array</span>    = (<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>);
+<span class="kw">my</span> <span class="tp">$ref_arr</span>  = \<span class="tp">@array</span>;     <span class="com"># referência para array</span>
+
+<span class="kw">my</span> <span class="tp">%hash</span>     = (a =&gt; <span class="num">1</span>);
+<span class="kw">my</span> <span class="tp">$ref_hash</span> = \<span class="tp">%hash</span>;      <span class="com"># referência para hash</span>
+
+<span class="com"># Desreferenciar</span>
+<span class="fn">say</span> <span class="tp">$$ref_esc</span>;               <span class="com"># 42 — $$ref</span>
+<span class="fn">say</span> <span class="tp">$ref_arr</span>-&gt;[<span class="num">0</span>]</span>;           <span class="com"># 1  — seta: mais legível</span>
+<span class="fn">say</span> <span class="tp">$$ref_arr</span>[<span class="num">0</span>]</span>;             <span class="com"># 1  — alternativa</span>
+<span class="fn">say</span> <span class="tp">$ref_hash</span>-&gt;{a};          <span class="com"># 1  — seta para hash</span>
+
+<span class="com"># Referência anônima — sem criar variável nomeada</span>
+<span class="kw">my</span> <span class="tp">$aref</span> = [<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>];     <span class="com"># [] cria arrayref anônimo</span>
+<span class="kw">my</span> <span class="tp">$href</span> = { x =&gt; <span class="num">1</span>, y =&gt; <span class="num">2</span> }; <span class="com"># {} cria hashref anônimo</span>
+
+<span class="com"># Estrutura complexa: array de hashes (tabela)</span>
+<span class="kw">my</span> <span class="tp">@usuarios</span> = (
+    { nome =&gt; <span class="str">"Alice"</span>, idade =&gt; <span class="num">30</span>, admin =&gt; <span class="num">1</span> },
+    { nome =&gt; <span class="str">"Bob"</span>,   idade =&gt; <span class="num">25</span>, admin =&gt; <span class="num">0</span> },
+    { nome =&gt; <span class="str">"Carol"</span>, idade =&gt; <span class="num">35</span>, admin =&gt; <span class="num">1</span> },
+);
+
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$u</span> (<span class="tp">@usuarios</span>) {
+    <span class="fn">printf</span> <span class="str">"%-8s %3d %s\n"</span>,
+        <span class="tp">$u</span>-&gt;{nome}, <span class="tp">$u</span>-&gt;{idade},
+        <span class="tp">$u</span>-&gt;{admin} ? <span class="str">"admin"</span> : <span class="str">"user"</span>;
+}
+
+<span class="com"># Hash de arrays — índice invertido</span>
+<span class="kw">my</span> <span class="tp">%por_role</span>;
+<span class="kw">foreach</span> <span class="kw">my</span> <span class="tp">$u</span> (<span class="tp">@usuarios</span>) {
+    <span class="kw">my</span> <span class="tp">$role</span> = <span class="tp">$u</span>-&gt;{admin} ? <span class="str">"admin"</span> : <span class="str">"user"</span>;
+    <span class="fn">push</span> @{ <span class="tp">$por_role</span>{<span class="tp">$role</span>} }, <span class="tp">$u</span>-&gt;{nome};
+}
+<span class="fn">say</span> <span class="str">"Admins: "</span> . <span class="fn">join</span>(<span class="str">", "</span>, @{ <span class="tp">$por_role</span>{admin} });
+
+<span class="com"># ref() — descobre o tipo da referência</span>
+<span class="fn">say</span> <span class="fn">ref</span>(<span class="tp">$aref</span>);   <span class="com"># ARRAY</span>
+<span class="fn">say</span> <span class="fn">ref</span>(<span class="tp">$href</span>);   <span class="com"># HASH</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="closures">Closures</h2>
+        <p>
+          Uma <strong>closure</strong> é uma sub-rotina que "captura" variáveis léxicas (<code class="code-inline">my</code>) do escopo em que foi criada, mesmo depois que esse escopo não está mais ativo. Closures são o mecanismo de encapsulamento mais elegante em Perl.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">closures.pl</div>
+          <pre class="example"><span class="com"># Fábrica de contador — cada chamada retorna uma closure independente</span>
+<span class="kw">sub</span> <span class="tp">make_counter</span> {
+    <span class="kw">my</span> <span class="tp">$n</span> = <span class="num">0</span>;                <span class="com"># variável capturada</span>
+    <span class="kw">return</span> <span class="kw">sub</span> { <span class="kw">return</span> ++<span class="tp">$n</span> };  <span class="com"># closure que incrementa $n</span>
+}
+
+<span class="kw">my</span> <span class="tp">$c1</span> = <span class="fn">make_counter</span>();
+<span class="kw">my</span> <span class="tp">$c2</span> = <span class="fn">make_counter</span>();  <span class="com"># $n independente de $c1</span>
+
+<span class="fn">say</span> <span class="tp">$c1</span>-&gt;();  <span class="com"># 1</span>
+<span class="fn">say</span> <span class="tp">$c1</span>-&gt;();  <span class="com"># 2</span>
+<span class="fn">say</span> <span class="tp">$c2</span>-&gt;();  <span class="com"># 1 — contador próprio</span>
+<span class="fn">say</span> <span class="tp">$c1</span>-&gt;();  <span class="com"># 3</span>
+
+<span class="com"># Closure como memoize manual</span>
+<span class="kw">sub</span> <span class="tp">make_fibonacci</span> {
+    <span class="kw">my</span> <span class="tp">%cache</span>;
+    <span class="kw">my</span> <span class="tp">$fib</span>;
+    <span class="tp">$fib</span> = <span class="kw">sub</span> {
+        <span class="kw">my</span> (<span class="tp">$n</span>) = <span class="tp">@_</span>;
+        <span class="kw">return</span> <span class="tp">$n</span> <span class="kw">if</span> <span class="tp">$n</span> &lt;= <span class="num">1</span>;
+        <span class="kw">return</span> <span class="tp">$cache</span>{<span class="tp">$n</span>} <span class="kw">if</span> <span class="fn">exists</span> <span class="tp">$cache</span>{<span class="tp">$n</span>};
+        <span class="tp">$cache</span>{<span class="tp">$n</span>} = <span class="tp">$fib</span>-&gt;(<span class="tp">$n</span>-<span class="num">1</span>) + <span class="tp">$fib</span>-&gt;(<span class="tp">$n</span>-<span class="num">2</span>);
+        <span class="kw">return</span> <span class="tp">$cache</span>{<span class="tp">$n</span>};
+    };
+    <span class="kw">return</span> <span class="tp">$fib</span>;
+}
+
+<span class="kw">my</span> <span class="tp">$fib</span> = <span class="fn">make_fibonacci</span>();
+<span class="fn">say</span> <span class="tp">$fib</span>-&gt;(<span class="num">40</span>);   <span class="com"># 102334155 — rápido por causa do cache</span>
+
+<span class="com"># Closures como callbacks (dispatch table)</span>
+<span class="kw">my</span> <span class="tp">%ops</span> = (
+    soma    =&gt; <span class="kw">sub</span> { <span class="tp">$_</span>[<span class="num">0</span>] + <span class="tp">$_</span>[<span class="num">1</span>] },
+    subtr   =&gt; <span class="kw">sub</span> { <span class="tp">$_</span>[<span class="num">0</span>] - <span class="tp">$_</span>[<span class="num">1</span>] },
+    produto =&gt; <span class="kw">sub</span> { <span class="tp">$_</span>[<span class="num">0</span>] * <span class="tp">$_</span>[<span class="num">1</span>] },
+);
+<span class="fn">say</span> <span class="tp">$ops</span>{soma}-&gt;(<span class="num">10</span>, <span class="num">5</span>);     <span class="com"># 15</span>
+<span class="fn">say</span> <span class="tp">$ops</span>{produto}-&gt;(<span class="num">6</span>, <span class="num">7</span>); <span class="com"># 42</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="oop-bless">OOP com bless e package</h2>
+        <p>
+          Perl implementa orientação a objetos de forma minimalista: um <strong>objeto</strong> é qualquer referência "abençoada" (<code class="code-inline">bless</code>) com o nome de um package. O package define as sub-rotinas que se tornam métodos.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">oop_animal.pl</div>
+          <pre class="example"><span class="kw">package</span> <span class="tp">Animal</span>;
+<span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+
+<span class="com"># Construtor: convenção new()</span>
+<span class="kw">sub</span> <span class="tp">new</span> {
+    <span class="kw">my</span> (<span class="tp">$classe</span>, <span class="tp">%args</span>) = <span class="tp">@_</span>;
+    <span class="kw">my</span> <span class="tp">$self</span> = {
+        nome  =&gt; <span class="tp">$args</span>{nome}  // <span class="str">"Desconhecido"</span>,
+        som   =&gt; <span class="tp">$args</span>{som}   // <span class="str">"..."</span>,
+    };
+    <span class="kw">return</span> <span class="fn">bless</span> <span class="tp">$self</span>, <span class="tp">$classe</span>;  <span class="com"># associa $self ao package</span>
+}
+
+<span class="com"># Accessor / getter</span>
+<span class="kw">sub</span> <span class="tp">nome</span> { <span class="kw">return</span> <span class="tp">$_</span>[<span class="num">0</span>]-&gt;{nome} }
+
+<span class="com"># Método de instância</span>
+<span class="kw">sub</span> <span class="tp">falar</span> {
+    <span class="kw">my</span> (<span class="tp">$self</span>) = <span class="tp">@_</span>;
+    <span class="fn">printf</span> <span class="str">"%s faz: %s\n"</span>, <span class="tp">$self</span>-&gt;{nome}, <span class="tp">$self</span>-&gt;{som};
+}
+
+<span class="com"># Herança via @ISA</span>
+<span class="kw">package</span> <span class="tp">Cachorro</span>;
+<span class="kw">use</span> <span class="tp">parent</span> <span class="str">-norequire</span>, <span class="str">'Animal'</span>;  <span class="com"># herda de Animal</span>
+
+<span class="kw">sub</span> <span class="tp">new</span> {
+    <span class="kw">my</span> (<span class="tp">$classe</span>, <span class="tp">%args</span>) = <span class="tp">@_</span>;
+    <span class="tp">$args</span>{som} = <span class="str">"Au au!"</span>;
+    <span class="kw">return</span> <span class="tp">$classe</span>-&gt;<span class="fn">SUPER::new</span>(<span class="tp">%args</span>);  <span class="com"># chama o pai</span>
+}
+
+<span class="com"># Sobrescrita de método</span>
+<span class="kw">sub</span> <span class="tp">falar</span> {
+    <span class="kw">my</span> (<span class="tp">$self</span>) = <span class="tp">@_</span>;
+    <span class="fn">print</span> <span class="tp">$self</span>-&gt;{nome} . <span class="str">" late: "</span> . <span class="tp">$self</span>-&gt;{som} . <span class="str">"\n"</span>;
+}
+
+<span class="com"># Uso no script principal</span>
+<span class="kw">package</span> <span class="tp">main</span>;
+
+<span class="kw">my</span> <span class="tp">$gato</span>  = <span class="tp">Animal</span>-&gt;<span class="fn">new</span>(nome =&gt; <span class="str">"Mimi"</span>,  som =&gt; <span class="str">"Miau"</span>);
+<span class="kw">my</span> <span class="tp">$cao</span>   = <span class="tp">Cachorro</span>-&gt;<span class="fn">new</span>(nome =&gt; <span class="str">"Rex"</span>);
+
+<span class="tp">$gato</span>-&gt;<span class="fn">falar</span>();   <span class="com"># Mimi faz: Miau</span>
+<span class="tp">$cao</span>-&gt;<span class="fn">falar</span>();    <span class="com"># Rex late: Au au!</span>
+
+<span class="fn">say</span> <span class="fn">ref</span>(<span class="tp">$cao</span>);                      <span class="com"># Cachorro</span>
+<span class="fn">say</span> <span class="tp">$cao</span>-&gt;<span class="fn">isa</span>(<span class="str">"Animal"</span>) ? <span class="str">"sim"</span> : <span class="str">"não"</span>;  <span class="com"># sim</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="moose-moo">Moose e Moo: OOP Moderno</h2>
+        <p>
+          O sistema <code class="code-inline">bless</code>/<code class="code-inline">package</code> é poderoso mas verboso — cria getters/setters manualmente, não valida tipos e não tem accessors automáticos. <strong>Moose</strong> (e seu filho leve <strong>Moo</strong>) resolvem isso, trazendo um sistema de metaobjetos declarativo.
+        </p>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>Moose</strong>
+            <p>Sistema de meta-objetos completo. Atributos tipados, roles (mixins), herança limpa, before/after/around (métodos de ordem). Mais lento para inicializar; use em aplicações longas.</p>
+          </div>
+          <div class="card">
+            <strong>Moo</strong>
+            <p>Subconjunto do Moose, 95% menor, inicialização ultrarrápida. Compatível com Moose (upgrade transparente). Recomendado para a maioria dos projetos.</p>
+          </div>
+          <div class="card">
+            <strong>Mouse</strong>
+            <p>Alternativa ainda mais leve. Útil em scripts de curta duração onde o overhead de startup importa.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">moo_exemplo.pl</div>
+          <pre class="example"><span class="kw">package</span> <span class="tp">Pessoa</span>;
+<span class="kw">use</span> <span class="tp">Moo</span>;
+<span class="kw">use</span> <span class="tp">Types::Standard</span> <span class="str">qw(Str Int Bool)</span>;
+
+<span class="com"># Atributos declarativos com tipo e padrão</span>
+<span class="fn">has</span> <span class="str">nome</span>  =&gt; (is =&gt; <span class="str">'ro'</span>, isa =&gt; <span class="tp">Str</span>,  required =&gt; <span class="num">1</span>);
+<span class="fn">has</span> <span class="str">idade</span> =&gt; (is =&gt; <span class="str">'rw'</span>, isa =&gt; <span class="tp">Int</span>,  default  =&gt; <span class="num">0</span>);
+<span class="fn">has</span> <span class="str">ativo</span> =&gt; (is =&gt; <span class="str">'ro'</span>, isa =&gt; <span class="tp">Bool</span>, default  =&gt; <span class="num">1</span>);
+
+<span class="com"># Método calculado (lazy)</span>
+<span class="fn">has</span> <span class="str">descricao</span> =&gt; (
+    is      =&gt; <span class="str">'lazy'</span>,
+    builder =&gt; <span class="str">'_build_descricao'</span>,
+);
+
+<span class="kw">sub</span> <span class="tp">_build_descricao</span> {
+    <span class="kw">my</span> (<span class="tp">$self</span>) = <span class="tp">@_</span>;
+    <span class="kw">return</span> <span class="fn">sprintf</span> <span class="str">"%s, %d anos"</span>, <span class="tp">$self</span>-&gt;nome, <span class="tp">$self</span>-&gt;idade;
+}
+
+<span class="com"># Método de instância</span>
+<span class="kw">sub</span> <span class="tp">cumprimentar</span> {
+    <span class="kw">my</span> (<span class="tp">$self</span>) = <span class="tp">@_</span>;
+    <span class="fn">say</span> <span class="str">"Olá, sou "</span> . <span class="tp">$self</span>-&gt;nome;
+}
+
+<span class="com"># Herança com Moo</span>
+<span class="kw">package</span> <span class="tp">Funcionario</span>;
+<span class="kw">use</span> <span class="tp">Moo</span>;
+<span class="kw">extends</span> <span class="str">'Pessoa'</span>;                      <span class="com"># herda todos os atributos</span>
+<span class="fn">has</span> <span class="str">cargo</span> =&gt; (is =&gt; <span class="str">'ro'</span>, isa =&gt; <span class="tp">Str</span>, required =&gt; <span class="num">1</span>);
+
+<span class="kw">package</span> <span class="tp">main</span>;
+
+<span class="kw">my</span> <span class="tp">$p</span> = <span class="tp">Pessoa</span>-&gt;<span class="fn">new</span>(nome =&gt; <span class="str">"Ana"</span>, idade =&gt; <span class="num">28</span>);
+<span class="tp">$p</span>-&gt;<span class="fn">cumprimentar</span>();
+<span class="fn">say</span> <span class="tp">$p</span>-&gt;descricao;     <span class="com"># Ana, 28 anos (calculado na primeira chamada)</span>
+<span class="tp">$p</span>-&gt;idade(<span class="num">29</span>);         <span class="com"># rw: pode modificar</span>
+
+<span class="kw">my</span> <span class="tp">$f</span> = <span class="tp">Funcionario</span>-&gt;<span class="fn">new</span>(nome =&gt; <span class="str">"Bob"</span>, cargo =&gt; <span class="str">"Dev"</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="regex-avancado">Regex Avançado</h2>
+        <p>
+          Além das ferramentas básicas, o motor de regex do Perl suporta <strong>lookahead</strong>, <strong>lookbehind</strong>, <strong>capturas nomeadas</strong>, <strong>quantificadores possessivos</strong> e a flag <code class="code-inline">/x</code> que permite documentar expressões complexas.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">regex_avancado.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+
+<span class="com"># Capturas nomeadas: (?&lt;nome&gt;...)</span>
+<span class="kw">my</span> <span class="tp">$data</span> = <span class="str">"Evento: 2024-12-31"</span>;
+<span class="kw">if</span> (<span class="tp">$data</span> =~ <span class="str">m/(?&lt;ano&gt;\d{4})-(?&lt;mes&gt;\d{2})-(?&lt;dia&gt;\d{2})/</span>) {
+    <span class="fn">say</span> <span class="str">"Ano: $+{ano}, Mês: $+{mes}, Dia: $+{dia}"</span>;
+}
+
+<span class="com"># Lookahead positivo (?=...) — casa se seguido por</span>
+<span class="kw">my</span> <span class="tp">$preco</span> = <span class="str">"100 reais, 50 dólares, 200 euros"</span>;
+<span class="kw">my</span> <span class="tp">@em_reais</span> = <span class="tp">$preco</span> =~ <span class="str">m/(\d+)(?=\s+reais)/g</span>;  <span class="com"># (100)</span>
+
+<span class="com"># Lookahead negativo (?!...) — casa se NÃO seguido por</span>
+<span class="kw">my</span> <span class="tp">@nao_reais</span> = <span class="tp">$preco</span> =~ <span class="str">m/(\d+)(?!\s+reais)/g</span>; <span class="com"># 50, 200</span>
+
+<span class="com"># Lookbehind positivo (?&lt;=...) — casa se precedido por</span>
+<span class="kw">my</span> <span class="tp">@apos_R</span> = <span class="tp">$preco</span> =~ <span class="str">m/(?&lt;=\s)\d+/g</span>;  <span class="com"># números após espaço</span>
+
+<span class="com"># Flag /x — regex legível com espaços e comentários</span>
+<span class="kw">my</span> <span class="tp">$email</span> = <span class="str">"dev@example.com"</span>;
+<span class="kw">my</span> <span class="tp">$regex_email</span> = <span class="str">qr/
+    ^                       # início da string
+    ([\w.+-]+)              # local part: letras, ponto, +, -
+    @                       # arroba literal
+    ([\w-]+                 # domínio: letras e hífens
+        (?:\.[\w-]+)*)      # subdomínios opcionais
+    \.                      # ponto antes do TLD
+    ([a-zA-Z]{2,})          # TLD: 2+ letras
+    $                       # fim da string
+/x</span>;
+
+<span class="kw">if</span> (<span class="tp">$email</span> =~ <span class="tp">$regex_email</span>) {
+    <span class="fn">say</span> <span class="str">"Email válido: $1 @ $2 . $3"</span>;
+}
+
+<span class="com"># s/// com /e — avalia o lado direito como código</span>
+<span class="kw">my</span> <span class="tp">$template</span> = <span class="str">"2 + 2 = {2+2}, PI ≈ {3.14159:.2f}"</span>;
+<span class="tp">$template</span> =~ <span class="kw">s</span><span class="str">/\{([^}]+)\}/eval($1)/ge</span>;  <span class="com"># substitui com resultado</span>
+
+<span class="com"># Possessivo (++): sem backtrack — mais eficiente</span>
+<span class="com"># \w++ equivale a \w+ mas não devolve caracteres ao backtrack</span>
+<span class="tp">$email</span> =~ <span class="str">m/\w++@/</span>;  <span class="com"># possessivo</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dbi">DBI: Banco de Dados</h2>
+        <p>
+          O módulo <strong>DBI</strong> (Database Interface) é a interface padrão de Perl para bancos relacionais. Trabalha com qualquer banco via driver DBD específico: <code class="code-inline">DBD::Pg</code> para PostgreSQL, <code class="code-inline">DBD::mysql</code> para MySQL, <code class="code-inline">DBD::SQLite</code> para SQLite, etc.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dbi_exemplo.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+<span class="kw">use</span> <span class="tp">DBI</span>;
+
+<span class="com"># Conectar ao banco (SQLite como exemplo portável)</span>
+<span class="kw">my</span> <span class="tp">$dbh</span> = <span class="tp">DBI</span>-&gt;<span class="fn">connect</span>(
+    <span class="str">'dbi:SQLite:dbname=app.db'</span>,
+    <span class="str">''</span>, <span class="str">''</span>,
+    {
+        RaiseError =&gt; <span class="num">1</span>,        <span class="com"># exceção em erro (em vez de return undef)</span>
+        AutoCommit =&gt; <span class="num">1</span>,        <span class="com"># commit automático</span>
+        PrintError =&gt; <span class="num">0</span>,
+    }
+) <span class="kw">or</span> <span class="fn">die</span> <span class="tp">DBI</span>::errstr;
+
+<span class="com"># Criar tabela</span>
+<span class="tp">$dbh</span>-&gt;<span class="fn">do</span>(<span class="str">'CREATE TABLE IF NOT EXISTS usuarios (
+    id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome  TEXT    NOT NULL,
+    email TEXT    UNIQUE NOT NULL,
+    ativo INTEGER DEFAULT 1
+)'</span>);
+
+<span class="com"># INSERT com placeholder — previne SQL injection</span>
+<span class="kw">my</span> <span class="tp">$sth_ins</span> = <span class="tp">$dbh</span>-&gt;<span class="fn">prepare</span>(
+    <span class="str">'INSERT INTO usuarios (nome, email) VALUES (?, ?)'</span>
+);
+<span class="tp">$sth_ins</span>-&gt;<span class="fn">execute</span>(<span class="str">"Alice"</span>, <span class="str">"alice@ex.com"</span>);
+<span class="tp">$sth_ins</span>-&gt;<span class="fn">execute</span>(<span class="str">"Bob"</span>,   <span class="str">"bob@ex.com"</span>);
+
+<span class="com"># SELECT — buscar todos</span>
+<span class="kw">my</span> <span class="tp">$sth_sel</span> = <span class="tp">$dbh</span>-&gt;<span class="fn">prepare</span>(<span class="str">'SELECT id, nome, email FROM usuarios'</span>);
+<span class="tp">$sth_sel</span>-&gt;<span class="fn">execute</span>();
+
+<span class="kw">while</span> (<span class="kw">my</span> <span class="tp">$row</span> = <span class="tp">$sth_sel</span>-&gt;<span class="fn">fetchrow_hashref</span>()) {
+    <span class="fn">printf</span> <span class="str">"%3d | %-10s | %s\n"</span>,
+        <span class="tp">$row</span>-&gt;{id}, <span class="tp">$row</span>-&gt;{nome}, <span class="tp">$row</span>-&gt;{email};
+}
+
+<span class="com"># Transação manual</span>
+<span class="tp">$dbh</span>-&gt;{AutoCommit} = <span class="num">0</span>;
+<span class="fn">eval</span> {
+    <span class="tp">$dbh</span>-&gt;<span class="fn">do</span>(<span class="str">'UPDATE usuarios SET ativo=0 WHERE nome=?'</span>, <span class="kw">undef</span>, <span class="str">"Bob"</span>);
+    <span class="tp">$dbh</span>-&gt;<span class="fn">commit</span>();
+};
+<span class="kw">if</span> (<span class="tp">$@</span>) {
+    <span class="tp">$dbh</span>-&gt;<span class="fn">rollback</span>();
+    <span class="fn">die</span> <span class="str">"Transação falhou: $@"</span>;
+}
+<span class="tp">$dbh</span>-&gt;{AutoCommit} = <span class="num">1</span>;
+
+<span class="com"># Desconectar</span>
+<span class="tp">$dbh</span>-&gt;<span class="fn">disconnect</span>();</pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> <strong>Nunca concatene valores do usuário diretamente em SQL.</strong> Use sempre placeholders <code class="code-inline">?</code> com <code class="code-inline">prepare</code>/<code class="code-inline">execute</code>. Isso impede ataques de SQL injection.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="excecoes">Exceções com eval/die</h2>
+        <p>
+          Perl não tem sintaxe <code class="code-inline">try/catch</code> nativa — usa <code class="code-inline">eval { }</code> como bloco de captura e <code class="code-inline">die</code> para lançar exceções. A variável <code class="code-inline">$@</code> contém o erro capturado. Módulos como <strong>Try::Tiny</strong> e <strong>Feature::Compat::Try</strong> adicionam sintaxe mais limpa.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">excecoes.pl</div>
+          <pre class="example"><span class="kw">use</span> <span class="tp">strict</span>;
+<span class="kw">use</span> <span class="tp">warnings</span>;
+
+<span class="com"># eval captura exceções — como try/catch</span>
+<span class="fn">eval</span> {
+    <span class="fn">die</span> <span class="str">"algo deu errado\n"</span>;   <span class="com"># lança exceção</span>
+};
+<span class="kw">if</span> (<span class="tp">$@</span>) {
+    <span class="fn">chomp</span> <span class="kw">my</span> <span class="tp">$err</span> = <span class="tp">$@</span>;
+    <span class="fn">warn</span> <span class="str">"Capturado: $err\n"</span>;
+}
+
+<span class="com"># Objetos de exceção — die com referência</span>
+<span class="kw">package</span> <span class="tp">MinhaExcecao</span>;
+<span class="kw">sub</span> <span class="tp">new</span> {
+    <span class="kw">my</span> (<span class="tp">$class</span>, <span class="tp">%args</span>) = <span class="tp">@_</span>;
+    <span class="kw">return</span> <span class="fn">bless</span> { mensagem =&gt; <span class="tp">$args</span>{mensagem}, codigo =&gt; <span class="tp">$args</span>{codigo} }, <span class="tp">$class</span>;
+}
+<span class="kw">sub</span> <span class="tp">mensagem</span> { <span class="tp">$_</span>[<span class="num">0</span>]-&gt;{mensagem} }
+<span class="kw">sub</span> <span class="tp">codigo</span>   { <span class="tp">$_</span>[<span class="num">0</span>]-&gt;{codigo}   }
+
+<span class="kw">package</span> <span class="tp">main</span>;
+<span class="fn">eval</span> {
+    <span class="fn">die</span> <span class="tp">MinhaExcecao</span>-&gt;<span class="fn">new</span>(mensagem =&gt; <span class="str">"Arquivo não encontrado"</span>, codigo =&gt; <span class="num">404</span>);
+};
+<span class="kw">if</span> (<span class="kw">my</span> <span class="tp">$e</span> = <span class="tp">$@</span>) {
+    <span class="kw">if</span> (<span class="fn">ref</span>(<span class="tp">$e</span>) eq <span class="str">'MinhaExcecao'</span>) {
+        <span class="fn">printf</span> <span class="str">"Erro %d: %s\n"</span>, <span class="tp">$e</span>-&gt;codigo, <span class="tp">$e</span>-&gt;mensagem;
+    } <span class="kw">else</span> {
+        <span class="fn">die</span> <span class="tp">$e</span>;  <span class="com"># relança exceção desconhecida</span>
+    }
+}
+
+<span class="com"># Try::Tiny — interface mais limpa (CPAN)</span>
+<span class="kw">use</span> <span class="tp">Try::Tiny</span>;
+
+<span class="fn">try</span> {
+    <span class="fn">open</span> <span class="kw">my</span> <span class="tp">$fh</span>, <span class="str">'&lt;'</span>, <span class="str">'/arquivo/inexistente'</span>
+        <span class="kw">or</span> <span class="fn">die</span> <span class="str">"Não abriu: $!\n"</span>;
+}
+<span class="fn">catch</span> {
+    <span class="fn">warn</span> <span class="str">"Erro capturado: $_"</span>;
+}
+<span class="fn">finally</span> {
+    <span class="fn">say</span> <span class="str">"Bloco finally sempre executa"</span>;
+};
+
+<span class="com"># Carp — erros com stack trace mais informativo</span>
+<span class="kw">use</span> <span class="tp">Carp</span> <span class="str">qw(croak confess carp cluck)</span>;
+<span class="kw">sub</span> <span class="tp">dividir</span> {
+    <span class="kw">my</span> (<span class="tp">$a</span>, <span class="tp">$b</span>) = <span class="tp">@_</span>;
+    <span class="fn">croak</span> <span class="str">"Divisão por zero!"</span> <span class="kw">if</span> <span class="tp">$b</span> == <span class="num">0</span>;  <span class="com"># die da perspectiva do chamador</span>
+    <span class="kw">return</span> <span class="tp">$a</span> / <span class="tp">$b</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>WALL, Larry; CHRISTIANSEN, Tom; ORWANT, Jon. <strong>Programming Perl</strong>. 4. ed. O'Reilly Media, 2000. Capítulos 8–12 (referências, OOP, módulos).</li>
+            <li>CHROMATIC. <strong>Modern Perl</strong>. Chromatic, 2016. Disponível em: <a href="https://modernperlbooks.com/books/modern_perl_2016/" target="_blank" rel="noopener">https://modernperlbooks.com/books/modern_perl_2016/</a></li>
+            <li>PERL FOUNDATION. <strong>perlref — Perl references and nested data structures</strong>. Disponível em: <a href="https://perldoc.perl.org/perlref" target="_blank" rel="noopener">https://perldoc.perl.org/perlref</a></li>
+            <li>PERL FOUNDATION. <strong>perlobj — Perl object reference</strong>. Disponível em: <a href="https://perldoc.perl.org/perlobj" target="_blank" rel="noopener">https://perldoc.perl.org/perlobj</a></li>
+            <li>STEIN, Lincoln; et al. <strong>DBI — Database independent interface for Perl</strong>. CPAN. Disponível em: <a href="https://metacpan.org/pod/DBI" target="_blank" rel="noopener">https://metacpan.org/pod/DBI</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Fundamentos</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Ecossistema &amp; Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/perl/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Perl — Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Objetos em Perl são apenas dados com atitudes." — Larry Wall, Programming Perl
+        </p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

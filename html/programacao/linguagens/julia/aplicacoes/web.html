@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Desenvolvimento web com Julia: HTTP.jl, Oxygen.jl, Genie.jl, JSON, middleware e tempo real." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Julia — Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+          <h1>Julia — Desenvolvimento Web</h1>
+          <p>Julia não é conhecida principalmente por web, mas possui stack suficiente para APIs, painéis interativos e serviços backend com bom desempenho. A base é <code>HTTP.jl</code>; acima dele surgem camadas como <code>Oxygen.jl</code> e <code>Genie.jl</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          O ponto forte de Julia na web aparece quando o backend precisa fazer <strong>cálculo pesado, otimização, estatística ou inferência numérica</strong> dentro da própria requisição. Em vez de separar um backend web em outra linguagem e um motor científico separado, Julia permite unir os dois no mesmo processo.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="httpjl">HTTP.jl — Base do Servidor</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Servidor HTTP puro, roteamento e respostas JSON</div>
+          <pre class="example">using HTTP
+using JSON
+
+function handler(req::HTTP.Request)
+    if req.method == "GET" &amp;&amp; req.target == "/health"
+        body = JSON.json(Dict("status" =&gt; "ok", "tempo" =&gt; time()))
+        return HTTP.Response(200, ["Content-Type" =&gt; "application/json"], body)
+    elseif req.method == "GET" &amp;&amp; req.target == "/"
+        html = "&lt;h1&gt;Olá, Julia Web!&lt;/h1&gt;"
+        return HTTP.Response(200, ["Content-Type" =&gt; "text/html; charset=utf-8"], html)
+    end
+
+    return HTTP.Response(404, "rota não encontrada")
+end
+
+HTTP.serve(handler, "0.0.0.0", 8080)
+
+<span class="com"># Handler recebe HTTP.Request e retorna HTTP.Response.</span>
+<span class="com"># A resposta pode ser texto, HTML, JSON, bytes ou stream.</span>
+<span class="com"># HTTP.jl também suporta routers e middleware compostos.</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Router com parâmetros de rota e middleware</div>
+          <pre class="example">using HTTP
+using JSON
+
+router = HTTP.Router()
+
+function logging_middleware(handler)
+    return function(req::HTTP.Request)
+        inicio = time()
+        resp = handler(req)
+        println("$(req.method) $(req.target) - $(round(time() - inicio, digits=4))s")
+        resp
+    end
+end
+
+HTTP.register!(router, "GET", "/api/status") do req
+    HTTP.Response(200, JSON.json(Dict("ok" =&gt; true)))
+end
+
+HTTP.register!(router, "GET", "/api/usuarios/{id}") do req
+    id = HTTP.getparams(req)["id"]
+    body = JSON.json(Dict("id" =&gt; parse(Int, id), "nome" =&gt; "Usuário $id"))
+    HTTP.Response(200, ["Content-Type" =&gt; "application/json"], body)
+end
+
+HTTP.serve(logging_middleware(router), ip"127.0.0.1", 8081)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="oxygen">Oxygen.jl — Microframework Moderno</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Rotas declarativas com macros</div>
+          <pre class="example">using Oxygen
+using JSON
+
+@get "/" function(req)
+    return html("&lt;h1&gt;Bem-vindo ao Oxygen&lt;/h1&gt;")
+end
+
+@get "/api/produtos/{id}" function(req, id::Int)
+    return Dict(
+        "id" =&gt; id,
+        "nome" =&gt; "Produto $id",
+        "preco" =&gt; 99.9,
+    )
+end
+
+@post "/api/somar" function(req)
+    dados = json(req)
+    a = dados["a"]
+    b = dados["b"]
+    return Dict("resultado" =&gt; a + b)
+end
+
+serve(host = "0.0.0.0", port = 8080)
+
+<span class="com"># Vantagens do Oxygen:</span>
+<span class="com"># 1. menos boilerplate que HTTP.jl puro</span>
+<span class="com"># 2. JSON automático para Dicts e structs</span>
+<span class="com"># 3. extração tipada de parâmetros</span>
+<span class="com"># 4. ótimo para APIs pequenas e médias</span></pre>
+        </div>
+        <div class="panel">
+          <table class="table">
+            <thead><tr><th>Abordagem</th><th>Quando usar</th></tr></thead>
+            <tbody>
+              <tr><td>HTTP.jl puro</td><td>Máximo controle, middleware manual, dependências mínimas</td></tr>
+              <tr><td>Oxygen.jl</td><td>APIs REST rápidas, sintaxe mais enxuta e didática</td></tr>
+              <tr><td>Genie.jl</td><td>Apps maiores com MVC, views, ORM e convenções</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="genie">Genie.jl — MVC e Aplicações Maiores</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura típica com rotas, controller e view</div>
+          <pre class="example">using GenieFramework
+using Genie.Router
+using Genie.Renderer.Json
+
+route("/api/ping") do
+    json(Dict("mensagem" =&gt; "pong"))
+end
+
+route("/usuarios/:id") do
+    id = params(:id)
+    json(Dict("id" =&gt; id, "perfil" =&gt; "analista"))
+end
+
+up()
+
+<span class="com"># Em projetos reais Genie costuma organizar:</span>
+<span class="com"># app/resources/ controllers, models, views</span>
+<span class="com"># config/ para ambiente e rotas</span>
+<span class="com"># db/ para migrações e persistência</span>
+<span class="com"># SearchLight como ORM opcional</span></pre>
+        </div>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <p class="panel-title">Bom encaixe de Genie</p>
+            <ul>
+              <li>Painéis internos e CRUDs estruturados</li>
+              <li>Aplicações com muitas rotas e views server-side</li>
+              <li>Projetos que se beneficiam de convenções MVC</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <p class="panel-title">Pontos de atenção</p>
+            <ul>
+              <li>Mais abstração e mais convenções para aprender</li>
+              <li>Menos minimalista que HTTP.jl ou Oxygen</li>
+              <li>Nem sempre vale a pena para APIs pequenas</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="json-tempo-real">JSON, WebSockets e Deploy</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JSON, StructTypes e WebSockets</div>
+          <pre class="example">using HTTP
+using JSON3
+using StructTypes
+
+struct Usuario
+    id::Int
+    nome::String
+end
+
+StructTypes.StructType(::Type{Usuario}) = StructTypes.Struct()
+
+u = Usuario(1, "Ana")
+payload = JSON3.write(u)
+obj = JSON3.read(payload, Usuario)
+
+<span class="com"># WebSocket com HTTP.jl</span>
+HTTP.WebSockets.listen("0.0.0.0", 9000) do ws
+    send(ws, "conectado")
+    while !eof(ws)
+        msg = receive(ws)
+        send(ws, "echo: $msg")
+    end
+end
+
+<span class="com"># Deploy típico</span>
+<span class="com"># 1. executar Julia atrás de Nginx ou Caddy</span>
+<span class="com"># 2. usar PackageCompiler.jl para reduzir startup</span>
+<span class="com"># 3. separar configuração por ambiente</span>
+<span class="com"># 4. monitorar latência da primeira execução JIT</span></pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">PackageCompiler para produção</div>
+          <pre class="example">using PackageCompiler
+
+create_sysimage(
+    [:HTTP, :JSON3, :Oxygen],
+    sysimage_path = "webapp.so"
+)
+
+<span class="com"># Depois iniciar com sysimage pré-compilada:</span>
+<span class="com"># julia --sysimage webapp.so servidor.jl</span>
+
+<span class="com"># Isso reduz a latência de startup e warm-up JIT.</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>HTTP.JL. <strong>Documentation</strong>. Disponível em: &lt;https://juliaweb.github.io/HTTP.jl/stable/&gt;. Acesso em: 2026.</li>
+            <li>GENIE.JL. <strong>Genie Framework Documentation</strong>. Disponível em: &lt;https://genieframework.com/&gt;. Acesso em: 2026.</li>
+            <li>OXYGEN.JL. <strong>Oxygen Documentation</strong>. Disponível em: &lt;https://github.com/OxygenFramework/Oxygen.jl&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
++          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com Julia</a></li>
++          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dados e IA com Julia</a></li>
++        </ul>
++        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Julia web faz mais sentido quando o servidor não é apenas um despachante de CRUD, mas também um <strong>motor de cálculo</strong>. Se a sua API precisa resolver otimização, simulação, inferência estatística ou álgebra linear pesada em tempo real, Julia passa de opção exótica a escolha muito racional.</p>
++      </div>
++
++    </div>
++  </main>
++  <div data-include="/html/Site/partials/footer.html"></div>
++</body>
++</html>

@@ -1,0 +1,175 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Testes unitários: o que são, o que vale testar, como escrever testes rápidos, determinísticos e fáceis de manter.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Testes Unitários | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Testar comportamento, não implementação</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Testes Unitários</h1>
+          <p class="page-subtitle">Regras, isolamento, estrutura AAA e armadilhas comuns</p>
+        </div>
+        <p class="intro-highlight">
+          Testes unitários verificam o comportamento de uma função ou classe com dependências controladas.
+          São o tipo mais rápido e barato — ideais para regras de negócio, validações e edge cases.
+          Mas a eficácia depende de testar o <em>comportamento externo</em>, não os detalhes de implementação.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="o-que-testar" class="section-title">O que vale testar</h2>
+        <div class="section-divider"></div>
+        <p>Priorize o que tem lógica e pode quebrar com impacto real — não teste o que apenas delega para frameworks:</p>
+        <div class="scroll-x">
+          <table class="full-table">
+            <thead>
+              <tr>
+                <th>O que testar</th>
+                <th>Por quê é importante</th>
+                <th>Exemplos de casos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Regras de negócio e cálculos</td>
+                <td>Erros aqui custam caro (financeiro, dados)</td>
+                <td>Desconto 10% para pedido ≥ 100; arredondamento de moeda</td>
+              </tr>
+              <tr>
+                <td>Validações e normalizações</td>
+                <td>Entrada inválida causa bugs silenciosos</td>
+                <td>E-mail malformado, CPF inválido, string vazia</td>
+              </tr>
+              <tr>
+                <td>Fluxos com branching (if/else)</td>
+                <td>Todo caminho pode ter comportamento diferente</td>
+                <td>Usuário ativo vs. inativo; pedido com/sem frete grátis</td>
+              </tr>
+              <tr>
+                <td>Edge cases</td>
+                <td>Os limites são onde os bugs vivem</td>
+                <td>0, negativo, máximo; virada de mês/ano; null</td>
+              </tr>
+              <tr>
+                <td>Permissões e autorizações</td>
+                <td>Falha de segurança com impacto direto</td>
+                <td>Admin pode deletar; guest não pode criar; owner vê só os seus</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="aaa" class="section-title">Estrutura AAA e nomes descritivos</h2>
+        <div class="section-divider"></div>
+        <p>Testes bem estruturados facilitam diagnóstico quando falham. O padrão AAA (Arrange / Act / Assert) é a base:</p>
+        <div class="code-container">
+          <pre class="example"># Padrão AAA — estrutura recomendada
+
+def deve_aplicar_desconto_10_porcento_quando_total_maior_igual_100():
+    # Arrange — preparar dados e dependências
+    carrinho = Carrinho(items=[Item("prod-1", preco=60), Item("prod-2", preco=50)])
+
+    # Act — executar a unidade testada
+    total = carrinho.calcular_total()
+
+    # Assert — verificar comportamento
+    assert total == 99.0  # 110 * 0.90
+
+def deve_nao_aplicar_desconto_quando_total_menor_que_100():
+    carrinho = Carrinho(items=[Item("prod-1", preco=30)])
+    assert carrinho.calcular_total() == 30
+
+# Modelo de nomes descritivos:
+#   deve_[comportamento]_quando_[condição]
+#   deve_rejeitar_email_invalido
+#   deve_negar_acao_sem_permissao
+#   deve_retornar_erro_quando_usuario_nao_encontrado
+
+# Por que nomes importam:
+#   Quando o teste quebra, o nome vira o diagnóstico imediato.
+#   Evite: test1, testeCalcular, checkDesconto</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="armadilhas" class="section-title">Armadilhas comuns</h2>
+        <div class="section-divider"></div>
+        <p>A maioria dos problemas com testes unitários vem de acoplamento entre teste e implementação, ou isolamento insuficiente:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Acoplado à implementação</h3>
+            <p>Testar métodos privados ou a estrutura interna faz o teste quebrar em toda refatoração — mesmo sem mudar comportamento. Teste a interface pública.</p>
+          </div>
+          <div class="card">
+            <h3>"Unitário" com I/O real</h3>
+            <p>Testes que fazem chamadas ao banco, filesystem ou HTTP não são unitários — são de integração lentos. Controle dependências com stubs ou fakes.</p>
+          </div>
+          <div class="card">
+            <h3>Asserts fracos</h3>
+            <p><code>assert result is not None</code> não protege regra nenhuma. Valide o valor, o estado, ou o efeito exato esperado pelo comportamento.</p>
+          </div>
+          <div class="card">
+            <h3>Mock excessivo</h3>
+            <p>Mockar tudo deixa o teste testando apenas a simulação, não o código real. Use o mínimo de dublê necessário para isolar a unidade.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>
+          Para isolamento com dublês de teste, veja
+          <a href="/html/engenharia_software/testes/mocks_stubs.html">Mocks e Stubs</a>.
+          Para a técnica que guia o design pelo teste, explore o
+          <a href="/html/engenharia_software/testes/tdd.html">TDD</a>.
+        </p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Unitário ruim é pior que nenhum — cria confiança falsa e quebra a cada refatoração."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+
+
+
+
+

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R para Terminal e CLI: Rscript como script executável, optparse/argparse para argumentos, cli para output elegante, processx para subprocessos e pipelines." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Terminal e CLI</h1>
+          <p>Rscript, optparse e argparse para argumentos de linha de comando, cli para output colorido e barras de progresso, processx para subprocessos e fs para o filesystem.</p>
+        </div>
+        <p class="intro-highlight">
+          R é excelente para automação via linha de comando. Com <code>Rscript</code>, scripts R executam como qualquer programa Unix — com shebang, argumentos, saídas padronizadas e integração com <code>make</code>, <code>cron</code> e pipelines de CI/CD. Bioinformáticos usam R em pipelines Snakemake há décadas; agora qualquer equipe de dados pode fazer o mesmo.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="rscript">Rscript — Fundamentos de Scripts Executáveis</h2>
+        <p>
+          <code>Rscript</code> é o executável para rodar scripts R não-interativos. É parte da instalação padrão de R em todos os sistemas operacionais.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal — modos de execução com Rscript</div>
+          <pre class="example"><span class="com"># Executar script</span>
+Rscript meu_script.R
+
+<span class="com"># Executar com argumentos</span>
+Rscript analise.R --input dados.csv --output relatorio.html --k 5
+
+<span class="com"># Executar expressão inline</span>
+Rscript -e "cat(sqrt(144))"
+<span class="com"># 12</span>
+
+<span class="com"># Pipe Unix — R consumindo stdin</span>
+cat dados.csv | Rscript -e "
+  con &lt;- file('stdin')
+  df  &lt;- read.csv(con)
+  cat('Linhas:', nrow(df), '\n')
+"
+
+<span class="com"># Verificar se pacote existe antes de usar</span>
+Rscript -e "if (!requireNamespace('ggplot2')) quit(status=1)"
+
+<span class="com"># Capturar código de saída</span>
+Rscript script.R &amp;&amp; echo "OK" || echo "ERRO"</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">script-executavel.R — shebang para Unix/macOS</div>
+          <pre class="example">#!/usr/bin/env Rscript
+<span class="com"># Tornar executável: chmod +x script-executavel.R</span>
+<span class="com"># Executar: ./script-executavel.R</span>
+
+<span class="fn">library</span>(<span class="str">"tidyverse"</span>)
+
+<span class="fn">message</span>(<span class="str">"Script iniciado em: "</span>, <span class="fn">Sys.time</span>())
+
+<span class="com"># Argumentos passados após --args</span>
+args &lt;- <span class="fn">commandArgs</span>(trailingOnly = <span class="kw">TRUE</span>)
+<span class="fn">cat</span>(<span class="str">"Argumentos recebidos:"</span>, args, <span class="str">"\n"</span>)
+
+<span class="com"># Exemplo: ./script.R dados.csv 0.05</span>
+arquivo &lt;- <span class="fn">ifelse</span>(<span class="fn">length</span>(args) &gt;= <span class="num">1</span>, args[<span class="num">1</span>], <span class="str">"dados.csv"</span>)
+alpha   &lt;- <span class="fn">ifelse</span>(<span class="fn">length</span>(args) &gt;= <span class="num">2</span>, <span class="fn">as.numeric</span>(args[<span class="num">2</span>]), <span class="num">0.05</span>)
+
+<span class="fn">cat</span>(<span class="str">"Arquivo:"</span>, arquivo, <span class="str">"| Alpha:"</span>, alpha, <span class="str">"\n"</span>)
+
+<span class="com"># Código de saída explícito</span>
+<span class="fn">quit</span>(status = <span class="num">0</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="optparse">optparse — Argumentos Estruturados</h2>
+        <p>
+          <code>commandArgs(trailingOnly=TRUE)</code> é primitivo. O pacote <strong>optparse</strong> (inspirado no <code>optparse</code> do Python) fornece uma API completa para definir opções, valores padrão, tipos e geração automática de mensagem de ajuda (<code>--help</code>).
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">analise-cli.R — interface optparse completa</div>
+          <pre class="example">#!/usr/bin/env Rscript
+<span class="fn">library</span>(<span class="str">"optparse"</span>)
+
+<span class="com"># Definir opções</span>
+lista_opcoes &lt;- <span class="fn">list</span>(
+  <span class="fn">make_option</span>(<span class="fn">c</span>(<span class="str">"-i"</span>, <span class="str">"--input"</span>),
+              type    = <span class="str">"character"</span>,
+              help    = <span class="str">"Arquivo CSV de entrada [obrigatório]"</span>,
+              metavar = <span class="str">"FILE"</span>),
+  <span class="fn">make_option</span>(<span class="fn">c</span>(<span class="str">"-o"</span>, <span class="str">"--output"</span>),
+              type    = <span class="str">"character"</span>,
+              default = <span class="str">"output.html"</span>,
+              help    = <span class="str">"Arquivo de saída [padrão: %default]"</span>,
+              metavar = <span class="str">"FILE"</span>),
+  <span class="fn">make_option</span>(<span class="fn">c</span>(<span class="str">"-k"</span>, <span class="str">"--clusters"</span>),
+              type    = <span class="str">"integer"</span>,
+              default = <span class="num">3L</span>,
+              help    = <span class="str">"Número de clusters [padrão: %default]"</span>),
+  <span class="fn">make_option</span>(<span class="fn">c</span>(<span class="str">"-v"</span>, <span class="str">"--verbose"</span>),
+              action  = <span class="str">"store_true"</span>,
+              default = <span class="kw">FALSE</span>,
+              help    = <span class="str">"Exibir saída detalhada"</span>)
+)
+
+parser &lt;- <span class="fn">OptionParser</span>(
+  option_list  = lista_opcoes,
+  description  = <span class="str">"Análise de clustering em dados CSV"</span>,
+  usage        = <span class="str">"usage: %prog [options]"</span>
+)
+opts &lt;- <span class="fn">parse_args</span>(parser)
+
+<span class="com"># Validação — input é obrigatório</span>
+<span class="kw">if</span> (<span class="fn">is.null</span>(opts$input)) {
+  <span class="fn">print_help</span>(parser)
+  <span class="fn">quit</span>(status = <span class="num">2</span>)
+}
+<span class="kw">if</span> (!<span class="fn">file.exists</span>(opts$input)) {
+  <span class="fn">stop</span>(<span class="fn">sprintf</span>(<span class="str">"Arquivo não encontrado: %s"</span>, opts$input))
+}
+
+<span class="kw">if</span> (opts$verbose) <span class="fn">message</span>(<span class="str">"Lendo: "</span>, opts$input)
+
+<span class="com"># $ Rscript analise-cli.R --help</span>
+<span class="com"># Usage: analise-cli.R [options]</span>
+<span class="com"># Análise de clustering em dados CSV</span>
+<span class="com"># Options:</span>
+<span class="com">#   -i FILE, --input=FILE   Arquivo CSV de entrada [obrigatório]</span>
+<span class="com">#   -o FILE, --output=FILE  Arquivo de saída [padrão: output.html]</span>
+<span class="com">#   -k INTEGER, --clusters=INTEGER  Número de clusters [padrão: 3]</span>
+<span class="com">#   -v, --verbose           Exibir saída detalhada</span>
+<span class="com">#   -h, --help              Exibir esta mensagem</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="cli-package">cli — Output Profissional no Terminal</h2>
+        <p>
+          O pacote <strong>cli</strong> (do universo tidyverse) fornece uma API rica para output de terminal: mensagens coloridas por tipo, barras de progresso, spinners, formatação de listas e diffs — tudo com detecção automática de suporte a cores (TTY vs pipe).
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">cli-output.R — repertório completo</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"cli"</span>)
+
+<span class="com"># ---- Mensagens tipadas ----</span>
+<span class="fn">cli_h1</span>(<span class="str">"Pipeline de Análise"</span>)                    <span class="com"># === Pipeline de Análise ===</span>
+<span class="fn">cli_h2</span>(<span class="str">"Etapa 1: Carregamento"</span>)                  <span class="com"># -- Etapa 1: Carregamento --</span>
+<span class="fn">cli_alert_info</span>(<span class="str">"Lendo arquivo: {.file dados.csv}"</span>)   <span class="com"># ℹ Lendo arquivo: dados.csv</span>
+<span class="fn">cli_alert_success</span>(<span class="str">"1.000 registros carregados"</span>)     <span class="com"># ✓ 1.000 registros carregados</span>
+<span class="fn">cli_alert_warning</span>(<span class="str">"12 valores NA encontrados"</span>)       <span class="com"># ! 12 valores NA encontrados</span>
+<span class="fn">cli_alert_danger</span>(<span class="str">"Arquivo de saída não gravável"</span>)   <span class="com"># ✖ Arquivo de saída não gravável</span>
+
+<span class="com"># ---- Listas e formatação ----</span>
+<span class="fn">cli_ul</span>(<span class="fn">c</span>(<span class="str">"Limpeza de dados"</span>, <span class="str">"Normalização"</span>, <span class="str">"Modelagem"</span>))
+<span class="fn">cli_text</span>(<span class="str">"Rodando com {.val {Sys.getenv('USER')}} — núcleos: {.strong {parallel::detectCores()}}"</span>)
+
+<span class="com"># ---- Barra de progresso ----</span>
+processar_arquivos &lt;- <span class="kw">function</span>(arquivos) {
+  <span class="fn">cli_progress_bar</span>(<span class="str">"Processando arquivos"</span>, total = <span class="fn">length</span>(arquivos))
+  <span class="kw">for</span> (f <span class="kw">in</span> arquivos) {
+    <span class="fn">Sys.sleep</span>(<span class="num">0.1</span>)   <span class="com"># simulação de trabalho</span>
+    <span class="fn">cli_progress_update</span>(set = <span class="fn">which</span>(arquivos == f))
+  }
+  <span class="fn">cli_progress_done</span>()
+}
+
+<span class="com"># ---- Spinner para operações indetermináveis ----</span>
+<span class="fn">cli_progress_step</span>(<span class="str">"Conectando ao banco de dados..."</span>)
+<span class="fn">Sys.sleep</span>(<span class="num">1</span>)
+<span class="fn">cli_progress_step</span>(<span class="str">"Executando query..."</span>)
+<span class="fn">Sys.sleep</span>(<span class="num">0.5</span>)
+<span class="fn">cli_alert_success</span>(<span class="str">"Query concluída em 1.5s"</span>)
+
+<span class="com"># ---- Erros com traceback formatado ----</span>
+<span class="kw">tryCatch</span>({
+  <span class="fn">stop</span>(<span class="str">"Falha na conexão"</span>)
+}, error = <span class="kw">function</span>(e) {
+  <span class="fn">cli_abort</span>(<span class="fn">c</span>(
+    <span class="str">"Não foi possível conectar ao banco de dados"</span>,
+    <span class="str">"x"</span> = <span class="fn">conditionMessage</span>(e),
+    <span class="str">"i"</span> = <span class="str">"Verifique a variável de ambiente {.envvar PG_HOST}"</span>
+  ))
+})</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="processx-fs">processx e fs — Subprocessos e Filesystem</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">processx-fs.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"processx"</span>)
+<span class="fn">library</span>(<span class="str">"fs"</span>)
+
+<span class="com"># ---- processx — executar subprocesso ----</span>
+<span class="com"># Síncrono — esperar a conclusão</span>
+resultado &lt;- <span class="fn">run</span>(<span class="str">"python3"</span>, <span class="fn">c</span>(<span class="str">"preprocessar.py"</span>, <span class="str">"--input"</span>, <span class="str">"raw.csv"</span>),
+                 echo = <span class="kw">FALSE</span>, error_on_status = <span class="kw">TRUE</span>)
+<span class="fn">cat</span>(resultado$stdout)
+
+<span class="com"># Assíncrono — iniciar e continuar</span>
+proc &lt;- <span class="fn">process</span>$<span class="fn">new</span>(<span class="str">"python3"</span>, <span class="fn">c</span>(<span class="str">"longo_processo.py"</span>),
+                   stdout = <span class="str">"|"</span>, stderr = <span class="str">"|"</span>)
+<span class="kw">while</span> (proc$<span class="fn">is_alive</span>()) {
+  saida &lt;- proc$<span class="fn">read_output_lines</span>()
+  <span class="kw">if</span> (<span class="fn">length</span>(saida) &gt; <span class="num">0</span>) <span class="fn">cat</span>(saida, sep = <span class="str">"\n"</span>)
+  <span class="fn">Sys.sleep</span>(<span class="num">0.5</span>)
+}
+proc$<span class="fn">get_exit_status</span>()   <span class="com"># 0 = sucesso</span>
+
+<span class="com"># ---- fs — filesystem tidy ----</span>
+<span class="com"># Listar arquivos CSV recursivamente</span>
+csvs &lt;- <span class="fn">fs</span>::<span class="fn">dir_ls</span>(<span class="str">"./dados"</span>, recurse = <span class="kw">TRUE</span>, glob = <span class="str">"*.csv"</span>)
+
+<span class="com"># Criar estrutura de pastas</span>
+<span class="fn">fs</span>::<span class="fn">dir_create</span>(<span class="fn">c</span>(<span class="str">"output/plots"</span>, <span class="str">"output/tables"</span>, <span class="str">"output/models"</span>))
+
+<span class="com"># Copiar renomeando com timestamp</span>
+<span class="fn">fs</span>::<span class="fn">file_copy</span>(csvs, <span class="fn">fs</span>::<span class="fn">path</span>(<span class="str">"backup"</span>, <span class="fn">paste0</span>(<span class="fn">Sys.Date</span>(), <span class="str">"_"</span>, <span class="fn">fs</span>::<span class="fn">path_file</span>(csvs))))
+
+<span class="com"># Informações de arquivo</span>
+info &lt;- <span class="fn">fs</span>::<span class="fn">file_info</span>(csvs)
+info |&gt; <span class="fn">dplyr</span>::<span class="fn">arrange</span>(<span class="fn">desc</span>(modification_time)) |&gt; <span class="fn">head</span>(<span class="num">5</span>)
+
+<span class="com"># Caminhos seguros e portáveis</span>
+caminho &lt;- <span class="fn">fs</span>::<span class="fn">path</span>(<span class="str">"projeto"</span>, <span class="str">"dados"</span>, <span class="str">"2024-Q1.csv"</span>)
+<span class="com"># "projeto/dados/2024-Q1.csv" (/ no Unix, \ no Windows automaticamente)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pipelines">Pipelines com Make e Snakemake</h2>
+        <p>
+          Em projetos de análise reproduzível e bioinformática, R scripts são orquestrados por <strong>Make</strong> (ou <strong>Snakemake</strong> especificamente para o workflow de bioinformática). Cada etapa é uma regra com dependências explícitas — o orquestrador reexecuta apenas o necessário quando arquivos mudam.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Makefile — pipeline de análise completa</div>
+          <pre class="example"><span class="com"># Makefile — pipeline de análise de dados</span>
+<span class="com"># Executar: make all</span>
+<span class="com"># Limpar: make clean</span>
+
+RSCRIPT = Rscript --vanilla
+
+<span class="com"># Alvo padrão</span>
+all: output/relatorio_final.html
+
+<span class="com"># Etapa 1: limpeza de dados</span>
+output/dados_limpos.rds: dados/raw.csv R/01_limpar.R
+	@echo "Limpando dados..."
+	$(RSCRIPT) R/01_limpar.R --input $&lt; --output $@
+
+<span class="com"># Etapa 2: features</span>
+output/features.rds: output/dados_limpos.rds R/02_features.R
+	@echo "Criando features..."
+	$(RSCRIPT) R/02_features.R --input $&lt; --output $@
+
+<span class="com"># Etapa 3: modelo</span>
+output/modelo.rds: output/features.rds R/03_modelo.R
+	@echo "Treinando modelo..."
+	$(RSCRIPT) R/03_modelo.R --input $&lt; --output $@
+
+<span class="com"># Etapa 4: relatório</span>
+output/relatorio_final.html: output/modelo.rds relatorio.qmd
+	@echo "Gerando relatório..."
+	quarto render relatorio.qmd --output $@
+
+clean:
+	rm -f output/*.rds output/*.html
+
+.PHONY: all clean</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>CSÁRDI, Gábor et al. <strong>cli: Helpers for Developing Command Line Interfaces</strong>. Posit Software, 2024. Disponível em: <a href="https://cli.r-lib.org/" target="_blank" rel="noopener">cli.r-lib.org</a></li>
+          <li>CSÁRDI, Gábor; CHANG, Winston. <strong>processx: Execute and Control System Processes</strong>. R-lib, 2024. Disponível em: <a href="https://processx.r-lib.org/" target="_blank" rel="noopener">processx.r-lib.org</a></li>
+          <li>HESTER, Jim et al. <strong>fs: Cross-Platform File System Operations Based on 'libuv'</strong>. Posit Software, 2024. Disponível em: <a href="https://fs.r-lib.org/" target="_blank" rel="noopener">fs.r-lib.org</a></li>
+          <li>KÖSTER, Johannes; RAHMANN, Sven. <strong>Snakemake—a scalable bioinformatics workflow engine</strong>. Bioinformatics, v. 28, n. 19, p. 2520–2522, 2012. Disponível em: <a href="https://doi.org/10.1093/bioinformatics/bts480" target="_blank" rel="noopener">doi.org/10.1093/bioinformatics/bts480</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/guia/ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Embedded e IoT</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "Automação não é um luxo para scripts R — é o que separa uma análise recorrente de um trabalho manual repetido toda semana." — princípio de reprodutibilidade em ciência de dados</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

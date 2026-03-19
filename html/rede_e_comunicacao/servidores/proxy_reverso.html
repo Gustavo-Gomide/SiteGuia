@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Proxy reverso: conceitos, diferença de forward proxy, casos de uso, configuração com Nginx e cabeçalhos X-Forwarded-For." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Proxy Reverso | Servidores | Redes | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Servidores</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="server"></span>
+          <div>
+            <h1 class="page-title">Proxy Reverso</h1>
+            <p class="page-subtitle">Conceitos, diferença de forward proxy, casos de uso e configuração com Nginx</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Um <strong>proxy reverso</strong> intercepta requisições dos clientes e as encaminha para
+          um ou mais servidores de backend — ficando invisível ao cliente.
+          É o padrão dominante na arquitetura de aplicações web modernas.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — FORWARD VS REVERSE PROXY ═══════════════════ -->
+      <section id="forward-vs-reverse">
+        <h2 id="forward-vs-reverse" class="section-title">Forward Proxy vs Reverse Proxy</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Característica</th><th>Forward Proxy</th><th>Reverse Proxy</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Posição</td><td>Na frente do <strong>cliente</strong></td><td>Na frente do <strong>servidor</strong></td></tr>
+              <tr><td>Quem configura</td><td>O cliente — proxy da empresa, <abbr title="Virtual Private Network">VPN</abbr></td><td>O administrador do servidor</td></tr>
+              <tr><td>Visibilidade</td><td>Servidor não sabe o <abbr title="Internet Protocol">IP</abbr> real do cliente</td><td>Cliente não sabe o <abbr title="Internet Protocol">IP</abbr> real do servidor</td></tr>
+              <tr><td>Caso de uso</td><td>Filtro de conteúdo, anonimato, bypass</td><td><abbr title="Transport Layer Security">TLS</abbr> termination, load balancing, cache</td></tr>
+              <tr><td>Exemplos</td><td>Squid, 3proxy, Tor, Privoxy</td><td>Nginx, Apache, HAProxy, Traefik, Cloudflare</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — CASOS DE USO ═══════════════════ -->
+      <section id="casos-de-uso">
+        <h2 id="casos-de-uso" class="section-title">Casos de Uso</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">TLS Termination</h3><p>Decifra <abbr title="HyperText Transfer Protocol Secure">HTTPS</abbr> e encaminha HTTP para o backend. Centraliza certificados.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Load Balancing</h3><p>Distribui requisições entre múltiplas instâncias do backend sem mudar o cliente.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Cache</h3><p>Armazena respostas em memória/disco, reduzindo carga no app e latência.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Ocultar Backend</h3><p>O cliente nunca conhece <abbr title="Internet Protocol">IP</abbr>/porta reais do servidor de aplicação.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Compressão</h3><p>Comprime respostas com gzip/brotli antes de enviar ao cliente.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Rate Limiting</h3><p>Limita requisições por <abbr title="Internet Protocol">IP</abbr> para proteção contra abuso e <abbr title="Distributed Denial of Service">DDoS</abbr> de aplicação.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title"><abbr title="Web Application Firewall">WAF</abbr></h3><p>Filtra requisições maliciosas (SQLi, XSS) antes de chegarem ao backend.</p></div>
+          <div class="card" data-reveal="slide-up"><h3 class="panel-title">Header Manipulation</h3><p>Injeta <code class="code-inline">X-Request-ID</code>, remove <code class="code-inline">X-Powered-By</code>, adiciona <abbr title="HTTP Strict Transport Security">HSTS</abbr>, etc.</p></div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — CONFIGURAÇÃO NGINX ═══════════════════ -->
+      <section id="config-nginx">
+        <h2 id="config-nginx" class="section-title">Configuração Nginx — Proxy Reverso Completo</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/nginx/sites-available/app</div>
+          <pre class="code-block">upstream app_backend {
+    server 10.0.1.10:8000;
+    server 10.0.1.11:8000;
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name app.example.com;
+    server_tokens off;
+
+    ssl_certificate     /etc/letsencrypt/live/app.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/app.example.com/privkey.pem;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options    "nosniff" always;
+
+    proxy_connect_timeout 10s;
+    proxy_read_timeout    60s;
+
+    location / {
+        proxy_pass         http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_hide_header X-Powered-By;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — CABEÇALHOS DE ENCAMINHAMENTO ═══════════════════ -->
+      <section id="cabecalhos">
+        <h2 id="cabecalhos" class="section-title">Cabeçalhos de Encaminhamento</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Cabeçalho</th><th>Valor</th><th>Uso</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><code class="code-inline">X-Real-IP</code></td><td><abbr title="Internet Protocol">IP</abbr> do cliente original</td><td><abbr title="Internet Protocol">IP</abbr> direto do cliente (sem cadeia de proxies)</td></tr>
+              <tr><td><code class="code-inline">X-Forwarded-For</code></td><td><code class="code-inline">clientIP, proxy1IP</code></td><td>Cadeia de IPs — o primeiro é o cliente original</td></tr>
+              <tr><td><code class="code-inline">X-Forwarded-Proto</code></td><td><code class="code-inline">https</code></td><td>Protocolo original (o backend recebe HTTP puro)</td></tr>
+              <tr><td><code class="code-inline">X-Forwarded-Host</code></td><td><code class="code-inline">example.com</code></td><td>Host original da requisição</td></tr>
+              <tr><td><code class="code-inline">Forwarded</code> (<abbr title="Request for Comments">RFC</abbr> 7239)</td><td><code class="code-inline">for=1.2.3.4;proto=https</code></td><td>Versão padronizada que unifica todos os X-Forwarded-*</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          <strong>Segurança:</strong> Nunca confie cegamente no <code class="code-inline">X-Forwarded-For</code> recebido pelo backend —
+          um cliente malicioso pode falsificar esse header. Valide que a requisição veio do proxy esperado.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 6 — CACHE NO PROXY REVERSO ═══════════════════ -->
+      <section id="cache">
+        <h2 id="cache" class="section-title">Cache no Proxy Reverso</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nginx.conf — proxy cache</div>
+          <pre class="code-block"># http{} context
+proxy_cache_path /var/cache/nginx
+    levels=1:2
+    keys_zone=app_cache:10m
+    max_size=1g
+    inactive=60m
+    use_temp_path=off;
+
+server {
+    location / {
+        proxy_cache           app_cache;
+        proxy_cache_valid     200 302  10m;
+        proxy_cache_valid     404      1m;
+        proxy_cache_use_stale error timeout updating;
+        add_header X-Cache-Status $upstream_cache_status;
+        proxy_pass http://app_backend;
+    }
+
+    location /api/user {
+        proxy_no_cache    1;
+        proxy_cache_bypass 1;  # nunca cachear APis autenticadas
+        proxy_pass http://app_backend;
+    }
+}</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Aprofunde-se nas tecnologias que implementam proxy reverso:
+          <a href="/html/rede_e_comunicacao/servidores/nginx.html">Nginx</a> e
+          <a href="/html/rede_e_comunicacao/servidores/load_balancer.html">Load Balancer</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O proxy reverso é o guardião invisível entre o mundo e seus serviços."</p>
+      </section>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

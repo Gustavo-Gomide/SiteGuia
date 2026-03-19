@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir para Desktop e GUI: Scenic framework 2D, wxErlang para interfaces nativas, Desktop.app para apps cross-platform e LiveView como GUI local." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — GUI e Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; GUI e Desktop</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Elixir para GUI e Desktop</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — GUI e Desktop</h1>
+          <p>Elixir não é a primeira escolha para interfaces gráficas tradicionais, mas existem soluções maduras: <strong>Scenic</strong> é um framework 2D puro-Elixir com GPU rendering (OpenGL), projetado para interfaces embarcadas e desktop. <strong>wxErlang</strong> expõe a API nativa wx (wxWidgets) para aplicações de sistema. O padrão emergente é usar <strong>Phoenix LiveView</strong> como GUI local via Tauri ou Elixir Desktop.</p>
+        </div>
+        <p class="intro-highlight">
+          Aplicações desktop com Elixir se beneficiam do mesmo supervisor tree: se a janela crasha, o processo reinicia sem derrubar a lógica de negócio. Perfeito para dashboards industriais, ferramentas de monitoramento e kiosks.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="scenic">Scenic — Framework 2D Declarativo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Scene com componentes, eventos e navegação</div>
+          <pre class="example"><span class="com"># mix.exs</span>
+{:scenic, <span class="str">"~> 0.11"</span>},
+{:scenic_driver_glfw, <span class="str">"~> 0.11"</span>, targets: <span class="at">:host</span>}
+
+<span class="com"># config/config.exs</span>
+config <span class="at">:minha_app</span>, <span class="at">:viewport</span>,
+  name: <span class="at">:main_viewport</span>,
+  size: {<span class="num">800</span>, <span class="num">600</span>},
+  theme: <span class="at">:dark</span>,
+  drivers: [
+    %{module: <span class="tp">Scenic.Driver.Glfw</span>, opts: [title: <span class="str">"Minha App"</span>]}
+  ],
+  default_scene: {<span class="tp">MinhaApp.Scene.Home</span>, nil}
+
+<span class="com"># lib/minha_app/scene/home.ex</span>
+<span class="kw">defmodule</span> <span class="tp">MinhaApp.Scene.Home</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Scenic.Scene</span>
+  import <span class="tp">Scenic.Primitives</span>
+  import <span class="tp">Scenic.Components</span>
+  <span class="kw">alias</span> <span class="tp">Scenic.Graph</span>
+
+  <span class="at">@graph</span> <span class="tp">Graph</span>.<span class="fn">build</span>(font: <span class="at">:roboto</span>, font_size: <span class="num">24</span>)
+          |&gt; <span class="fn">add_specs_to_graph</span>([
+            text_spec(<span class="str">"Bem-vindo ao Scenic!"</span>, translate: {<span class="num">100</span>, <span class="num">100</span>}),
+            rect_spec({<span class="num">200</span>, <span class="num">50</span>}, fill: <span class="at">:blue</span>, translate: {<span class="num">100</span>, <span class="num">200</span>}, id: <span class="at">:btn_ok</span>),
+            text_spec(<span class="str">"Clique aqui"</span>, translate: {<span class="num">130</span>, <span class="num">230</span>}, fill: <span class="at">:white</span>),
+            circle_spec(<span class="num">50</span>, fill: <span class="at">:green</span>, translate: {<span class="num">400</span>, <span class="num">300</span>}, id: <span class="at">:circulo</span>)
+          ])
+
+  <span class="at">@impl</span> <span class="tp">Scenic.Scene</span>
+  <span class="kw">def</span> <span class="fn">init</span>(scene, _params, _opts) <span class="kw">do</span>
+    scene = <span class="fn">push_graph</span>(scene, <span class="at">@graph</span>)
+    {<span class="at">:ok</span>, scene}
+  <span class="kw">end</span>
+
+  <span class="at">@impl</span> <span class="tp">Scenic.Scene</span>
+  <span class="kw">def</span> <span class="fn">handle_event</span>({<span class="at">:click</span>, <span class="at">:btn_ok</span>}, _from, scene) <span class="kw">do</span>
+    graph = <span class="tp">Graph</span>.<span class="fn">modify</span>(@graph, <span class="at">:circulo</span>, &amp;<span class="fn">update_opts</span>(&amp;<span class="num">1</span>, fill: <span class="at">:red</span>))
+    scene = <span class="fn">push_graph</span>(scene, graph)
+    {<span class="at">:noreply</span>, scene}
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wx">wxErlang — Widgets Nativos</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Janela com botão e text input via :wx</div>
+          <pre class="example"><span class="com"># wxErlang vem incluso na instalação OTP — sem dependência extra</span>
+
+<span class="kw">defmodule</span> <span class="tp">MinhaApp.Janela</span> <span class="kw">do</span>
+  <span class="kw">def</span> <span class="fn">start</span> <span class="kw">do</span>
+    wx = <span class="at">:wx</span>.<span class="fn">new</span>()
+    frame = <span class="at">:wxFrame</span>.<span class="fn">new</span>(wx, <span class="num">-1</span>, ~c"Minha Janela",
+      size: {<span class="num">500</span>, <span class="num">400</span>})
+
+    panel = <span class="at">:wxPanel</span>.<span class="fn">new</span>(frame)
+    sizer = <span class="at">:wxBoxSizer</span>.<span class="fn">new</span>(<span class="at">:wx_const</span>.<span class="fn">wx_vertical</span>())
+
+    <span class="com"># Label</span>
+    label = <span class="at">:wxStaticText</span>.<span class="fn">new</span>(panel, <span class="num">-1</span>, ~c"Nome:")
+    input = <span class="at">:wxTextCtrl</span>.<span class="fn">new</span>(panel, <span class="num">101</span>)
+    btn   = <span class="at">:wxButton</span>.<span class="fn">new</span>(panel, <span class="num">102</span>, label: ~c"Saudar")
+
+    <span class="at">:wxSizer</span>.<span class="fn">add</span>(sizer, label, proportion: <span class="num">0</span>)
+    <span class="at">:wxSizer</span>.<span class="fn">add</span>(sizer, input, proportion: <span class="num">0</span>, flag: <span class="at">:wx_const</span>.<span class="fn">wx_expand</span>())
+    <span class="at">:wxSizer</span>.<span class="fn">add</span>(sizer, btn,   proportion: <span class="num">0</span>)
+    <span class="at">:wxPanel</span>.<span class="fn">setSizer</span>(panel, sizer)
+
+    <span class="com"># Evento de botão</span>
+    <span class="at">:wxButton</span>.<span class="fn">connect</span>(btn, <span class="at">:command_button_clicked</span>)
+    <span class="at">:wxFrame</span>.<span class="fn">show</span>(frame)
+
+    <span class="fn">loop</span>(input)
+  <span class="kw">end</span>
+
+  defp <span class="fn">loop</span>(input) <span class="kw">do</span>
+    receive <span class="kw">do</span>
+      {<span class="at">:wx</span>, <span class="num">102</span>, _, _, _} ->
+        nome = <span class="at">:wxTextCtrl</span>.<span class="fn">getValue</span>(input)
+        <span class="at">:wx_misc</span>.<span class="fn">messageBox</span>(~c"Olá, #{nome}!", ~c"Mensagem")
+        <span class="fn">loop</span>(input)
+      _ -> <span class="fn">loop</span>(input)
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="liveview-desktop">LiveView como GUI Local</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Elixir Desktop — app Phoenix em janela nativa</div>
+          <pre class="example"><span class="com"># mix.exs — Elixir Desktop (wrapper Webview)</span>
+{:desktop, <span class="str">"~> 0.2"</span>}
+
+<span class="com"># Roda um servidor Phoenix normal + abre janela nativa</span>
+<span class="kw">defmodule</span> <span class="tp">MinhaApp.Application</span> <span class="kw">do</span>
+  <span class="kw">use</span> <span class="tp">Application</span>
+
+  <span class="at">@impl</span> true
+  <span class="kw">def</span> <span class="fn">start</span>(_type, _args) <span class="kw">do</span>
+    children = [
+      <span class="tp">MinhaAppWeb.Endpoint</span>,
+      {<span class="tp">Desktop.Window</span>, [
+        app: <span class="at">:minha_app</span>,
+        id: <span class="tp">MainWindow</span>,
+        title: <span class="str">"Minha App Desktop"</span>,
+        size: {<span class="num">1200</span>, <span class="num">800</span>},
+        url: &amp;<span class="tp">MinhaAppWeb.Endpoint</span>.<span class="fn">url</span>/0
+      ]}
+    ]
+    <span class="tp">Supervisor</span>.<span class="fn">start_link</span>(children, strategy: <span class="at">:one_for_one</span>)
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># O resultado: interface HTML/CSS/LiveView full-featured</span>
+<span class="com"># em uma janela nativa (sem browser visível) — Windows, macOS, Linux</span>
+<span class="com"># LiveView continua funcionando em tempo real via WebSocket local</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>Scenic Framework. <strong>Scenic Documentation</strong>. Disponível em: &lt;https://hexdocs.pm/scenic&gt;. Acesso em: 2026.</li>
+            <li>Erlang/OTP. <strong>wx — Erlang Binding to wxWidgets</strong>. Disponível em: &lt;https://www.erlang.org/doc/apps/wx&gt;. Acesso em: 2026.</li>
+            <li>Elixir Desktop. <strong>Cross-platform Desktop Apps</strong>. Disponível em: &lt;https://github.com/elixir-desktop/desktop&gt;. Acesso em: 2026.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/scenic/readme.html" target="_blank" rel="noopener">HEXDOCS. Scenic.</a></li>
+            <li><a href="https://www.erlang.org/doc/apps/wx/chapter.html" target="_blank" rel="noopener">ERLANG/OTP. wx application.</a></li>
+            <li><a href="https://github.com/elixir-desktop/desktop" target="_blank" rel="noopener">GITHUB. Elixir Desktop.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir para Web (LiveView)</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir Embedded (Scenic em dispositivos)</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Scenic foi originalmente criado para UIs embarcadas no Nerves — mas roda igualmente bem no desktop. A grande vantagem: a UI é um <strong>grafo de cenas supervisionado</strong>. Se um componente da interface travar, o Supervisor isola e reinicia aquela cena sem congelar a aplicação inteira.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

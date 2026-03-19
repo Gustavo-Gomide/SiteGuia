@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas práticas Go: estrutura de pacotes, arquitetura hexagonal, injeção de dependências, containerização e CI/CD." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Projetos e Boas Práticas</h1>
+          <p>Boas práticas em Go cobrem a organização idiomática de pacotes e módulos, injeção de dependências com interfaces (não frameworks), tratamento de erros contextual com <code>fmt.Errorf("%w")</code>, padrões de configuração com variáveis de ambiente, Dockerfile multi-stage para imagens mínimas e pipeline de CI/CD.</p>
+        </div>
+        <p class="intro-highlight">
+          Go não tem um padrão oficial de estrutura de projeto, mas a comunidade converge para o layout do repositório <code>golang-standards/project-layout</code>: <code>cmd/</code> para main packages, <code>internal/</code> para código privado do módulo, <code>pkg/</code> para bibliotecas reutilizáveis. Simples, escalável e sem mágica.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-projeto">Estrutura de Projeto</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Layout típico de microsserviço Go</div>
+          <pre class="example">meuprojeto/
+├── cmd/
+│   └── server/
+│       └── main.go          <span class="com">// ponto de entrada — mínimo possível</span>
+├── internal/                <span class="com">// não importável por outros módulos</span>
+│   ├── handler/
+│   │   ├── produto.go
+│   │   └── produto_test.go
+│   ├── service/
+│   │   ├── produto.go       <span class="com">// lógica de negócio</span>
+│   │   └── produto_test.go
+│   ├── repository/
+│   │   ├── produto.go       <span class="com">// acesso a dados</span>
+│   │   └── postgres.go
+│   └── config/
+│       └── config.go
+├── pkg/                     <span class="com">// bibliotecas públicas reutilizáveis</span>
+│   └── pagination/
+│       └── pagination.go
+├── migrations/              <span class="com">// arquivos SQL de migração</span>
+│   ├── 001_create_produtos.sql
+│   └── 002_add_index.sql
+├── Dockerfile
+├── docker-compose.yml
+├── go.mod
+├── go.sum
+└── Makefile</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">internal/service/produto.go — injeção de dependências com interfaces</div>
+          <pre class="example"><span class="kw">package</span> service
+
+<span class="kw">import</span> (
+    <span class="str">"context"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="kw">type</span> Produto <span class="kw">struct</span> {
+    ID    int
+    Nome  string
+    Preco float64
+}
+
+<span class="com">// Interface — define contrato, não implementação</span>
+<span class="kw">type</span> ProdutoRepository <span class="kw">interface</span> {
+    FindByID(ctx context.Context, id int) (*Produto, error)
+    Create(ctx context.Context, p *Produto) error
+    List(ctx context.Context) ([]Produto, error)
+}
+
+<span class="com">// Service depende de interface — fácil de testar com mock</span>
+<span class="kw">type</span> ProdutoService <span class="kw">struct</span> {
+    repo ProdutoRepository
+}
+
+<span class="kw">func</span> <span class="fn">NewProdutoService</span>(repo ProdutoRepository) *ProdutoService {
+    <span class="kw">return</span> &amp;ProdutoService{repo: repo}
+}
+
+<span class="kw">func</span> (s *ProdutoService) <span class="fn">BuscarProduto</span>(ctx context.Context, id int) (*Produto, error) {
+    p, err := s.repo.FindByID(ctx, id)
+    <span class="kw">if</span> err != nil {
+        <span class="kw">return</span> nil, fmt.Errorf(<span class="str">"ProdutoService.BuscarProduto: %w"</span>, err)
+    }
+    <span class="kw">return</span> p, nil
+}
+
+<span class="com">// Mock para testes — sem mockgen</span>
+<span class="kw">type</span> mockRepo <span class="kw">struct</span> {
+    produtos map[int]*Produto
+}
+
+<span class="kw">func</span> (m *mockRepo) <span class="fn">FindByID</span>(ctx context.Context, id int) (*Produto, error) {
+    <span class="kw">if</span> p, ok := m.produtos[id]; ok {
+        <span class="kw">return</span> p, nil
+    }
+    <span class="kw">return</span> nil, ErrNaoEncontrado
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="config">Configuração com Variáveis de Ambiente</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">internal/config/config.go — 12-factor app</div>
+          <pre class="example"><span class="kw">package</span> config
+
+<span class="kw">import</span> (
+    <span class="str">"fmt"</span>
+    <span class="str">"os"</span>
+    <span class="str">"strconv"</span>
+)
+
+<span class="kw">type</span> Config <span class="kw">struct</span> {
+    ServerPort  int
+    DatabaseURL string
+    JWTSecret   string
+    LogLevel    string
+    Debug       bool
+}
+
+<span class="kw">func</span> <span class="fn">Load</span>() (*Config, error) {
+    port, err := strconv.Atoi(getEnv(<span class="str">"SERVER_PORT"</span>, <span class="str">"8080"</span>))
+    <span class="kw">if</span> err != nil {
+        <span class="kw">return</span> nil, fmt.Errorf(<span class="str">"SERVER_PORT inválida: %w"</span>, err)
+    }
+
+    dbURL := os.Getenv(<span class="str">"DATABASE_URL"</span>)
+    <span class="kw">if</span> dbURL == <span class="str">""</span> {
+        <span class="kw">return</span> nil, fmt.Errorf(<span class="str">"DATABASE_URL é obrigatória"</span>)
+    }
+
+    <span class="kw">return</span> &amp;Config{
+        ServerPort:  port,
+        DatabaseURL: dbURL,
+        JWTSecret:   getEnv(<span class="str">"JWT_SECRET"</span>, <span class="str">"dev-secret-trocar-em-producao"</span>),
+        LogLevel:    getEnv(<span class="str">"LOG_LEVEL"</span>, <span class="str">"info"</span>),
+        Debug:       getEnv(<span class="str">"DEBUG"</span>, <span class="str">"false"</span>) == <span class="str">"true"</span>,
+    }, nil
+}
+
+<span class="kw">func</span> <span class="fn">getEnv</span>(key, defaultVal string) string {
+    <span class="kw">if</span> v := os.Getenv(key); v != <span class="str">""</span> {
+        <span class="kw">return</span> v
+    }
+    <span class="kw">return</span> defaultVal
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dockerfile">Dockerfile Multi-Stage</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Imagem final minúscula: scratch + binário estático</div>
+          <pre class="example"># Dockerfile
+# Stage 1: build
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -ldflags="-s -w" -o servidor ./cmd/server
+
+# Stage 2: imagem final — sem go, sem compilador, sem shell
+FROM scratch
+
+COPY --from=builder /app/servidor /servidor
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+EXPOSE 8080
+ENTRYPOINT ["/servidor"]
+# Imagem final: ~5-10MB em vez de 350MB do Go base
+
+# Alternativa com alpine para ter shell para debug:
+# FROM alpine:3.19
+# RUN apk add --no-cache ca-certificates tzdata
+# COPY --from=builder /app/servidor /servidor
+# ENTRYPOINT ["/servidor"]</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="makefile">Makefile — Automação de Tarefas</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Makefile idiomático para projetos Go</div>
+          <pre class="example">.PHONY: build test lint run docker-build docker-push migrate
+
+BIN_NAME := servidor
+VERSION  := $(shell git describe --tags --always --dirty)
+LDFLAGS  := -ldflags="-s -w -X main.Version=$(VERSION)"
+
+build:
+	CGO_ENABLED=0 go build $(LDFLAGS) -o bin/$(BIN_NAME) ./cmd/server
+
+test:
+	go test -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+test-fast:
+	go test ./...
+
+lint:
+	golangci-lint run ./...
+
+vet:
+	go vet ./...
+
+run:
+	go run ./cmd/server
+
+migrate-up:
+	migrate -path migrations/ -database $$DATABASE_URL up
+
+migrate-down:
+	migrate -path migrations/ -database $$DATABASE_URL down 1
+
+docker-build:
+	docker build -t meuprojeto:$(VERSION) .
+
+generate:
+	go generate ./...
+
+tidy:
+	go mod tidy
+	go fmt ./...
+
+ci: tidy vet lint test build</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>golang-standards. <strong>Standard Go Project Layout</strong>. Disponível em: &lt;https://github.com/golang-standards/project-layout&gt;. Acesso em: 2026.</li>
+            <li>GO TEAM. <strong>Organizing a Go module</strong>. Disponível em: &lt;https://go.dev/doc/modules/layout&gt;. Acesso em: 2026.</li>
+            <li>GO TEAM. <strong>Effective Go</strong>. Disponível em: &lt;https://go.dev/doc/effective_go&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Web com Go</a></li>
+          <li><a href="../aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O pacote <strong><code>internal/</code></strong> é a feature de encapsulamento mais importante de Go para projetos crescentes. Qualquer código dentro de <code>internal/</code> só pode ser importado por pacotes do mesmo módulo — o compilador rejeita imports externos. Isso cria uma API pública explícita (<code>pkg/</code>) e uma privada (<code>internal/</code>) sem annotations, sem access modifiers, sem javadoc. Simples e obrigatório pelo compilador.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

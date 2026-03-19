@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript para Dados e IA: TensorFlow.js tipado, Transformers.js com tipos e pipeline de dados tipado." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript para Dados e IA</h1>
+          <p>TensorFlow.js com tipos de Tensor, Transformers.js para pipeline de NLP tipado, e construcao de pipelines de dados com interfaces explícitas para cada etapa.</p>
+        </div>
+        <p class="intro-highlight">
+          IA em TypeScript garante que os shapes de tensores, os formatos de entrada dos modelos e as estruturas de saida sejam verificados em compilacao. Erros de dimensao de tensor e incompatibilidade de tipos sao pegos antes de executar o modelo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tensorflowjs">TensorFlow.js com Tipos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + TensorFlow.js &mdash; Modelo tipado com Tensor e LayersModel</div>
+          <pre class="example"><span class="kw">import</span> * <span class="kw">as</span> tf <span class="kw">from</span> <span class="str">"@tensorflow/tfjs-node"</span>;
+<span class="kw">import</span> <span class="kw">type</span> { <span class="tp">Tensor</span>, <span class="tp">Tensor2D</span>, <span class="tp">LayersModel</span>, <span class="tp">ModelFitArgs</span> } <span class="kw">from</span> <span class="str">"@tensorflow/tfjs"</span>;
+
+<span class="com">// ---- Tipos de dados tipados para treinamento ----</span>
+<span class="kw">interface</span> <span class="tp">DadosTreinamento</span> {
+  entradas:  <span class="tp">Tensor2D</span>;   <span class="com">// shape [N, features]</span>
+  rotulos:   <span class="tp">Tensor2D</span>;   <span class="com">// shape [N, classes]</span>
+  validacao: [<span class="tp">Tensor2D</span>, <span class="tp">Tensor2D</span>];
+}
+
+<span class="kw">interface</span> <span class="tp">ConfigModelo</span> {
+  unidadesOcultas: <span class="kw">number</span>[];
+  taxaAprendizado: <span class="kw">number</span>;
+  dropout:         <span class="kw">number</span>;
+  epocas:          <span class="kw">number</span>;
+  tamanhoBatch:    <span class="kw">number</span>;
+}
+
+<span class="kw">function</span> <span class="fn">construirClassificador</span>(
+  nEntradas: <span class="kw">number</span>,
+  nClasses:  <span class="kw">number</span>,
+  config:    <span class="tp">ConfigModelo</span>,
+): <span class="tp">LayersModel</span> {
+  <span class="kw">const</span> modelo = tf.<span class="fn">sequential</span>();
+
+  <span class="com">// Camada de entrada</span>
+  modelo.<span class="fn">add</span>(tf.layers.<span class="fn">dense</span>({
+    inputShape: [nEntradas],
+    units:      config.unidadesOcultas[<span class="num">0</span>]!,
+    activation: <span class="str">"relu"</span>,
+    kernelRegularizer: tf.regularizers.<span class="fn">l2</span>({ l2: <span class="num">0.01</span> }),
+  }));
+  modelo.<span class="fn">add</span>(tf.layers.<span class="fn">batchNormalization</span>());
+  modelo.<span class="fn">add</span>(tf.layers.<span class="fn">dropout</span>({ rate: config.dropout }));
+
+  <span class="com">// Camadas ocultas</span>
+  <span class="kw">for</span> (<span class="kw">const</span> units <span class="kw">of</span> config.unidadesOcultas.<span class="fn">slice</span>(<span class="num">1</span>)) {
+    modelo.<span class="fn">add</span>(tf.layers.<span class="fn">dense</span>({ units, activation: <span class="str">"relu"</span> }));
+    modelo.<span class="fn">add</span>(tf.layers.<span class="fn">dropout</span>({ rate: config.dropout }));
+  }
+
+  <span class="com">// Camada de saida</span>
+  modelo.<span class="fn">add</span>(tf.layers.<span class="fn">dense</span>({ units: nClasses, activation: <span class="str">"softmax"</span> }));
+
+  modelo.<span class="fn">compile</span>({
+    optimizer: tf.train.<span class="fn">adam</span>(config.taxaAprendizado),
+    loss:      <span class="str">"categoricalCrossentropy"</span>,
+    metrics:   [<span class="str">"accuracy"</span>],
+  });
+  <span class="kw">return</span> modelo;
+}
+
+<span class="kw">async function</span> <span class="fn">treinar</span>(
+  modelo:  <span class="tp">LayersModel</span>,
+  dados:   <span class="tp">DadosTreinamento</span>,
+  config:  <span class="tp">ConfigModelo</span>,
+): <span class="tp">Promise</span>&lt;<span class="kw">void</span>&gt; {
+  <span class="kw">const</span> args: <span class="tp">ModelFitArgs</span> = {
+    epochs:          config.epocas,
+    batchSize:       config.tamanhoBatch,
+    validationData:  dados.validacao,
+    callbacks: tf.node.<span class="fn">tensorBoard</span>(<span class="str">"./logs"</span>),
+  };
+
+  <span class="kw">const</span> historico = <span class="kw">await</span> modelo.<span class="fn">fit</span>(dados.entradas, dados.rotulos, args);
+
+  <span class="kw">const</span> ultimaAcc = historico.history[<span class="str">"val_accuracy"</span>]?.at(-<span class="num">1</span>) <span class="kw">as</span> <span class="kw">number</span>;
+  console.<span class="fn">log</span>(<span class="str">`Acuracia validacao final: </span><span class="str">${(ultimaAcc * 100).toFixed(2)}</span><span class="str">%`</span>);
+
+  <span class="kw">await</span> modelo.<span class="fn">save</span>(<span class="str">"file://./modelo-salvo"</span>);
+}
+
+<span class="com">// Inferencia tipada</span>
+<span class="kw">async function</span> <span class="fn">classificar</span>(
+  modeloPath: <span class="kw">string</span>,
+  entrada:    <span class="kw">number</span>[],
+): <span class="tp">Promise</span>&lt;{ classe: <span class="kw">number</span>; confianca: <span class="kw">number</span> }&gt; {
+  <span class="kw">const</span> modelo = <span class="kw">await</span> tf.<span class="fn">loadLayersModel</span>(<span class="str">`file://</span><span class="str">${modeloPath}</span><span class="str">/model.json`</span>);
+  <span class="kw">const</span> tensor = tf.<span class="fn">tensor2d</span>([entrada]);
+  <span class="kw">const</span> saida  = modelo.<span class="fn">predict</span>(tensor) <span class="kw">as</span> <span class="tp">Tensor2D</span>;
+  <span class="kw">const</span> probs  = <span class="kw">await</span> saida.<span class="fn">data</span>();
+  <span class="kw">const</span> classe = <span class="tp">Array</span>.<span class="fn">from</span>(probs).<span class="fn">reduce</span>(
+    (iMax, v, i, arr) => v &gt; arr[iMax]! ? i : iMax, <span class="num">0</span>,
+  );
+  tensor.<span class="fn">dispose</span>();
+  saida.<span class="fn">dispose</span>();
+  <span class="kw">return</span> { classe, confianca: probs[classe]! };
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transformers">Transformers.js com Tipos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Transformers.js &mdash; Pipeline NLP tipado</div>
+          <pre class="example"><span class="kw">import</span> { <span class="fn">pipeline</span> } <span class="kw">from</span> <span class="str">"@xenova/transformers"</span>;
+<span class="kw">import</span> <span class="kw">type</span> { <span class="tp">TextClassificationOutput</span>, <span class="tp">FeatureExtractionOutput</span> } <span class="kw">from</span> <span class="str">"@xenova/transformers"</span>;
+
+<span class="com">// ---- Classificacao de sentimento ----</span>
+<span class="kw">interface</span> <span class="tp">ResultadoSentimento</span> {
+  texto:      <span class="kw">string</span>;
+  sentimento: <span class="str">"POSITIVE"</span> | <span class="str">"NEGATIVE"</span> | <span class="str">"NEUTRAL"</span>;
+  score:      <span class="kw">number</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">analisarSentimentos</span>(
+  textos: <span class="kw">string</span>[],
+): <span class="tp">Promise</span>&lt;<span class="tp">ResultadoSentimento</span>[]&gt; {
+  <span class="kw">const</span> classificador = <span class="kw">await</span> <span class="fn">pipeline</span>(
+    <span class="str">"text-classification"</span>,
+    <span class="str">"Xenova/distilbert-base-uncased-finetuned-sst-2-english"</span>,
+  );
+
+  <span class="kw">const</span> saidas = <span class="kw">await</span> classificador(textos, { topk: <span class="num">1</span> }) <span class="kw">as</span> <span class="tp">TextClassificationOutput</span>[];
+
+  <span class="kw">return</span> textos.<span class="fn">map</span>((texto, i) => {
+    <span class="kw">const</span> [pred] = saidas[i] <span class="kw">as</span> [{ label: <span class="kw">string</span>; score: <span class="kw">number</span> }];
+    <span class="kw">return</span> {
+      texto,
+      sentimento: pred.label <span class="kw">as</span> <span class="tp">ResultadoSentimento</span>[<span class="str">"sentimento"</span>],
+      score:      pred.score,
+    };
+  });
+}
+
+<span class="com">// ---- Embeddings + similaridade de cosseno tipados ----</span>
+<span class="kw">type</span> <span class="tp">Vetor</span> = <span class="tp">Float32Array</span> | <span class="kw">number</span>[];
+
+<span class="kw">function</span> <span class="fn">similaridadeCosseno</span>(a: <span class="tp">Vetor</span>, b: <span class="tp">Vetor</span>): <span class="kw">number</span> {
+  <span class="kw">let</span> dot = <span class="num">0</span>, normA = <span class="num">0</span>, normB = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; a.length; i++) {
+    dot   += a[i]! * b[i]!;
+    normA += a[i]! ** <span class="num">2</span>;
+    normB += b[i]! ** <span class="num">2</span>;
+  }
+  <span class="kw">return</span> dot / (<span class="tp">Math</span>.<span class="fn">sqrt</span>(normA) * <span class="tp">Math</span>.<span class="fn">sqrt</span>(normB));
+}
+
+<span class="kw">interface</span> <span class="tp">DocumentoComEmbedding</span> {
+  id:        <span class="kw">string</span>;
+  texto:     <span class="kw">string</span>;
+  embedding: <span class="tp">Float32Array</span>;
+}
+
+<span class="kw">async function</span> <span class="fn">buscarMaisSimilares</span>(
+  consulta:    <span class="kw">string</span>,
+  documentos:  <span class="tp">DocumentoComEmbedding</span>[],
+  topK:        <span class="kw">number</span> = <span class="num">5</span>,
+): <span class="tp">Promise</span>&lt;<span class="tp">Array</span>&lt;<span class="tp">DocumentoComEmbedding</span> &amp; { score: <span class="kw">number</span> }&gt;&gt; {
+  <span class="kw">const</span> extractor = <span class="kw">await</span> <span class="fn">pipeline</span>(
+    <span class="str">"feature-extraction"</span>,
+    <span class="str">"Xenova/all-MiniLM-L6-v2"</span>,
+  );
+
+  <span class="kw">const</span> resultado = <span class="kw">await</span> extractor([consulta], {
+    pooling:   <span class="str">"mean"</span>,
+    normalize: <span class="kw">true</span>,
+  }) <span class="kw">as</span> <span class="tp">FeatureExtractionOutput</span>;
+
+  <span class="kw">const</span> embConsulta = <span class="kw">new</span> <span class="tp">Float32Array</span>(resultado.data <span class="kw">as</span> <span class="kw">number</span>[]);
+
+  <span class="kw">return</span> documentos
+    .<span class="fn">map</span>((doc) => ({ ...doc, score: <span class="fn">similaridadeCosseno</span>(embConsulta, doc.embedding) }))
+    .<span class="fn">sort</span>((a, b) => b.score - a.score)
+    .<span class="fn">slice</span>(<span class="num">0</span>, topK);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="pipeline">Pipeline de Dados Tipado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Pipeline ETL com tipos para cada etapa</div>
+          <pre class="example"><span class="com">// Pipeline ETL com tipos explicitos por etapa</span>
+<span class="kw">interface</span> <span class="tp">VendaBruta</span> {
+  data:       <span class="kw">string</span>;   <span class="com">// "2024-01-15"</span>
+  produto:    <span class="kw">string</span>;
+  quantidade: <span class="kw">string</span>;   <span class="com">// vem como string do CSV</span>
+  preco:      <span class="kw">string</span>;
+  regiao:     <span class="kw">string</span>;
+}
+
+<span class="kw">interface</span> <span class="tp">VendaNormalizada</span> {
+  data:       <span class="tp">Date</span>;
+  produto:    <span class="kw">string</span>;
+  quantidade: <span class="kw">number</span>;
+  preco:      <span class="kw">number</span>;
+  regiao:     <span class="str">"norte"</span> | <span class="str">"sul"</span> | <span class="str">"leste"</span> | <span class="str">"oeste"</span> | <span class="str">"centro"</span>;
+  total:      <span class="kw">number</span>;
+}
+
+<span class="kw">interface</span> <span class="tp">AgregacaoRegional</span> {
+  regiao:      <span class="kw">string</span>;
+  totalVendas: <span class="kw">number</span>;
+  receita:     <span class="kw">number</span>;
+  produtoTop:  <span class="kw">string</span>;
+}
+
+<span class="com">// Validador Zod para etapa de extract</span>
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> <span class="tp">VendaBrutaSchema</span> = z.<span class="fn">object</span>({
+  data:       z.<span class="fn">string</span>().<span class="fn">regex</span>(/^\d{4}-\d{2}-\d{2}$/),
+  produto:    z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">1</span>),
+  quantidade: z.<span class="fn">string</span>().<span class="fn">regex</span>(/^\d+$/),
+  preco:      z.<span class="fn">string</span>().<span class="fn">regex</span>(/^\d+(\.\d{1,2})?$/),
+  regiao:     z.<span class="fn">enum</span>([<span class="str">"norte"</span>, <span class="str">"sul"</span>, <span class="str">"leste"</span>, <span class="str">"oeste"</span>, <span class="str">"centro"</span>]),
+});
+
+<span class="kw">function</span> <span class="fn">transformar</span>(bruta: <span class="tp">VendaBruta</span>): <span class="tp">VendaNormalizada</span> {
+  <span class="kw">const</span> validada = <span class="tp">VendaBrutaSchema</span>.<span class="fn">parse</span>(bruta);
+  <span class="kw">const</span> qtd   = parseInt(validada.quantidade, <span class="num">10</span>);
+  <span class="kw">const</span> preco = parseFloat(validada.preco);
+  <span class="kw">return</span> {
+    data:       <span class="kw">new</span> <span class="tp">Date</span>(validada.data),
+    produto:    validada.produto,
+    quantidade: qtd,
+    preco,
+    regiao:     validada.regiao,
+    total:      qtd * preco,
+  };
+}
+
+<span class="kw">function</span> <span class="fn">agregarPorRegiao</span>(vendas: <span class="tp">VendaNormalizada</span>[]): <span class="tp">AgregacaoRegional</span>[] {
+  <span class="kw">const</span> porRegiao = <span class="kw">new</span> <span class="tp">Map</span>&lt;<span class="kw">string</span>, <span class="tp">VendaNormalizada</span>[]&gt;();
+  <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> vendas) {
+    <span class="kw">if</span> (!porRegiao.<span class="fn">has</span>(v.regiao)) porRegiao.<span class="fn">set</span>(v.regiao, []);
+    porRegiao.<span class="fn">get</span>(v.regiao)!.<span class="fn">push</span>(v);
+  }
+  <span class="kw">return</span> <span class="tp">Array</span>.<span class="fn">from</span>(porRegiao.<span class="fn">entries</span>()).<span class="fn">map</span>(([regiao, gVendas]) => {
+    <span class="kw">const</span> freqProduto = <span class="kw">new</span> <span class="tp">Map</span>&lt;<span class="kw">string</span>, <span class="kw">number</span>&gt;();
+    <span class="kw">for</span> (<span class="kw">const</span> v <span class="kw">of</span> gVendas) freqProduto.<span class="fn">set</span>(v.produto, (freqProduto.<span class="fn">get</span>(v.produto) ?? <span class="num">0</span>) + <span class="num">1</span>);
+    <span class="kw">const</span> produtoTop = [...freqProduto.<span class="fn">entries</span>()].<span class="fn">sort</span>((a, b) => b[<span class="num">1</span>] - a[<span class="num">1</span>])[<span class="num">0</span>]![<span class="num">0</span>];
+    <span class="kw">return</span> {
+      regiao,
+      totalVendas: gVendas.<span class="fn">reduce</span>((s, v) => s + v.quantidade, <span class="num">0</span>),
+      receita:     gVendas.<span class="fn">reduce</span>((s, v) => s + v.total, <span class="num">0</span>),
+      produtoTop,
+    };
+  });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>TensorFlow.js — Machine Learning for JavaScript</strong>. Disponível em: &lt;https://www.tensorflow.org/js&gt;. Acesso em: 2025.</li>
+            <li>XENOVA. <strong>Transformers.js — State-of-the-art Machine Learning for the Web</strong>. Disponível em: &lt;https://xenova.github.io/transformers.js/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript Handbook — Narrowing</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/2/narrowing.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript no Terminal</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Jogos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Tipos em pipelines de IA documentam os contratos entre etapas — qualquer mudanca de schema e pega em compilacao antes de corromper dados de treinamento</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Princípios de design de software: coesão/acoplamento, separação de responsabilidades, SOLID e heurísticas para decidir.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Princípios de Design | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Heurísticas para código que envelhece bem</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Princípios de Design</h1>
+          <p class="page-subtitle">Coesão, acoplamento e responsabilidades bem distribuidas</p>
+        </div>
+        <p class="intro-highlight">Princípios de design são heurísticas para tomar boas decisões sobre onde colocar lógica e como separar responsabilidades. Não são regras absolutas — são ferramentas de análise para reduzir o custo de mudança ao longo do tempo.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fundamentos" class="section-title">Conceitos fundamentais</h2>
+        <div class="section-divider"></div>
+        <p>Antes de aplicar qualquer princípio, é essencial compreender as métricas que eles otimizam:</p>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Conceito</th>
+                <th>Definição</th>
+                <th>Indicador de problema</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Coesão</strong></td>
+                <td>Grau em que os elementos de um módulo pertencem ao mesmo conceito.</td>
+                <td>Classe com métodos sem relação óbvia entre si.</td>
+              </tr>
+              <tr>
+                <td><strong>Acoplamento</strong></td>
+                <td>Nível de dependência entre módulos — quanto um conhece os detalhes do outro.</td>
+                <td>Mudar uma classe requer mudar várias outras.</td>
+              </tr>
+              <tr>
+                <td><strong>Separação de responsabilidades</strong></td>
+                <td>Cada parte do sistema tem um motivo principal para mudar.</td>
+                <td>Mudar regra de negócio exige alterar código de persistência.</td>
+              </tr>
+              <tr>
+                <td><strong>DRY</strong></td>
+                <td>Cada conhecimento tem uma representação única e authoritative.</td>
+                <td>A mesma regra de negócio existe em múltiplos lugares e diverge.</td>
+              </tr>
+              <tr>
+                <td><strong>SOLID</strong></td>
+                <td>5 princípios para código OO coeso, extensível e testável.</td>
+                <td>Classes fat-model, dependências hardcoded, interfaces inchadas.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="separacao" class="section-title">Separação de responsabilidades — exemplo</h2>
+        <div class="section-divider"></div>
+        <p>A separação de responsabilidades é o princípio mais impactante no desenho de sistemas:</p>
+        <div class="code-container">
+          <pre class="code-block">// MISTURA de responsabilidades (comum em projetos iniciais)
+class PedidoController {
+  async criarPedido(req: Request, res: Response) {
+    // 1. parsing HTTP (responsabilidade de infraestrutura)
+    const dados = req.body;
+
+    // 2. validação de negócio (responsabilidade de domínio)
+    if (!dados.clienteId) throw new Error('Cliente obrigatório');
+
+    // 3. persistência (responsabilidade de infraestrutura)
+    const pedido = await db.query('INSERT INTO pedidos...');
+
+    // 4. envio de e-mail (responsabilidade de notificação)
+    await emailService.send(dados.email, 'Pedido criado');
+
+    res.json(pedido);
+  }
+}
+
+// SEPARADO: cada responsabilidade no lugar certo
+class CriarPedidoUseCase {  // domínio
+  async executar(cmd: CriarPedidoCmd): Promise<PedidoId> {
+    const pedido = Pedido.criar(cmd.clienteId, cmd.itens); // regra de negócio
+    await this.repo.salvar(pedido);
+    this.eventos.publicar(new PedidoCriado(pedido.id));
+    return pedido.id;
+  }
+}
+// PedidoController cuida apenas do HTTP
+// EmailListener escuta PedidoCriado e envia e-mail</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-aplicar" class="section-title">Como decidir</h2>
+        <div class="section-divider"></div>
+        <p>Use estas perguntas como guia ao tomar decisões de design:</p>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Quantos motivos para mudar?</h3>
+            <p>Se um arquivo muda por vários motivos diferentes, a coesão está baixa. Separe por motivo de mudança.</p>
+          </div>
+          <div class="card">
+            <h3>Quantos arquivos mudam juntos?</h3>
+            <p>Se mudar X implica mudar Y, Z e W, o acoplamento está alto. Introduza uma abstração entre eles.</p>
+          </div>
+          <div class="card">
+            <h3>Consigo testar isso sem infraestrutura?</h3>
+            <p>Se testes precisam de banco e servidor, as responsabilidades estão misturadas. Separe domínio de detalhes.</p>
+          </div>
+          <div class="card">
+            <h3>A abstração paga seu custo?</h3>
+            <p>Toda abstração tem custo cognitivo. Só crie quando o benefício mensurado supera esse custo.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Princípios de design não podem ser aplicados cegamente. Use <a href="/html/engenharia_software/design/solid.html">SOLID</a>, <a href="/html/engenharia_software/design/grasp.html">GRASP</a> e <a href="/html/engenharia_software/design/dry_kiss_yagni.html">DRY/KISS/YAGNI</a> como check-lists, não dogmas.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "A métrica real do bom design é o custo de mudança, não a pureza arquitetural."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,160 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Análise semântica em compiladores: tabela de símbolos, escopo, checagem de tipos, atributos de AST e erros semânticos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Análise Semântica | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores &rsaquo; Análise Semântica</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Análise Semântica</h1>
+        <p>Verificando <em>significado</em> &mdash; tipos, escopo e consistência de uso.</p>
+      </div>
+      <p class="intro-highlight">
+        Após o parser construir a AST, a <strong>análise semântica</strong> verifica regras que a gramática não captura:
+        tipos compatíveis, variáveis declaradas antes do uso, chamadas de função com argumentos corretos.
+        Esta fase anota a AST com informações de tipo e escopo que guiarão a geração de código.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tabela-simbolos" class="section-title">Tabela de Símbolos</h2>
+      <div class="card">
+        <p>A <strong>tabela de símbolos</strong> mapeia nomes de identificadores para seus atributos. É alimentada
+        durante a análise semântica e consultada pelo backend.</p>
+        <table>
+          <thead><tr><th>Chave</th><th>Tipo</th><th>Escopo</th><th>Offset</th><th>Outros</th></tr></thead>
+          <tbody>
+            <tr><td><code>x</code></td><td>int</td><td>main</td><td>-4(%rbp)</td><td>local</td></tr>
+            <tr><td><code>soma</code></td><td>fn(int,int)&rarr;int</td><td>global</td><td>0x1004</td><td>função</td></tr>
+            <tr><td><code>Node</code></td><td>struct</td><td>global</td><td>8B</td><td>tamanho</td></tr>
+          </tbody>
+        </table>
+        <h3>Escopo e Pilha de Escopos</h3>
+        <p>Cada bloco (<code>{...}</code>) abre um novo escopo (empilhado). Na saída do bloco o escopo é descartado.
+        Isso implementa as regras de visibilidade de linguagens com bloco-escopo (C, Java, Rust).</p>
+        <pre class="example">int x = 1;           // escopo global
+void f() {
+    int x = 2;       // novo escopo: oculta o global
+    {
+        int x = 3;   // escopo mais interno
+        print(x);    // usa x=3
+    }
+    print(x);        // usa x=2
+}
+print(x);            // usa x=1 (global)</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tipos" class="section-title">Checagem de Tipos</h2>
+      <div class="card">
+        <p>O verificador de tipos garante que operações são aplicadas a operandos compatíveis. Sistemas de tipos
+        diferem em <strong>estatic vs. dinâmico</strong> e <strong>forte vs. fraco</strong>:</p>
+        <table>
+          <thead><tr><th>Dimensão</th><th>Estático</th><th>Dinâmico</th></tr></thead>
+          <tbody>
+            <tr><td>Quando checa</td><td>Em tempo de compilação</td><td>Em tempo de execução</td></tr>
+            <tr><td>Erros capturados</td><td>Antes de rodar</td><td>Apenas ao executar o caminho errado</td></tr>
+            <tr><td>Exemplos</td><td>C, Rust, Java, Go</td><td>Python, JavaScript (sem TypeScript)</td></tr>
+          </tbody>
+        </table>
+        <h3>Inferência de Tipos</h3>
+        <p>Compiladores modernos (Rust, Haskell, Swift) usam <strong>inferência de tipos</strong> (Hindley-Milner)
+        para deduzir o tipo de expressões automaticamente sem anotações explícitas.</p>
+        <pre class="example">// Rust: tipo inferido como i32
+let x = 42;         // sem anotacao, compilador infere i32
+let y: f64 = 3.14;  // anotacao explicita
+let z = x + 1;      // infere i32 porque x eh i32</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="atributos" class="section-title">Gramáticas de Atributos e Decoração da AST</h2>
+      <div class="card">
+        <p>A análise semântica <strong>decora</strong> a AST: anota cada nó com informações como tipo, endereço de memória
+        e referência para a tabela de símbolos. Dois tipos de atributos:</p>
+        <ul>
+          <li><strong>Herdados</strong>: fluem de pai para filho (ex.: contexto de tipo esperado).</li>
+          <li><strong>Sintetizados</strong>: fluem de filho para pai (ex.: tipo de uma subexpressão).</li>
+        </ul>
+        <pre class="example">// No nó BinaryOp('+', e1, e2):
+// - sintetizado: tipo = unify(e1.tipo, e2.tipo)
+// - herdado: contexto_tipo_esperado</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="erros" class="section-title">Erros Semânticos</h2>
+      <div class="card">
+        <ul>
+          <li><strong>Uso de variável não declarada</strong>: identificador não encontrado na tabela de símbolos.</li>
+          <li><strong>Tipo incompatível</strong>: <code>3 + true</code> em linguagens fortemente tipadas.</li>
+          <li><strong>Número errado de argumentos</strong>: chamada de função com aridade incorreta.</li>
+          <li><strong>Retorno ausente</strong>: função não-void sem <code>return</code> em todos os caminhos.</li>
+          <li><strong>Redeclação</strong>: mesmo identificador declarado duas vezes no mesmo escopo.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Próximas seções:</strong>
+        <a href="/html/computacao_teorica/compiladores/representacao_intermediaria.html">Representação Intermediária</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/analise_sintatica.html">Voltar: Análise Sintática</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "A checagem de tipos é como uma revisão científica antes da publicação: identifica erros de lógica antes de qualquer execução."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+

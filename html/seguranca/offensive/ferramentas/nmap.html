@@ -1,0 +1,174 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Nmap: guia completo do mapeador de redes — tipos de scan, NSE scripts, detecção de versão e OS, timing, firewall evasion e casos de uso práticos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Nmap — Network Mapper | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Nmap — Network Mapper</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Nmap?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Nmap — Network Mapper</h1>
+          <p>Descoberta de hosts, portas abertas, serviços e OS detection em redes.</p>
+        </div>
+
+        <p class="intro-highlight">Nmap (Network Mapper) é a ferramenta de descoberta de rede e auditoria de segurança mais usada do mundo. Open source desde 1997, detecta hosts ativos, portas abertas, serviços, versões e sistema operacional. É indispensável em qualquer pentest ou auditoria de rede.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="tipos-scan" class="section-title">Tipos de Scan</h2>
+        <div class="section-divider"></div>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Flag</th>
+                <th>Tipo</th>
+                <th>Como funciona</th>
+                <th>Quando usar</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="code-inline">-sS</span></td><td>SYN Scan (default)</td><td>Envia SYN, espera SYN-ACK, não completa handshake</td><td>Padrão, mais rápido, menos logs no alvo</td></tr>
+              <tr><td><span class="code-inline">-sT</span></td><td>TCP Connect</td><td>Completa o 3-way handshake</td><td>Quando não tem root/sudo</td></tr>
+              <tr><td><span class="code-inline">-sU</span></td><td>UDP Scan</td><td>Envia pacote UDP, analisa resposta (ou ausência)</td><td>Descobrir DNS, SNMP, DHCP — frequentemente esquecido</td></tr>
+              <tr><td><span class="code-inline">-sN</span></td><td>Null Scan</td><td>Nenhuma flag TCP</td><td>Evasão de firewalls stateless</td></tr>
+              <tr><td><span class="code-inline">-sF</span></td><td>FIN Scan</td><td>Só flag FIN</td><td>Evasão de firewalls stateless</td></tr>
+              <tr><td><span class="code-inline">-sX</span></td><td>Xmas Scan</td><td>Flags FIN+PSH+URG</td><td>Evasão de firewalls stateless</td></tr>
+              <tr><td><span class="code-inline">-sn</span></td><td>Ping Scan</td><td>Apenas descobre hosts vivos, sem port scan</td><td>Mapear hosts ativos em rede rápido</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="parametros" class="section-title">Parâmetros Essenciais</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Scan completo — o mais usado em CTF e pentest:
+sudo nmap -sV -sC -p- --open -T4 10.10.10.10 -oA scan
+
+# Explicação de cada flag:
+#   -sV   → detectar versão do serviço
+#   -sC   → rodar scripts NSE padrão
+#   -p-   → todas as 65535 portas (default: apenas top 1000)
+#   --open → mostrar apenas portas abertas
+#   -T4   → timing agressivo (T0=paranóico, T5=insano)
+#   -oA   → salvar em todos os formatos (.nmap, .xml, .gnmap)
+
+# Scan rápido (descoberta inicial):
+nmap -sV --open -T4 10.10.10.10
+
+# Só descoberta de hosts na rede:
+nmap -sn 192.168.1.0/24
+
+# UDP top 50 portas (mais lento):
+sudo nmap -sU --top-ports 50 10.10.10.10</pre>
+      </section>
+
+      <section>
+        <h2 id="nse" class="section-title">NSE — Nmap Scripting Engine</h2>
+        <div class="section-divider"></div>
+
+        <p>O Nmap tem mais de 600 scripts Lua para automação de tarefas de enumeração, detecção de vulnerabilidades e exploração básica.</p>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Scripts por categoria</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Todos os scripts de vulnerabilidade:
+nmap --script vuln 10.10.10.10
+
+# Scripts de uma categoria:
+nmap --script "smb-*" 10.10.10.10
+nmap --script "http-*" 10.10.10.10
+
+# Script específico:
+nmap --script smb-vuln-ms17-010 10.10.10.10
+nmap --script ssl-heartbleed 10.10.10.10</pre>
+          </div>
+          <div class="card">
+            <h3>Scripts mais úteis</h3>
+            <ul>
+              <li><span class="code-inline">smb-vuln-ms17-010</span> — EternalBlue</li>
+              <li><span class="code-inline">smb-enum-shares</span> — listar shares</li>
+              <li><span class="code-inline">http-title</span> — título das páginas web</li>
+              <li><span class="code-inline">ftp-anon</span> — login anônimo FTP</li>
+              <li><span class="code-inline">ssh-auth-methods</span> — métodos auth SSH</li>
+              <li><span class="code-inline">ssl-heartbleed</span> — Heartbleed</li>
+              <li><span class="code-inline">dns-zone-transfer</span> — transferência de zona</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="firewall" class="section-title">Firewall Evasion</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Fragmentar pacotes (evitar IDS):
+nmap -f 10.10.10.10
+
+# Usar decoys (mascarar IP real):
+nmap -D RND:10 10.10.10.10
+
+# Spoofar MAC address:
+nmap --spoof-mac Apple 10.10.10.10
+
+# Timing lento (evitar detecção):
+nmap -T1 10.10.10.10   # Sneaky
+nmap -T0 10.10.10.10   # Paranoid
+
+# Usar porta de origem específica (bypassar firewall):
+nmap --source-port 53 10.10.10.10</pre>
+      </section>
+
+      <div class="callout">
+        <p>Nmap é a primeira ferramenta que qualquer profissional de segurança aprende — e uma das últimas que para de usar. Pratique seus scans em máquinas do HackTheBox e TryHackMe. Para análise de tráfego do Nmap, veja <a href="/html/seguranca/offensive/ferramentas/wireshark.html">Wireshark</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Se você colocar nmap -sV -sC -p- e esperar, eventualmente toda rede revela seus segredos."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

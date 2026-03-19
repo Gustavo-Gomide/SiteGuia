@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Haskell no mobile: arquitetura de backend para apps, core compartilhado por FFI, sincronizacao offline-first, seguranca e operacao em producao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Haskell - Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Haskell - Mobile</strong></p></div>
+
+      <section>
+        <h2 id="hero" class="section-title">Visao Geral</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="haskell" aria-hidden="true"></span></div>
+          <h1>Haskell no Ecossistema Mobile</h1>
+          <p>Aplicacao principal: backend robusto para Android/iOS, com regras de negocio seguras, contratos de API tipados e sincronizacao confiavel.</p>
+        </div>
+        <p class="intro-highlight">
+          Haskell raramente e usado para construir interface mobile nativa diretamente, mas e excelente para a camada que mais quebra em producao: regras de negocio, consistencia de dados, idempotencia, autorizacao, reconciliacao offline e auditoria.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="modelo-uso" class="section-title">Modelo Real de Uso em Mobile</h2>
+        <p>
+          Em projetos serios, o padrao mais eficiente e: <strong>UI nativa</strong> (Swift/Kotlin/Flutter/React Native) + <strong>backend Haskell</strong>. A interface evolui rapido, enquanto regras criticas ficam centralizadas e validadas por tipos.
+        </p>
+        <table class="table">
+          <thead>
+            <tr><th>Camada</th><th>Responsabilidade</th><th>Tecnologias comuns</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Cliente mobile</td><td>UX, navegacao, sensores, cache local</td><td>SwiftUI/UIKit, Jetpack Compose, Flutter, RN</td></tr>
+            <tr><td>API</td><td>Validacao, auth, regras, orquestracao</td><td>Servant, Warp, aeson, stm</td></tr>
+            <tr><td>Persistencia</td><td>Consistencia transacional e trilha</td><td>Persistent, beam, postgresql-simple</td></tr>
+            <tr><td>Eventos</td><td>Push, sync, filas, retries</td><td>Kafka/NATS/Rabbit + workers Haskell</td></tr>
+          </tbody>
+        </table>
+        <div class="panel">
+          <h3 class="panel-title">Beneficio principal</h3>
+          <p>Um unico ponto de verdade para regra de negocio. Android e iOS nao divergem em validacoes criticas.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="api-contrato" class="section-title">Contratos de API Tipados para Apps</h2>
+        <p>
+          Com Servant, o contrato vira tipo Haskell. Se o endpoint mudar, cliente e servidor quebram em compilacao, nao em runtime. Isso reduz regressao em app antigo conversando com backend novo.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Contrato tipado para mobile app</div>
+          <pre class="example"><span class="kw">type</span> <span class="fn">MobileAPI</span> =
+       <span class="str">"v1"</span> :> <span class="str">"session"</span> :> ReqBody '[JSON] LoginReq :> Post '[JSON] SessionToken
+  :&lt;|> <span class="str">"v1"</span> :> <span class="str">"sync"</span> :> Header <span class="str">"If-Match"</span> String :> ReqBody '[JSON] SyncReq :> Post '[JSON] SyncResp
+  :&lt;|> <span class="str">"v1"</span> :> <span class="str">"profile"</span> :> AuthProtect <span class="str">"jwt"</span> :> Get '[JSON] Profile
+
+<span class="com">-- Mudou o tipo de resposta? O compilador obriga atualizar handlers e clientes.</span></pre>
+        </div>
+        <p>
+          Padrao recomendado: versionamento de rota, idempotency-key para operacoes criticas e ETag para reconciliacao de estado.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="offline-first" class="section-title">Offline-First e Reconciliacao</h2>
+        <p>
+          Mobile real perde rede. O app precisa operar localmente e sincronizar depois sem corromper estado. No backend Haskell, modele comandos idempotentes e merge deterministico.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Esqueleto de comando idempotente</div>
+          <pre class="example"><span class="kw">processarComando</span> :: CommandId -> Command -> AppM Result
+<span class="fn">processarComando</span> cid cmd = <span class="kw">do</span>
+  jaProcessado <- <span class="fn">repositorioExiste</span> cid
+  <span class="kw">if</span> jaProcessado
+    <span class="kw">then</span> <span class="fn">recuperarResultado</span> cid
+    <span class="kw">else</span> <span class="kw">do</span>
+      r <- <span class="fn">executarRegra</span> cmd
+      <span class="fn">persistirResultado</span> cid r
+      <span class="fn">pure</span> r
+
+<span class="com">-- Evita duplicacao quando app reenviar payload apos queda de rede.</span></pre>
+        </div>
+        <ul>
+          <li>Use <code>updatedAt + version</code> para detectar conflito.</li>
+          <li>Defina merge por tipo de entidade (ultima escrita nem sempre e correto).</li>
+          <li>Mantenha trilha de eventos para auditoria e reprocessamento.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="seguranca-mobile" class="section-title">Seguranca e Conformidade</h2>
+        <p>Projetos mobile com dados sensiveis exigem backend com politica explicita de seguranca.</p>
+        <div class="grid grid--2">
+          <div class="panel">
+            <h3 class="panel-title">Checklist minimo</h3>
+            <ul>
+              <li>JWT curto + refresh token rotativo.</li>
+              <li>Rate limit por usuario/dispositivo/IP.</li>
+              <li>Assinatura de payload critico quando aplicavel.</li>
+              <li>Auditoria de operacoes sensiveis.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Boas praticas de app</h3>
+            <ul>
+              <li>Nunca confiar em regra apenas no cliente.</li>
+              <li>Device binding para sessao de risco alto.</li>
+              <li>Feature flags para rollout gradual.</li>
+              <li>Circuit breaker para dependencias externas.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="operacao" class="section-title">Operacao: CI/CD e Observabilidade</h2>
+        <p>
+          Mobile gera versoes legadas em campo. O backend deve ser retrocompativel por tempo definido, com monitoracao por versao do app.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Campos uteis de telemetria por request</div>
+          <pre class="example"><span class="com">-- Exemplo conceitual de contexto de log estruturado</span>
+<span class="kw">data</span> RequestCtx = RequestCtx
+  { appVersion  :: String
+  , platform    :: String
+  , deviceId    :: String
+  , correlation :: String
+  }
+
+<span class="fn">logarRequisicao</span> :: RequestCtx -> String -> AppM ()
+<span class="fn">logarRequisicao</span> ctx rota = <span class="fn">logInfo</span> (
+  <span class="str">"rota="</span> ++ rota ++ <span class="str">" app="</span> ++ appVersion ctx ++ <span class="str">" platform="</span> ++ platform ctx
+  )</pre>
+        </div>
+        <ul>
+          <li>Metrica por endpoint e por versao de app.</li>
+          <li>Alerta para aumento de 4xx/5xx em versao especifica.</li>
+          <li>Blue-green ou canary deploy para reduzir risco.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando Haskell Vale no Mobile</h2>
+        <table class="table">
+          <thead><tr><th>Cenario</th><th>Haskell ajuda muito</th><th>Talvez nao compense</th></tr></thead>
+          <tbody>
+            <tr><td>Fintech e pagamentos</td><td>Modelagem de regra e risco com alta seguranca</td><td>-</td></tr>
+            <tr><td>Health e compliance</td><td>Auditoria e validacao formal de fluxo</td><td>-</td></tr>
+            <tr><td>App promocional de curto prazo</td><td>-</td><td>Time-to-market pode pesar mais</td></tr>
+            <tr><td>Produto com regra simples</td><td>Pode ser excesso de rigor</td><td>Stack mais comum pode ser suficiente</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Estrategia madura: use Haskell onde erro custa caro (regra, contratos, sincronizacao), sem forcar UI mobile em stack nao nativa.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="referencias" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>Servant Documentation - <a href="https://docs.servant.dev/" target="_blank" rel="noopener noreferrer">docs.servant.dev</a></li>
+            <li>Yesod Web Framework - <a href="https://www.yesodweb.com/" target="_blank" rel="noopener noreferrer">yesodweb.com</a></li>
+            <li>Haskell Foundation - <a href="https://haskell.foundation/" target="_blank" rel="noopener noreferrer">haskell.foundation</a></li>
+            <li>GHC User Guide - <a href="https://downloads.haskell.org/ghc/latest/docs/users_guide/" target="_blank" rel="noopener noreferrer">downloads.haskell.org</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/aplicacoes/web.html">Haskell em APIs Web</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/aplicacoes/banco_dados.html">Haskell com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/haskell/guia/projetos_boas_praticas.html">Projetos e Boas Praticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Mobile muda toda semana, regra de negocio nao deveria mudar todo dia. Haskell ajuda a manter essa fronteira clara.</p>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

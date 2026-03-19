@@ -1,0 +1,129 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Cache de CPU: L1/L2/L3, políticas de substituição, mapeamento, coerência e impacto no desempenho de código." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Cache | CPU | Hardware e Arquitetura | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Hardware e Arquitetura</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="cache"></span>
+          <div>
+            <h1 class="page-title">Cache de CPU</h1>
+            <p class="page-subtitle">L1, L2, L3 — políticas de mapeamento, substituição e coerência</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          Cache é uma memória pequena e muito rápida situada fisicamente próxima (ou dentro) da CPU.
+          Explora o princípio da localidade: se um dado foi acessado, ele ou seus vizinhos provavelmente
+          serão acessados novamente em breve. Um hit de cache L1 custa ~4 ciclos; um miss até a RAM
+          principal custa ~200–300 ciclos.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — NÍVEIS ═══════════════════ -->
+      <section id="niveis">
+        <h2 id="niveis" class="section-title">Níveis de Cache</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Nível</th><th>Tamanho típico</th><th>Latência</th><th>Tipo</th><th>Compartilhado?</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>L1i (instruções)</td><td>32–64 KB por core</td><td>2–4 ciclos</td><td>Harvard (separado)</td><td>Não — por core</td></tr>
+              <tr><td>L1d (dados)</td><td>32–48 KB por core</td><td>4–5 ciclos</td><td>Associativo</td><td>Não — por core</td></tr>
+              <tr><td>L2</td><td>256 KB – 2 MB por core</td><td>10–15 ciclos</td><td>Unificado</td><td>Não (geralmente)</td></tr>
+              <tr><td>L3 (LLC)</td><td>8–96 MB</td><td>30–50 ciclos</td><td>Unificado</td><td>Sim — todos os cores</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — MAPEAMENTO E SUBSTITUIÇÃO ═══════════════════ -->
+      <section id="politicas">
+        <h2 id="politicas" class="section-title">Políticas de Mapeamento e Substituição</h2>
+        <div class="section-divider"></div>
+        <div class="logic-grid">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Mapeamento</h3>
+            <ul>
+              <li><strong>Direct Mapped:</strong> cada bloco de RAM mapeia para exatamente uma linha de cache (rápido, mas colisões frequentes)</li>
+              <li><strong>Fully Associative:</strong> qualquer bloco pode ir para qualquer linha (sem colisão, mas lógica cara)</li>
+              <li><strong>N-way Set Associative:</strong> compromisso — cada bloco vai para um conjunto de N linhas. CPUs modernas usam 8-way, 16-way</li>
+            </ul>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Substituição (quando cache está cheio)</h3>
+            <ul>
+              <li><strong>LRU (Least Recently Used):</strong> remove a linha menos recentemente acessada — padrão e eficiente</li>
+              <li><strong>FIFO:</strong> remove a linha mais antiga independente de uso recente</li>
+              <li><strong>Random:</strong> simples, evita patologias de LRU em acessos ciclicos</li>
+              <li><strong>PLRU (Pseudo-LRU):</strong> aproximação efíci de LRU com menos hardware</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — IMPACTO NO CÓDIGO ═══════════════════ -->
+      <section id="codigo">
+        <h2 id="codigo" class="section-title">Escrevendo Código Cache-Friendly</h2>
+        <div class="section-divider"></div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — row-major vs column-major (cache miss)</div>
+          <pre class="code-block">// RUIM: percorre coluna por coluna em matriz row-major
+// Cada acesso pula uma linha de cache (64 bytes) → alto miss rate
+for (int j = 0; j < N; j++)
+    for (int i = 0; i < N; i++)
+        sum += A[i][j];  // A[0][0], A[1][0], A[2][0]... pula N*4 bytes
+
+// BOM: percorre linha por linha → localidade espacial
+for (int i = 0; i < N; i++)
+    for (int j = 0; j < N; j++)
+        sum += A[i][j];  // A[0][0], A[0][1], A[0][2]... sequencial</pre>
+        </div>
+        <p class="note">O impacto pode ser 10x+ em matrizes grandes. Cache lines típicas: 64 bytes. Prefira estruturas de arrays (SoA) a arrays de estruturas (AoS) quando iterar sobre um campo.</p>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja o contexto completo na
+          <a href="/html/hardware_arquitetura/arquitetura_cpu/hierarquia_memoria.html">Hierarquia de Memória</a> e como a RAM se encaixa em
+          <a href="/html/hardware_arquitetura/componentes/memoria_ram.html">Memória RAM</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"O cache é a arte de fingir que a memória lenta é rápida."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Java Avancado: Generics, Streams API, Optional, Sealed Classes, Pattern Matching no switch, programacao funcional e Virtual Threads." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Java — Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Java &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="java" aria-hidden="true"></span></div>
+          <h1>Java Avancado</h1>
+          <p>Generics com wildcards, Streams API para processamento de dados, Optional, lambdas e interfaces funcionais, Sealed Classes, Pattern Matching em switch e Virtual Threads do Project Loom.</p>
+        </div>
+        <p class="intro-highlight">
+          A Streams API transformou Java de uma linguagem imperativa verbosa em uma plataforma com estilo funcional expressivo. Combinada com Optional e lambdas, permite pipelines de transformacao de dados legiveis e paralelizaveis com um simples <code>.parallel()</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="generics">Generics</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java &mdash; Classe generica, bounded types e wildcards</div>
+          <pre class="example"><span class="com">// Classe generica — T e um parametro de tipo (type parameter)</span>
+<span class="kw">public class</span> <span class="tp">Caixa</span>&lt;T&gt; {
+  <span class="kw">private</span> T conteudo;
+
+  <span class="kw">public</span> <span class="tp">Caixa</span>(T conteudo) { <span class="kw">this</span>.conteudo = conteudo; }
+  <span class="kw">public</span> T <span class="fn">abrir</span>()          { <span class="kw">return</span> conteudo; }
+
+  <span class="com">// Metodo que mapeia para outro tipo</span>
+  <span class="kw">public</span> &lt;U&gt; <span class="tp">Caixa</span>&lt;U&gt; <span class="fn">transformar</span>(<span class="tp">Function</span>&lt;T, U&gt; func) {
+    <span class="kw">return new</span> <span class="tp">Caixa</span>&lt;&gt;(<span class="fn">func</span>.<span class="fn">apply</span>(conteudo));
+  }
+}
+
+<span class="kw">var</span> caixaNome  = <span class="kw">new</span> <span class="tp">Caixa</span>&lt;&gt;(<span class="str">"Java 21"</span>);
+<span class="kw">var</span> caixaTamanho = caixaNome.<span class="fn">transformar</span>(<span class="tp">String</span>::<span class="fn">length</span>); <span class="com">// Caixa&lt;Integer&gt;</span>
+
+<span class="com">// Bounded type — T deve ser Comparable</span>
+<span class="kw">public static</span> &lt;T <span class="kw">extends</span> <span class="tp">Comparable</span>&lt;T&gt;&gt; T <span class="fn">maximo</span>(<span class="tp">List</span>&lt;T&gt; lista) {
+  <span class="kw">return</span> lista.<span class="fn">stream</span>().<span class="fn">max</span>(<span class="tp">Comparator</span>.<span class="fn">naturalOrder</span>())
+               .<span class="fn">orElseThrow</span>();
+}
+
+<span class="com">// Wildcards: tres sabores</span>
+<span class="com">// ? extends T — upper bound — leitura (produtor)</span>
+<span class="kw">public double</span> <span class="fn">somarNumeros</span>(<span class="tp">List</span>&lt;? <span class="kw">extends</span> <span class="tp">Number</span>&gt; nums) {
+  <span class="kw">return</span> nums.<span class="fn">stream</span>().<span class="fn">mapToDouble</span>(<span class="tp">Number</span>::<span class="fn">doubleValue</span>).<span class="fn">sum</span>();
+}
+
+<span class="com">// ? super T — lower bound — escrita (consumidor)</span>
+<span class="kw">public void</span> <span class="fn">adicionarNumeros</span>(<span class="tp">List</span>&lt;? <span class="kw">super</span> <span class="tp">Integer</span>&gt; destino) {
+  destino.<span class="fn">add</span>(<span class="num">42</span>); <span class="com">// seguro — todo List&lt;? super Integer&gt; aceita Integer</span>
+}
+
+<span class="com">// PECS: Producer Extends, Consumer Super</span>
+<span class="kw">public static</span> &lt;T&gt; <span class="kw">void</span> <span class="fn">copiar</span>(
+    <span class="tp">List</span>&lt;? <span class="kw">extends</span> T&gt; fonte,
+    <span class="tp">List</span>&lt;? <span class="kw">super</span> T&gt; destino) {
+  destino.<span class="fn">addAll</span>(fonte);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="streams">Streams API</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java &mdash; Criacao, operacoes intermediarias e terminais</div>
+          <pre class="example"><span class="kw">import</span> java.util.stream.*;
+
+<span class="com">// Fontes de Stream</span>
+<span class="tp">Stream</span>&lt;<span class="tp">String</span>&gt; s1 = <span class="tp">Stream</span>.<span class="fn">of</span>(<span class="str">"a"</span>, <span class="str">"b"</span>, <span class="str">"c"</span>);
+<span class="tp">IntStream</span>       s2 = <span class="tp">IntStream</span>.<span class="fn">range</span>(<span class="num">0</span>, <span class="num">10</span>);        <span class="com">// 0..9</span>
+<span class="tp">IntStream</span>       s3 = <span class="tp">IntStream</span>.<span class="fn">rangeClosed</span>(<span class="num">1</span>, <span class="num">10</span>); <span class="com">// 1..10</span>
+<span class="tp">Stream</span>&lt;<span class="tp">String</span>&gt; s4 = lista.<span class="fn">stream</span>();
+<span class="tp">Stream</span>&lt;<span class="tp">String</span>&gt; s5 = lista.<span class="fn">parallelStream</span>();       <span class="com">// ForkJoinPool</span>
+<span class="tp">Stream</span>&lt;<span class="tp">String</span>&gt; s6 = <span class="tp">Stream</span>.<span class="fn">generate</span>(() -&gt; <span class="str">"X"</span>).<span class="fn">limit</span>(<span class="num">5</span>);
+<span class="tp">Stream</span>&lt;<span class="tp">Integer</span>&gt; s7 = <span class="tp">Stream</span>.<span class="fn">iterate</span>(<span class="num">0</span>, n -&gt; n + <span class="num">2</span>).<span class="fn">limit</span>(<span class="num">5</span>); <span class="com">// 0,2,4,6,8</span>
+
+<span class="com">// Pipeline de transformacao</span>
+<span class="tp">List</span>&lt;<span class="tp">String</span>&gt; resultado = <span class="tp">Stream</span>.<span class="fn">of</span>(<span class="str">"banana"</span>, <span class="str">"abacate"</span>, <span class="str">"kiwi"</span>, <span class="str">"abacaxi"</span>)
+  .<span class="fn">filter</span>(s -&gt; s.<span class="fn">startsWith</span>(<span class="str">"aba"</span>))     <span class="com">// intermediaria — lazy</span>
+  .<span class="fn">map</span>(<span class="tp">String</span>::<span class="fn">toUpperCase</span>)              <span class="com">// intermediaria — lazy</span>
+  .<span class="fn">sorted</span>()                               <span class="com">// intermediaria — lazy</span>
+  .<span class="fn">distinct</span>()                             <span class="com">// intermediaria</span>
+  .<span class="fn">limit</span>(<span class="num">10</span>)                              <span class="com">// intermediaria</span>
+  .<span class="fn">toList</span>();                              <span class="com">// terminal — dispara execucao (Java 16)</span>
+
+<span class="com">// Reducao</span>
+<span class="kw">int</span> soma = <span class="tp">IntStream</span>.<span class="fn">rangeClosed</span>(<span class="num">1</span>, <span class="num">100</span>).<span class="fn">sum</span>();     <span class="com">// 5050</span>
+<span class="kw">long</span> qnt = lista.<span class="fn">stream</span>().<span class="fn">filter</span>(s -&gt; s.<span class="fn">length</span>() &gt; <span class="num">3</span>).<span class="fn">count</span>();
+<span class="kw">double</span> media = lista.<span class="fn">stream</span>()
+  .<span class="fn">mapToInt</span>(<span class="tp">String</span>::<span class="fn">length</span>).<span class="fn">average</span>().<span class="fn">orElse</span>(<span class="num">0</span>);
+
+<span class="com">// Collectors avancados</span>
+<span class="tp">Map</span>&lt;<span class="kw">boolean</span>, <span class="tp">List</span>&lt;<span class="tp">String</span>&gt;&gt; particionado =
+  lista.<span class="fn">stream</span>().<span class="fn">collect</span>(<span class="tp">Collectors</span>.<span class="fn">partitioningBy</span>(s -&gt; s.<span class="fn">length</span>() &gt; <span class="num">5</span>));
+
+<span class="tp">Map</span>&lt;<span class="tp">Integer</span>, <span class="tp">List</span>&lt;<span class="tp">String</span>&gt;&gt; grupoPorTamanho =
+  lista.<span class="fn">stream</span>().<span class="fn">collect</span>(<span class="tp">Collectors</span>.<span class="fn">groupingBy</span>(<span class="tp">String</span>::<span class="fn">length</span>));
+
+<span class="tp">Map</span>&lt;<span class="tp">Integer</span>, <span class="kw">long</span>&gt; contPorTamanho =
+  lista.<span class="fn">stream</span>().<span class="fn">collect</span>(
+    <span class="tp">Collectors</span>.<span class="fn">groupingBy</span>(<span class="tp">String</span>::<span class="fn">length</span>,
+                          <span class="tp">Collectors</span>.<span class="fn">counting</span>()));
+
+<span class="tp">String</span> frase = lista.<span class="fn">stream</span>().<span class="fn">collect</span>(<span class="tp">Collectors</span>.<span class="fn">joining</span>(<span class="str">", "</span>, <span class="str">"["</span>, <span class="str">"]"</span>));
+
+<span class="com">// flatMap — Stream de Streams → Stream plana</span>
+<span class="tp">List</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt;&gt; aninhada = <span class="tp">List</span>.<span class="fn">of</span>(<span class="tp">List</span>.<span class="fn">of</span>(<span class="num">1</span>, <span class="num">2</span>), <span class="tp">List</span>.<span class="fn">of</span>(<span class="num">3</span>, <span class="num">4</span>));
+<span class="tp">List</span>&lt;<span class="tp">Integer</span>&gt; plana = aninhada.<span class="fn">stream</span>()
+  .<span class="fn">flatMap</span>(<span class="tp">Collection</span>::<span class="fn">stream</span>).<span class="fn">toList</span>(); <span class="com">// [1,2,3,4]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="optional">Optional — Eliminando NullPointerException</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java &mdash; Optional correto — criacao, encadeamento e extracoes</div>
+          <pre class="example"><span class="com">// Criacao</span>
+<span class="tp">Optional</span>&lt;<span class="tp">String</span>&gt; vazio      = <span class="tp">Optional</span>.<span class="fn">empty</span>();
+<span class="tp">Optional</span>&lt;<span class="tp">String</span>&gt; presente  = <span class="tp">Optional</span>.<span class="fn">of</span>(<span class="str">"Java"</span>);
+<span class="tp">Optional</span>&lt;<span class="tp">String</span>&gt; nullable  = <span class="tp">Optional</span>.<span class="fn">ofNullable</span>(<span class="fn">buscarNome</span>()); <span class="com">// pode ser null</span>
+
+<span class="com">// Encadeamento funcional — sem if-null</span>
+<span class="tp">Optional</span>&lt;<span class="tp">Usuario</span>&gt; usuario = <span class="fn">repositorio</span>.<span class="fn">buscarPorId</span>(<span class="num">42L</span>);
+
+<span class="tp">String</span> email = usuario
+  .<span class="fn">map</span>(<span class="tp">Usuario</span>::<span class="fn">getEmail</span>)
+  .<span class="fn">map</span>(<span class="tp">String</span>::<span class="fn">toLowerCase</span>)
+  .<span class="fn">filter</span>(e -&gt; e.<span class="fn">contains</span>(<span class="str">"@"</span>))
+  .<span class="fn">orElse</span>(<span class="str">"sem-email@exemplo.com"</span>);
+
+<span class="com">// orElseGet — lazy (funcao so executada se vazio)</span>
+<span class="tp">String</span> nome = usuario
+  .<span class="fn">map</span>(<span class="tp">Usuario</span>::<span class="fn">getNome</span>)
+  .<span class="fn">orElseGet</span>(() -&gt; <span class="fn">gerarNomeTemporario</span>());
+
+<span class="com">// orElseThrow — lanca excecao se vazio (Java 10+: sem argumento lanca NoSuchElement)</span>
+<span class="tp">Usuario</span> u = <span class="fn">repositorio</span>.<span class="fn">buscarPorId</span>(id)
+  .<span class="fn">orElseThrow</span>(() -&gt; <span class="kw">new</span> <span class="tp">EntidadeNaoEncontradaException</span>(<span class="str">"Usuario"</span>, id));
+
+<span class="com">// flatMap — quando o metodo ja retorna Optional</span>
+<span class="tp">Optional</span>&lt;<span class="tp">String</span>&gt; fone = usuario
+  .<span class="fn">flatMap</span>(<span class="tp">Usuario</span>::<span class="fn">getTelefone</span>); <span class="com">// getTelefone() retorna Optional&lt;String&gt;</span>
+
+<span class="com">// ifPresentOrElse (Java 9)</span>
+usuario.<span class="fn">ifPresentOrElse</span>(
+  u2 -&gt; <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Bem-vindo, "</span> + u2.<span class="fn">getNome</span>()),
+  ()  -&gt; <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Usuario nao encontrado"</span>)
+);
+
+<span class="com">// or (Java 9) — fallback para outro Optional</span>
+<span class="tp">Optional</span>&lt;<span class="tp">Usuario</span>&gt; resultado = usuario
+  .<span class="fn">or</span>(() -&gt; <span class="fn">cacheLocal</span>.<span class="fn">buscar</span>(id));
+
+<span class="com">// ANTI-PADRAO: nunca use isPresent() + get() — use map/orElse</span>
+<span class="com">// if (opt.isPresent()) { return opt.get(); } // ruim — equivale a null check</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="funcional">Interfaces Funcionais e Lambdas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java &mdash; @FunctionalInterface e method references</div>
+          <pre class="example"><span class="kw">import</span> java.util.function.*;
+
+<span class="com">// As 4 interfaces funcionais principais</span>
+<span class="tp">Supplier</span>&lt;<span class="tp">LocalDate</span>&gt;    supplier = <span class="tp">LocalDate</span>::<span class="fn">now</span>;   <span class="com">// () -&gt; T</span>
+<span class="tp">Consumer</span>&lt;<span class="tp">String</span>&gt;      consumer = <span class="tp">System</span>.out::println; <span class="com">// T -&gt; void</span>
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">Integer</span>&gt; fn = <span class="tp">String</span>::<span class="fn">length</span>;       <span class="com">// T -&gt; R</span>
+<span class="tp">Predicate</span>&lt;<span class="tp">Integer</span>&gt;    pred = n -&gt; n &gt; <span class="num">0</span>;               <span class="com">// T -&gt; boolean</span>
+
+<span class="com">// Composicao de funcoes</span>
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">String</span>&gt; limpar    = <span class="tp">String</span>::<span class="fn">trim</span>;
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">String</span>&gt; upper     = <span class="tp">String</span>::<span class="fn">toUpperCase</span>;
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">String</span>&gt; limparUpper = limpar.<span class="fn">andThen</span>(upper);
+
+<span class="com">// Composicao de Predicates</span>
+<span class="tp">Predicate</span>&lt;<span class="tp">String</span>&gt; naoVazio = s -&gt; !s.<span class="fn">isBlank</span>();
+<span class="tp">Predicate</span>&lt;<span class="tp">String</span>&gt; comprido = s -&gt; s.<span class="fn">length</span>() &gt; <span class="num">5</span>;
+<span class="tp">Predicate</span>&lt;<span class="tp">String</span>&gt; valido   = naoVazio.<span class="fn">and</span>(comprido);
+
+<span class="com">// @FunctionalInterface customizada</span>
+@<span class="at">FunctionalInterface</span>
+<span class="kw">public interface</span> <span class="tp">Validador</span>&lt;T&gt; {
+  <span class="kw">boolean</span> <span class="fn">validar</span>(T valor);
+
+  <span class="kw">default</span> <span class="tp">Validador</span>&lt;T&gt; <span class="fn">e</span>(<span class="tp">Validador</span>&lt;T&gt; outro) {
+    <span class="kw">return</span> v -&gt; <span class="kw">this</span>.<span class="fn">validar</span>(v) &amp;&amp; outro.<span class="fn">validar</span>(v);
+  }
+}
+
+<span class="tp">Validador</span>&lt;<span class="tp">String</span>&gt; emailValido =
+  s -&gt; s.<span class="fn">contains</span>(<span class="str">"@"</span>) &amp;&amp; s.<span class="fn">contains</span>(<span class="str">"."</span>);
+
+<span class="com">// Closures — lambdas capturam variaveis efetivamente finais</span>
+<span class="tp">String</span> prefixo = <span class="str">"SR_"</span>;
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">String</span>&gt; adicionar = nome -&gt; prefixo + nome;
+<span class="com">// prefixo = "OUTRO"; // erro de compilacao — efetivamente final</span>
+
+<span class="com">// Method references — 4 tipos</span>
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">Integer</span>&gt; r1 = <span class="tp">Integer</span>::<span class="fn">parseInt</span>;    <span class="com">// estatico</span>
+<span class="tp">Consumer</span>&lt;<span class="tp">String</span>&gt;          r2 = <span class="tp">System</span>.out::println;  <span class="com">// instancia especifica</span>
+<span class="tp">Function</span>&lt;<span class="tp">String</span>, <span class="tp">String</span>&gt;  r3 = <span class="tp">String</span>::<span class="fn">toLowerCase</span>;  <span class="com">// instancia arbitraria</span>
+<span class="tp">Supplier</span>&lt;<span class="tp">ArrayList</span>&gt;       r4 = <span class="tp">ArrayList</span>::<span class="kw">new</span>;         <span class="com">// construtor</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sealed-pattern">Sealed Classes e Pattern Matching (Java 17-21)</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java 21 &mdash; Sealed, switch com pattern e guarded patterns</div>
+          <pre class="example"><span class="com">// Sealed class — lista fechada de subtipos (Java 17)</span>
+<span class="kw">public sealed</span> <span class="kw">interface</span> <span class="tp">FormaGeometrica</span>
+  <span class="kw">permits</span> <span class="tp">Circulo</span>, <span class="tp">Retangulo</span>, <span class="tp">Triangulo</span> {}
+
+<span class="kw">public record</span> <span class="tp">Circulo</span>(<span class="kw">double</span> raio)
+  <span class="kw">implements</span> <span class="tp">FormaGeometrica</span> {}
+
+<span class="kw">public record</span> <span class="tp">Retangulo</span>(<span class="kw">double</span> largura, <span class="kw">double</span> altura)
+  <span class="kw">implements</span> <span class="tp">FormaGeometrica</span> {}
+
+<span class="kw">public record</span> <span class="tp">Triangulo</span>(<span class="kw">double</span> base, <span class="kw">double</span> alturaT)
+  <span class="kw">implements</span> <span class="tp">FormaGeometrica</span> {}
+
+<span class="com">// Pattern matching em switch (Java 21 — GA)</span>
+<span class="com">// O compilador verifica exaustividade — sem default se todos os subtipos forem cobertos</span>
+<span class="kw">public double</span> <span class="fn">calcularArea</span>(<span class="tp">FormaGeometrica</span> f) {
+  <span class="kw">return switch</span> (f) {
+    <span class="kw">case</span> <span class="tp">Circulo</span> c    -&gt; <span class="tp">Math</span>.PI * c.<span class="fn">raio</span>() * c.<span class="fn">raio</span>();
+    <span class="kw">case</span> <span class="tp">Retangulo</span> r  -&gt; r.<span class="fn">largura</span>() * r.<span class="fn">altura</span>();
+    <span class="kw">case</span> <span class="tp">Triangulo</span> t  -&gt; (t.<span class="fn">base</span>() * t.<span class="fn">alturaT</span>()) / <span class="num">2</span>;
+  };
+}
+
+<span class="com">// Guarded patterns — when (Java 21)</span>
+<span class="kw">public</span> <span class="tp">String</span> <span class="fn">descrever</span>(<span class="tp">FormaGeometrica</span> f) {
+  <span class="kw">return switch</span> (f) {
+    <span class="kw">case</span> <span class="tp">Circulo</span> c <span class="kw">when</span> c.<span class="fn">raio</span>() &gt; <span class="num">100</span> -&gt; <span class="str">"Circulo gigante"</span>;
+    <span class="kw">case</span> <span class="tp">Circulo</span> c                       -&gt; <span class="str">"Circulo r="</span> + c.<span class="fn">raio</span>();
+    <span class="kw">case</span> <span class="tp">Retangulo</span> r <span class="kw">when</span> r.<span class="fn">largura</span>() == r.<span class="fn">altura</span>() -&gt; <span class="str">"Quadrado"</span>;
+    <span class="kw">case</span> <span class="tp">Retangulo</span> r -&gt; <span class="str">"Retangulo %dx%d"</span>.<span class="fn">formatted</span>((<span class="kw">int</span>)r.<span class="fn">largura</span>(), (<span class="kw">int</span>)r.<span class="fn">altura</span>());
+    <span class="kw">case</span> <span class="tp">Triangulo</span> t -&gt; <span class="str">"Triangulo b="</span> + t.<span class="fn">base</span>();
+  };
+}
+
+<span class="com">// Pattern matching instanceof (Java 16)</span>
+<span class="tp">Object</span> obj = <span class="fn">obterValor</span>();
+<span class="kw">if</span> (obj <span class="kw">instanceof</span> <span class="tp">String</span> s &amp;&amp; s.<span class="fn">length</span>() &gt; <span class="num">5</span>) {
+  <span class="tp">System</span>.out.<span class="fn">println</span>(s.<span class="fn">toUpperCase</span>()); <span class="com">// s ja e String, sem cast</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="concorrencia">Concorrencia e Virtual Threads</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Java 21 &mdash; Virtual Threads (Project Loom)</div>
+          <pre class="example"><span class="com">// Thread virtual — custo de criacao ~microsegundos, nao KB de stack OS</span>
+<span class="kw">var</span> t = <span class="tp">Thread</span>.<span class="fn">ofVirtual</span>().<span class="fn">start</span>(() -&gt; {
+  <span class="tp">System</span>.out.<span class="fn">println</span>(<span class="str">"Executando em thread virtual: "</span> + <span class="tp">Thread</span>.<span class="fn">currentThread</span>());
+});
+t.<span class="fn">join</span>();
+
+<span class="com">// Executor de threads virtuais — substitui pool</span>
+<span class="kw">try</span> (<span class="kw">var</span> executor = <span class="tp">Executors</span>.<span class="fn">newVirtualThreadPerTaskExecutor</span>()) {
+  <span class="tp">List</span>&lt;<span class="tp">Future</span>&lt;<span class="tp">String</span>&gt;&gt; futures = <span class="tp">IntStream</span>.<span class="fn">range</span>(<span class="num">0</span>, <span class="num">1000</span>)
+    .<span class="fn">mapToObj</span>(i -&gt; executor.<span class="fn">submit</span>(() -&gt; <span class="fn">buscarDados</span>(i)))
+    .<span class="fn">toList</span>();
+  <span class="com">// 1000 tarefas I/O-bound sem criar 1000 OS threads</span>
+}
+
+<span class="com">// CompletableFuture — orquestracao assincrona</span>
+<span class="tp">CompletableFuture</span>&lt;<span class="tp">String</span>&gt; cf =
+  <span class="tp">CompletableFuture</span>.<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">buscarUsuario</span>(<span class="num">1L</span>))
+    .<span class="fn">thenApply</span>(<span class="tp">Usuario</span>::<span class="fn">getNome</span>)
+    .<span class="fn">thenApply</span>(<span class="tp">String</span>::<span class="fn">toUpperCase</span>)
+    .<span class="fn">exceptionally</span>(ex -&gt; <span class="str">"USUARIO_DESCONHECIDO"</span>);
+
+<span class="tp">String</span> nome = cf.<span class="fn">join</span>(); <span class="com">// bloqueia ate completar</span>
+
+<span class="com">// combinar dois futures em paralelo</span>
+<span class="tp">CompletableFuture</span>&lt;<span class="tp">String</span>&gt; nomeF  = <span class="tp">CompletableFuture</span>.<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">buscarNome</span>(id));
+<span class="tp">CompletableFuture</span>&lt;<span class="tp">String</span>&gt; emailF = <span class="tp">CompletableFuture</span>.<span class="fn">supplyAsync</span>(() -&gt; <span class="fn">buscarEmail</span>(id));
+
+<span class="tp">CompletableFuture</span>&lt;<span class="tp">String</span>&gt; combinado = nomeF.<span class="fn">thenCombine</span>(emailF,
+  (nome2, email) -&gt; nome2 + <span class="str">" &lt;"</span> + email + <span class="str">"&gt;"</span>);
+
+<span class="com">// StructuredTaskScope (previa Java 21 — JEP 453)</span>
+<span class="kw">try</span> (<span class="kw">var</span> scope = <span class="kw">new</span> <span class="tp">StructuredTaskScope.ShutdownOnFailure</span>()) {
+  <span class="kw">var</span> usuario  = scope.<span class="fn">fork</span>(() -&gt; <span class="fn">buscarUsuario</span>(id));
+  <span class="kw">var</span> pedidos  = scope.<span class="fn">fork</span>(() -&gt; <span class="fn">buscarPedidos</span>(id));
+  scope.<span class="fn">join</span>().<span class="fn">throwIfFailed</span>();
+  <span class="kw">return new</span> <span class="tp">PerfilCompleto</span>(usuario.<span class="fn">get</span>(), pedidos.<span class="fn">get</span>());
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="decisoes-avancadas-producao">Decisoes Avancadas em Producao</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Streams vs loops</h3>
+            <p>Streams melhoram legibilidade e composicao. Em trechos ultra-criticos de latencia, loops imperativos ainda podem ser mais previsiveis no perfil de CPU.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Virtual Threads vs reativo</h3>
+            <p>Virtual Threads simplificam I/O bloqueante com modelo mental tradicional. Stack reativa ainda e valida para pipelines declarativos com backpressure extremo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Optional e APIs publicas</h3>
+            <p>Use Optional para retorno de ausencia de valor. Evite Optional em campos de entidade e serializacao de borda sem estrategia explicita de contrato.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>BLOCH, Joshua. <strong>Effective Java</strong>. 3. ed. Addison-Wesley, 2018. Cap. 5 (Generics), Cap. 7 (Lambdas e Streams).</li>
+            <li>OPENJDK. <strong>JEP 441 — Pattern Matching for switch</strong>. Disponível em: &lt;https://openjdk.org/jeps/441&gt;. Acesso em: 2025.</li>
+            <li>OPENJDK. <strong>JEP 444 — Virtual Threads</strong>. Disponível em: &lt;https://openjdk.org/jeps/444&gt;. Acesso em: 2025.</li>
+            <li>URMA, Raoul-Gabriel; FUSCO, Mario; MYCROFT, Alan. <strong>Java 8 in Action</strong>. Manning, 2014.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks Java</a></li>
+          <li><a href="../aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Java com Spring Data JPA</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Streams sao lazy — sem uma operacao terminal (collect, count, forEach ...) nenhuma operacao intermediaria e executada. Isso permite pipelines eficientes sem computacoes desnecessarias.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

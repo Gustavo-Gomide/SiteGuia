@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Elixir Projetos e Boas Práticas: organização de contextos (contexts), estrutura de umbrella apps, naming conventions, módulos bem definidos, tratamento de erros com with, testes e CI." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Elixir — Projetos e Boas Práticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Elixir &mdash; Projetos e Boas Práticas</strong></p></div>
+
+      <section>
+        <h2 id="hero-titulo" class="section-title">Projetos e Boas Praticas em Elixir</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="elixir" aria-hidden="true"></span></div>
+          <h1>Elixir — Projetos e Boas Práticas</h1>
+          <p>Um projeto Elixir bem estruturado organiza código em <strong>contextos</strong> (boundaries funcionais), favorece funções puras testáveis, usa o <strong>with</strong> para pipelines com tratamento de erro, e aproveita o OTP para tolerância a falhas. A filosofia de design valoriza clareza e composabilidade sobre abstração prematura.</p>
+        </div>
+        <p class="intro-highlight">
+          A maior diferença entre código Elixir iniciante e experiente é o uso correto de <strong>contextos</strong> (como praticado pelo Phoenix): cada domínio do negócio é encapsulado em um módulo de contexto com API pública clara, escondendo detalhes de implementação (Ecto queries, dependências externas) dos chamadores.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto Phoenix</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Estrutura de diretórios — Phoenix com contextos</div>
+          <pre class="example">meu_app/
+├── lib/
+│   ├── meu_app/                  ← lógica de negócio (pura, sem HTTP)
+│   │   ├── application.ex        ← OTP Application + Supervisor tree
+│   │   ├── repo.ex               ← Ecto.Repo
+│   │   ├── contas/               ← contexto: gestão de contas
+│   │   │   ├── contas.ex         ← API pública do contexto
+│   │   │   ├── usuario.ex        ← Schema Ecto
+│   │   │   └── usuario_token.ex  ← Schema auxiliar
+│   │   ├── loja/                 ← contexto: loja
+│   │   │   ├── loja.ex
+│   │   │   ├── produto.ex
+│   │   │   └── pedido.ex
+│   │   └── notificacoes/         ← contexto: notificações
+│   │       ├── notificacoes.ex
+│   │       └── email_worker.ex
+│   └── meu_app_web/              ← camada web (Phoenix)
+│       ├── router.ex
+│       ├── endpoint.ex
+│       ├── controllers/
+│       │   ├── usuario_controller.ex
+│       │   └── produto_controller.ex
+│       ├── live/
+│       │   └── produto_live/
+│       │       ├── index.ex
+│       │       └── show.ex
+│       └── components/
+├── test/
+│   ├── meu_app/
+│   │   ├── contas_test.exs
+│   │   └── loja_test.exs
+│   └── meu_app_web/
+│       └── controllers/
+├── priv/
+│   └── repo/migrations/
+├── config/
+│   ├── config.exs                ← config base
+│   ├── dev.exs
+│   ├── test.exs
+│   └── runtime.exs               ← config em runtime (env vars)
+└── mix.exs</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="contextos">Contextos — Fronteiras de Domínio</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">lib/meu_app/contas/contas.ex — context module</div>
+          <pre class="example"><span class="kw">defmodule</span> <span class="tp">MeuApp.Contas</span> <span class="kw">do</span>
+  <span class="at">@moduledoc</span> <span class="str">"""
+  Contexto de Contas — gerencia usuários, autenticação e sessões.
+  API pública: criar_usuario/1, autenticar/2, buscar_usuario/1
+  """</span>
+
+  <span class="kw">import</span> <span class="tp">Ecto.Query</span>
+  <span class="kw">alias</span> <span class="tp">MeuApp.Repo</span>
+  <span class="kw">alias</span> <span class="tp">MeuApp.Contas.Usuario</span>
+
+  <span class="at">@spec</span> <span class="fn">criar_usuario</span>(map()) :: {<span class="at">:ok</span>, <span class="tp">Usuario</span>.t()} | {<span class="at">:error</span>, <span class="tp">Ecto.Changeset</span>.t()}
+  <span class="kw">def</span> <span class="fn">criar_usuario</span>(attrs) <span class="kw">do</span>
+    %<span class="tp">Usuario</span>{}
+    |&gt; <span class="tp">Usuario</span>.<span class="fn">changeset</span>(attrs)
+    |&gt; <span class="tp">Repo</span>.<span class="fn">insert</span>()
+  <span class="kw">end</span>
+
+  <span class="at">@spec</span> <span class="fn">autenticar</span>(<span class="tp">String</span>.t(), <span class="tp">String</span>.t()) :: {<span class="at">:ok</span>, <span class="tp">Usuario</span>.t()} | {<span class="at">:error</span>, <span class="at">:invalido</span>}
+  <span class="kw">def</span> <span class="fn">autenticar</span>(email, senha) <span class="kw">do</span>
+    usuario = <span class="tp">Repo</span>.<span class="fn">get_by</span>(<span class="tp">Usuario</span>, email: email)
+    <span class="kw">case</span> <span class="tp">Bcrypt</span>.<span class="fn">check_pass</span>(usuario, senha) <span class="kw">do</span>
+      {<span class="at">:ok</span>, u} -> {<span class="at">:ok</span>, u}
+      _         -> {<span class="at">:error</span>, <span class="at">:invalido</span>}
+    <span class="kw">end</span>
+  <span class="kw">end</span>
+
+  <span class="at">@spec</span> <span class="fn">listar_usuarios</span>() :: list(<span class="tp">Usuario</span>.t())
+  <span class="kw">def</span> <span class="fn">listar_usuarios</span> <span class="kw">do</span>
+    from(u <span class="kw">in</span> <span class="tp">Usuario</span>, where: u.ativo == <span class="kw">true</span>, order_by: u.nome)
+    |&gt; <span class="tp">Repo</span>.<span class="fn">all</span>()
+  <span class="kw">end</span>
+
+  <span class="com"># Funções privadas ficam DENTRO do contexto, não expostas</span>
+  defp <span class="fn">notificar_cadastro</span>(%<span class="tp">Usuario</span>{} = u) <span class="kw">do</span>
+    <span class="tp">MeuApp.Notificacoes</span>.<span class="fn">enviar_boas_vindas</span>(u.email)
+  <span class="kw">end</span>
+<span class="kw">end</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="erros">Tratamento de Erros — with e tagged tuples</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Padrões seguros para pipelines que podem falhar</div>
+          <pre class="example"><span class="com"># ── Padrão {:ok, valor} / {:error, motivo} ───────────────────</span>
+<span class="com"># NUNCA usar exceções para controle de fluxo esperado</span>
+
+<span class="com"># Com with — elegante e seguro</span>
+<span class="kw">def</span> <span class="fn">processar_pedido</span>(params) <span class="kw">do</span>
+  <span class="kw">with</span>
+    {<span class="at">:ok</span>, usuario}  &lt;- <span class="tp">Contas</span>.<span class="fn">buscar_usuario</span>(params.usuario_id),
+    {<span class="at">:ok</span>, _}        &lt;- <span class="fn">validar_limite_credito</span>(usuario, params.valor),
+    {<span class="at">:ok</span>, pedido}   &lt;- <span class="tp">Loja</span>.<span class="fn">criar_pedido</span>(usuario, params),
+    {<span class="at">:ok</span>, _nota}    &lt;- <span class="tp">Fiscal</span>.<span class="fn">emitir_nota</span>(pedido)
+  <span class="kw">do</span>
+    {<span class="at">:ok</span>, pedido}
+  <span class="kw">else</span>
+    {<span class="at">:error</span>, <span class="at">:usuario_nao_encontrado</span>} -> {<span class="at">:error</span>, <span class="str">"usuário inválido"</span>}
+    {<span class="at">:error</span>, <span class="at">:limite_insuficiente</span>}   -> {<span class="at">:error</span>, <span class="str">"limite de crédito insuficiente"</span>}
+    {<span class="at">:error</span>, changeset}               -> {<span class="at">:error</span>, <span class="fn">format_errors</span>(changeset)}
+  <span class="kw">end</span>
+<span class="kw">end</span>
+
+<span class="com"># Funções bang (!) — apenas quando falha é irrecuperável</span>
+<span class="com"># Caso contrário, usar a versão sem bang que retorna {:ok}/{:error}</span>
+<span class="tp">Repo</span>.<span class="fn">get!</span>(<span class="tp">Usuario</span>, id)          <span class="com"># lança Ecto.NoResultsError se não achar</span>
+<span class="tp">Repo</span>.<span class="fn">get</span>(<span class="tp">Usuario</span>, id)           <span class="com"># retorna nil (sem exceção)</span>
+
+<span class="com"># rescue — apenas para erros inesperados</span>
+<span class="kw">def</span> <span class="fn">operacao_externa</span> <span class="kw">do</span>
+  resultado = <span class="fn">chamar_api_externa</span>()
+  {<span class="at">:ok</span>, resultado}
+<span class="kw">rescue</span>
+  e <span class="kw">in</span> [<span class="tp">RuntimeError</span>, <span class="tp">ArgumentError</span>] ->
+    <span class="kw">Logger</span>.<span class="fn">error</span>(<span class="str">"Falha inesperada: #{inspect(e)}"</span>)
+    {<span class="at">:error</span>, <span class="str">"serviço indisponível"</span>}
+<span class="kw">end</span></pre>
+        </div>
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <div class="panel-title">Boas Práticas Elixir</div>
+            <ul>
+              <li>Organizar em contextos (boundaries de domínio)</li>
+              <li>Retornar <code>{:ok, valor}</code> / <code>{:error, motivo}</code></li>
+              <li>Usar <code>with</code> para pipelines com falha</li>
+              <li>Adicionar <code>@spec</code> em todas as funções públicas</li>
+              <li>Funções pequenas com responsabilidade única</li>
+              <li><code>mix format</code> sempre antes do commit</li>
+              <li>Testes para cada cláusula de função</li>
+              <li>Usar <code>Logger</code> em vez de <code>IO.puts</code> em produção</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <div class="panel-title">Evitar</div>
+            <ul>
+              <li>Usar exceções para fluxo esperado (use <code>{:error}</code>)</li>
+              <li>Módulos "god" (contexto com 50+ funções)</li>
+              <li>Acesso direto ao Repo fora do contexto</li>
+              <li>Funções anônimas longas (extrair para funções nomeadas)</li>
+              <li>Estado global via <code>:persistent_term</code> sem necessidade</li>
+              <li>Ignorar warnings do compilador</li>
+              <li><code>Process.sleep</code> em testes (uso de assert_receive)</li>
+              <li>Acoplamento direto entre contextos (usar eventos)</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>VALIM, J. <strong>Elixir Guides — Mix and OTP</strong>. Disponível em: &lt;https://elixir-lang.org/getting-started/mix-otp/introduction-to-mix.html&gt;. Acesso em: 2026.</li>
+            <li>Phoenix Framework. <strong>Contexts — Domain Boundaries</strong>. Disponível em: &lt;https://hexdocs.pm/phoenix/contexts.html&gt;. Acesso em: 2026.</li>
+            <li>MCCORD, C. <strong>Elixir in Action</strong>. 3. ed. Manning, 2024. Cap. 11 — Working with Components.</li>
+          </ul>
+          <ul>
+            <li><a href="https://hexdocs.pm/phoenix/contexts.html" target="_blank" rel="noopener">HEXDOCS. Phoenix Contexts.</a></li>
+            <li><a href="https://hexdocs.pm/elixir/with.html" target="_blank" rel="noopener">HEXDOCS. with/1 e controle de fluxo.</a></li>
+            <li><a href="https://hexdocs.pm/mix/main/Mix.Tasks.Release.html" target="_blank" rel="noopener">HEXDOCS. Mix release.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Elixir para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O padrão de <strong>contextos</strong> do Phoenix é uma das melhores ideias da comunidade Elixir: ao invés de expor os schemas Ecto diretamente para os controllers, cada domínio de negócio tem uma API pública explícita. Isso cria fronteiras claras, facilita testes (mock do contexto inteiro), e permite refatorar a implementação interna sem impactar os chamadores.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,215 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Hardening Linux: checklist completo — SSH, usuários, filesystem, SELinux/AppArmor, auditoria, firewall, CIS Benchmarks nível 1 e 2." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Hardening Linux | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Hardening Linux</strong></p>
+      </div>
+
+      <section>
+        <h2 id="ssh" class="section-title">Hardening SSH</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Hardening Linux</h1>
+          <p>SSH, serviços, kernel e controles mandatórios — checklist completo para Linux.</p>
+        </div>
+
+        <p class="intro-highlight">Hardening Linux reduz a superfície de ataque do sistema operacional aplicando configurações seguras, desabilitando serviços desnecessários e endurecendo componentes críticos como SSH, cron e controles de acesso mandatórios.</p>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# /etc/ssh/sshd_config — configurações críticas:
+
+# Desabilitar login root direto:
+PermitRootLogin no
+
+# Apenas autenticação por chave:
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Limitar usuários com acesso SSH:
+AllowUsers deploy admin
+
+# Desabilitar X11 forwarding:
+X11Forwarding no
+
+# Timeout de sessão inativa (300 segundos):
+ClientAliveInterval 300
+ClientAliveCountMax 0
+
+# Protocolo e ciphers modernos apenas:
+Protocol 2
+KexAlgorithms curve25519-sha256,diffie-hellman-group14-sha256
+Ciphers aes256-gcm@openssh.com,chacha20-poly1305@openssh.com
+MACs hmac-sha2-256-etm@openssh.com
+
+# Alterar porta padrão (opcional, segurança por obscuridade):
+Port 2222
+
+systemctl restart sshd</pre>
+      </section>
+
+      <section>
+        <h2 id="usuarios" class="section-title">Usuários e Senhas</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Política de senha (/etc/security/pwquality.conf):
+minlen = 14
+dcredit = -1    # mínimo 1 dígito
+ucredit = -1    # mínimo 1 maiúscula
+lcredit = -1    # mínimo 1 minúscula
+ocredit = -1    # mínimo 1 caracter especial
+maxrepeat = 3   # máximo 3 repetições
+enforce_for_root
+
+# /etc/login.defs — expiração de senha:
+PASS_MAX_DAYS 90
+PASS_MIN_DAYS 7
+PASS_WARN_AGE 14
+
+# Desabilitar contas sem senha:
+awk -F: '($2 == "" ) { print $1 }' /etc/shadow
+
+# Verificar contas com UID 0 (root indevido):
+awk -F: '($3 == "0") { print }' /etc/passwd
+
+# Remover shells de login de contas de serviço:
+usermod -s /sbin/nologin www-data</pre>
+      </section>
+
+      <section>
+        <h2 id="filesystem" class="section-title">Filesystem e Permissões</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Arquivos com SUID perigosos (auditoria):
+find / -perm -4000 -type f 2>/dev/null
+
+# Arquivos world-writable:
+find / -perm -0002 -type f 2>/dev/null
+
+# /etc/fstab — montar /tmp com noexec,nosuid,nodev:
+tmpfs /tmp tmpfs defaults,noexec,nosuid,nodev 0 0
+
+# Permissões críticas:
+chmod 600 /etc/shadow
+chmod 644 /etc/passwd
+chmod 700 /root
+chmod 600 /etc/ssh/sshd_config
+
+# Verificar integridade de arquivos com AIDE:
+aide --init
+aide --check</pre>
+      </section>
+
+      <section>
+        <h2 id="selinux" class="section-title">SELinux / AppArmor</h2>
+        <div class="section-divider"></div>
+
+        <div class="logic-grid">
+          <div class="message-block">
+            <h3>SELinux (RHEL/CentOS/Fedora)</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Verificar status:
+getenforce
+
+# Modo enforcing (bloqueia):
+setenforce 1
+
+# /etc/selinux/config:
+SELINUX=enforcing
+
+# Ver negações recentes:
+ausearch -m avc -ts recent
+
+# Gerar política customizada:
+audit2allow -a -M mypolicy</pre>
+          </div>
+          <div class="message-block">
+            <h3>AppArmor (Debian/Ubuntu)</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Ver status:
+aa-status
+
+# Colocar perfil em enforce:
+aa-enforce /etc/apparmor.d/usr.bin.nginx
+
+# Ver violações:
+dmesg | grep apparmor
+
+# Criar perfil:
+aa-genprof /usr/bin/myapp</pre>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="auditoria" class="section-title">Auditoria e Logs</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# auditd — regras de auditoria (/etc/audit/rules.d/audit.rules):
+
+# Monitorar acesso a arquivos sensíveis:
+-w /etc/passwd -p wa -k identity
+-w /etc/shadow -p wa -k identity
+-w /etc/sudoers -p wa -k sudoers
+
+# Monitorar execução de comandos:
+-a always,exit -F arch=b64 -S execve -k exec_log
+
+# Monitorar falhas de autenticação:
+-a always,exit -F arch=b64 -S open -F exit=-EACCES -k access_denied
+
+# Monitorar modificações de rede:
+-a always,exit -F arch=b64 -S sethostname -S setdomainname -k network
+
+service auditd restart
+ausearch -k identity | aureport -f</pre>
+      </section>
+
+      <div class="callout">
+        <p>Use o Lynis para auditoria automatizada contra CIS Benchmarks: <span class="code-inline">lynis audit system</span>. Automatize hardening com Ansible roles (ex: <strong>dev-sec/ansible-hardening</strong> no GitHub) para aplicar o mesmo baseline em todos os servidores do inventário.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um servidor Linux bem configurado resiste não por ser invulnerável, mas por oferecer superfície de ataque mínima."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

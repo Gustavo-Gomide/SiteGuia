@@ -1,0 +1,149 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Guia prático de Seaborn com exemplos e receitas para EDA (exploração de dados) e visualização estatística.">
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="stylesheet" href="/css/card.css">
+  <link rel="shortcut icon" href="/imagens/favicon/favicon.png" type="image/x-icon" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Seaborn | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação"><span class="menu-icon"></span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon"></span><span class="close-icon">&rtimes;</span></button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area animacao-entrada">
+      <h1>Seaborn</h1>
+      <p><strong>Guia Prático</strong> — Esta página foca em ensinar Seaborn para exploração de dados (EDA): como preparar o DataFrame, escolher o gráfico certo, ler o resultado e evitar interpretações erradas.</p>
+
+      <div class="Colored_border_anim_card_box"><p><strong>Seaborn</strong></p></div>
+      <h2 class="section-title">Visao Geral</h2>
+
+      <section>
+        <h2 id="modelo-mental">1. Modelo mental (antes de plotar)</h2>
+        <div class="card">
+          <h3>O que o Seaborn espera</h3>
+          <ul>
+            <li><strong>Dados “tidy/long”:</strong> 1 coluna por variável, 1 linha por observação.</li>
+            <li><strong>Mapeamento estético:</strong> colunas viram eixos e canais como <strong>hue</strong>, <strong>style</strong>, <strong>size</strong>.</li>
+            <li><strong>Integração:</strong> Seaborn desenha e devolve um Axes; Matplotlib finaliza detalhes.</li>
+          </ul>
+
+          <h3>Exemplo (long-form)</h3>
+          <pre class="example"># “Long-form” (recomendado)
+# colunas: data, segmento, vendas
+
+# “Wide-form” (às vezes aparece)
+# colunas: data, vendas_A, vendas_B
+# para usar hue, você normalmente converte com melt()</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="setup">2. Setup mínimo (boilerplate)</h2>
+        <div class="card">
+          <h3>Configuração padrão</h3>
+          <pre class="example">import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.set_theme(style="darkgrid")
+plt.rcParams["figure.figsize"] = (10, 5)</pre>
+          <p><em>Dica: se você quer consistência no projeto, padronize tema e tamanho de figura.</em></p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="receitas">3. Receitas essenciais (com exemplos)</h2>
+        <div class="card">
+          <h3>3.1 Distribuição (histograma + KDE)</h3>
+          <pre class="example"># Entender concentração e outliers
+sns.histplot(df, x="idade", bins=30, kde=True)
+plt.title("Distribuição de idade")
+plt.show()</pre>
+
+          <h3>3.2 Comparar grupos (boxplot)</h3>
+          <pre class="example"># Comparar uma métrica por categoria
+sns.boxplot(df, x="categoria", y="nota")
+plt.xticks(rotation=30)
+plt.show()</pre>
+          <p><em>Boxplot: mediana/quartis; bom para comparar grupos rapidamente.</em></p>
+
+          <h3>3.3 Relação entre variáveis (scatter + hue)</h3>
+          <pre class="example">sns.scatterplot(df, x="renda", y="gasto", hue="segmento", alpha=0.7)
+plt.title("Renda vs gasto (por segmento)")
+plt.show()</pre>
+
+          <h3>3.4 Tendência no tempo (lineplot)</h3>
+          <pre class="example"># Atenção: se houver várias linhas com a mesma data,
+# o seaborn agrega por padrão.
+sns.lineplot(df, x="data", y="vendas")
+plt.xticks(rotation=30)
+plt.show()</pre>
+          <p><em>Se você não quer agregação “automática”, agregue no pandas antes.</em></p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="correlacao">4. Correlação (heatmap) do jeito certo</h2>
+        <div class="card">
+          <h3>Receita clássica</h3>
+          <pre class="example">num = df.select_dtypes(include="number")
+corr = num.corr(numeric_only=True)
+
+sns.heatmap(corr, annot=True, fmt=".2f", cmap="viridis")
+plt.title("Correlação (variáveis numéricas)")
+plt.show()</pre>
+          <p><em>Correlação não prova causalidade. Use como triagem e valide com método/experimento.</em></p>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="facetas">5. Facetas (small multiples) para comparar padrões</h2>
+        <div class="card">
+          <h3>Quando usar</h3>
+          <p>Quando um único gráfico fica poluído, repita o mesmo gráfico por grupo (segmento/cidade/etc.).</p>
+          <h3>Exemplo</h3>
+          <pre class="example">g = sns.FacetGrid(df, col="segmento", col_wrap=3, height=3)
+g.map_dataframe(sns.histplot, x="gasto", bins=25)
+plt.show()</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="erros-comuns">6. Erros comuns (e como corrigir)</h2>
+        <div class="card">
+          <h3>Problemas que deixam o gráfico “bonito e inútil”</h3>
+          <ul>
+            <li><strong>Dados wide em vez de long:</strong> use <strong>melt()</strong> para criar colunas “variável/valor”.</li>
+            <li><strong>Agregação escondida:</strong> em lineplot com x repetido, entenda como o Seaborn agregou.</li>
+            <li><strong>Overplotting:</strong> ajuste <strong>alpha</strong>, amostre dados, ou use KDE/hexbin.</li>
+            <li><strong>Leitura errada:</strong> não conclua causalidade a partir de correlação.</li>
+          </ul>
+
+          <h3>Exemplo (convertendo wide → long)</h3>
+          <pre class="example"># wide: data, vendas_A, vendas_B
+df_long = df.melt(id_vars=["data"], var_name="serie", value_name="vendas")
+sns.lineplot(df_long, x="data", y="vendas", hue="serie")
+plt.show()</pre>
+        </div>
+      </section>
+      <section><h2 id="referencias" class="section-title">Referencias</h2><div class="panel"><ul><li>WASKOM, Michael. <strong>seaborn: statistical data visualization</strong>. JOSS, 2021.</li><li>WILKE, Claus O. <strong>Fundamentals of Data Visualization</strong>. O'Reilly, 2019.</li><li>VANDERPLAS, Jake. <strong>Python Data Science Handbook</strong>. O'Reilly, 2016.</li></ul></div></section>
+      <div class="callout"><p>Seaborn ajuda a criar visualizacoes estatisticas claras e consistentes.</p><p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>Boa visualizacao revela padroes antes escondidos.</p></div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+
+</body>
+</html>

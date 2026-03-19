@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Flyweight: padrão estrutural que reduz uso de memória compartilhando estado intrínseco entre muitos objetos semelhantes." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Flyweight | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Compartilhar estado intrínseco para reduzir memória</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Flyweight</h1>
+          <p class="page-subtitle">Estrutural — GoF — otimização de memória</p>
+        </div>
+        <p class="intro-highlight">Flyweight usa compartilhamento para suportar grandes quantidades de objetos granulares de forma eficiente. Divide o estado do objeto em <em>intrínseco</em> (compartilhado, imutável) e <em>extrínseco</em> (passado na chamada, único por instância).</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estado" class="section-title">Estado intrínseco vs extrínseco</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Definição</th>
+                <th>Exemplo (jogo 2D)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Intrínseco</strong></td>
+                <td>Compartilhado entre todas as instâncias. Imutável.</td>
+                <td>Textura do sprite, cor da árvore, fonte do caracter</td>
+              </tr>
+              <tr>
+                <td><strong>Extrínseco</strong></td>
+                <td>Passado na chamada. Único por contexto/instância.</td>
+                <td>Posição X/Y, escala, opacidade</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — renderizador de árvores</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// FLYWEIGHT — estado intrínseco compartilhado
+class TipoArvore {
+  constructor(
+    readonly nome: string,
+    readonly cor: string,
+    readonly textura: ImageBitmap // pesado, compartilhado
+  ) {}
+
+  renderizar(x: number, y: number, escala: number): void {
+    // estado extrínseco passado como parêmetro
+    console.log(`Renderizar ${this.nome} em (${x},${y}) escala ${escala}`);
+  }
+}
+
+// FLYWEIGHT FACTORY — garante compartilhamento
+class FabricaTipoArvore {
+  private pool = new Map&lt;string, TipoArvore&gt;();
+
+  obter(nome: string, cor: string, textura: ImageBitmap): TipoArvore {
+    const chave = `${nome}_${cor}`;
+    if (!this.pool.has(chave)) {
+      this.pool.set(chave, new TipoArvore(nome, cor, textura));
+    }
+    return this.pool.get(chave)!;
+  }
+}
+
+// CLIENTE — cada árvore no mapa guarda só posição + ref ao flyweight
+class Arvore {
+  constructor(
+    private x: number,
+    private y: number,
+    private tipo: TipoArvore // ref compartilhada!
+  ) {}
+
+  draw() { this.tipo.renderizar(this.x, this.y, 1.0); }
+}
+
+// 10.000 árvores, mas apenas 3 TipoArvore na memória</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Grande número de objetos similares consome memória excessiva. Jogos, editores de texto (caracteres), servidores de renderização.</p>
+          </div>
+          <div class="card">
+            <h3>Imutabilidade obrigatória</h3>
+            <p>O estado intrínseco DEVE ser imutável. Se um flyweight mutar, todos que o compartilham são afetados.</p>
+          </div>
+          <div class="card">
+            <h3>Invisível para o cliente</h3>
+            <p>Flyweight é uma otimização de implementação. A factory esconde o compartilhamento; o cliente não precisa saber.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>Poucos objetos ou objetos sem estado compartilhável. A complexidade de separar intrínseco/extrínseco não compensa.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Flyweight é usado internamente em Java <code>String.intern()</code>, Python string interning e editores de texto. Veja <a href="/html/engenharia_software/design/design_patterns/creational/prototype.html">Prototype</a> para cópias ao invés de compartilhamento.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Flyweight troca memória por complexidade de idéntica. Só otimize quando o custo de memória for comprovado."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

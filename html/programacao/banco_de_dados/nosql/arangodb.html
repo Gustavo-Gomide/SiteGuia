@@ -1,0 +1,386 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="ArangoDB: banco multi-modelo nativo com suporte a documentos, grafos e KV em uma unica engine AQL." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>ArangoDB | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>ArangoDB</strong></p>
+      </div>
+
+      <!-- HERO -->
+      <section>
+        <h2 id="hero" class="section-title">ArangoDB</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>ArangoDB</h1>
+          <p>Multi-Model nativo: documentos, grafos e chave-valor em uma única engine — uma linguagem para tudo.</p>
+        </div>
+        <p class="intro-highlight">
+          O <strong>ArangoDB</strong> é pioneiro no conceito de banco <strong>multi-modelo nativo</strong>.
+          Diferente de soluções que adaptam uma engine para simular outros modelos, o ArangoDB foi
+          construído do zero para suportar Chave-Valor, Documentos e Grafos simultaneamente,
+          consultados por uma linguagem unificada: <strong>AQL (ArangoDB Query Language)</strong>.
+          Tudo isso sobre uma única engine de armazenamento: <strong>RocksDB</strong>.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- O QUE É -->
+      <section>
+        <h2 id="o-que-e" class="section-title">1. O Que É o ArangoDB?</h2>
+        <p>
+          Imagine o ArangoDB como um <strong>canivete suíço de bancos de dados</strong>: uma única instalação
+          resolve três problemas que normalmente exigiriam três bancos diferentes — um document store para
+          dados flexíveis, um graph database para relacionamentos complexos, e um key-value store para acesso
+          O(1) por identificador.
+        </p>
+        <p>
+          A sacada arquitetural é que os três modelos <em>não são simulações uns dos outros</em> — eles coexistem
+          no mesmo motor (RocksDB) e no mesmo namespace. Um documento pode ser ao mesmo tempo o vértice de um grafo.
+          Uma query AQL pode cruzar dados de uma coleção de documentos com traversais de grafo em um único statement.
+        </p>
+        <div class="callout">
+          <p>
+            <span data-svg="info" aria-hidden="true"></span>
+            <strong>Engine única — RocksDB:</strong> desde a versão 3.4, o ArangoDB usa exclusivamente o RocksDB
+            (a mesma engine do Cassandra, MySQL 8 e TiKV) como storage. Uma LSM-tree otimizada para SSDs que
+            garante writes rápidos e compactação eficiente em disco — e elimina a duplicação de dados que existia
+            com a engine MMFiles anterior.
+          </p>
+        </div>
+        <div class="scroll-x">
+          <div class="protocol-comparison">
+            <table>
+              <thead>
+                <tr>
+                  <th>Modelo</th>
+                  <th>Representação no ArangoDB</th>
+                  <th>Caso de uso típico</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td>Chave-Valor</td><td>Acesso por <code class="code-inline">_key</code> do documento</td><td>Cache, sessões, configurações</td></tr>
+                <tr><td>Documentos</td><td>Coleções de objetos JSON com <code class="code-inline">_id</code>, <code class="code-inline">_key</code>, <code class="code-inline">_rev</code></td><td>Catálogos, perfis de usuário, conteúdo</td></tr>
+                <tr><td>Grafo</td><td>Edge Collections com <code class="code-inline">_from</code> e <code class="code-inline">_to</code> apontando para documentos</td><td>Redes sociais, recomendações, supply chain</td></tr>
+                <tr><td>Busca Full-Text</td><td>ArangoSearch Views com BM25/TF-IDF</td><td>Pesquisa em conteúdo, ranking textual</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- COMO FUNCIONA -->
+      <section>
+        <h2 id="como-funciona" class="section-title">2. Como Funciona por Dentro</h2>
+        <p>
+          O fluxo de uma query AQL passa por um pipeline de otimização antes de executar. O ArangoDB
+          usa um query planner que escolhe automaticamente entre acesso por índice, traversal de grafo
+          nativo ou full collection scan dependendo do shape da query.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">arquitetura-arangodb.txt</div>
+          <pre class="example"><span class="com">AQL Query Parser</span>
+      │
+      ▼
+<span class="kw">AST (Abstract Syntax Tree)</span>
+      │
+      ▼
+<span class="tp">Query Optimizer</span>   ← regras de otimização (index scan, sort elimination, etc.)
+      │
+      ├─► <span class="kw">Index Scan</span>        (hash, skiplist, persistent, geo, fulltext)
+      ├─► <span class="kw">Traversal Engine</span>  (DFS/BFS nativo sobre Edge Collections)
+      └─► <span class="kw">ArangoSearch</span>      (inverted index com BM25 e phrase search)
+      │
+      ▼
+<span class="str">RocksDB</span> (LSM-tree, WAL, block cache, compression)
+      │
+      ▼
+Resultado → Cliente (HTTP/VelocyStream)</pre>
+        </div>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Coleções e Documentos</h3>
+            <p>
+              Toda coleção no ArangoDB armazena documentos JSON com três campos automáticos:
+              <code class="code-inline">_id</code> (coleção/chave), <code class="code-inline">_key</code>
+              (identificador único na coleção) e <code class="code-inline">_rev</code> (revisão para MVCC).
+              Não há schema — cada documento pode ter campos diferentes.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Edge Collections</h3>
+            <p>
+              Arestas são documentos especiais com <code class="code-inline">_from</code> e
+              <code class="code-inline">_to</code> apontando para <code class="code-inline">_id</code>
+              de vértices em qualquer coleção. Como são documentos normais, podem ter atributos
+              arbitrários (peso, timestamp, tipo de relacionamento) — grafos com properties ricas
+              sem nenhuma configuração extra.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Named Graphs e Smart Graphs</h3>
+            <p>
+              <strong>Named Graphs</strong> agrupam vertex collections + edge collections com
+              transações ACID cobrindo todos. <strong>Smart Graphs</strong> (Enterprise) particionam
+              o grafo garantindo que vértices relacionados fiquem no mesmo shard — eliminando
+              comunicação cross-shard em traversals e acelerando queries em grafos distribuídos.
+            </p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AQL -->
+      <section>
+        <h2 id="aql" class="section-title">3. AQL — Uma Linguagem para Três Modelos</h2>
+        <p>
+          AQL é uma linguagem procedural e declarativa ao mesmo tempo — inspirada em SQL mas com
+          primitivos nativos para grafos e documentos. Com as palavras-chave
+          <code class="code-inline">FOR</code>, <code class="code-inline">FILTER</code>,
+          <code class="code-inline">SORT</code>, <code class="code-inline">COLLECT</code> e
+          <code class="code-inline">RETURN</code> você expressa qualquer query, cruzando modelos
+          em um único statement.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">arangodb-aql.js</div>
+          <pre class="example"><span class="com">// 1. Consulta de documentos — usuários adultos com índice persistente em "idade"</span>
+<span class="kw">FOR</span> <span class="tp">u</span> <span class="kw">IN</span> <span class="tp">usuarios</span>
+  <span class="kw">FILTER</span> <span class="tp">u</span>.idade &gt;= <span class="num">18</span> <span class="kw">AND</span> <span class="tp">u</span>.cidade == <span class="str">"São Paulo"</span>
+  <span class="kw">SORT</span> <span class="tp">u</span>.nome <span class="kw">ASC</span>
+  <span class="kw">LIMIT</span> <span class="num">20</span>
+  <span class="kw">RETURN</span> { nome: <span class="tp">u</span>.nome, email: <span class="tp">u</span>.email }
+
+<span class="com">// 2. Traversal de grafo — amigos de amigos (profundidade 1 a 2)</span>
+<span class="kw">FOR</span> <span class="tp">v</span>, <span class="tp">e</span>, <span class="tp">p</span> <span class="kw">IN</span> <span class="num">1</span>..<span class="num">2</span> <span class="kw">OUTBOUND</span> <span class="str">"usuarios/ana_silva"</span>
+  <span class="kw">GRAPH</span> <span class="str">"rede_social"</span>
+  <span class="kw">FILTER</span> <span class="tp">v</span>.ativo == <span class="kw">true</span>
+  <span class="kw">RETURN</span> { nome: <span class="tp">v</span>.nome, profundidade: <span class="tp">LENGTH</span>(<span class="tp">p</span>.edges) }
+
+<span class="com">// 3. Query multi-modelo: documentos + grafo em um só statement</span>
+<span class="com">// Encontrar todos os pedidos de amigos de um usuário</span>
+<span class="kw">FOR</span> <span class="tp">amigo</span> <span class="kw">IN</span> <span class="num">1</span>..<span class="num">1</span> <span class="kw">OUTBOUND</span> <span class="str">"usuarios/ana_silva"</span> <span class="kw">GRAPH</span> <span class="str">"rede_social"</span>
+  <span class="kw">FOR</span> <span class="tp">pedido</span> <span class="kw">IN</span> <span class="tp">pedidos</span>
+    <span class="kw">FILTER</span> <span class="tp">pedido</span>.usuario_id == <span class="tp">amigo</span>._id
+      <span class="kw">AND</span> <span class="tp">pedido</span>.status == <span class="str">"entregue"</span>
+    <span class="kw">RETURN</span> { amigo: <span class="tp">amigo</span>.nome, produto: <span class="tp">pedido</span>.produto }
+
+<span class="com">// 4. Upsert atômico — cria ou atualiza documento</span>
+<span class="kw">UPSERT</span> { email: <span class="str">"ana@example.com"</span> }
+  <span class="kw">INSERT</span> { email: <span class="str">"ana@example.com"</span>, nome: <span class="str">"Ana"</span>, criado: <span class="tp">DATE_NOW</span>() }
+  <span class="kw">UPDATE</span> { nome: <span class="str">"Ana Silva"</span>, atualizado: <span class="tp">DATE_NOW</span>() }
+<span class="kw">IN</span> <span class="tp">usuarios</span>
+
+<span class="com">// 5. Acesso KV direto por _key — O(1)</span>
+<span class="kw">RETURN</span> <span class="tp">DOCUMENT</span>(<span class="str">"usuarios/ana_silva"</span>)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- FOXX -->
+      <section>
+        <h2 id="foxx" class="section-title">4. Foxx Microservices</h2>
+        <div class="panel">
+          <h3 class="panel-title"><span data-svg="info" aria-hidden="true"></span> Lógica de Negócio Dentro do Banco</h3>
+          <p>
+            O <strong>Foxx</strong> é um framework que permite escrever microserviços JavaScript (V8)
+            <em>dentro do próprio banco de dados</em>. Você cria endpoints REST que executam diretamente
+            no servidor ArangoDB — zero latência de rede entre aplicação e banco para operações complexas.
+          </p>
+          <div class="code-container rounded-md border overflow-hidden">
+            <div class="code-header">foxx-routes.js — executado dentro do ArangoDB</div>
+            <pre class="example"><span class="kw">const</span> { <span class="tp">db</span> } = <span class="kw">require</span>(<span class="str">'@arangodb'</span>);
+<span class="kw">const</span> <span class="tp">router</span> = <span class="kw">require</span>(<span class="str">'@arangodb/foxx/router'</span>)();
+
+<span class="com">// GET /api/usuario/:id com traversal de grafo embutido</span>
+<span class="tp">router</span>.get(<span class="str">'/usuario/:id/amigos'</span>, (<span class="tp">req</span>, <span class="tp">res</span>) =&gt; {
+  <span class="kw">const</span> <span class="tp">amigos</span> = <span class="tp">db</span>._query(
+    <span class="str">`FOR v IN 1..1 OUTBOUND @start GRAPH "rede_social" RETURN v.nome`</span>,
+    { start: <span class="str">`usuarios/${<span class="tp">req</span>.pathParams.id}`</span> }
+  ).toArray();
+  <span class="tp">res</span>.json({ amigos });
+});
+
+<span class="tp">module</span>.context.use(<span class="str">'/api'</span>, <span class="tp">router</span>);
+<span class="com">// Acesso: GET http://arango:8529/_db/mydb/api/usuario/ana_silva/amigos</span></pre>
+          </div>
+          <p>
+            Foxx é ideal para lógica repetitiva que exige múltiplas operações no banco — você concentra
+            tudo em um único round-trip HTTP em vez de N chamadas separadas da aplicação.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- CASOS DE USO -->
+      <section>
+        <h2 id="casos-de-uso" class="section-title">5. Quando Usar (e Quando Não Usar)</h2>
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="info" aria-hidden="true"></span> Use ArangoDB quando...</h3>
+            <ul>
+              <li><strong>Multi-modelo genuíno:</strong> seu sistema precisa de documentos E grafos E buscas — ArangoDB elimina a necessidade de gerenciar 3 bancos separados.</li>
+              <li><strong>Redes sociais e recomendações:</strong> traversals BFS/DFS em grafos com atributos ricos nas arestas sem custo de JOIN.</li>
+              <li><strong>Fraud detection e supply chain:</strong> análise de conectividade entre entidades com queries que misturam filtros de documento e paths de grafo.</li>
+              <li><strong>APIs flexíveis:</strong> schema-less com Foxx permite evoluir a API sem migrações pesadas.</li>
+              <li><strong>Datasets médios a grandes:</strong> funciona bem de GBs a dezenas de TBs com cluster ArangoDB.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title"><span data-svg="alerta" aria-hidden="true"></span> Evite ArangoDB quando...</h3>
+            <ul>
+              <li><strong>Grafos massivos em escala web:</strong> para grafos com bilhões de vértices em produção crítica, Neo4j ou TigerGraph têm engines mais especializadas.</li>
+              <li><strong>Alta escrita de time-series:</strong> Cassandra ou HBase são mais eficientes para ingestão de centenas de milhares de eventos/seg.</li>
+              <li><strong>ACID multi-shard pesado:</strong> transações distribuídas funcionam mas têm overhead maior que sistemas OLTP dedicados.</li>
+              <li><strong>Equipe MongoDB experiente:</strong> se o problema é puramente documental, MongoDB tem ecossistema e tooling mais maduro.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- AVANÇADO -->
+      <section>
+        <h2 id="avancado" class="section-title">6. Tópicos Avançados</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>ArangoSearch — Busca Full-Text Nativa</h3>
+            <p>
+              Views do ArangoSearch criam índices invertidos sobre coleções de documentos.
+              Suportam BM25, TF-IDF, phrase matching e stemming multi-idioma. Queries AQL
+              usam <code class="code-inline">SEARCH</code> para combinar filtros estruturados
+              com ranking textual — sem Elasticsearch separado.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Pregel — Grafos Distribuídos</h3>
+            <p>
+              Implementação do modelo Pregel do Google para computação distribuída em grafos.
+              Algoritmos prontos: PageRank, Betweenness Centrality, Connected Components,
+              Louvain para detecção de comunidades. Executa em paralelo sobre todos os shards
+              do cluster sem mover dados para um nó coordenador.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Smart Graphs (Enterprise)</h3>
+            <p>
+              Em um cluster shardado, uma traversal normal pode exigir comunicação entre
+              múltiplos shards para cada hop do grafo. Smart Graphs garantem que vértices
+              com o mesmo <em>smart attribute</em> (ex: comunidade, região) fiquem no mesmo
+              shard — traversals locais sem network roundtrips, ordens de magnitude mais rápido.
+            </p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>Transações ACID Multi-Coleção</h3>
+            <p>
+              ArangoDB fornece transações ACID que cruzam múltiplas coleções via API
+              de Stream Transactions (JavaScript ou REST). Permitem operações atômicas
+              em documentos + arestas — ex: criar usuário e suas arestas de relacionamento
+              em uma única transação que faz rollback se qualquer parte falhar.
+            </p>
+          </div>
+        </div>
+        <div class="callout callout--warning">
+          <p>
+            <span data-svg="alerta" aria-hidden="true"></span>
+            <strong>Sharding de Grafos — Armadilha Comum:</strong> Por padrão, documentos são shardados
+            por <code class="code-inline">_key</code> de forma aleatória. Em um grafo distribuído,
+            isso significa que quase todo traversal faz chamadas cross-shard — latência multiplicada
+            por número de hops. Use <strong>Smart Graphs</strong> em produção ou mantenha o grafo
+            em um único servidor até que o volume justifique a complexidade de sharding.
+          </p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ECOSSISTEMA -->
+      <section>
+        <h2 id="ecossistema" class="section-title">7. Ecossistema</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>ArangoDB Cloud (ArangoGraph)</h3>
+            <p>DBaaS gerenciado disponível em AWS, GCP e Azure. Zero-ops: backups automáticos, scaling vertical/horizontal, monitoramento e patches de segurança incluídos.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Web Interface</h3>
+            <p>Console web built-in em <code class="code-inline">localhost:8529</code>. Permite executar queries AQL, visualizar grafos interativamente (D3.js), gerenciar índices e monitorar estatísticas do cluster.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Drivers Oficiais</h3>
+            <p>Clientes nativos para JavaScript/Node.js (<code class="code-inline">arangojs</code>), Python (<code class="code-inline">python-arango</code>), Java (<code class="code-inline">arangodb-java-driver</code>), Go e PHP. Suporte a async/await e connection pooling.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 300ms">
+            <h3>ArangoSearch BM25</h3>
+            <p>Motor de busca full-text integrado com ranking BM25/TF-IDF, Ngram tokenizer, stemming (Snowball) e similarity search com vetores (ArangoDB 3.10+). Substitui Elasticsearch para casos de uso de busca acoplados ao grafo.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 400ms">
+            <h3>arangodump / arangorestore</h3>
+            <p>Ferramentas de linha de comando para backup e restore de bancos completos ou coleções individuais. Formato JSON + envelopes de metadados — portável entre versões e clusters.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 500ms">
+            <h3>Spring Data ArangoDB</h3>
+            <p>Integração com o ecossistema Spring. Repository pattern, mapeamento de entidades Java para documentos, e suporte a queries AQL anotadas com <code class="code-inline">@Query</code> — familiar para desenvolvedores JPA.</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 id="referencias" class="section-title">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ARANGODB GMBH. <strong>ArangoDB Documentation</strong>. Disponível em: <a href="https://www.arangodb.com/docs/" target="_blank" rel="noopener">arangodb.com/docs</a>. Acesso em: 2025.</li>
+            <li>ARANGODB GMBH. <strong>ARL — ArangoDB Query Language Reference</strong>. Disponível em: <a href="https://www.arangodb.com/docs/stable/aql/" target="_blank" rel="noopener">arangodb.com/docs/aql</a>. Acesso em: 2025.</li>
+            <li>ROBINSON, Ian; WEBBER, Jim; EIFREM, Emil. <strong>Graph Databases: New Opportunities for Connected Data</strong>. 2. ed. O'Reilly Media, 2015.</li>
+            <li>FOWLER, Martin; SADALAGE, Pramod J. <strong>NoSQL Distilled: A Brief Guide to the Emerging World of Polyglot Persistence</strong>. Addison-Wesley, 2012.</li>
+            <li>MALEWICZ, Grzegorz et al. <strong>Pregel: A System for Large-Scale Graph Processing</strong>. SIGMOD 2010, ACM, 2010.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <div class="callout">
+        <p>ArangoDB unifica o melhor de três modelos em uma única linguagem — sem sacrificar performance em nenhum deles. A escolha certa quando sua aplicação precisa de grafos, documentos e buscas sem a complexidade de gerenciar três bancos separados.</p>
+        <ul class="link-list">
+          <li><a href="/html/programacao/banco_de_dados/nosql/neo4j.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Neo4j — Banco de Grafos Nativo</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/orientdb.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>OrientDB — OO + Documento + Grafo</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/introducao_ao_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Introdução ao NoSQL</a></li>
+          <li><a href="/html/programacao/banco_de_dados/nosql/tipos_de_bancos_nosql.html" class="link-card"><span data-svg="seta-direita" aria-hidden="true"></span>Tipos de Bancos NoSQL</a></li>
+        </ul>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Um banco multi-modelo real não é um banco que suporta vários modelos — é um banco onde todos os modelos compartilham o mesmo motor e a mesma linguagem." — ArangoDB Team
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Go para sistemas embarcados e IoT: TinyGo para microcontroladores, periph.io, MQTT e serial." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Embedded e IoT</h1>
+          <p><strong>TinyGo</strong> compila Go para microcontroladores (Arduino, Raspberry Pi Pico, ESP32) produzindo binários de 2–50 KB. Para dispositivos Linux-based com mais recursos, Go padrão com <code>periph.io</code> oferece acesso completo a GPIO, I²C, SPI e UART. <code>MQTT</code> via <code>paho-mqtt</code> conecta dispositivos ao cloud.</p>
+        </div>
+        <p class="intro-highlight">
+          TinyGo usa <strong>LLVM como backend</strong> e remove o runtime Go completo — sem GC, sem goroutines. O subset de Go disponível é limitado mas cobre a maioria dos casos embarcados: tipos, funções, interfaces, arrays, structs e ponteiros. Para Raspberry Pi OS (Linux ARM), Go padrão roda normalmente com goroutines, GC e todo o ecossistema.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="tinygo">TinyGo — Microcontroladores</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Arduino Uno, Raspberry Pi Pico e ESP32</div>
+          <pre class="example"><span class="com">// Instalar TinyGo</span>
+<span class="com">// https://tinygo.org/getting-started/</span>
+<span class="com">// tinygo flash -target arduino main.go</span>
+<span class="com">// tinygo flash -target pico main.go</span>
+
+<span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"machine"</span>       <span class="com">// hardware abstraction — package especial do TinyGo</span>
+    <span class="str">"time"</span>
+)
+
+<span class="com">// Blink LED — Arduino / Pico / ESP32</span>
+<span class="kw">func</span> <span class="fn">main</span>() {
+    led := machine.LED    <span class="com">// pino LED built-in da placa</span>
+    led.Configure(machine.PinConfig{Mode: machine.PinOutput})
+
+    <span class="kw">for</span> {
+        led.High()
+        time.Sleep(500 * time.Millisecond)
+        led.Low()
+        time.Sleep(500 * time.Millisecond)
+    }
+}
+
+<span class="com">// Botão com pull-up + interrupção</span>
+<span class="kw">func</span> <span class="fn">botaoInterrupcao</span>() {
+    btn := machine.BUTTON    <span class="com">// pino de botão embutido</span>
+    btn.Configure(machine.PinConfig{Mode: machine.PinInputPullup})
+
+    btn.SetInterrupt(machine.PinFalling, <span class="kw">func</span>(pin machine.Pin) {
+        machine.LED.Toggle()
+    })
+    <span class="kw">for</span> { time.Sleep(time.Hour) }    <span class="com">// esperar por interrupções</span>
+}
+
+<span class="com">// PWM — controlar intensidade de LED ou servomotor</span>
+<span class="kw">func</span> <span class="fn">pwmFade</span>() {
+    pwm := machine.TIM1
+    pwm.Configure(machine.PWMConfig{Period: 20_000_000})  <span class="com">// 50 Hz</span>
+    ch, _ := pwm.Channel(machine.PA8)
+
+    <span class="kw">for</span> {
+        <span class="kw">for</span> i := uint32(0); i &lt;= 100; i++ {
+            pwm.Set(ch, pwm.Top()*i/100)
+            time.Sleep(10 * time.Millisecond)
+        }
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="periph">periph.io — GPIO, I²C e SPI no Linux</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Raspberry Pi OS — sensores reais via I²C</div>
+          <pre class="example"><span class="com">// go get periph.io/x/periph</span>
+<span class="com">// go get periph.io/x/conn/v3</span>
+<span class="kw">import</span> (
+    <span class="str">"periph.io/x/conn/v3/gpio"</span>
+    <span class="str">"periph.io/x/conn/v3/gpio/gpioreg"</span>
+    <span class="str">"periph.io/x/conn/v3/i2c/i2creg"</span>
+    <span class="str">"periph.io/x/host/v3"</span>
+    <span class="str">"periph.io/x/devices/v3/bmxx80"</span>  <span class="com">// sensor BME280: temp/umidade/pressão</span>
+)
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    <span class="com">// Inicializar drivers de hardware</span>
+    <span class="kw">if</span> _, err := host.Init(); err != nil { panic(err) }
+
+    <span class="com">// GPIO — LED e botão</span>
+    led := gpioreg.ByName(<span class="str">"GPIO23"</span>)
+    led.Out(gpio.High)
+    time.Sleep(time.Second)
+    led.Out(gpio.Low)
+
+    botao := gpioreg.ByName(<span class="str">"GPIO24"</span>)
+    botao.In(gpio.PullUp, gpio.FallingEdge)
+    botao.WaitForEdge(-1)   <span class="com">// bloqueia até o botão ser pressionado</span>
+
+    <span class="com">// I²C — sensor BME280 (endereço 0x76)</span>
+    bus, _ := i2creg.Open(<span class="str">""</span>)   <span class="com">// abre /dev/i2c-1 automaticamente</span>
+    defer bus.Close()
+
+    sensor, _ := bmxx80.NewI2C(bus, 0x76, &amp;bmxx80.DefaultOpts)
+    defer sensor.Halt()
+
+    <span class="kw">var</span> env devices.Environment
+    sensor.Sense(&amp;env)
+    fmt.Printf(<span class="str">"Temperatura: %v\nUmidade: %v\nPressão: %v\n"</span>,
+        env.Temperature, env.Humidity, env.Pressure)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT — Comunicação IoT em Nuvem</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Publicar leituras de sensores e receber comandos</div>
+          <pre class="example"><span class="com">// go get github.com/eclipse/paho.mqtt.golang</span>
+<span class="kw">import</span> mqtt <span class="str">"github.com/eclipse/paho.mqtt.golang"</span>
+
+opts := mqtt.NewClientOptions().
+    AddBroker(<span class="str">"tcp://broker.hivemq.com:1883"</span>).
+    SetClientID(<span class="str">"sensor-01"</span>).
+    SetUsername(<span class="str">"user"</span>).
+    SetPassword(<span class="str">"pass"</span>).
+    SetKeepAlive(30 * time.Second).
+    SetAutoReconnect(true)
+
+opts.OnConnectionLost = <span class="kw">func</span>(c mqtt.Client, err error) {
+    fmt.Println(<span class="str">"conexão perdida:"</span>, err)
+}
+
+client := mqtt.NewClient(opts)
+<span class="kw">if</span> token := client.Connect(); token.Wait() && token.Error() != nil {
+    panic(token.Error())
+}
+defer client.Disconnect(250)
+
+<span class="com">// Publicar leitura de temperatura (QoS 1)</span>
+payload := fmt.Sprintf(<span class="str">`{"sensor":"01","temp":%.1f,"ts":%d}`</span>, 23.5, time.Now().Unix())
+client.Publish(<span class="str">"sensores/01/temperatura"</span>, 1, false, payload)
+
+<span class="com">// Subscribir a comandos (QoS 2)</span>
+client.Subscribe(<span class="str">"dispositivos/01/cmds"</span>, 2, <span class="kw">func</span>(_ mqtt.Client, msg mqtt.Message) {
+    fmt.Printf(<span class="str">"Comando recebido: %s\n"</span>, msg.Payload())
+    msg.Ack()   <span class="com">// para QoS 2</span>
+})
+
+<span class="com">// Loop de leituras periódicas</span>
+ticker := time.NewTicker(10 * time.Second)
+<span class="kw">for</span> range ticker.C {
+    temp := lerSensor()
+    client.Publish(<span class="str">"sensores/01/temperatura"</span>, 1, false,
+        fmt.Sprintf(<span class="str">`{"temp":%.1f}`</span>, temp))
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="serial">Porta Serial — Comunicação com Arduino</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Ler dados seriais e enviar comandos</div>
+          <pre class="example"><span class="com">// go get go.bug.st/serial</span>
+<span class="kw">import</span> <span class="str">"go.bug.st/serial"</span>
+
+<span class="com">// Listar portas disponíveis</span>
+portas, _ := serial.GetPortsList()
+<span class="kw">for</span> _, p := <span class="kw">range</span> portas {
+    fmt.Println(p)   <span class="com">// /dev/ttyACM0, COM3, etc.</span>
+}
+
+<span class="com">// Abrir porta serial — 9600 baud, 8N1</span>
+mode := &amp;serial.Mode{
+    BaudRate: 9600,
+    Parity:   serial.NoParity,
+    DataBits: 8,
+    StopBits: serial.OneStopBit,
+}
+port, err := serial.Open(<span class="str">"/dev/ttyACM0"</span>, mode)
+<span class="kw">if</span> err != nil { panic(err) }
+defer port.Close()
+
+<span class="com">// Enviar comando</span>
+port.Write([]byte(<span class="str">"LED:ON\n"</span>))
+
+<span class="com">// Ler resposta linha a linha</span>
+buf := make([]byte, 1024)
+<span class="kw">for</span> {
+    n, _ := port.Read(buf)
+    linha := string(buf[:n])
+    <span class="kw">if</span> strings.TrimSpace(linha) != <span class="str">""</span> {
+        fmt.Print(linha)
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>TINYGO. <strong>TinyGo — Go for Microcontrollers</strong>. Disponível em: &lt;https://tinygo.org&gt;. Acesso em: 2026.</li>
+            <li>PERIPH.IO. <strong>periph — Peripherals I/O in Go</strong>. Disponível em: &lt;https://periph.io&gt;. Acesso em: 2026.</li>
+            <li>ECLIPSE. <strong>paho.mqtt.golang</strong>. Disponível em: &lt;https://github.com/eclipse/paho.mqtt.golang&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> Banco de Dados com Go</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI e Desktop com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A separação entre <strong>TinyGo</strong> (microcontroladores sem OS) e <strong>Go + periph.io</strong> (Linux embarcado como Raspberry Pi) é fundamental: o primeiro compila para binários de KBs sem GC, o segundo usa Go completo com goroutines para lógica concorrente rica — ideal para gateways IoT que precisam gerenciar múltiplos sensores, MQTT, HTTP e bancos de dados simultaneamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Web: Crow Framework, Drogon, WebAssembly com Emscripten, REST APIs, middleware, autenticacao JWT e servidor HTTP assincrono com Boost.Beast." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Web | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Web</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Web</h1>
+          <p>C++ e uma escolha incomum mas poderosa para backends de alta performance: Drogon (um dos frameworks HTTP mais rapidos do mundo), Crow (leve e expressivo), Boost.Beast para controle total do protocolo, e Emscripten para compilar C++ para WebAssembly e rodar no browser.</p>
+        </div>
+        <p class="intro-highlight">
+          O Drogon consistentemente aparece no top-3 de benchmarks TechEmpower para linguagens nativas. Ideal para proxies, microsservicos de latencia critica e processamento de dados em tempo real.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="drogon">Drogon — Framework HTTP Assincrono</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Drogon &mdash; REST API com controllers, filtros e middlewares</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;drogon/drogon.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;nlohmann/json.hpp&gt;</span>
+
+<span class="kw">using namespace</span> drogon;
+<span class="kw">using</span> json = nlohmann::<span class="tp">json</span>;
+
+<span class="com">// Controller de produtos — herada de HttpController</span>
+<span class="kw">class</span> <span class="tp">ProdutosController</span> : <span class="kw">public</span> <span class="tp">HttpController</span>&lt;<span class="tp">ProdutosController</span>&gt; {
+<span class="kw">public</span>:
+  <span class="fn">METHOD_LIST_BEGIN</span>
+    <span class="fn">ADD_METHOD_TO</span>(<span class="tp">ProdutosController</span>::<span class="fn">listar</span>,  <span class="str">"/api/v1/produtos"</span>,      <span class="tp">Get</span>);
+    <span class="fn">ADD_METHOD_TO</span>(<span class="tp">ProdutosController</span>::<span class="fn">criar</span>,   <span class="str">"/api/v1/produtos"</span>,      <span class="tp">Post</span>);
+    <span class="fn">ADD_METHOD_TO</span>(<span class="tp">ProdutosController</span>::<span class="fn">buscar</span>,  <span class="str">"/api/v1/produtos/{id}"</span>, <span class="tp">Get</span>);
+    <span class="fn">ADD_METHOD_TO</span>(<span class="tp">ProdutosController</span>::<span class="fn">remover</span>, <span class="str">"/api/v1/produtos/{id}"</span>, <span class="tp">Delete</span>);
+  <span class="fn">METHOD_LIST_END</span>
+
+  <span class="com">// GET /api/v1/produtos</span>
+  <span class="kw">void</span> <span class="fn">listar</span>(<span class="kw">const</span> <span class="tp">HttpRequestPtr</span>&amp; req,
+              std::<span class="fn">function</span>&lt;<span class="kw">void</span>(<span class="tp">HttpResponsePtr</span>)&gt;&amp;&amp; cb) {
+    json body = json::<span class="fn">array</span>();
+    body.<span class="fn">push_back</span>({ {<span class="str">"id"</span>, <span class="num">1</span>}, {<span class="str">"nome"</span>, <span class="str">"C++ Book"</span>}, {<span class="str">"preco"</span>, <span class="num">89.90</span>} });
+
+    <span class="kw">auto</span> resp = <span class="tp">HttpResponse</span>::<span class="fn">newHttpResponse</span>();
+    resp-&gt;<span class="fn">setStatusCode</span>(<span class="tp">HttpStatusCode</span>::k200OK);
+    resp-&gt;<span class="fn">setContentTypeCode</span>(<span class="tp">ContentType</span>::CT_APPLICATION_JSON);
+    resp-&gt;<span class="fn">setBody</span>(body.<span class="fn">dump</span>());
+    <span class="fn">cb</span>(resp);
+  }
+
+  <span class="com">// POST /api/v1/produtos</span>
+  <span class="kw">void</span> <span class="fn">criar</span>(<span class="kw">const</span> <span class="tp">HttpRequestPtr</span>&amp; req,
+             std::<span class="fn">function</span>&lt;<span class="kw">void</span>(<span class="tp">HttpResponsePtr</span>)&gt;&amp;&amp; cb) {
+    <span class="kw">try</span> {
+      <span class="kw">auto</span> body = json::<span class="fn">parse</span>(req-&gt;<span class="fn">body</span>());
+      <span class="kw">auto</span> nome  = body.<span class="fn">at</span>(<span class="str">"nome"</span>).<span class="fn">get</span>&lt;std::<span class="tp">string</span>&gt;();
+      <span class="kw">auto</span> preco = body.<span class="fn">at</span>(<span class="str">"preco"</span>).<span class="fn">get</span>&lt;<span class="kw">double</span>&gt;();
+
+      json respBody = { {<span class="str">"id"</span>, <span class="num">99</span>}, {<span class="str">"nome"</span>, nome}, {<span class="str">"preco"</span>, preco} };
+      <span class="kw">auto</span> resp = <span class="tp">HttpResponse</span>::<span class="fn">newHttpResponse</span>();
+      resp-&gt;<span class="fn">setStatusCode</span>(<span class="tp">HttpStatusCode</span>::k201Created);
+      resp-&gt;<span class="fn">setContentTypeCode</span>(<span class="tp">ContentType</span>::CT_APPLICATION_JSON);
+      resp-&gt;<span class="fn">setBody</span>(respBody.<span class="fn">dump</span>());
+      <span class="fn">cb</span>(resp);
+    } <span class="kw">catch</span> (<span class="kw">const</span> json::<span class="tp">exception</span>&amp; e) {
+      <span class="kw">auto</span> resp = <span class="tp">HttpResponse</span>::<span class="fn">newHttpResponse</span>();
+      resp-&gt;<span class="fn">setStatusCode</span>(<span class="tp">HttpStatusCode</span>::k400BadRequest);
+      resp-&gt;<span class="fn">setBody</span>(json{{ <span class="str">"erro"</span>, e.<span class="fn">what</span>() }}.<span class="fn">dump</span>());
+      <span class="fn">cb</span>(resp);
+    }
+  }
+
+  <span class="kw">void</span> <span class="fn">buscar</span>(<span class="kw">const</span> <span class="tp">HttpRequestPtr</span>&amp; req,
+              std::<span class="fn">function</span>&lt;<span class="kw">void</span>(<span class="tp">HttpResponsePtr</span>)&gt;&amp;&amp; cb,
+              std::<span class="tp">string</span> id) {
+    json respBody = { {<span class="str">"id"</span>, std::<span class="fn">stoi</span>(id)}, {<span class="str">"nome"</span>, <span class="str">"Produto"</span>} };
+    <span class="kw">auto</span> resp = <span class="tp">HttpResponse</span>::<span class="fn">newHttpResponse</span>();
+    resp-&gt;<span class="fn">setBody</span>(respBody.<span class="fn">dump</span>());
+    <span class="fn">cb</span>(resp);
+  }
+
+  <span class="kw">void</span> <span class="fn">remover</span>(<span class="kw">const</span> <span class="tp">HttpRequestPtr</span>&amp;,
+               std::<span class="fn">function</span>&lt;<span class="kw">void</span>(<span class="tp">HttpResponsePtr</span>)&gt;&amp;&amp; cb,
+               std::<span class="tp">string</span>) {
+    <span class="kw">auto</span> resp = <span class="tp">HttpResponse</span>::<span class="fn">newHttpResponse</span>();
+    resp-&gt;<span class="fn">setStatusCode</span>(<span class="tp">HttpStatusCode</span>::k204NoContent);
+    <span class="fn">cb</span>(resp);
+  }
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  app().<span class="fn">setLogLevel</span>(<span class="tp">trantor</span>::<span class="tp">Logger</span>::<span class="tp">kInfo</span>)
+       .<span class="fn">addListener</span>(<span class="str">"0.0.0.0"</span>, <span class="num">8080</span>)
+       .<span class="fn">setThreadNum</span>(std::<span class="tp">thread</span>::<span class="fn">hardware_concurrency</span>())
+       .<span class="fn">run</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="crow">Crow — Microframework Expressivo</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Crow &mdash; rotas, middleware de autenticacao e WebSocket</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;crow.h&gt;</span>
+
+<span class="com">// Middleware de autenticacao Bearer</span>
+<span class="kw">struct</span> <span class="tp">AuthMiddleware</span> {
+  <span class="kw">struct</span> <span class="tp">context</span> { std::<span class="tp">string</span> usuario; };
+
+  <span class="kw">void</span> <span class="fn">before_handle</span>(crow::<span class="tp">request</span>&amp; req, crow::<span class="tp">response</span>&amp; res, context&amp; ctx) {
+    <span class="kw">auto</span> auth = req.<span class="fn">get_header_value</span>(<span class="str">"Authorization"</span>);
+    <span class="kw">if</span> (auth.<span class="fn">substr</span>(<span class="num">0</span>, <span class="num">7</span>) != <span class="str">"Bearer "</span>) {
+      res.<span class="fn">code</span> = <span class="num">401</span>;
+      res.<span class="fn">end</span>(<span class="str">R"({"erro":"nao autorizado"})"</span>);
+    } <span class="kw">else</span> {
+      ctx.<span class="fn">usuario</span> = auth.<span class="fn">substr</span>(<span class="num">7</span>);   <span class="com">// simplificado</span>
+    }
+  }
+  <span class="kw">void</span> <span class="fn">after_handle</span>(crow::<span class="tp">request</span>&amp;, crow::<span class="tp">response</span>&amp;, context&amp;) {}
+};
+
+<span class="kw">int</span> <span class="fn">main</span>() {
+  crow::<span class="tp">App</span>&lt;<span class="tp">AuthMiddleware</span>&gt; app;
+  app.<span class="fn">loglevel</span>(crow::<span class="tp">LogLevel</span>::<span class="tp">Warning</span>);
+
+  <span class="com">// Rota publica</span>
+  <span class="fn">CROW_ROUTE</span>(app, <span class="str">"/health"</span>).<span class="fn">methods</span>(<span class="str">"GET"</span>_method)([] {
+    <span class="kw">return</span> crow::<span class="fn">response</span>(<span class="num">200</span>, <span class="str">R"({"status":"ok"})"</span>);
+  });
+
+  <span class="com">// Rota protegida — acessa contexto do middleware</span>
+  <span class="fn">CROW_ROUTE</span>(app, <span class="str">"/api/perfil"</span>).<span class="fn">methods</span>(<span class="str">"GET"</span>_method)
+    ([&amp;](crow::<span class="tp">request</span>&amp; req) {
+      <span class="kw">auto</span>&amp; ctx = app.<span class="fn">get_context</span>&lt;<span class="tp">AuthMiddleware</span>&gt;(req);
+      crow::<span class="tp">json</span>::<span class="tp">wvalue</span> body;
+      body[<span class="str">"usuario"</span>] = ctx.<span class="fn">usuario</span>;
+      <span class="kw">return</span> crow::<span class="fn">response</span>(body);
+    });
+
+  <span class="com">// WebSocket echo</span>
+  <span class="fn">CROW_WEBSOCKET_ROUTE</span>(app, <span class="str">"/ws"</span>)
+    .<span class="fn">onmessage</span>([](<span class="tp">crow::websocket::connection</span>&amp; conn, <span class="kw">const</span> std::<span class="tp">string</span>&amp; msg, <span class="kw">bool</span>) {
+      conn.<span class="fn">send_text</span>(<span class="str">"echo: "</span> + msg);
+    })
+    .<span class="fn">onerror</span>([](<span class="tp">crow::websocket::connection</span>&amp;, <span class="kw">const</span> std::<span class="tp">string</span>&amp; reason) {
+      <span class="tp">CROW_LOG_WARNING</span> &lt;&lt; <span class="str">"WS error: "</span> &lt;&lt; reason;
+    });
+
+  app.<span class="fn">port</span>(<span class="num">8080</span>).<span class="fn">multithreaded</span>().<span class="fn">run</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="wasm">WebAssembly com Emscripten</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + Emscripten &mdash; compilar para WASM e expor funcoes ao JavaScript</div>
+          <pre class="example"><span class="com">// crypto.cpp — biblioteca de cifras compilada para WASM</span>
+<span class="kw">#include</span> <span class="str">&lt;emscripten/emscripten.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;emscripten/bind.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;algorithm&gt;</span>
+
+<span class="com">// XOR simples (exemplo didatico — nao use em producao)</span>
+std::<span class="tp">string</span> <span class="fn">cifrar</span>(std::<span class="tp">string</span> texto, <span class="kw">char</span> chave) {
+  std::<span class="fn">transform</span>(texto.<span class="fn">begin</span>(), texto.<span class="fn">end</span>(), texto.<span class="fn">begin</span>(),
+    [chave](<span class="kw">char</span> c) { <span class="kw">return</span> c ^ chave; });
+  <span class="kw">return</span> texto;
+}
+
+<span class="com">// Fibonacci otimizado — exposto para JS</span>
+<span class="kw">extern</span> <span class="str">"C"</span> {
+  <span class="fn">EMSCRIPTEN_KEEPALIVE</span>
+  <span class="kw">long long</span> <span class="fn">fibonacci</span>(<span class="kw">int</span> n) {
+    <span class="kw">if</span> (n &lt;= <span class="num">1</span>) <span class="kw">return</span> n;
+    <span class="kw">long long</span> a = <span class="num">0</span>, b = <span class="num">1</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">2</span>; i &lt;= n; ++i) {
+      <span class="kw">auto</span> c = a + b; a = b; b = c;
+    }
+    <span class="kw">return</span> b;
+  }
+}
+
+<span class="com">// Embind — expoe classes e funcoes C++ com binding automatico</span>
+<span class="fn">EMSCRIPTEN_BINDINGS</span>(crypto_module) {
+  emscripten::<span class="fn">function</span>(<span class="str">"cifrar"</span>, &amp;<span class="fn">cifrar</span>);
+}
+
+<span class="com">// Compilar para WASM:</span>
+<span class="com">// em++ -O3 --bind -o crypto.js crypto.cpp</span>
+<span class="com">//    -s WASM=1 -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap']</span>
+
+<span class="com">// Usar no JavaScript:</span>
+<span class="com">// import init from './crypto.js';</span>
+<span class="com">// const mod = await init();</span>
+<span class="com">// console.log(mod.fibonacci(40));</span>
+<span class="com">// console.log(mod.cifrar("hello", 42));</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparativo">Frameworks Web C++</h2>
+
+        <div class="panel">
+          <p class="panel-title">Comparativo de Frameworks HTTP C++</p>
+          <table class="table">
+            <thead>
+              <tr><th>Framework</th><th>Paradigma</th><th>Performance</th><th>Melhor para</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Drogon</td><td>Assincrono + coroutines</td><td>Altissima (top TechEmpower)</td><td>APIs de alto throughput, microservicos</td></tr>
+              <tr><td>Crow</td><td>Sincrono + middleware</td><td>Alta</td><td>APIs simples e rapidas de implementar</td></tr>
+              <tr><td>Boost.Beast</td><td>Assincrono (Asio)</td><td>Maxima — baixo nivel</td><td>Protocolos customizados, gateways</td></tr>
+              <tr><td>oatpp</td><td>OOP estilo Spring</td><td>Alta</td><td>Projetos grandes com DI e ORM</td></tr>
+              <tr><td>pistache</td><td>REST + assíncrono</td><td>Alta</td><td>APIs Linux com suporte a SSL</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DROGON. <strong>Drogon: A C++14/17 based HTTP web application framework</strong>. Disponível em: &lt;https://drogon.org&gt;. Acesso em: 2025.</li>
+            <li>EMSCRIPTEN. <strong>Emscripten Documentation</strong>. Disponível em: &lt;https://emscripten.org/docs&gt;. Acesso em: 2025.</li>
+            <li>CROW. <strong>Crow: C++ microframework for the web</strong>. Disponível em: &lt;https://crowcpp.org&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introducao ao C++</a></li>
+          <li><a href="banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ e Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> C++ via WebAssembly e a escolha ideal para rodar algoritmos pesados no browser sem servidor: compressao, criptografia, processamento de imagem e simulacoes fisicas com desempenho nativo.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

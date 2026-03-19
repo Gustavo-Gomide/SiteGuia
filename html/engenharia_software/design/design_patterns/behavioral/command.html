@@ -1,0 +1,170 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Command: padrão comportamental que encapsula uma ação (e seus parâmetros) como objeto, permitindo filas, undo/redo e logs." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Command | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Operações como objetos — enfileirar, desfazer, refazer</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Command</h1>
+          <p class="page-subtitle">Comportamental — GoF</p>
+        </div>
+        <p class="intro-highlight">Command encapsula uma operação como objeto com método <code>execute()</code>. Isso permite tratar ações como dados: enfileirar, registrar, desfazer (<em>undo</em>), refazer (<em>redo</em>) e transferir entre partes do sistema.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="estrutura" class="section-title">Partes do padrão</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Parte</th>
+                <th>Função</th>
+                <th>Exemplo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Command (interface)</strong></td>
+                <td>Define <code>execute()</code> e opcionalmente <code>undo()</code>.</td>
+                <td>interface Command</td>
+              </tr>
+              <tr>
+                <td><strong>ConcreteCommand</strong></td>
+                <td>Implementa a operação e guarda estado para undo.</td>
+                <td>SaveCommand, DeleteLineCommand</td>
+              </tr>
+              <tr>
+                <td><strong>Invoker</strong></td>
+                <td>Executa commands e mantém histórico (undo stack).</td>
+                <td>Toolbar, Keyboard shortcut handler</td>
+              </tr>
+              <tr>
+                <td><strong>Receiver</strong></td>
+                <td>Objeto que efetivamente executa o trabalho.</td>
+                <td>Editor, Repository</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — undo/redo em editor</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface Command {
+  execute(): void;
+  undo(): void;
+}
+
+class EscreverTextoCommand implements Command {
+  private textoAnterior: string;
+
+  constructor(private editor: Editor, private texto: string) {}
+
+  execute(): void {
+    this.textoAnterior = this.editor.conteudo;
+    this.editor.conteudo += this.texto;
+  }
+
+  undo(): void {
+    this.editor.conteudo = this.textoAnterior;
+  }
+}
+
+class HistoricoEditor {
+  private stack: Command[] = [];
+
+  executar(cmd: Command): void {
+    cmd.execute();
+    this.stack.push(cmd);
+  }
+
+  desfazer(): void {
+    const cmd = this.stack.pop();
+    cmd?.undo();
+  }
+}
+
+// Uso
+const historico = new HistoricoEditor();
+historico.executar(new EscreverTextoCommand(editor, 'Olá'));
+historico.executar(new EscreverTextoCommand(editor, ' mundo'));
+historico.desfazer(); // editor.conteudo = 'Olá'</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Undo/Redo</h3>
+            <p>Editores de texto, CAD, planilhas. A operação precisa ser reversivel e o estado anterior deve ser guardado.</p>
+          </div>
+          <div class="card">
+            <h3>Filas e agendamento</h3>
+            <p>Jobs, task queues, workflows assincronos. O command é serializado e executado depois ou em outro processo.</p>
+          </div>
+          <div class="card">
+            <h3>Desacoplamento</h3>
+            <p>Quem dispara (botão, atalho, API) não sabe quem executa. O Invoker só chama <code>execute()</code>.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>A operação não precisa ser tratada como dado. Uma chamada de função direta é mais simples e legível.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Command é amplamente usado em CQRS (Command Query Responsibility Segregation). Veja <a href="/html/engenharia_software/design/design_patterns/behavioral/chain_of_responsibility.html">Chain of Responsibility</a> para pipelines de execução.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Command transforma verbo em substantivo — a ação vira um objeto que pode ser guardado, transferido e revertido."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
+

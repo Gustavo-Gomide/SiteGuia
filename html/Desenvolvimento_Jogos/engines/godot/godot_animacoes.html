@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Pipeline de animacao no Godot: AnimationPlayer, state machines e blend trees." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Animacoes no Godot | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao"><span class="menu-icon">&#9776;</span><span class="close-icon">&ltimes;</span></button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno"><span class="menu-icon">&#9776;</span><span class="close-icon">&rtimes;</span></button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content"><div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Animacoes no Godot</strong></p></div>
+
+    <section>
+      <h2 id="hero" class="section-title">Animacoes no Godot 4</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragao do Site Guia"></div>
+        <h1>Animacoes no Godot: AnimationPlayer, AnimationTree e State Machines</h1>
+        <p>Do clip isolado ao sistema de estados com blend spaces — o pipeline completo de animacao no Godot 4.</p>
+      </div>
+      <p class="intro-highlight">Animacao no Godot tem dois niveis: o <strong>AnimationPlayer</strong> armazena e toca clips individuais, e o <strong>AnimationTree</strong> orquestra logica de estados e blending. Pular direto para AnimationTree sem entender o AnimationPlayer e o erro mais comum de iniciantes.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="conceitos" class="section-title">AnimationPlayer: Tracks e Keyframes</h2>
+      <p>O AnimationPlayer anima qualquer propriedade de qualquer node na arvore: position, rotation, scale, modulate, visibilidade, parametros de shader e ate chamadas de metodos. Cada propriedade animada e uma <em>track</em>. Keyframes definem o valor da propriedade em um tempo especifico; interpolacao (linear, cubic, stepped) preenche o espaco entre eles.</p>
+      <p>Tracks do tipo <strong>Method Track</strong> chamam funcoes em frames especificos — ideal para emitir sons, spawnar particulas ou emitir signals em momentos exatos da animacao. Tracks de <strong>Audio</strong> tocam AudioStreamPlayer embutido no clip.</p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="como-funciona" class="section-title">AnimationTree: State Machine e Blend Spaces</h2>
+      <div class="logic-grid">
+        <div class="panel">
+          <h3 class="panel-title">State Machine</h3>
+          <p>O <code class="code-inline">AnimationNodeStateMachine</code> define estados (cada um com um AnimationNode) e transicoes com condicoes. Condicoes sao parametros float ou bool definidos via codigo: <code class="code-inline">anim_tree.set("parameters/conditions/is_running", true)</code>. Transicoes tem crossfade configuravel para suavizar a troca.</p>
+        </div>
+        <div class="panel">
+          <h3 class="panel-title">Blend Space 1D / 2D</h3>
+          <p><code class="code-inline">AnimationNodeBlendSpace1D</code> interpola entre clips em funcao de um parametro (ex: velocidade 0→200). <code class="code-inline">BlendSpace2D</code> usa dois parametros (ex: velocidade + direcao) para blend entre 8-way movement. Ideal para locomocao — transitions hard entre clips criam o "pop" visual que os players percebem.</p>
+        </div>
+      </div>
+      <div class="code-container rounded-md border overflow-hidden">
+        <div class="code-header">player_animation.gd</div>
+        <pre class="example">@onready var anim_tree: AnimationTree = $AnimationTree
+
+func _physics_process(delta: float) -> void:
+    var speed := velocity.length()
+    # Atualiza blend space — interpola idle/walk/run automaticamente
+    anim_tree.set("parameters/locomotion/blend_position", speed)
+
+    # Transicao de estado via parametro booleano
+    anim_tree.set("parameters/conditions/is_jumping",
+        not is_on_floor())</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="avancado" class="section-title">IK, Retargeting e Otimizacao</h2>
+      <div class="panel">
+        <p>O Godot 4 introduziu o <strong>SkeletonModifier3D</strong> e o sistema de <strong>SkeletonIK3D</strong> para Inverse Kinematics. Em 2D, <code class="code-inline">SkeletonModification2DLookAt</code> e <code class="code-inline">SkeletonModification2DCCDIK</code> permitem procedural IK em sprites recortados.</p>
+        <p>Para retargeting de animacoes entre esqueletos de proporcoes diferentes, o Godot 4.3+ tem <strong>Animation Retargeting</strong> via BoneMap — mapeia bones por nome e escala automaticamente. Utimo recurso para usar mocap em personagens proprios sem reprocessar cada clip no DCC.</p>
+        <p>Performance: AnimationPlayer e muito eficiente para objetos individuais. Para centenas de entidades animadas simultaneamente (crowds, projectiles com bone animation), prefira shaders de vertex animation ou GPUParticles — nodes de animacao por objeto tem overhead de GDScript/C# por instancia.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="referencias" class="section-title">Referencias</h2>
+      <div class="panel"><ul>
+        <li>GODOT ENGINE FOUNDATION. <strong>AnimationTree Documentation</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>GODOT ENGINE FOUNDATION. <strong>Skeleton3D and Bone Poses</strong>. Godot Documentation 4.x, 2024.</li>
+        <li>BEANE, Andy. <strong>3D Animation Essentials</strong>. Sybex, 2012.</li>
+      </ul></div>
+    </section>
+
+    <div class="callout">
+      <p>AnimationTree parece complexo no inicio porque exige pensar em estados antes de pensar em clips. Mas e exatamente isso que evita o spaghetti de <code class="code-inline">play()</code> espalhado por todo o codigo de gameplay.</p>
+      <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span>"Estado de animacao e estado de jogo sao a mesma coisa expressa em layers diferentes."</p>
+    </div>
+  </div></main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

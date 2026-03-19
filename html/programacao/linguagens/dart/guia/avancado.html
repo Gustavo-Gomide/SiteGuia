@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart Avancado: async/await e Futures, Streams, Isolates para concorrencia real, extension methods, callable classes, metaprogramacao com code generation (build_runner/json_serializable) e FFI para codigo nativo." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart Avancado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Avancado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart Avancado</h1>
+          <p>Dart e construido sobre um event loop single-thread com <strong>async/await</strong> e <strong>Streams</strong> para concorrencia nao-bloqueante, e <strong>Isolates</strong> para paralelismo real com memoria isolada. Alem disso, <strong>extension methods</strong> permitem adicionar metodos a tipos existentes, <strong>code generation</strong> via build_runner elimina boilerplate, e <strong>dart:ffi</strong> garante interoperabilidade com bibliotecas C nativas com performance de chamada de funcao direta.</p>
+        </div>
+        <p class="intro-highlight">
+          O modelo de concorrencia de Dart e baseado em <em>message passing</em> entre Isolates — sem estado compartilhado e sem race conditions. Dentro de um Isolate, tudo e single-thread, mas a VM pode executar multiplos Isolates em threads do sistema operacional distintas.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="async">Async/Await e Futures</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Future, async/await, tratamento de erros e combinators</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:convert'</span>;
+<span class="kw">import</span> <span class="str">'package:http/http.dart'</span> <span class="kw">as</span> http;
+
+<span class="com">// Funcao assincrona — retorna Future</span>
+<span class="tp">Future</span>&lt;<span class="tp">List</span>&lt;<span class="tp">Produto</span>&gt;&gt; <span class="fn">buscarProdutos</span>(<span class="tp">String</span> categoria) <span class="kw">async</span> {
+  <span class="kw">final</span> uri = <span class="tp">Uri</span>.<span class="fn">https</span>(<span class="str">'api.exemplo.com'</span>, <span class="str">'/produtos'</span>, {<span class="str">'cat'</span>: categoria});
+  <span class="kw">final</span> resp = <span class="kw">await</span> http.<span class="fn">get</span>(uri);
+
+  <span class="kw">if</span> (resp.statusCode != <span class="num">200</span>) {
+    <span class="kw">throw</span> <span class="tp">HttpException</span>(<span class="str">'Erro HTTP ${resp.statusCode}'</span>);
+  }
+  <span class="kw">final</span> json = jsonDecode(resp.body) <span class="kw">as</span> <span class="tp">List</span>;
+  <span class="kw">return</span> json.<span class="fn">map</span>((j) => <span class="tp">Produto</span>.<span class="fn">fromJson</span>(j <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;)).<span class="fn">toList</span>();
+}
+
+<span class="com">// try/catch em codigo async</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">main</span>() <span class="kw">async</span> {
+  <span class="kw">try</span> {
+    <span class="kw">final</span> produtos = <span class="kw">await</span> <span class="fn">buscarProdutos</span>(<span class="str">'eletronicos'</span>);
+    print(<span class="str">'${produtos.length} produtos encontrados'</span>);
+  } <span class="kw">on</span> <span class="tp">HttpException</span> <span class="kw">catch</span> (e) {
+    print(<span class="str">'Falha de rede: $e'</span>);
+  }
+
+  <span class="com">// Future.wait — paralelo</span>
+  <span class="kw">final</span> [eletronicos, roupas, alimentos] = <span class="kw">await</span> <span class="tp">Future</span>.<span class="fn">wait</span>([
+    <span class="fn">buscarProdutos</span>(<span class="str">'eletronicos'</span>),
+    <span class="fn">buscarProdutos</span>(<span class="str">'roupas'</span>),
+    <span class="fn">buscarProdutos</span>(<span class="str">'alimentos'</span>),
+  ]);
+
+  <span class="com">// Future.any — primeira que completar</span>
+  <span class="kw">final</span> rapidinha = <span class="kw">await</span> <span class="tp">Future</span>.<span class="fn">any</span>([
+    <span class="fn">buscarDoPrimeiroServidor</span>(),
+    <span class="fn">buscarDoSegundoServidor</span>(),
+  ]);
+
+  <span class="com">// Timeout</span>
+  <span class="kw">final</span> resultado = <span class="kw">await</span> <span class="fn">buscarProdutos</span>(<span class="str">'gaming'</span>)
+    .<span class="fn">timeout</span>(<span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">5</span>),
+     onTimeout: () => &lt;<span class="tp">Produto</span>&gt;[]);
+
+  <span class="com">// Future.delayed — simula delay</span>
+  <span class="kw">await</span> <span class="tp">Future</span>.<span class="fn">delayed</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">500</span>));
+
+  <span class="com">// Transformar Future com .then/.catchError (estilo callback)</span>
+  <span class="fn">buscarProdutos</span>(<span class="str">'livros'</span>)
+    .<span class="fn">then</span>((p) => print(<span class="str">'Livros: ${p.length}'</span>))
+    .<span class="fn">catchError</span>((e) => print(<span class="str">'Erro: $e'</span>));
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="streams">Streams</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Stream single-subscription, broadcast, StreamController e async*</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:async'</span>;
+
+<span class="com">// async* — generator de stream</span>
+<span class="tp">Stream</span>&lt;<span class="tp">int</span>&gt; <span class="fn">contadorPeriodico</span>() <span class="kw">async</span>* {
+  <span class="kw">var</span> i = <span class="num">0</span>;
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">yield</span> i++;
+    <span class="kw">await</span> <span class="tp">Future</span>.<span class="fn">delayed</span>(<span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">1</span>));
+  }
+}
+
+<span class="com">// Consumir stream com await for</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">lerContador</span>() <span class="kw">async</span> {
+  <span class="kw">await</span> <span class="kw">for</span> (<span class="kw">final</span> n <span class="kw">in</span> <span class="fn">contadorPeriodico</span>().<span class="fn">take</span>(<span class="num">5</span>)) {
+    print(<span class="str">'tick: $n'</span>);
+  }
+}
+
+<span class="com">// StreamController — controle manual</span>
+<span class="kw">final</span> <span class="tp">StreamController</span>&lt;<span class="tp">String</span>&gt; ctrl = <span class="tp">StreamController</span>.<span class="fn">broadcast</span>();
+
+ctrl.stream
+  .<span class="fn">where</span>((s) => s.<span class="fn">startsWith</span>(<span class="str">'A'</span>))
+  .<span class="fn">map</span>((s) => s.<span class="fn">toUpperCase</span>())
+  .<span class="fn">listen</span>((s) => print(<span class="str">'Filtrado: $s'</span>));
+
+ctrl.<span class="fn">add</span>(<span class="str">'Alice'</span>);       <span class="com">// Filtrado: ALICE</span>
+ctrl.<span class="fn">add</span>(<span class="str">'Bob'</span>);         <span class="com">// ignorado</span>
+ctrl.<span class="fn">add</span>(<span class="str">'Ana'</span>);         <span class="com">// Filtrado: ANA</span>
+ctrl.<span class="fn">addError</span>(<span class="tp">Exception</span>(<span class="str">'falha'</span>));
+<span class="kw">await</span> ctrl.<span class="fn">close</span>();
+
+<span class="com">// Transformar com StreamTransformer</span>
+<span class="kw">final</span> transformer = <span class="tp">StreamTransformer</span>&lt;<span class="tp">int</span>, <span class="tp">String</span>&gt;.<span class="fn">fromHandlers</span>(
+  handleData: (data, sink) => sink.<span class="fn">add</span>(<span class="str">'valor=$data'</span>),
+);
+<span class="kw">final</span> strStream = <span class="tp">Stream</span>.<span class="fn">fromIterable</span>([<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>]).<span class="fn">transform</span>(transformer);
+
+<span class="com">// StreamSubscription — controle de ciclo de vida</span>
+<span class="kw">late</span> <span class="tp">StreamSubscription</span>&lt;<span class="tp">int</span>&gt; sub;
+sub = <span class="fn">contadorPeriodico</span>().<span class="fn">listen</span>(
+  (n) { <span class="kw">if</span> (n == <span class="num">3</span>) sub.<span class="fn">cancel</span>(); },
+  onError: (e) => print(<span class="str">'Erro: $e'</span>),
+  onDone:  ()  => print(<span class="str">'Stream encerrada'</span>),
+  cancelOnError: <span class="kw">false</span>,
+);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="isolates">Isolates — Paralelismo Real</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; Isolate.run, Isolate.spawn e comunicacao via SendPort</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:isolate'</span>;
+
+<span class="com">// Isolate.run — modo mais simples (Dart 2.19+)</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">exemploSimples</span>() <span class="kw">async</span> {
+  <span class="com">// Executa funcao top-level em isolate separado</span>
+  <span class="kw">final</span> resultado = <span class="kw">await</span> <span class="tp">Isolate</span>.<span class="fn">run</span>(() => <span class="fn">_calcularHash</span>(<span class="str">'dados grandes'</span>));
+  print(<span class="str">'Hash: $resultado'</span>);
+}
+
+<span class="tp">String</span> <span class="fn">_calcularHash</span>(<span class="tp">String</span> dados) {
+  <span class="com">// CPU-intensivo — nao bloqueia o isolate principal</span>
+  <span class="kw">var</span> hash = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">final</span> c <span class="kw">in</span> dados.codeUnits) hash = (hash * <span class="num">31</span> + c).toUnsigned(<span class="num">32</span>);
+  <span class="kw">return</span> hash.<span class="fn">toRadixString</span>(<span class="num">16</span>).padLeft(<span class="num">8</span>, <span class="str">'0'</span>);
+}
+
+<span class="com">// Isolate.spawn — comunicacao bidirecional via SendPort</span>
+<span class="kw">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">exemploSpawn</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> rp = <span class="tp">ReceivePort</span>();
+  <span class="kw">await</span> <span class="tp">Isolate</span>.<span class="fn">spawn</span>(<span class="fn">_workerEntry</span>, rp.sendPort);
+
+  <span class="kw">final</span> workerSendPort = <span class="kw">await</span> rp.<span class="fn">first</span> <span class="kw">as</span> <span class="tp">SendPort</span>;
+
+  <span class="com">// Enviar mensagem e aguardar resposta</span>
+  <span class="kw">final</span> responsePort = <span class="tp">ReceivePort</span>();
+  workerSendPort.<span class="fn">send</span>([<span class="str">'calcular'</span>, <span class="num">1000000</span>, responsePort.sendPort]);
+  <span class="kw">final</span> resultado = <span class="kw">await</span> responsePort.<span class="fn">first</span>;
+  print(<span class="str">'Resultado: $resultado'</span>);
+  rp.<span class="fn">close</span>();
+}
+
+<span class="com">// Entry point do isolate worker (deve ser top-level ou static)</span>
+<span class="kw">void</span> <span class="fn">_workerEntry</span>(<span class="tp">SendPort</span> mainSendPort) {
+  <span class="kw">final</span> workerRP = <span class="tp">ReceivePort</span>();
+  mainSendPort.<span class="fn">send</span>(workerRP.sendPort); <span class="com">// se apresenta</span>
+  workerRP.<span class="fn">listen</span>((msg) {
+    <span class="kw">final</span> [cmd, n, <span class="tp">SendPort</span> reply] = msg <span class="kw">as</span> <span class="tp">List</span>;
+    <span class="kw">if</span> (cmd == <span class="str">'calcular'</span>) {
+      <span class="kw">var</span> soma = <span class="num">0</span>;
+      <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; (n <span class="kw">as</span> <span class="tp">int</span>); i++) soma += i;
+      reply.<span class="fn">send</span>(soma);
+    }
+  });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="extensions">Extension Methods e Callable Classes</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; extension methods, extension types e callable classes</div>
+          <pre class="example"><span class="com">// Extension em tipo existente</span>
+<span class="kw">extension</span> <span class="tp">StringUtils</span> <span class="kw">on</span> <span class="tp">String</span> {
+  <span class="tp">String</span> <span class="kw">get</span> capitalizado => isEmpty ? <span class="kw">this</span> :
+    <span class="kw">this</span>[<span class="num">0</span>].<span class="fn">toUpperCase</span>() + <span class="fn">substring</span>(<span class="num">1</span>);
+
+  <span class="tp">bool</span> <span class="kw">get</span> eEmail => <span class="tp">RegExp</span>(<span class="str">r'^[^\s@]+@[^\s@]+\.[^\s@]+$'</span>).<span class="fn">hasMatch</span>(<span class="kw">this</span>);
+
+  <span class="tp">String</span> <span class="fn">truncar</span>(<span class="tp">int</span> max, [<span class="tp">String</span> sufixo = <span class="str">'...'</span>]) =>
+    length &lt;= max ? <span class="kw">this</span> : <span class="fn">substring</span>(<span class="num">0</span>, max - sufixo.length) + sufixo;
+}
+
+print(<span class="str">'hello'</span>.capitalizado);       <span class="com">// Hello</span>
+print(<span class="str">'user@mail.com'</span>.eEmail);     <span class="com">// true</span>
+print(<span class="str">'texto longo aqui'</span>.<span class="fn">truncar</span>(<span class="num">10</span>)); <span class="com">// texto lon...</span>
+
+<span class="com">// Extension em nullable</span>
+<span class="kw">extension</span> <span class="tp">NullableInt</span> <span class="kw">on</span> <span class="tp">int</span>? {
+  <span class="tp">int</span> <span class="kw">get</span> ouZero => <span class="kw">this</span> ?? <span class="num">0</span>;
+}
+<span class="tp">int</span>? x;
+print(x.ouZero); <span class="com">// 0</span>
+
+<span class="com">// Extension type — wrapper zero-cost (Dart 3.3+)</span>
+<span class="kw">extension type</span> <span class="tp">Dinheiro</span>(<span class="tp">int</span> centavos) <span class="kw">implements</span> <span class="tp">int</span> {
+  <span class="tp">Dinheiro</span> <span class="kw">operator</span> +(<span class="tp">Dinheiro</span> outro) => <span class="tp">Dinheiro</span>(centavos + outro.centavos);
+  <span class="tp">String</span> <span class="kw">get</span> formatado => <span class="str">'R\$ ${(centavos / 100).toStringAsFixed(2)}'</span>;
+}
+
+<span class="kw">final</span> preco = <span class="tp">Dinheiro</span>(<span class="num">1999</span>);
+print(preco.formatado); <span class="com">// R$ 19.99</span>
+
+<span class="com">// Callable class — instancia chamada como funcao</span>
+<span class="kw">class</span> <span class="tp">Multiplicador</span> {
+  <span class="kw">final</span> <span class="tp">int</span> fator;
+  <span class="kw">const</span> <span class="tp">Multiplicador</span>(<span class="kw">this</span>.fator);
+  <span class="tp">int</span> <span class="kw">call</span>(<span class="tp">int</span> valor) => valor * fator;
+}
+
+<span class="kw">final</span> dobrar = <span class="tp">Multiplicador</span>(<span class="num">2</span>);
+print(<span class="fn">dobrar</span>(<span class="num">5</span>));  <span class="com">// 10</span>
+<span class="kw">final</span> lista = [<span class="num">1</span>, <span class="num">2</span>, <span class="num">3</span>];
+print(lista.<span class="fn">map</span>(dobrar).<span class="fn">toList</span>()); <span class="com">// [2, 4, 6]</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="codegen">Code Generation: json_serializable e freezed</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; json_serializable para fromJson/toJson sem boilerplate</div>
+          <pre class="example"><span class="com">// pubspec.yaml (dependencias)</span>
+<span class="com">// dependencies:</span>
+<span class="com">//   json_annotation: ^4.9.0</span>
+<span class="com">// dev_dependencies:</span>
+<span class="com">//   build_runner: ^2.4.0</span>
+<span class="com">//   json_serializable: ^6.8.0</span>
+
+<span class="kw">import</span> <span class="str">'package:json_annotation/json_annotation.dart'</span>;
+<span class="kw">part</span> <span class="str">'produto.g.dart'</span>; <span class="com">// arquivo gerado</span>
+
+<span class="at">@JsonSerializable</span>()
+<span class="kw">class</span> <span class="tp">Produto</span> {
+  <span class="kw">final</span> <span class="tp">String</span>  id;
+  <span class="kw">final</span> <span class="tp">String</span>  nome;
+  <span class="kw">final</span> <span class="tp">double</span>  preco;
+  <span class="at">@JsonKey</span>(name: <span class="str">'em_estoque'</span>)
+  <span class="kw">final</span> <span class="tp">bool</span>    emEstoque;
+  <span class="kw">final</span> <span class="tp">List</span>&lt;<span class="tp">String</span>&gt; tags;
+
+  <span class="kw">const</span> <span class="tp">Produto</span>({
+    <span class="kw">required</span> <span class="kw">this</span>.id,
+    <span class="kw">required</span> <span class="kw">this</span>.nome,
+    <span class="kw">required</span> <span class="kw">this</span>.preco,
+    <span class="kw">required</span> <span class="kw">this</span>.emEstoque,
+    <span class="kw">this</span>.tags = <span class="kw">const</span> [],
+  });
+
+  <span class="com">// Metodos gerados pelo build_runner</span>
+  <span class="kw">factory</span> <span class="tp">Produto</span>.<span class="fn">fromJson</span>(<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt; json) => _$<span class="fn">ProdutoFromJson</span>(json);
+  <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt; <span class="fn">toJson</span>() => _$<span class="fn">ProdutoToJson</span>(<span class="kw">this</span>);
+}
+
+<span class="com">// Gerar codigo:</span>
+<span class="com">// dart run build_runner build --delete-conflicting-outputs</span>
+
+<span class="com">// Uso</span>
+<span class="kw">final</span> json = {<span class="str">'id'</span>: <span class="str">'p1'</span>, <span class="str">'nome'</span>: <span class="str">'Mouse'</span>, <span class="str">'preco'</span>: <span class="num">89.9</span>, <span class="str">'em_estoque'</span>: <span class="kw">true</span>};
+<span class="kw">final</span> p = <span class="tp">Produto</span>.<span class="fn">fromJson</span>(json);
+print(p.nome);       <span class="com">// Mouse</span>
+print(p.<span class="fn">toJson</span>()); <span class="com">// {id: p1, nome: Mouse, preco: 89.9, em_estoque: true}</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; freezed: classes imutaveis com copyWith, union types e pattern matching</div>
+          <pre class="example"><span class="com">// pubspec.yaml</span>
+<span class="com">// dependencies:   freezed_annotation: ^2.4.0, json_annotation: ^4.9.0</span>
+<span class="com">// dev_deps:       freezed: ^2.5.0, json_serializable: ^6.8.0, build_runner</span>
+
+<span class="kw">import</span> <span class="str">'package:freezed_annotation/freezed_annotation.dart'</span>;
+<span class="kw">part</span> <span class="str">'pedido.freezed.dart'</span>;
+<span class="kw">part</span> <span class="str">'pedido.g.dart'</span>;
+
+<span class="at">@freezed</span>
+<span class="kw">class</span> <span class="tp">Pedido</span> <span class="kw">with</span> _$<span class="tp">Pedido</span> {
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">Pedido</span>({
+    <span class="kw">required</span> <span class="tp">String</span>     id,
+    <span class="kw">required</span> <span class="tp">String</span>     cliente,
+    <span class="kw">required</span> <span class="tp">List</span>&lt;<span class="tp">ItemPedido</span>&gt; itens,
+    <span class="at">@Default</span>(<span class="tp">StatusPedido</span>.pendente) <span class="tp">StatusPedido</span> status,
+  }) = _<span class="tp">Pedido</span>;
+
+  <span class="kw">factory</span> <span class="tp">Pedido</span>.<span class="fn">fromJson</span>(<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt; j) => _$<span class="fn">PedidoFromJson</span>(j);
+}
+
+<span class="com">// Union type com freezed</span>
+<span class="at">@freezed</span>
+<span class="kw">sealed class</span> <span class="tp">EstadoPagamento</span> <span class="kw">with</span> _$<span class="tp">EstadoPagamento</span> {
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">EstadoPagamento</span>.<span class="fn">aguardando</span>() = <span class="tp">Aguardando</span>;
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">EstadoPagamento</span>.<span class="fn">aprovado</span>(<span class="tp">String</span> transacaoId) = <span class="tp">Aprovado</span>;
+  <span class="kw">const</span> <span class="kw">factory</span> <span class="tp">EstadoPagamento</span>.<span class="fn">recusado</span>(<span class="tp">String</span> motivo, <span class="tp">int</span> codigo) = <span class="tp">Recusado</span>;
+}
+
+<span class="tp">String</span> <span class="fn">descreverPagamento</span>(<span class="tp">EstadoPagamento</span> estado) => estado.<span class="fn">map</span>(
+  aguardando: (_)  => <span class="str">'Aguardando confirmacao...'</span>,
+  aprovado:   (a)  => <span class="str">'Aprovado! TX=${a.transacaoId}'</span>,
+  recusado:   (r)  => <span class="str">'Recusado [${r.codigo}]: ${r.motivo}'</span>,
+);
+
+<span class="com">// copyWith automatico</span>
+<span class="kw">final</span> p1 = <span class="tp">Pedido</span>(id: <span class="str">'001'</span>, cliente: <span class="str">'Alice'</span>, itens: []);
+<span class="kw">final</span> p2 = p1.<span class="fn">copyWith</span>(status: <span class="tp">StatusPedido</span>.finalizado);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ffi">Dart FFI — Interoperabilidade com C</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart &mdash; dart:ffi para chamar biblioteca C nativa</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'dart:ffi'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+<span class="kw">import</span> <span class="str">'package:ffi/ffi.dart'</span>; <span class="com">// utilitarios como Utf8/malloc</span>
+
+<span class="com">// Assinatura C: int adicionar(int a, int b)</span>
+<span class="kw">typedef</span> <span class="tp">AdicionarC</span>    = <span class="tp">Int32</span> <span class="tp">Function</span>(<span class="tp">Int32</span> a, <span class="tp">Int32</span> b);
+<span class="kw">typedef</span> <span class="tp">AdicionarDart</span> = <span class="tp">int</span>   <span class="tp">Function</span>(<span class="tp">int</span>  a, <span class="tp">int</span>  b);
+
+<span class="kw">void</span> <span class="fn">usarBibliotecaC</span>() {
+  <span class="kw">final</span> lib = <span class="tp">DynamicLibrary</span>.<span class="fn">open</span>(
+    <span class="tp">Platform</span>.isWindows ? <span class="str">'mylib.dll'</span> : <span class="str">'libmylib.so'</span>
+  );
+
+  <span class="kw">final</span> <span class="tp">AdicionarDart</span> adicionar = lib
+    .<span class="fn">lookupFunction</span>&lt;<span class="tp">AdicionarC</span>, <span class="tp">AdicionarDart</span>&gt;(<span class="str">'adicionar'</span>);
+
+  print(adicionar(<span class="num">10</span>, <span class="num">20</span>)); <span class="com">// 30</span>
+
+  <span class="com">// Trabalhar com strings C</span>
+  <span class="kw">typedef</span> <span class="tp">GreetC</span>    = <span class="tp">Pointer</span>&lt;<span class="tp">Utf8</span>&gt; <span class="tp">Function</span>(<span class="tp">Pointer</span>&lt;<span class="tp">Utf8</span>&gt;);
+  <span class="kw">typedef</span> <span class="tp">GreetDart</span> = <span class="tp">Pointer</span>&lt;<span class="tp">Utf8</span>&gt; <span class="tp">Function</span>(<span class="tp">Pointer</span>&lt;<span class="tp">Utf8</span>&gt;);
+  <span class="kw">final</span> greet = lib.<span class="fn">lookupFunction</span>&lt;<span class="tp">GreetC</span>, <span class="tp">GreetDart</span>&gt;(<span class="str">'greet'</span>);
+
+  <span class="kw">final</span> nomeCStr = <span class="str">'Alice'</span>.<span class="fn">toNativeUtf8</span>();
+  <span class="kw">try</span> {
+    <span class="kw">final</span> respStr = <span class="fn">greet</span>(nomeCStr).<span class="fn">toDartString</span>();
+    print(respStr); <span class="com">// Hello, Alice!</span>
+  } <span class="kw">finally</span> {
+    malloc.<span class="fn">free</span>(nomeCStr);
+  }
+
+  <span class="com">// Struct C</span>
+  <span class="kw">final</span> ponto = calloc&lt;<span class="tp">PontoC</span>&gt;();
+  ponto.ref.x = <span class="num">3.0</span>;
+  ponto.ref.y = <span class="num">4.0</span>;
+  <span class="kw">final</span> dist = lib.<span class="fn">lookupFunction</span>&lt;<span class="tp">DistanciaC</span>, <span class="tp">DistanciaDart</span>&gt;(<span class="str">'distancia'</span>)(ponto);
+  print(dist); <span class="com">// 5.0</span>
+  calloc.<span class="fn">free</span>(ponto);
+}
+
+<span class="com">// Struct Dart espelhando struct C</span>
+<span class="kw">class</span> <span class="tp">PontoC</span> <span class="kw">extends</span> <span class="tp">Struct</span> {
+  <span class="at">@Double</span>() <span class="kw">external</span> <span class="tp">double</span> x;
+  <span class="at">@Double</span>() <span class="kw">external</span> <span class="tp">double</span> y;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOOGLE. <strong>Asynchronous programming: futures, async, await</strong>. Disponível em: &lt;https://dart.dev/codelabs/async-await&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>Dart Isolates</strong>. Disponível em: &lt;https://dart.dev/language/isolates&gt;. Acesso em: 2025.</li>
+            <li>GOOGLE. <strong>dart:ffi</strong>. Disponível em: &lt;https://dart.dev/interop/c-interop&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do Dart</a></li>
+          <li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Use <code>Isolate.run()</code> para qualquer operacao CPU-intensiva (parsear JSON grande, compressao, hashing) — manter essa logica no isolate principal causa jank em aplicacoes Flutter.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure em embedded e IoT: limites da JVM, ClojureCLR, babashka, integracao MQTT, gateways e arquiteturas edge-to-cloud." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>Clojure: Aplicacoes em Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure: Aplicacoes em Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Logo de Clojure"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Clojure no mundo fisico conectado</h1>
+          <p>Em IoT, Clojure normalmente atua no edge gateway ou no backend de telemetria, onde a JVM entrega produtividade, robustez e ecossistema maduro.</p>
+        </div>
+        <p class="intro-highlight">Para microcontroladores muito restritos, Clojure puro nao e a escolha principal. O valor aparece em orquestracao, ingestao, regras de evento e analytics na borda.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="conceitos">Contexto tecnico</h2>
+        <p>IoT pode ser dividido em tres camadas: dispositivo, gateway e nuvem. Clojure encaixa melhor no gateway e na nuvem por causa da JVM e do modelo funcional para pipelines de eventos.</p>
+        <ul>
+          <li>Dispositivo MCU: firmware em C/C++/Rust para tempo real estrito.</li>
+          <li>Gateway edge: traducao de protocolos, agregacao e filtros locais.</li>
+          <li>Cloud backend: processamento de streams, persistencia e comandos.</li>
+        </ul>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="como-funciona">Arquitetura edge-to-cloud</h2>
+        <svg viewBox="0 0 980 240" role="img" aria-label="Arquitetura IoT com sensores, gateway Clojure, broker MQTT e servicos cloud">
+          <rect x="20" y="80" width="130" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="48" y="120" fill="currentColor">Sensor</text>
+          <rect x="190" y="80" width="130" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="220" y="120" fill="currentColor">Actuator</text>
+          <rect x="360" y="60" width="190" height="110" rx="12" fill="currentColor" opacity="0.12"></rect>
+          <text x="396" y="110" fill="currentColor">Gateway Clojure</text>
+          <text x="398" y="132" fill="currentColor">Rules + Buffer</text>
+          <rect x="600" y="80" width="140" height="70" rx="10" fill="currentColor" opacity="0.12"></rect>
+          <text x="632" y="120" fill="currentColor">MQTT</text>
+          <rect x="780" y="50" width="170" height="130" rx="12" fill="currentColor" opacity="0.12"></rect>
+          <text x="820" y="104" fill="currentColor">Cloud</text>
+          <text x="808" y="126" fill="currentColor">Storage + ML</text>
+          <path d="M150 115 L190 115" stroke="currentColor" stroke-width="2"></path>
+          <path d="M320 115 L360 115" stroke="currentColor" stroke-width="2"></path>
+          <path d="M550 115 L600 115" stroke="currentColor" stroke-width="2"></path>
+          <path d="M740 115 L780 115" stroke="currentColor" stroke-width="2"></path>
+        </svg>
+        <p>O gateway pode operar offline temporariamente, bufferizar eventos e reenviar quando o link volta, reduzindo perda de dados em cenarios de conectividade instavel.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uso">Exemplo pratico com MQTT</h2>
+        <pre class="example"><code><span class="kw">(ns</span> edge.mqtt
+  <span class="tp">(:require</span> [clojure.data.json <span class="str">:as</span> json])
+  <span class="tp">(:import</span> (org.eclipse.paho.client.mqttv3 MqttClient MqttConnectOptions MqttMessage)))
+
+(<span class="kw">defn</span> start-client [broker-uri client-id]
+  (<span class="kw">let</span> [client (MqttClient. broker-uri client-id)
+        opts (doto (MqttConnectOptions.)
+               (.setAutomaticReconnect true)
+               (.setCleanSession false))]
+    (.connect client opts)
+    client))
+
+(<span class="kw">defn</span> publish-telemetry! [client topic payload]
+  (<span class="kw">let</span> [bytes (.getBytes (json/write-str payload) "UTF-8")
+        msg (doto (MqttMessage. bytes)
+              (.setQos <span class="num">1</span>))]
+    (.publish client topic msg)))</code></pre>
+        <p>A qualidade de servico (QoS) e a politica de reconexao sao decisivas para confiabilidade de telemetria em campo.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="casos-de-uso">Cenarios reais</h2>
+        <div class="grid-cards">
+          <div class="card"><h3>Industria 4.0</h3><p>Coleta de sinais, deteccao de anomalia e comandos para atuadores.</p></div>
+          <div class="card"><h3>Energia</h3><p>Leitura de medidores, consolidacao local e envio periodico.</p></div>
+          <div class="card"><h3>Logistica</h3><p>Tracking de frota com buffering offline e geofencing no edge.</p></div>
+          <div class="card"><h3>Cidades inteligentes</h3><p>Sensores ambientais com agregacao por gateway regional.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="avancado">Topicos avancados e limites</h2>
+        <div class="panel">
+          <h3 class="panel-title">Onde Clojure entrega mais valor</h3>
+          <ul>
+            <li>Regras de negocio dinamicas carregadas via REPL no gateway.</li>
+            <li>Pipelines de eventos com core.async e backpressure.</li>
+            <li>Modelagem temporal com armazenamentos append-only.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Para hard real-time e memoria de poucos KB, prefira firmware dedicado. Use Clojure onde a flexibilidade operacional importa mais que footprint minimo.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="comparacao">Comparacao de estrategias para IoT</h2>
+        <table class="table">
+          <thead><tr><th>Estrategia</th><th>Ponto forte</th><th>Limite</th></tr></thead>
+          <tbody>
+            <tr><td>Clojure no gateway</td><td>Produtividade e modelagem de regras</td><td>Requer hardware mais capaz</td></tr>
+            <tr><td>Node.js no gateway</td><td>Ecossistema IoT amplo</td><td>Estado mutavel em apps grandes</td></tr>
+            <tr><td>Rust embarcado</td><td>Footprint e performance</td><td>Ciclo de iteracao mais lento</td></tr>
+          </tbody>
+        </table>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <ul>
+          <li>MQTT. OASIS Standard. Disponivel em: <a href="https://mqtt.org/" target="_blank" rel="noopener">https://mqtt.org/</a>. Acesso em: 13 mar. 2026.</li>
+          <li>ECLIPSE PAHO. Java Client. Disponivel em: <a href="https://github.com/eclipse-paho/paho.mqtt.java" target="_blank" rel="noopener">https://github.com/eclipse-paho/paho.mqtt.java</a>. Acesso em: 13 mar. 2026.</li>
+          <li>CORE.ASYNC Guide. Disponivel em: <a href="https://clojure.org/guides/async_walkthrough" target="_blank" rel="noopener">https://clojure.org/guides/async_walkthrough</a>. Acesso em: 13 mar. 2026.</li>
+          <li>KLEPPMANN, M. Designing Data-Intensive Applications. O'Reilly, 2017.</li>
+        </ul>
+      </section>
+
+      <div class="callout">
+        <p><span data-svg="estrela" aria-hidden="true"></span> Em IoT, Clojure e excelente para transformar telemetria bruta em decisao operacional confiavel no edge e na nuvem.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/banco_dados.html">Aplicacoes com Banco de Dados</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/aplicacoes/terminal_cli.html">Aplicacoes CLI</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/clojure/guia/projetos_boas_praticas.html">Projetos e Boas Praticas</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

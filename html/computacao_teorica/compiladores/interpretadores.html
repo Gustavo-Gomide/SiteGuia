@@ -1,0 +1,192 @@
+﻿<!DOCTYPE html>
+
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Interpretadores: tree-walk, bytecode + VM, REPL, JIT compilation e comparação com compiladores tradicionais." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Interpretadores | Compiladores | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+  <div class="content-area">
+    <div class="Colored_border_anim_card_box"><p><strong>Compiladores &rsaquo; Interpretadores</strong></p></div>
+
+    <section>
+      <h2 id="intro" class="section-title">Introdução</h2>
+      <div class="page-header">
+        <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+        <h1>Interpretadores</h1>
+        <p>Executando programas sem gerar binário &ldquo;de uma vez&rdquo;.</p>
+      </div>
+      <p class="intro-highlight">
+        Um <strong>interpretador</strong> executa o programa diretamente de uma representação de alto nível
+        (AST ou bytecode) sem necessariamente gerar código nativo prévio. É a escolha de Python, Ruby, Lua
+        e de REPLs de linguagens funcionais. A linha com compiladores é gradual: a maioria dos interpretadores
+        modernos usa alguma forma de compilação para bytecode.
+      </p>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="tree-walk" class="section-title">Tree-Walk Interpreter</h2>
+      <div class="card">
+        <p>A abordagem mais simples: percorre a AST recursivamente e executa cada nó diretamente.</p>
+        <pre class="example">// Interpreter tree-walk para BinaryOp
+fn eval(node) {
+    match node {
+        BinaryOp('+', left, right) =>
+            eval(left) + eval(right),
+        Literal(v) => v,
+        Var(name)  => env.lookup(name),
+        // ...
+    }
+}</pre>
+        <ul>
+          <li><strong>Vantagens</strong>: simples de implementar, fácil de debugar, ótimo para linguagens experimentais.</li>
+          <li><strong>Desvantagens</strong>: muito mais lento que bytecode (overhead por nó visitado).</li>
+          <li><strong>Usos</strong>: Ruby 1.8 (YARV antes era tree-walk), primeiros Python, muitos DSLs.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="bytecode-vm" class="section-title">Bytecode + Máquina Virtual</h2>
+      <div class="card">
+        <p>Compila para <strong>bytecode</strong> (instruções de pilha ou registrador) e uma VM executa-as.
+        É o modelo de CPython, Java (JVM), Lua e .NET CLR.</p>
+        <!-- Loop de despacho de bytecode -->
+        <svg viewBox="0 0 420 110" width="100%" role="img" aria-label="Loop de despacho de bytecode">
+          <defs>
+            <marker id="dsp-ac" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="6" markerHeight="5" orient="auto">
+              <polygon points="0,0 10,3.5 0,7" style="fill:var(--accent)"/>
+            </marker>
+          </defs>
+          <rect x="27" y="35" width="72" height="40" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="63" y="55" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:10px monospace">FETCH</text>
+          <line x1="99" y1="55" x2="122" y2="55" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dsp-ac)"/>
+          <rect x="125" y="35" width="72" height="40" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="161" y="55" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:10px monospace">DECODE</text>
+          <line x1="197" y1="55" x2="220" y2="55" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dsp-ac)"/>
+          <rect x="223" y="35" width="72" height="40" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="259" y="55" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:10px monospace">EXECUTE</text>
+          <line x1="295" y1="55" x2="318" y2="55" style="stroke:var(--accent);stroke-width:1.5" marker-end="url(#dsp-ac)"/>
+          <rect x="321" y="35" width="72" height="40" rx="5" style="fill:var(--bg-secondary);stroke:var(--accent);stroke-width:1.5"/>
+          <text x="357" y="48" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:10px monospace">STACK</text>
+          <text x="357" y="62" text-anchor="middle" dominant-baseline="middle" style="fill:var(--text-primary);font:10px monospace">OPERATE</text>
+          <!-- back loop tracejado -->
+          <path d="M 393,75 L 393,88 L 27,88 L 27,75" fill="none" style="stroke:var(--text-secondary);stroke-width:1.2;stroke-dasharray:4 3"/>
+          <text x="210" y="101" text-anchor="middle" style="fill:var(--text-secondary);font:9px sans-serif">loop (próxima instrução)</text>
+        </svg>
+        <p>O ciclo dispatch &mdash; FETCH (ler bytecode) &rarr; DECODE (identificar opcode) &rarr; EXECUTE (&rarr; loop) &mdash; é
+        o coração de toda VM baseada em bytecode.</p>
+        <pre class="example"># CPython bytecode para: x = a + b
+import dis
+dis.dis(lambda a, b: a + b)
+# LOAD_FAST  0 (a)
+# LOAD_FAST  1 (b)
+# BINARY_OP  0 (+)
+# RETURN_VALUE</pre>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="repl" class="section-title">REPL</h2>
+      <div class="card">
+        <p>O <strong>REPL</strong> (Read&ndash;Eval&ndash;Print Loop) permite execução interativa de trechos de
+        código. Funciona compilando (ou interpretando) cada expressão individualmente e imprimindo o
+        resultado antes de ler a próxima:</p>
+        <pre class="example">loop:
+  input  = read()      # Read
+  ast    = parse(input)
+  result = eval(ast)   # Eval
+  print(result)        # Print
+  goto loop            # Loop</pre>
+        <p>REPLs ricas (como as de Haskell, Clojure, Common Lisp) suportam recarga de funções em tempo real,
+        inspeção de estado e hot-patching.</p>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="jit" class="section-title">JIT Compilation</h2>
+      <div class="card">
+        <p>O <strong>JIT</strong> (Just-In-Time) compila funções <em>quentes</em> (muito executadas) para código
+        nativo em tempo de execução, combinando a flexibilidade do interpretador com a velocidade do compilador:</p>
+        <ul>
+          <li><strong>Tracing JIT</strong> (LuaJIT, PyPy): registra trechos de execução quentes e compila o trace.</li>
+          <li><strong>Method JIT</strong> (JVM HotSpot, V8 Turbofan): compila métodos/funções quentes inteiras.</li>
+          <li><strong>Tieréd JIT</strong> (V8, .NET RyuJIT): vários níveis de otimização progressiva.</li>
+        </ul>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <section>
+      <h2 id="comparacao" class="section-title">Comparação Geral</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>Estratégia</th><th>Startup</th><th>Peak perf.</th><th>Footprint</th><th>Exemplos</th></tr></thead>
+          <tbody>
+            <tr><td>AOT Compilador</td><td>Lento (compilação)</td><td>Alto</td><td>Binário</td><td>GCC, Rustc, Go</td></tr>
+            <tr><td>Tree-Walk</td><td>Rápido</td><td>Baixo</td><td>Sem binário</td><td>Ruby 1.8, Lox</td></tr>
+            <tr><td>Bytecode + VM</td><td>Médio</td><td>Médio</td><td>.pyc, .class</td><td>CPython, JVM (interp)</td></tr>
+            <tr><td>JIT</td><td>Médio</td><td>Alto</td><td>Cache JIT</td><td>V8, JVM HotSpot, PyPy</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="section-divider"></div>
+    </section>
+
+    <div class="callout">
+      <p>
+        <strong>Leituras relacionadas:</strong>
+        <a href="/html/computacao_teorica/compiladores/introducao_compiladores.html">Introdução a Compiladores</a> &mdash;
+        <a href="/html/computacao_teorica/compiladores/geracao_codigo.html">Voltar: Geração de Código</a> &mdash;
+        <a href="/html/computacao_teorica/paradigmas.html">Paradigmas de Programação</a>
+      </p>
+      <p class="frase-destaque">
+        <span data-svg="estrela" aria-hidden="true"></span>
+        "Compilar ou interpretar? A resposta moderna é: os dois &mdash; compile para bytecode, interprete primeiro, JIT-compile depois."
+      </p>
+    </div>
+
+  </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+

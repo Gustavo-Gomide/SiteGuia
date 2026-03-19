@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Wireshark: análise de tráfego de rede, filtros, dissecação de protocolos, análise forense de .pcap, credenciais em texto claro e tshark para automação." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Wireshark | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Wireshark</strong></p>
+      </div>
+
+      <section>
+        <h2 id="conceito" class="section-title">O que é Wireshark?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Wireshark</h1>
+          <p>Captura e disseção de pacotes em tempo real para análise de protocolos.</p>
+        </div>
+
+        <p class="intro-highlight">Wireshark é o analisador de protocolos de rede open source mais usado do mundo. Captura e disseca pacotes em tempo real, permitindo ver exatamente o que trafega pela rede — desde headers TCP até payloads de aplicação. Essencial para forense de rede, debugging e pentest.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="filtros" class="section-title">Filtros Essenciais</h2>
+        <div class="section-divider"></div>
+
+        <p>Wireshark usa dois tipos de filtro: <strong>Capture filters</strong> (Berkeley Packet Filter — BPF, durante captura) e <strong>Display filters</strong> (após captura, para visualização).</p>
+
+        <pre class="code-block">
+# ----- Display Filters -----
+
+# Por protocolo:
+http
+dns
+ftp
+smb
+icmp
+ssl or tls
+
+# Por IP:
+ip.addr == 192.168.1.10
+ip.src == 10.0.0.1
+ip.dst == 10.0.0.2
+
+# Por porta:
+tcp.port == 80
+tcp.port == 443
+udp.port == 53
+
+# Por conteúdo:
+http.request.method == "POST"
+http contains "password"
+dns.qry.name contains "evil"
+
+# ----- Capture Filters (BPF) -----
+# Capturar apenas HTTP e DNS da rede:
+port 80 or port 53
+
+# Excluir broadcast:
+not broadcast and not multicast
+
+# Apenas tráfego de/para IP:
+host 192.168.1.10</pre>
+      </section>
+
+      <section>
+        <h2 id="analises" class="section-title">Análises Comuns</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Credenciais em texto claro</h3>
+            <p>Protocolos como FTP, Telnet, HTTP Basic Auth, SMTP, POP3 transmitem credenciais sem criptografia.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Filtrar POST requests:
+http.request.method == "POST"
+
+# Seguir TCP Stream:
+# Click direito → Follow → TCP Stream
+# Procurar campos: username, password, login</pre>
+          </div>
+          <div class="card">
+            <h3>Análise DNS</h3>
+            <p>Detectar DNS tunneling (payloads grandes em queries TXT), DGA (domínios aleatórios), respostas apontando para IPs suspeitos, C2 via DNS.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+dns
+dns.qry.name contains "dga"
+# Statistics → DNS → por tipo de consulta</pre>
+          </div>
+          <div class="card">
+            <h3>Análise de scans</h3>
+            <p>Nmap scan gera padrão de SYN sem completar handshake. Detectável: muitas conexões TCP SYN de 1 IP para múltiplas portas em curto período.</p>
+            <pre class="code-block" style="font-size:0.8rem">
+# Ver todos os IPs que enviaram SYN:
+tcp.flags.syn == 1 and tcp.flags.ack == 0</pre>
+          </div>
+          <div class="card">
+            <h3>Exportar objetos HTTP</h3>
+            <p>File → Export Objects → HTTP — extrai todos os arquivos transferidos via HTTP: executáveis, documentos, imagens. Útil em forense para recuperar arquivos baixados por malware.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="tshark" class="section-title">tshark — Wireshark em linha de comando</h2>
+        <div class="section-divider"></div>
+
+        <pre class="code-block">
+# Capturar 100 pacotes na interface eth0:
+tshark -i eth0 -c 100 -w captura.pcap
+
+# Ler .pcap e filtrar:
+tshark -r captura.pcap -Y "http" -T fields \
+    -e ip.src -e ip.dst -e http.request.uri
+
+# Extrair todas as queries DNS:
+tshark -r captura.pcap -Y "dns.qry.name" -T fields \
+    -e dns.qry.name | sort | uniq -c | sort -rn
+
+# Credenciais FTP:
+tshark -r captura.pcap -Y "ftp" -T fields \
+    -e ftp.request.command -e ftp.request.arg</pre>
+      </section>
+
+      <div class="callout">
+        <p>Análise de .pcap é categoria frequente em CTFs de forense. Pratique com capturas do Wireshark Sample Captures wiki. Para captura de rede em pentest, combine Wireshark com tcpdump para captura remota em servidores sem interface gráfica.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Wireshark não mente. O que trafega pela rede está ali — basta saber filtrar para encontrar."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

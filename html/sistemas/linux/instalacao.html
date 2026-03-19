@@ -1,0 +1,173 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Instalação do Linux: criação de pendrive bootável, particionamento, dual boot com Windows, configuração pós-instalação e primeiros passos no terminal." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Instalação do Linux | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Instalação do Linux</h1>
+            <p class="page-subtitle">Pendrive bootável, particionamento, dual boot e configuração pós-instalação</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Instalar Linux ficou trivial — o instalador moderno guia o processo em poucos cliques. O principal cuidado está no particionamento correto e, quando necessário, na configuração do dual boot com Windows sem corromper o bootloader existente.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — PREPARAÇÃO ═══════════════════ -->
+      <section id="preparacao">
+        <h2>Preparação</h2>
+        <p><strong>Requisitos mínimos (Ubuntu 24.04):</strong> 2 GB de RAM (4 GB recomendado), 25 GB de disco, processador de 64 bits, acesso à internet para atualizações.</p>
+        <p>Baixe a ISO no site oficial da distribuição e verifique a integridade com SHA256 antes de gravar:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — verificar hash da ISO</div>
+          <pre class="code-block">sha256sum ubuntu-24.04-desktop-amd64.iso
+# Compare com o hash publicado no site oficial</pre>
+        </div>
+        <p>Crie o pendrive bootável com uma das ferramentas abaixo:</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Rufus (Windows)</h3>
+            <p>Interface gráfica simples; suporta GPT/MBR e UEFI/Legacy. Recomendado para usuários Windows que ainda não têm Linux instalado.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Balena Etcher</h3>
+            <p>Disponível em Windows, macOS e Linux. Arrastar-e-soltar a ISO e escolher o dispositivo USB. Verifica a gravação automaticamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">dd (Linux/macOS)</h3>
+            <p>Comando nativo, sem interface gráfica. O mais direto e confiável em sistemas Unix.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — gravar ISO com dd</div>
+          <pre class="code-block"># Identifique o pendrive (cuidado: nao use o disco do sistema)
+lsblk
+
+# Grave a ISO (substitua sdX pelo seu pendrive, ex: sdb)
+sudo dd if=ubuntu-24.04-desktop-amd64.iso of=/dev/sdX bs=4M status=progress oflag=sync
+
+# Aguarde a conclusao (pode demorar alguns minutos)</pre>
+        </div>
+        <p>Após gravar, reinicie o computador e acesse a BIOS/UEFI (geralmente F2, F12, DEL ou ESC durante o boot) para definir o pendrive USB como primeira opção de boot.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — PARTICIONAMENTO ═══════════════════ -->
+      <section id="particionamento">
+        <h2>Particionamento</h2>
+        <p>Esquema recomendado para uso geral em sistema UEFI com GPT:</p>
+        <div class="scroll-x"><table class="tabela-gigante">
+          <thead><tr><th>Partição</th><th>Tamanho</th><th>Formato</th><th>Função</th></tr></thead>
+          <tbody>
+            <tr><td>/boot/efi</td><td>500 MB</td><td>FAT32 (ESP)</td><td>EFI System Partition; armazena bootloader (GRUB, systemd-boot)</td></tr>
+            <tr><td>/boot</td><td>1 GB (opcional)</td><td>ext4</td><td>Kernels e initramfs (necessário se /boot/efi usar ESP separada)</td></tr>
+            <tr><td>/</td><td>50+ GB</td><td>ext4 / btrfs / xfs</td><td>Sistema raiz: binários, bibliotecas, configurações, logs</td></tr>
+            <tr><td>/home</td><td>Restante do disco</td><td>ext4 / btrfs</td><td>Dados do usuário; separar permite reinstalar sem perder dados</td></tr>
+            <tr><td>swap</td><td>= RAM ou 8 GB mín.</td><td>swap ou swapfile</td><td>Memória virtual; obrigatório para hibernação</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>MBR vs GPT:</strong> GPT é obrigatório para discos maiores que 2 TB e para boot UEFI. MBR é legado, suporta no máximo 4 partições primárias. Use sempre GPT em hardware moderno.</p>
+        <p><strong>LVM:</strong> Logical Volume Manager permite redimensionar partições sem reiniciar, criar snapshots e fazer thin provisioning — recomendado para servidores.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — DUAL BOOT ═══════════════════ -->
+      <section id="dual-boot">
+        <h2>Dual Boot com Windows</h2>
+        <p>Para rodar Linux e Windows no mesmo disco, siga esta ordem para evitar problemas:</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">1. Desativar Fast Startup</h3>
+            <p>No Windows: Painel de Controle &gt; Opcoes de Energia &gt; Escolher funcao dos botoes &gt; desmarcar "Inicializacao rapida". Sem isso, o Windows deixa o disco NTFS em estado sujo, impedindo acesso pelo Linux.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">2. Secure Boot</h3>
+            <p>Ubuntu, Fedora e outras distros principais suportam Secure Boot via MOK (Machine Owner Key). Desativar o Secure Boot é opcional nessas distros, mas necessário para kernels não assinados ou Arch Linux.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">3. Reduzir Partição Windows</h3>
+            <p>No Windows: clique com botão direito em "Este PC" &gt; Gerenciar &gt; Gerenciamento de Disco &gt; clique com direito na partição C: &gt; Reduzir Volume. Libere espaço para o Linux.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">4. Instalar Linux</h3>
+            <p>O instalador do Ubuntu, Fedora ou outros detecta automaticamente o Windows e oferece a opção "Instalar ao lado do Windows". O GRUB detectará o Windows na primeira reinicialização.</p>
+          </div>
+        </div>
+        <p>Ajuste do fuso horário — Windows usa localtime (hora local) no relógio de hardware, Linux usa UTC por padrão. Para evitar divergência de 3 horas após alternar entre sistemas:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — configurar Linux para usar localtime (compativel com Windows)</div>
+          <pre class="code-block">timedatectl set-local-rtc 1 --adjust-system-clock</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — PÓS-INSTALAÇÃO ═══════════════════ -->
+      <section id="pos-instalacao">
+        <h2>Pós-Instalação Essencial</h2>
+        <p>Após o primeiro boot no sistema instalado, execute estes passos:</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — configuração pós-instalação Ubuntu/Debian</div>
+          <pre class="code-block"># 1. Atualizar todos os pacotes
+sudo apt update && sudo apt upgrade -y
+
+# 2. Instalar drivers proprietários automaticamente (Ubuntu)
+sudo ubuntu-drivers autoinstall
+
+# 3. Configurar fuso horario
+timedatectl set-timezone America/Sao_Paulo
+timedatectl status
+
+# 4. Ativar firewall
+sudo ufw enable
+sudo ufw status
+
+# 5. Habilitar e iniciar SSH (para acesso remoto)
+sudo systemctl enable --now ssh
+
+# 6. Instalar ferramentas essenciais
+sudo apt install -y curl wget git vim htop tree unzip build-essential
+
+# 7. Verificar integridade do sistema
+sudo apt autoremove && sudo apt autoclean</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Com o sistema instalado, explore <a href="/html/sistemas/linux/comandos_basicos.html">Comandos Básicos</a> e a <a href="/html/sistemas/linux/estrutura_diretorios.html">Estrutura de Diretórios Linux</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"A instalação é só o começo — o verdadeiro aprendizado começa no terminal."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

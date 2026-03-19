@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Desenvolvimento de jogos 2D com Go usando Ebiten: sprites, audio, input e game loop." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Go — Jogos com Ebiten | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Go &mdash; Jogos 2D com Ebiten</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="go" aria-hidden="true"></span></div>
+          <h1>Go — Jogos com Ebiten</h1>
+          <p><strong>Ebiten</strong> (v2) é uma engine de jogos 2D simples e de alta performance para Go. Roda em Windows, macOS, Linux, Web (Wasm) e mobile. O loop de jogo é baseado em duas funções: <code>Update()</code> a 60 TPS e <code>Draw()</code> usando GPU via OpenGL/Metal/DirectX automaticamente.</p>
+        </div>
+        <p class="intro-highlight">
+          A filosofia do Ebiten é <strong>minimalismo com performance</strong>: nenhuma abstração pesada, sem ECS obrigatório, sem editor visual. Você escreve Go puro. A engine gerencia o loop, GPU, janela e input — o resto é código seu. Ideal para jogos indie 2D, protótipos rápidos e aprendizado de game dev.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="game-loop">Game Loop — Estrutura Fundamental</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">go get github.com/hajimehoshi/ebiten/v2 — Interface Game</div>
+          <pre class="example"><span class="kw">package</span> main
+
+<span class="kw">import</span> (
+    <span class="str">"github.com/hajimehoshi/ebiten/v2"</span>
+    <span class="str">"github.com/hajimehoshi/ebiten/v2/ebitenutil"</span>
+    <span class="str">"image/color"</span>
+    <span class="str">"fmt"</span>
+)
+
+<span class="kw">const</span> (
+    largura  = 640
+    altura   = 480
+    gravidade = 0.4
+)
+
+<span class="kw">type</span> Jogador <span class="kw">struct</span> {
+    X, Y   float64
+    VX, VY float64
+    NoChao bool
+}
+
+<span class="kw">type</span> Jogo <span class="kw">struct</span> {
+    jogador    Jogador
+    pontuacao  int
+    ticks      int
+}
+
+<span class="com">// Update — lógica do jogo, chamada 60x por segundo</span>
+<span class="kw">func</span> (g *Jogo) <span class="fn">Update</span>() error {
+    g.ticks++
+
+    <span class="com">// Movimento horizontal</span>
+    <span class="kw">if</span> ebiten.IsKeyPressed(ebiten.KeyArrowLeft) || ebiten.IsKeyPressed(ebiten.KeyA) {
+        g.jogador.VX = -3
+    } <span class="kw">else</span> <span class="kw">if</span> ebiten.IsKeyPressed(ebiten.KeyArrowRight) || ebiten.IsKeyPressed(ebiten.KeyD) {
+        g.jogador.VX = 3
+    } <span class="kw">else</span> {
+        g.jogador.VX *= 0.8  <span class="com">// fricção</span>
+    }
+
+    <span class="com">// Pulo</span>
+    <span class="kw">if</span> ebiten.IsKeyPressed(ebiten.KeySpace) && g.jogador.NoChao {
+        g.jogador.VY = -10
+        g.jogador.NoChao = false
+    }
+
+    <span class="com">// Física</span>
+    g.jogador.VY += gravidade
+    g.jogador.X += g.jogador.VX
+    g.jogador.Y += g.jogador.VY
+
+    <span class="com">// Colisão com chão</span>
+    <span class="kw">if</span> g.jogador.Y >= float64(altura-32) {
+        g.jogador.Y = float64(altura - 32)
+        g.jogador.VY = 0
+        g.jogador.NoChao = true
+    }
+
+    <span class="com">// Bordas horizontais</span>
+    <span class="kw">if</span> g.jogador.X &lt; 0 { g.jogador.X = 0 }
+    <span class="kw">if</span> g.jogador.X > float64(largura-32) { g.jogador.X = float64(largura - 32) }
+
+    <span class="kw">return</span> nil
+}
+
+<span class="com">// Draw — renderização, chamada a cada frame</span>
+<span class="kw">func</span> (g *Jogo) <span class="fn">Draw</span>(tela *ebiten.Image) {
+    tela.Fill(color.NRGBA{R: 30, G: 30, B: 50, A: 255})
+
+    <span class="com">// Desenhar jogador (quadrado simples)</span>
+    jogadorImg, _, _ := ebitenutil.NewImageFromFile(<span class="str">"assets/player.png"</span>)
+    op := &amp;ebiten.DrawImageOptions{}
+    op.GeoM.Translate(g.jogador.X, g.jogador.Y)
+    tela.DrawImage(jogadorImg, op)
+
+    <span class="com">// HUD — debug info</span>
+    ebitenutil.DebugPrint(tela, fmt.Sprintf(
+        <span class="str">"TPS: %.0f | FPS: %.0f\nPontos: %d"</span>,
+        ebiten.ActualTPS(), ebiten.ActualFPS(), g.pontuacao))
+}
+
+<span class="kw">func</span> (g *Jogo) <span class="fn">Layout</span>(w, h int) (int, int) { <span class="kw">return</span> largura, altura }
+
+<span class="kw">func</span> <span class="fn">main</span>() {
+    ebiten.SetWindowSize(largura, altura)
+    ebiten.SetWindowTitle(<span class="str">"Jogo em Go"</span>)
+
+    jogo := &amp;Jogo{
+        jogador: Jogador{X: 100, Y: 300},
+    }
+    <span class="kw">if</span> err := ebiten.RunGame(jogo); err != nil {
+        panic(err)
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sprites-audio">Sprites, Tilemaps e Áudio</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Spritesheet, animação de frame e efeitos sonoros</div>
+          <pre class="example"><span class="kw">import</span> (
+    <span class="str">"github.com/hajimehoshi/ebiten/v2/audio"</span>
+    <span class="str">"github.com/hajimehoshi/ebiten/v2/audio/wav"</span>
+    <span class="str">"github.com/hajimehoshi/ebiten/v2/text/v2"</span>
+    _ <span class="str">"embed"</span>
+)
+
+<span class="com">// Embutir assets no binário</span>
+//go:embed assets/player.png
+<span class="kw">var</span> playerPng []byte
+
+//go:embed assets/jump.wav
+<span class="kw">var</span> jumpWav []byte
+
+<span class="kw">type</span> Sprite <span class="kw">struct</span> {
+    imagem    *ebiten.Image
+    frame     int
+    colunas   int
+    largFrame int
+    altFrame  int
+    contador  int
+    delay     int    <span class="com">// ticks entre frames</span>
+}
+
+<span class="kw">func</span> <span class="fn">novoSpriteSheet</span>(dados []byte, cols, largF, altF, delay int) *Sprite {
+    img, _, _ := ebitenutil.NewImageFromReader(bytes.NewReader(dados))
+    <span class="kw">return</span> &amp;Sprite{imagem: img, colunas: cols, largFrame: largF, altFrame: altF, delay: delay}
+}
+
+<span class="kw">func</span> (s *Sprite) <span class="fn">Atualizar</span>() {
+    s.contador++
+    <span class="kw">if</span> s.contador >= s.delay {
+        s.frame = (s.frame + 1) % s.colunas
+        s.contador = 0
+    }
+}
+
+<span class="kw">func</span> (s *Sprite) <span class="fn">Desenhar</span>(tela *ebiten.Image, x, y float64) {
+    sx := s.frame * s.largFrame
+    sub := s.imagem.SubImage(image.Rect(sx, 0, sx+s.largFrame, s.altFrame)).(*ebiten.Image)
+    op := &amp;ebiten.DrawImageOptions{}
+    op.GeoM.Translate(x, y)
+    tela.DrawImage(sub, op)
+}
+
+<span class="com">// Sistema de áudio</span>
+audioCtx := audio.NewContext(44100)
+
+<span class="kw">func</span> <span class="fn">reproduzirEfeito</span>(dados []byte) {
+    stream, _ := wav.DecodeF32(bytes.NewReader(dados))
+    player, _ := audioCtx.NewPlayerFromStream(stream)
+    player.Play()
+}
+
+<span class="com">// Tilemap simples</span>
+<span class="kw">const</span> tamanhoTile = 32
+
+<span class="kw">var</span> mapa = [][]int{
+    {1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {1, 0, 0, 0, 0, 0, 0, 0, 0, 1},
+    {1, 1, 1, 1, 0, 0, 1, 1, 1, 1},
+}
+
+<span class="kw">func</span> <span class="fn">desenharMapa</span>(tela, tileset *ebiten.Image) {
+    <span class="kw">for</span> linha, row := <span class="kw">range</span> mapa {
+        <span class="kw">for</span> col, tile := <span class="kw">range</span> row {
+            <span class="kw">if</span> tile == 0 { <span class="kw">continue</span> }
+            sx := tile * tamanhoTile
+            sub := tileset.SubImage(image.Rect(sx, 0, sx+tamanhoTile, tamanhoTile)).(*ebiten.Image)
+            op := &amp;ebiten.DrawImageOptions{}
+            op.GeoM.Translate(float64(col*tamanhoTile), float64(linha*tamanhoTile))
+            tela.DrawImage(sub, op)
+        }
+    }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>HOSHI, Hajime. <strong>Ebiten — A dead simple 2D game library for Go</strong>. Disponível em: &lt;https://ebitengine.org&gt;. Acesso em: 2026.</li>
+            <li>HOSHI, Hajime. <strong>Ebiten API Documentation</strong>. Disponível em: &lt;https://pkg.go.dev/github.com/hajimehoshi/ebiten/v2&gt;. Acesso em: 2026.</li>
+            <li>HOSHI, Hajime. <strong>Ebiten Examples Gallery</strong>. Disponível em: &lt;https://ebitengine.org/en/examples/&gt;. Acesso em: 2026.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> GUI Desktop com Go</a></li>
+          <li><a href="mobile.html"><span data-svg="seta-direita" aria-hidden="true"></span> Mobile com Go</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Ebiten suporta compilação para <strong>WebAssembly</strong> com <code>GOOS=js GOARCH=wasm go build -o game.wasm .</code> — o jogo roda no navegador sem modificações de código. Para publicar na web, use o arquivo <code>wasm_exec.js</code> fornecido pelo Go e um template HTML mínimo. O mesmo binário funciona em desktop e browser: sem ports, sem rewrites, apenas uma compilação diferente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

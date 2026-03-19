@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Boas praticas em projetos TypeScript: monorepos, path aliases, strict migration, type-only imports e estrutura de pastas." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Projetos e Boas Praticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>Projetos e Boas Praticas</h1>
+          <p>Estrutura de pastas para projetos escaláveis, monorepos com workspaces, path aliases, migracao para strict e padroes que eliminam erros silenciosos em bases de codigo grandes.</p>
+        </div>
+        <p class="intro-highlight">
+          TypeScript sem disciplina reproduz os mesmos problemas do JavaScript. Strict mode, isolatedModules, type-only imports e path aliases sao os quatro pilares de um projeto TS de qualidade industrial.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura">Estrutura de Projeto</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Estrutura recomendada de projeto TypeScript</div>
+          <pre class="example"><span class="com"># Projeto Node.js / API backend</span>
+projeto/
+├─ src/
+│  ├─ index.ts              <span class="com"># entry point</span>
+│  ├─ config.ts             <span class="com"># env vars tipadas</span>
+│  ├─ errors.ts             <span class="com"># hierarquia de erros customizada</span>
+│  ├─ routes/
+│  │  ├─ index.ts           <span class="com"># barrel de rotas</span>
+│  │  ├─ usuarios.ts
+│  │  └─ produtos.ts
+│  ├─ services/             <span class="com"># logica de negocio (sem dependencias de framework)</span>
+│  ├─ repositories/         <span class="com"># acesso a dados (Prisma / SQL)</span>
+│  ├─ schemas/              <span class="com"># schemas Zod + tipos inferidos</span>
+│  ├─ middleware/
+│  └─ utils/
+├─ src/__tests__/           <span class="com"># testes colocalizados com src</span>
+├─ dist/                    <span class="com"># saida do build (gitignore)</span>
+├─ tsconfig.json
+├─ tsconfig.build.json      <span class="com"># exclui __tests__ para o build de prod</span>
+├─ vitest.config.ts
+├─ package.json
+└─ .env.example</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">tsconfig.json &mdash; Configuracao com path aliases</div>
+          <pre class="example">{
+  <span class="str">"compilerOptions"</span>: {
+    <span class="str">"target"</span>:                          <span class="str">"ES2022"</span>,
+    <span class="str">"module"</span>:                          <span class="str">"NodeNext"</span>,
+    <span class="str">"moduleResolution"</span>:                <span class="str">"NodeNext"</span>,
+    <span class="str">"outDir"</span>:                          <span class="str">"./dist"</span>,
+    <span class="str">"rootDir"</span>:                         <span class="str">"./src"</span>,
+    <span class="str">"declaration"</span>:                     <span class="kw">true</span>,
+    <span class="str">"declarationMap"</span>:                  <span class="kw">true</span>,
+    <span class="str">"sourceMap"</span>:                       <span class="kw">true</span>,
+
+    <span class="com">/* Strict suite completa */</span>
+    <span class="str">"strict"</span>:                          <span class="kw">true</span>,
+    <span class="str">"noUncheckedIndexedAccess"</span>:        <span class="kw">true</span>,
+    <span class="str">"exactOptionalPropertyTypes"</span>:      <span class="kw">true</span>,
+    <span class="str">"noImplicitOverride"</span>:              <span class="kw">true</span>,
+
+    <span class="com">/* Importacoes */</span>
+    <span class="str">"isolatedModules"</span>:                 <span class="kw">true</span>,
+    <span class="str">"verbatimModuleSyntax"</span>:            <span class="kw">true</span>,
+
+    <span class="com">/* Path aliases */</span>
+    <span class="str">"baseUrl"</span>:                         <span class="str">"."</span>,
+    <span class="str">"paths"</span>: {
+      <span class="str">"@/*"</span>:               [<span class="str">"src/*"</span>],
+      <span class="str">"@schemas/*"</span>:        [<span class="str">"src/schemas/*"</span>],
+      <span class="str">"@services/*"</span>:       [<span class="str">"src/services/*"</span>],
+      <span class="str">"@repositories/*"</span>:   [<span class="str">"src/repositories/*"</span>]
+    }
+  },
+  <span class="str">"include"</span>: [<span class="str">"src"</span>],
+  <span class="str">"exclude"</span>: [<span class="str">"node_modules"</span>, <span class="str">"dist"</span>]
+}</pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <span data-svg="alerta" aria-hidden="true"></span>
+          <p>Path aliases (<code>@/</code>) sao resolvidos pelo compilador TypeScript, mas <strong>nao pelo Node.js em runtime</strong>. Para Node, use tsup com <code>--external</code> ou <code>tsc-alias</code> para reescrever os caminhos na saida. Para Vite / Vitest, configure <code>resolve.alias</code> no vite.config.ts.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="monorepo">Monorepo com Workspaces</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Estrutura de monorepo npm/pnpm</div>
+          <pre class="example">monorepo/
+├─ packages/
+│  ├─ core/               <span class="com"># tipos e logica compartilhada</span>
+│  │  ├─ src/index.ts
+│  │  ├─ tsconfig.json
+│  │  └─ package.json     <span class="com"># name: "@minha-org/core"</span>
+│  ├─ api/                <span class="com"># servidor Fastify/Hono</span>
+│  │  ├─ src/
+│  │  ├─ tsconfig.json    <span class="com"># references: [{ path: "../core" }]</span>
+│  │  └─ package.json     <span class="com"># deps: { "@minha-org/core": "workspace:*" }</span>
+│  └─ web/                <span class="com"># frontend Next.js / Vite</span>
+├─ tsconfig.base.json     <span class="com"># opcoes compartilhadas</span>
+└─ package.json           <span class="com"># workspaces: ["packages/*"]</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Project References (build incremental)</div>
+          <pre class="example"><span class="com">// packages/core/tsconfig.json - pacote referenciado</span>
+{
+  <span class="str">"extends"</span>: <span class="str">"../../tsconfig.base.json"</span>,
+  <span class="str">"compilerOptions"</span>: {
+    <span class="str">"composite"</span>: <span class="kw">true</span>,       <span class="com">/* obrigatorio para project references */</span>
+    <span class="str">"outDir"</span>: <span class="str">"./dist"</span>,
+    <span class="str">"declaration"</span>: <span class="kw">true</span>
+  },
+  <span class="str">"include"</span>: [<span class="str">"src"</span>]
+}
+
+<span class="com">// packages/api/tsconfig.json - pacote consumidor</span>
+{
+  <span class="str">"extends"</span>: <span class="str">"../../tsconfig.base.json"</span>,
+  <span class="str">"compilerOptions"</span>: { <span class="str">"outDir"</span>: <span class="str">"./dist"</span> },
+  <span class="str">"references"</span>: [
+    { <span class="str">"path"</span>: <span class="str">"../core"</span> }  <span class="com">/* resolve tipagem do core sem compilar tudo */</span>
+  ]
+}
+
+<span class="com">// Build raiz: tsc --build packages/api</span>
+<span class="com">// Recompila apenas o que mudou — essencial em monorepos grandes</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="imports">Type-Only Imports e isolatedModules</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; import type e verbatimModuleSyntax</div>
+          <pre class="example"><span class="com">// SEM verbatimModuleSyntax - pode causar problemas com bundlers</span>
+<span class="kw">import</span> { <span class="tp">Request</span>, <span class="tp">Response</span> } <span class="kw">from</span> <span class="str">"express"</span>;  <span class="com">// ambiguo: valor ou tipo?</span>
+
+<span class="com">// COM verbatimModuleSyntax - obrigatorio ser explicito</span>
+<span class="kw">import</span> <span class="kw">type</span> { <span class="tp">Request</span>, <span class="tp">Response</span>, <span class="tp">NextFunction</span> } <span class="kw">from</span> <span class="str">"express"</span>;
+<span class="kw">import</span> express <span class="kw">from</span> <span class="str">"express"</span>;  <span class="com">// importacao de valor - permanece no JS</span>
+
+<span class="com">// O compilador elimina 'import type' completamente do output JS</span>
+<span class="com">// Sem import type, bundlers como esbuild precisam saber o que e valor vs tipo</span>
+
+<span class="com">// Exportacao de tipo</span>
+<span class="kw">export</span> <span class="kw">type</span> { <span class="tp">Usuario</span> };          <span class="com">// nao gera codigo JS</span>
+<span class="kw">export</span> { <span class="tp">UsuarioService</span> };        <span class="com">// gera codigo JS (classe e valor)</span>
+
+<span class="com">// Re-export de tipos de outro modulo</span>
+<span class="kw">export</span> <span class="kw">type</span> { <span class="tp">Produto</span> } <span class="kw">from</span> <span class="str">"./produto.js"</span>;
+
+<span class="com">// Barrel file (src/schemas/index.ts) - exportar tipos nao polui bundle</span>
+<span class="kw">export</span> <span class="kw">type</span> { <span class="tp">UsuarioInput</span>, <span class="tp">UsuarioOutput</span> } <span class="kw">from</span> <span class="str">"./usuario.js"</span>;
+<span class="kw">export</span> <span class="kw">type</span> { <span class="tp">ProdutoInput</span>, <span class="tp">ProdutoOutput</span> } <span class="kw">from</span> <span class="str">"./produto.js"</span>;
+<span class="kw">export</span> { <span class="tp">UsuarioSchema</span>, <span class="tp">ProdutoSchema</span> } <span class="kw">from</span> <span class="str">"./schemas.js"</span>; <span class="com">// valores Zod</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="strict-migration">Migracao para Strict Mode</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Estrategia de migracao incremental</div>
+          <pre class="example"><span class="com">// Passo 1: ativar strict progressivamente no tsconfig</span>
+<span class="com">// Semana 1-2: base sem any implicito</span>
+{
+  <span class="str">"compilerOptions"</span>: {
+    <span class="str">"noImplicitAny"</span>: <span class="kw">true</span>,      <span class="com">/* exige anotacao quando TS nao consegue inferir */</span>
+    <span class="str">"strictNullChecks"</span>: <span class="kw">true</span>    <span class="com">/* null e undefined sao tipos distintos */</span>
+  }
+}
+<span class="com">// Semana 3-4: strict completo</span>
+{ <span class="str">"compilerOptions"</span>: { <span class="str">"strict"</span>: <span class="kw">true</span> } }
+<span class="com">// Semana 5: extras</span>
+{ <span class="str">"compilerOptions"</span>: { <span class="str">"noUncheckedIndexedAccess"</span>: <span class="kw">true</span> } }
+
+<span class="com">// Passo 2: usar ts-migrate para gerar anotacoes automaticas</span>
+<span class="com">// npx @ts-migrate/ts-migrate-full ./src</span>
+<span class="com">// Gera $ExpectError e @ts-ignore temporarios para CI verde</span>
+
+<span class="com">// Passo 3: supressao temporaria em arquivos problematicos</span>
+<span class="com">// @ts-expect-error — preferido pois da erro quando o problema e corrigido</span>
+<span class="com">// @ts-ignore — silencia permanentemente (evitar)</span>
+
+<span class="com">// Arquivo com muitos erros: usando ts-expect-error cirurgicamente</span>
+<span class="kw">const</span> resultado = antigoModulo.<span class="fn">calcular</span>(
+  <span class="com">// @ts-expect-error legado: retorna any, corrigir JIRA-123</span>
+  dadosBrutos,
+);
+
+<span class="com">// Passo 4: eliminar 'any' com tipos utilitarios</span>
+<span class="com">// any → unknown (force explicit narrowing)</span>
+<span class="kw">function</span> <span class="fn">processar</span>(dado: <span class="kw">unknown</span>): <span class="kw">string</span> {
+  <span class="kw">if</span> (<span class="kw">typeof</span> dado === <span class="str">"string"</span>) <span class="kw">return</span> dado.<span class="fn">toUpperCase</span>();
+  <span class="kw">if</span> (<span class="kw">typeof</span> dado === <span class="str">"number"</span>) <span class="kw">return</span> dado.<span class="fn">toString</span>();
+  <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`Tipo nao suportado: </span><span class="str">${</span><span class="kw">typeof</span> dado<span class="str">}</span><span class="str">`</span>);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="padroes">Padroes e Antipadroes</h2>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3><span data-svg="check" aria-hidden="true"></span> Boas Praticas</h3>
+            <ul>
+              <li>Use <code>satisfies</code> para validar literal sem perder precisao</li>
+              <li>Prefira <code>unknown</code> a <code>any</code> em boundaries externos</li>
+              <li>Use Branded Types para IDs de entidades distintas</li>
+              <li>Ative <code>exactOptionalPropertyTypes</code> para distinguir <code>undefined</code> de ausente</li>
+              <li>Type-only imports em todos os tipos (verbatimModuleSyntax)</li>
+              <li>Zod para validacao em runtime + tipos inferidos via <code>z.infer</code></li>
+              <li>Re-exporte types em barrel files com <code>export type</code></li>
+              <li>Declare retornos explicitos em funcoes publicas de API</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3><span data-svg="xmark" aria-hidden="true"></span> Antipadroes</h3>
+            <ul>
+              <li><code>as AnyType</code> forcado — use type guard ou unknown</li>
+              <li>Barrel files com re-export de valores pesados (todo o projeto em index.ts)</li>
+              <li>Ignorar <code>@ts-ignore</code> sem comentario de issue</li>
+              <li>Classes vazias so para agrupar tipos — use namespace ou module</li>
+              <li>Interfaceamentos desnecessarios (interface para tudo)</li>
+              <li>Overuse de generics com 4+ parametros de tipo</li>
+              <li>Nao usar <code>const assertions</code> em arrays literais usados como union</li>
+              <li>Comparar com <code>== null</code> sem strictNullChecks ativo</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript &mdash; Padroes avancados para projetos grandes</div>
+          <pre class="example"><span class="com">// ---- Config tipada com Zod + satisfies ----</span>
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">"zod"</span>;
+
+<span class="kw">const</span> <span class="tp">EnvSchema</span> = z.<span class="fn">object</span>({
+  PORT:         z.<span class="fn">coerce</span>.<span class="fn">number</span>().<span class="fn">default</span>(<span class="num">3000</span>),
+  DATABASE_URL: z.<span class="fn">string</span>().<span class="fn">url</span>(),
+  NODE_ENV:     z.<span class="fn">enum</span>([<span class="str">"development"</span>, <span class="str">"production"</span>, <span class="str">"test"</span>]),
+  JWT_SECRET:   z.<span class="fn">string</span>().<span class="fn">min</span>(<span class="num">32</span>),
+}).<span class="fn">readonly</span>();
+
+<span class="kw">export type</span> <span class="tp">Env</span> = z.<span class="tp">infer</span>&lt;<span class="kw">typeof</span> <span class="tp">EnvSchema</span>&gt;;
+
+<span class="kw">const</span> parsed = <span class="tp">EnvSchema</span>.<span class="fn">safeParse</span>(process.env);
+<span class="kw">if</span> (!parsed.success) {
+  console.<span class="fn">error</span>(parsed.error.<span class="fn">flatten</span>());
+  process.<span class="fn">exit</span>(<span class="num">1</span>);
+}
+<span class="kw">export const</span> env = parsed.data;
+
+<span class="com">// ---- Resultado tipado (Result monad) ----</span>
+<span class="kw">type</span> <span class="tp">Ok</span>&lt;T&gt;  = { ok: <span class="kw">true</span>;  valor: T };
+<span class="kw">type</span> <span class="tp">Err</span>&lt;E&gt; = { ok: <span class="kw">false</span>; erro: E };
+<span class="kw">type</span> <span class="tp">Result</span>&lt;T, E = <span class="tp">Error</span>&gt; = <span class="tp">Ok</span>&lt;T&gt; | <span class="tp">Err</span>&lt;E&gt;;
+
+<span class="kw">function</span> <span class="fn">ok</span>&lt;T&gt;(valor: T): <span class="tp">Ok</span>&lt;T&gt; { <span class="kw">return</span> { ok: <span class="kw">true</span>, valor }; }
+<span class="kw">function</span> <span class="fn">err</span>&lt;E&gt;(erro: E): <span class="tp">Err</span>&lt;E&gt; { <span class="kw">return</span> { ok: <span class="kw">false</span>, erro }; }
+
+<span class="kw">async function</span> <span class="fn">buscarUsuario</span>(id: <span class="kw">string</span>): <span class="tp">Promise</span>&lt;<span class="tp">Result</span>&lt;<span class="tp">Usuario</span>&gt;&gt; {
+  <span class="kw">try</span> {
+    <span class="kw">const</span> u = <span class="kw">await</span> db.usuario.<span class="fn">findUniqueOrThrow</span>({ where: { id } });
+    <span class="kw">return</span> <span class="fn">ok</span>(u);
+  } <span class="kw">catch</span> (e) {
+    <span class="kw">return</span> <span class="fn">err</span>(<span class="kw">new</span> <span class="tp">Error</span>(<span class="str">`Usuario </span><span class="str">${id}</span><span class="str"> nao encontrado`</span>));
+  }
+}
+
+<span class="kw">const</span> resultado = <span class="kw">await</span> <span class="fn">buscarUsuario</span>(<span class="str">"42"</span>);
+<span class="kw">if</span> (resultado.ok) {
+  console.<span class="fn">log</span>(resultado.valor.nome); <span class="com">// TS sabe que e Usuario</span>
+} <span class="kw">else</span> {
+  console.<span class="fn">error</span>(resultado.erro.message); <span class="com">// TS sabe que e Error</span>
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>TypeScript Project References</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/project-references.html&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript verbatimModuleSyntax</strong>. Disponível em: &lt;https://www.typescriptlang.org/tsconfig#verbatimModuleSyntax&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>TypeScript Migrating from JavaScript</strong>. Disponível em: &lt;https://www.typescriptlang.org/docs/handbook/migrating-from-javascript.html&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Web</a></li>
+          <li><a href="../aplicacoes/banco_dados.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript com Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> O poder do TypeScript esta na fronteira do sistema — valide dados externos com Zod e deixe o tipo fluir naturalmente para dentro</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

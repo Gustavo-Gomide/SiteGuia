@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Singleton: padrão criacional para garantir uma única instância global de uma classe, com ponto de acesso controlado." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Singleton | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Uma única instância com acesso global — use com cautela</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Singleton</h1>
+          <p class="page-subtitle">Criacional — GoF — o padrão mais duvidoso do catálogo</p>
+        </div>
+        <p class="intro-highlight">Singleton garante que uma classe tenha exatamente uma instância e fornece um ponto global de acesso. É frequentemente mal aplicado como variável global com estado compartilhado. Prefira inversão de dependência — injete a dependência única em vez de acessá-la globalmente.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="casos" class="section-title">Singleton válido vs anti-padrão</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Caso</th>
+                <th>Singleton válido?</th>
+                <th>Alternativa melhor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Logger de aplicação</td>
+                <td>Sim — sem estado mutavél, thread-safe.</td>
+                <td>Injetar logger via DI ainda é melhor para testes.</td>
+              </tr>
+              <tr>
+                <td>Pool de conexões</td>
+                <td>Sim — recurso único gerenciado.</td>
+                <td>Gerenciado pelo container de DI.</td>
+              </tr>
+              <tr>
+                <td>Cache de configuração</td>
+                <td>Condicional — se imutável após inicialização.</td>
+                <td>Objeto de configuração imutável injetado.</td>
+              </tr>
+              <tr>
+                <td>Estado global mutável</td>
+                <td>Não — acoplamento oculto, difícil de testar.</td>
+                <td>Inversão de dependência + escopo gerenciado.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Implementação e alternativa recomendada</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">// SINGLETON clássico (use apenas quando justificado)
+class DatabasePool {
+  private static instancia: DatabasePool | null = null;
+  private conexoes: Connection[] = [];
+
+  private constructor() {
+    // inicializa pool
+  }
+
+  static getInstance(): DatabasePool {
+    if (!DatabasePool.instancia) {
+      DatabasePool.instancia = new DatabasePool();
+    }
+    return DatabasePool.instancia;
+  }
+
+  buscarConexao(): Connection {
+    return this.conexoes.pop() ?? this.criarConexao();
+  }
+}
+
+// ALTERNATIVA PREFERIDA: inversão de dependência
+// Não acesse DatabasePool.getInstance() em todo lugar.
+// Configure uma única instância no composition root:
+
+const pool = new DatabasePool(); // única vez, na inicialização
+
+// Injete onde necessário:
+class PedidoRepository {
+  constructor(private pool: DatabasePool) {} // injetável e testável
+}</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar e armadilhas</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use apenas quando</h3>
+            <p>A unicidade é uma restrição real do domínio (não uma conferência). Exemplo: pool de recursos.</p>
+          </div>
+          <div class="card">
+            <h3>Problema em testes</h3>
+            <p>Singleton com estado global afeta outros testes. Substitua por objeto injetado mesmo que seja único em produção.</p>
+          </div>
+          <div class="card">
+            <h3>Thread safety</h3>
+            <p>Em ambientes multi-thread (Java, Go), a inicialização deve ser sincronizada ou usar padrões como Holder.</p>
+          </div>
+          <div class="card">
+            <h3>Substitua por DI</h3>
+            <p>Frameworks de DI (Spring, NestJS, Guice) gerenciam escopos singleton sem os problemas do acesso global.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Singleton é o padrão GoF mais discutido negativamente. Prefira inversão de dependência: injete a instância única em vez de acessá-la globalmente. Veja <a href="/html/engenharia_software/design/solid.html#dip-exemplo">DIP no SOLID</a>.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O problema do Singleton não é a unicidade — é o acesso global. A unicidade é gerenciável; o estado global escondido não."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

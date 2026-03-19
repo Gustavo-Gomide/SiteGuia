@@ -1,0 +1,207 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Os estados de um processo em um SO: criação, pronto, executando, bloqueado, zumbi e terminado — transições e significado de cada estado." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Estados de Processo | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Estados de Processo</h1>
+            <p class="page-subtitle">O ciclo de vida de um processo: das cinco transições que o escalonador monitora ao impacto no desempenho do sistema.</p>
+          </div>
+        </div>
+        <p class="intro-highlight">
+          O <strong>escalonador</strong> precisa saber a qualquer momento o que cada processo está fazendo para decidir quem recebe a CPU a seguir. Para isso, o kernel mantém o <em>estado</em> do processo como um campo no PCB. A máquina de estados define exatamente quais transições são possíveis e qual evento as dispara, permitindo ao SO tomar decisões eficientes de agendamento.
+        </p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — DIAGRAMA DE ESTADOS ═══════════════════ -->
+      <section id="diagrama">
+        <h2>Diagrama de Estados</h2>
+        <p>Os cinco estados principais e as transições entre eles:</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Estado</th><th>Nome em inglês</th><th>Descrição</th><th>Transição de saída</th><th>Evento que causa a transição</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Novo / Criado</strong></td>
+                <td>New</td>
+                <td>Processo foi criado (fork), PCB alocado, mas ainda não está na fila de prontos</td>
+                <td>Pronto</td>
+                <td>Admissão pelo escalonador de longo prazo</td>
+              </tr>
+              <tr>
+                <td><strong>Pronto</strong></td>
+                <td>Ready</td>
+                <td>Processo aguarda na fila para receber a CPU; todos os recursos estão disponíveis exceto o processador</td>
+                <td>Executando</td>
+                <td>Dispatch pelo escalonador (curto prazo)</td>
+              </tr>
+              <tr>
+                <td><strong>Executando</strong></td>
+                <td>Running</td>
+                <td>Processo ocupa a CPU e executa instrucoes</td>
+                <td>Pronto / Bloqueado / Terminado</td>
+                <td>Preempção (quantum expirado) / chamada bloqueante / exit()</td>
+              </tr>
+              <tr>
+                <td><strong>Bloqueado</strong></td>
+                <td>Blocked / Waiting</td>
+                <td>Aguarda evento externo (leitura de disco, rede, sleep, lock) — não pode usar CPU mesmo que disponível</td>
+                <td>Pronto</td>
+                <td>Evento concluído (I/O completou, lock liberado, sinal recebido)</td>
+              </tr>
+              <tr>
+                <td><strong>Terminado</strong></td>
+                <td>Terminated / Zombie</td>
+                <td>Executou exit(); recursos de memória liberados, mas entrada na tabela de processos permanece até o pai chamar wait()</td>
+                <td>Removido</td>
+                <td>Pai executa wait() / waitpid()</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — ESTADOS ESPECIAIS ═══════════════════ -->
+      <section id="especiais">
+        <h2>Estados Especiais</h2>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Zumbi (Z)</h3>
+            <p>O processo executou <code class="code-inline">exit()</code>, mas o pai ainda não chamou <code class="code-inline">wait()</code>. O PCB permanece na tabela de processos para preservar o código de saída. Se o pai nunca chama wait(), os PIDs vazam gradualmente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Orfao</h3>
+            <p>O pai terminou antes do filho. O kernel re-parent o filho para o <code class="code-inline">init</code> / <code class="code-inline">systemd</code> (PID 1), que periodicamente chama <code class="code-inline">wait()</code> impedindo zumbis.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Suspenso (swapped out)</h3>
+            <p>O escalonador de médio prazo move o processo para disco (swap) quando há pressão de memória. As páginas são restauradas quando o processo retorna à ready queue.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — VERIFICANDO NO LINUX ═══════════════════ -->
+      <section id="linux">
+        <h2>Verificando Estados no Linux</h2>
+        <p>O comando <code class="code-inline">ps</code> exibe o estado de cada processo na coluna <code class="code-inline">STAT</code>:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell — ps aux e interpretação da coluna STAT</div>
+          <pre class="code-block"># Listar todos os processos com estado
+ps aux
+
+# Exibir apenas PID, estado e comando
+ps -eo pid,stat,comm
+
+# Exemplo de saída:
+#   PID STAT COMMAND
+#     1 Ss   systemd
+#   872 Sl   NetworkManager
+#  1234 R+   meu_programa
+#  5678 D    kworker/u4:2
+#  9999 Z    processo_zumbi
+
+# Significado das letras na coluna STAT:
+#   R   Running / Runnable (pronto para executar)
+#   S   Sleeping interrompível (aguardando evento, pode ser acordado por sinal)
+#   D   Sleeping NÃO-interrompível (aguardando I/O; NÃO responde a sinais)
+#   T   Stopped (parado por sinal SIGSTOP ou em debug)
+#   Z   Zombie (terminou, aguarda wait() do pai)
+#
+# Modificadores adicionais:
+#   s   Session leader
+#   l   Multi-threaded
+#   +   No foreground do terminal
+#   N   Prioridade reduzida (nice > 0)
+#   &lt;   Prioridade elevada (nice &lt; 0)</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — IMPACTO NO DESEMPENHO ═══════════════════ -->
+      <section id="desempenho">
+        <h2>Impacto no Desempenho</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Situacao</th><th>Estado</th><th>Impacto</th><th>Como resolver</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Processos em estado D acumulando</td>
+                <td>D (uninterruptible sleep)</td>
+                <td>Bloqueiam shutdown; aumentam load average mesmo sem usar CPU; indicam gargalo de I/O ou driver travado</td>
+                <td>Identificar dispositivo de I/O lento; verificar driver com <code class="code-inline">dmesg</code></td>
+              </tr>
+              <tr>
+                <td>Zumbis acumulando</td>
+                <td>Z</td>
+                <td>Vazamento de PID; tabela de processos se esgota; processo pai com bug</td>
+                <td>Corrigir código do pai para chamar wait(); ou matar o pai (filho é adotado pelo init)</td>
+              </tr>
+              <tr>
+                <td>Processo I/O-bound</td>
+                <td>Alterna S e R rapidamente</td>
+                <td>Baixo uso de CPU; alta espera por I/O; responsivo a sinais</td>
+                <td>Otimizar I/O (async I/O, buffers maiores, SSD)</td>
+              </tr>
+              <tr>
+                <td>Processo CPU-bound</td>
+                <td>Majoritariamente R</td>
+                <td>Alta utilização de CPU; pode monopolizar núcleo sem preempção</td>
+                <td>Ajustar prioridade com nice; usar múltiplas threads ou processos</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Para entender como o SO escolhe qual processo passa de Pronto para Executando, veja
+          <a href="/html/sistemas/processos/escalonamento.html">Escalonamento de Processos</a> e
+          <a href="/html/sistemas/processos/processos.html">Processos</a>.
+        </p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Entender estados de processo transforma mensagens misteriosas do ps em diagnóstico preciso de sistema."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

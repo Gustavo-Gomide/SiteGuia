@@ -1,0 +1,331 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Apache HTTP Server: MPMs, httpd.conf, VirtualHost, módulos, .htaccess e performance tuning." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Apache HTTP Server | Servidores | Redes | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+
+      <!-- ═══════════════════════════════════════════════════════════
+           TÍTULO DA PÁGINA
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Servidores</strong></p>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 1 — HERO
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="hero" class="section-title">Apache HTTP Server</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Apache HTTP Server</h1>
+          <p>MPMs, VirtualHost, módulos, .htaccess e performance tuning</p>
+        </div>
+
+        <p class="intro-highlight">
+          O <strong>Apache HTTP Server</strong> (httpd) é o servidor web mais antigo ainda amplamente utilizado.
+          Criado em 1995 pela Apache Software Foundation, destaca-se pela arquitetura modular
+          e pelo sistema de configuração por diretório via <code class="code-inline">.htaccess</code>.
+        </p>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 2 — MPMs
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="mpms" class="section-title">MPMs — Multi-Processing Modules</h2>
+
+        <p>
+          O Apache seleciona o modelo de processamento através dos <abbr title="Multi-Processing Modules">MPM</abbr>s.
+          A escolha do MPM correto é crítica para performance e compatibilidade com o stack da aplicação.
+        </p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>MPM</th><th>Processos</th><th>Threads</th><th>Modelo</th><th>Uso Típico</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>prefork</td><td>N (1/conn)</td><td>1</td><td>Process-per-request</td><td>PHP via mod_php (não thread-safe)</td></tr>
+              <tr><td>worker</td><td>Poucos</td><td>N/processo</td><td>Thread-per-request</td><td>Conteúdo dinâmico sem mod_php</td></tr>
+              <tr><td>event</td><td>Poucos</td><td>N + keep-alive handler</td><td>Async keep-alive</td><td>Alta concorrência, PHP-FPM, py, ruby</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/apache2/mods-available/mpm_event.conf</div>
+          <pre class="code-block">&lt;IfModule mpm_event_module&gt;
+    StartServers          2
+    MinSpareThreads      25
+    MaxSpareThreads      75
+    ThreadLimit          64
+    ThreadsPerChild      25
+    MaxRequestWorkers   150
+    MaxConnectionsPerChild 0
+&lt;/IfModule&gt;</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 3 — ESTRUTURA DE CONFIGURAÇÃO
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="estrutura" class="section-title">Estrutura de Configuração</h2>
+
+        <p>
+          O Apache usa uma hierarquia de arquivos bem definida no Debian/Ubuntu.
+          Entender essa estrutura é essencial para ativar módulos e virtual hosts corretamente.
+        </p>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">Hierarquia de Arquivos (Debian)</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">/etc/apache2/
+├── apache2.conf        # config principal
+├── ports.conf          # Listen 80, 443
+├── mods-available/     # módulos disponíveis
+├── mods-enabled/       # links simbólicos
+├── sites-available/    # virtual hosts
+├── sites-enabled/      # links simbólicos
+└── conf-available/     # configs extras</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">Diretivas Globais Importantes</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">ServerRoot      "/etc/apache2"
+ServerName      example.com
+Listen          80
+
+KeepAlive       On
+MaxKeepAliveRequests 100
+KeepAliveTimeout     5
+
+Timeout         60
+LogLevel        warn</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 4 — VIRTUALHOST
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="virtualhost" class="section-title">VirtualHost — Name-based</h2>
+
+        <p>
+          O Apache usa o bloco <code class="code-inline">&lt;VirtualHost&gt;</code> para hospedar
+          múltiplos domínios. O padrão ativo é sempre redirecionar HTTP para HTTPS
+          e separar a config de cada domínio em arquivos dedicados.
+        </p>
+
+        <div class="logic-grid">
+          <div class="panel">
+            <h3 class="panel-title">HTTP → HTTPS redirect</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">&lt;VirtualHost *:80&gt;
+    ServerName  example.com
+    Redirect permanent / https://example.com/
+&lt;/VirtualHost&gt;</pre>
+            </div>
+          </div>
+          <div class="panel">
+            <h3 class="panel-title">HTTPS + proxy para app server</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">&lt;VirtualHost *:443&gt;
+    ServerName  example.com
+    DocumentRoot /var/www/html
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/example.com/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/example.com/privkey.pem
+    SSLProtocol all -SSLv3 -TLSv1 -TLSv1.1
+
+    ProxyPreserveHost On
+    ProxyPass        /app/ http://127.0.0.1:8000/app/
+    ProxyPassReverse /app/ http://127.0.0.1:8000/app/
+
+    ErrorLog  ${APACHE_LOG_DIR}/example_error.log
+    CustomLog ${APACHE_LOG_DIR}/example_access.log combined
+&lt;/VirtualHost&gt;</pre>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 5 — MÓDULOS ESSENCIAIS
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="modulos" class="section-title">Módulos Essenciais</h2>
+
+        <p>
+          A arquitetura modular do Apache permite ativar e desativar funcionalidades dinamicamente
+          com os comandos <code class="code-inline">a2enmod</code> e <code class="code-inline">a2dismod</code>.
+        </p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr><th>Módulo</th><th>Função</th><th>Ativar</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>mod_rewrite</td><td>Reescrita de URLs com regex</td><td><code class="code-inline">a2enmod rewrite</code></td></tr>
+              <tr><td>mod_ssl</td><td>TLS/SSL — HTTPS</td><td><code class="code-inline">a2enmod ssl</code></td></tr>
+              <tr><td>mod_proxy / mod_proxy_http</td><td>Proxy reverso HTTP</td><td><code class="code-inline">a2enmod proxy proxy_http</code></td></tr>
+              <tr><td>mod_proxy_fcgi</td><td>FastCGI proxy para PHP-FPM</td><td><code class="code-inline">a2enmod proxy_fcgi</code></td></tr>
+              <tr><td>mod_headers</td><td>Adicionar/modificar cabeçalhos HTTP</td><td><code class="code-inline">a2enmod headers</code></td></tr>
+              <tr><td>mod_deflate</td><td>Compressão gzip nas respostas</td><td><code class="code-inline">a2enmod deflate</code></td></tr>
+              <tr><td>mod_expires</td><td>Cache-Control / Expires para assets estáticos</td><td><code class="code-inline">a2enmod expires</code></td></tr>
+              <tr><td>mod_security</td><td><abbr title="Web Application Firewall">WAF</abbr> (Web Application Firewall)</td><td>Instalar + a2enmod security2</td></tr>
+              <tr><td>mod_http2</td><td>Suporte a HTTP/2</td><td><code class="code-inline">a2enmod http2</code></td></tr>
+              <tr><td>mod_status</td><td>Página de status (<code class="code-inline">/server-status</code>)</td><td><code class="code-inline">a2enmod status</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 6 — .HTACCESS
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="htaccess" class="section-title">.htaccess — Configuração por Diretório</h2>
+
+        <p>
+          O <code class="code-inline">.htaccess</code> permite sobrescrever configurações do servidor
+          por diretório sem reiniciar o Apache. Exige <code class="code-inline">AllowOverride All</code>
+          no VirtualHost. Em produção, prefira mover as regras para o VirtualHost e usar
+          <code class="code-inline">AllowOverride None</code> para evitar overhead por requisição.
+        </p>
+
+        <div class="grid-cards">
+
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Redirect &amp; Rewrite</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">Options -Indexes
+RewriteEngine On
+
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# SPA fallback
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]</pre>
+            </div>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:100ms">
+            <h3 class="panel-title">Cabeçalhos de Segurança</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Strict-Transport-Security \
+  "max-age=31536000; includeSubDomains"</pre>
+            </div>
+          </div>
+
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:200ms">
+            <h3 class="panel-title">Cache de Assets Estáticos</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <pre class="code-block">&lt;IfModule mod_expires.c&gt;
+    ExpiresActive On
+    ExpiresByType image/webp  "access plus 1 year"
+    ExpiresByType text/css    "access plus 6 months"
+    ExpiresByType application/javascript "access plus 6 months"
+&lt;/IfModule&gt;</pre>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           SEÇÃO 7 — COMANDOS DE GERENCIAMENTO
+           ═══════════════════════════════════════════════════════════ -->
+      <section>
+        <h2 id="comandos" class="section-title">Comandos de Gerenciamento</h2>
+
+        <p>
+          Os comandos essenciais para administrar o Apache no dia a dia —
+          sempre valide a configuração antes de recarregar.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Bash — administração Apache (systemd)</div>
+          <pre class="code-block">systemctl status apache2
+systemctl reload apache2   # reload sem derrubar conexões existentes
+apache2ctl configtest       # deve retornar "Syntax OK"
+apachectl -t -D DUMP_VHOSTS # listar virtual hosts
+a2ensite  meusite.conf  ;  a2dissite  000-default.conf
+a2enmod   rewrite ssl   ;  a2dismod   status
+tail -f /var/log/apache2/error.log</pre>
+        </div>
+
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           CALLOUT / ENCERRAMENTO
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="callout">
+        <p>Veja também: <a href="/html/rede_e_comunicacao/servidores/nginx.html">Nginx</a> e <a href="/html/rede_e_comunicacao/servidores/proxy_reverso.html">Proxy Reverso</a> — alternativas e próximos passos no gerenciamento de servidores web.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "O Apache não sobreviveu 30 anos por acaso — sua modularidade e flexibilidade ainda resolvem problemas que nenhum outro servidor resolve tão bem."
+        </p>
+      </div>
+
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

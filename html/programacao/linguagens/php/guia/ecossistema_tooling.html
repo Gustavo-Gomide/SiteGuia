@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e Tooling PHP: Composer, PHP-FPM, Nginx, Swoole, Xdebug, PHPStan, PHP CS Fixer e Docker — Site Guia." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>PHP — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>PHP — Ecossistema e Tooling</strong></p></div>
+
+      <!-- HERO -->
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="php" aria-hidden="true"></span></div>
+          <h1>Ecossistema e Tooling PHP</h1>
+          <p>Composer, PHP-FPM, servidores, análise estática, Docker e gerenciamento de versões</p>
+        </div>
+        <p class="intro-highlight">
+          Um desenvolvedor PHP produtivo em 2024 vai muito além do código da aplicação: configura PHP-FPM com Nginx para alta performance, usa Xdebug para depuração precisa, executa PHPStan para garantir tipos em tempo de análise, formata código com PHP CS Fixer e containeriza tudo com Docker. Esta página cobre toda essa cadeia.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- SERVIDORES -->
+      <section>
+        <h2 class="section-title" id="servidores">Modelos de Servidor PHP</h2>
+        <p>A forma como o PHP é executado em produção impacta diretamente desempenho e escalabilidade. Existem três modelos principais:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Apache + mod_php</h3>
+            <p>PHP roda embarcado no processo Apache. Cada worker Apache carrega o interpretador PHP. Simples de configurar, mas ineficiente — todo request ocupa um worker Apache completo, mesmo para arquivos estáticos.</p>
+            <p class="note">Uso: hospedagem compartilhada, configurações legadas.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:80ms">
+            <h3 class="panel-title">Nginx + PHP-FPM</h3>
+            <p><strong>Configuração recomendada para produção.</strong> Nginx é um servidor de alto desempenho assíncrono que delega requisições PHP via FastCGI para um pool de workers gerenciado pelo PHP-FPM. Arquivos estáticos são servidos pelo Nginx sem passar pelo PHP.</p>
+            <p class="note">PM dinâmico ajusta workers automaticamente à carga.</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:160ms">
+            <h3 class="panel-title">Swoole / RoadRunner</h3>
+            <p>Servidores coroutine-based que mantêm workers PHP em memória entre requisições — eliminando o overhead de inicialização por request. Ideal para APIs de alta carga. Swoole implementa coroutines; RoadRunner usa workers Go + PHP.</p>
+            <p class="note">Laravel Octane usa ambos.</p>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">nginx — configuração PHP-FPM</div>
+          <pre class="example"><span class="tp">server</span> {
+    <span class="tp">listen</span> <span class="num">80</span>;
+    <span class="tp">root</span> <span class="str">/var/www/html/public</span>;
+    <span class="tp">index</span> <span class="str">index.php</span>;
+
+    <span class="tp">location</span> / {
+        <span class="tp">try_files</span> <span class="tp">$uri</span> <span class="tp">$uri</span>/ /index.php?<span class="tp">$query_string</span>;
+    }
+
+    <span class="tp">location</span> ~ \.php$ {
+        <span class="tp">fastcgi_pass</span>   <span class="str">unix:/run/php/php8.3-fpm.sock</span>;
+        <span class="tp">fastcgi_index</span>  <span class="str">index.php</span>;
+        <span class="tp">include</span>        <span class="str">fastcgi_params</span>;
+        <span class="tp">fastcgi_param</span>  <span class="str">SCRIPT_FILENAME</span> <span class="tp">$realpath_root$fastcgi_script_name</span>;
+    }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ini — php-fpm pool (www.conf)</div>
+          <pre class="example"><span class="tp">[www]</span>
+<span class="tp">user</span>  = www-data
+<span class="tp">group</span> = www-data
+<span class="tp">listen</span> = /run/php/php8.3-fpm.sock
+
+<span class="com">; Gerenciamento dinâmico de workers</span>
+<span class="tp">pm</span> = dynamic
+<span class="tp">pm.max_children</span>   = <span class="num">20</span>
+<span class="tp">pm.start_servers</span>  = <span class="num">4</span>
+<span class="tp">pm.min_spare_servers</span> = <span class="num">2</span>
+<span class="tp">pm.max_spare_servers</span> = <span class="num">6</span>
+<span class="tp">pm.max_requests</span>   = <span class="num">500</span>  <span class="com">; reinicia worker a cada 500 req (previne memory leaks)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- OPCACHE -->
+      <section>
+        <h2 class="section-title" id="opcache">OPcache — Bytecode Caching</h2>
+        <p>
+          OPcache armazena o bytecode compilado de scripts PHP em memória compartilhada. Sem ele, cada requisição recompila todos os arquivos PHP do zero. Com ele habilitado, o ganho de performance é de <strong>3× a 5×</strong> em aplicações típicas.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ini — php.ini OPcache para produção</div>
+          <pre class="example"><span class="tp">opcache.enable</span>=<span class="num">1</span>
+<span class="tp">opcache.memory_consumption</span>=<span class="num">256</span>       <span class="com">; MB de RAM para bytecode</span>
+<span class="tp">opcache.interned_strings_buffer</span>=<span class="num">16</span>
+<span class="tp">opcache.max_accelerated_files</span>=<span class="num">20000</span>
+<span class="tp">opcache.revalidate_freq</span>=<span class="num">0</span>           <span class="com">; 0 = nunca revalida (produção)</span>
+<span class="tp">opcache.validate_timestamps</span>=<span class="num">0</span>       <span class="com">; não verifica timestamps (produção)</span>
+<span class="tp">opcache.save_comments</span>=<span class="num">1</span>            <span class="com">; necessário para Reflection/Attributes</span>
+<span class="tp">opcache.jit_buffer_size</span>=<span class="str">100M</span>
+<span class="tp">opcache.jit</span>=<span class="str">tracing</span></pre>
+        </div>
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Com <code class="code-inline">validate_timestamps=0</code>, alterações nos arquivos PHP só serão detectadas após reiniciar PHP-FPM ou limpar o cache com <code class="code-inline">opcache_reset()</code>. Use somente em produção com deploy que reinicia o FPM.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- XDEBUG -->
+      <section>
+        <h2 class="section-title" id="xdebug">Xdebug — Depuração e Cobertura de Código</h2>
+        <p>
+          Xdebug é a extensão de depuração padrão do PHP. Além de breakpoints e step-debug, gera relatórios de cobertura de código para PHPUnit e perfis de execução para análise de performance.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">ini — configuração Xdebug 3</div>
+          <pre class="example"><span class="tp">zend_extension</span>=xdebug
+<span class="tp">xdebug.mode</span>=<span class="str">debug,coverage</span>            <span class="com">; debug | coverage | profile | trace</span>
+<span class="tp">xdebug.start_with_request</span>=<span class="str">yes</span>
+<span class="tp">xdebug.client_host</span>=<span class="str">host.docker.internal</span> <span class="com">; para uso com Docker</span>
+<span class="tp">xdebug.client_port</span>=<span class="num">9003</span>
+<span class="tp">xdebug.idekey</span>=<span class="str">PHPSTORM</span></pre>
+        </div>
+
+        <div class="callout callout--warning">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Nunca habilite Xdebug em produção. Ele reduz a performance em <strong>50–70%</strong> e pode expor informações internas do servidor.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PHPSTAN -->
+      <section>
+        <h2 class="section-title" id="phpstan">PHPStan — Análise Estática</h2>
+        <p>
+          PHPStan analisa o código PHP sem executá-lo, detectando erros de tipo, métodos inexistentes, variáveis não inicializadas e muito mais. Pode ser configurado em 10 níveis de rigor (0 a 9).
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — uso do PHPStan</div>
+          <pre class="example"><span class="fn">composer require --dev</span> phpstan/phpstan
+
+<span class="com"># Analisar o diretório src/ no nível máximo</span>
+<span class="fn">./vendor/bin/phpstan analyse src --level=9</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">neon — phpstan.neon</div>
+          <pre class="example"><span class="tp">parameters</span>:
+    <span class="tp">level</span>: <span class="num">8</span>
+    <span class="tp">paths</span>:
+        - <span class="str">src</span>
+        - <span class="str">tests</span>
+    <span class="tp">ignoreErrors</span>:
+        - <span class="str">'#Call to an undefined method.*Eloquent.*#'</span>
+    <span class="tp">bootstrapFiles</span>:
+        - <span class="str">vendor/autoload.php</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- PHP CS FIXER -->
+      <section>
+        <h2 class="section-title" id="cs-fixer">PHP CS Fixer — Padronização de Código</h2>
+        <p>
+          PHP CS Fixer reformata automaticamente o código PHP para conformidade com os padrões PSR-1, PSR-2, PSR-12 e regras adicionais configuráveis.
+        </p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">php — .php-cs-fixer.php</div>
+          <pre class="example"><span class="tp">$finder</span> = <span class="tp">PhpCsFixer\Finder</span>::<span class="fn">create</span>()
+    -><span class="fn">in</span>([[<span class="str">'src'</span>, <span class="str">'tests'</span>]]);
+
+<span class="kw">return</span> (<span class="kw">new</span> <span class="tp">PhpCsFixer\Config</span>())
+    -><span class="fn">setRules</span>([
+        <span class="str">'@PSR12'</span>                       => <span class="kw">true</span>,
+        <span class="str">'strict_param'</span>                 => <span class="kw">true</span>,
+        <span class="str">'array_syntax'</span>                 => [<span class="str">'syntax'</span> => <span class="str">'short'</span>],
+        <span class="str">'no_unused_imports'</span>            => <span class="kw">true</span>,
+        <span class="str">'ordered_imports'</span>              => <span class="kw">true</span>,
+        <span class="str">'declare_strict_types'</span>         => <span class="kw">true</span>,
+    ])
+    -><span class="fn">setFinder</span>(<span class="tp">$finder</span>)
+    -><span class="fn">setRiskyAllowed</span>(<span class="kw">true</span>);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- DOCKER -->
+      <section>
+        <h2 class="section-title" id="docker">Docker com PHP</h2>
+        <p>Containerizar PHP garante paridade entre ambientes de desenvolvimento, teste e produção.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">dockerfile — produção</div>
+          <pre class="example"><span class="kw">FROM</span> <span class="str">php:8.3-fpm-alpine</span> <span class="kw">AS</span> <span class="str">base</span>
+
+<span class="com"># Instalar extensões do sistema</span>
+<span class="kw">RUN</span> docker-php-ext-install pdo pdo_mysql opcache bcmath
+
+<span class="com"># Copiar configuração de produção do OPcache</span>
+<span class="kw">COPY</span> docker/php/opcache.ini <span class="str">/usr/local/etc/php/conf.d/opcache.ini</span>
+
+<span class="kw">FROM</span> <span class="str">base</span> <span class="kw">AS</span> <span class="str">builder</span>
+<span class="kw">COPY</span> --from=<span class="str">composer:2</span> /usr/bin/composer /usr/bin/composer
+<span class="kw">WORKDIR</span> <span class="str">/app</span>
+<span class="kw">COPY</span> composer.* ./
+<span class="kw">RUN</span> composer install --no-dev --optimize-autoloader --no-interaction
+
+<span class="kw">FROM</span> <span class="str">base</span> <span class="kw">AS</span> <span class="str">production</span>
+<span class="kw">WORKDIR</span> <span class="str">/app</span>
+<span class="kw">COPY</span> --from=<span class="str">builder</span> /app/vendor ./vendor
+<span class="kw">COPY</span> . .
+<span class="kw">RUN</span> chown -R www-data:www-data /app/storage /app/bootstrap/cache</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- VERSÕES -->
+      <section>
+        <h2 class="section-title" id="versoes">Gerenciamento de Versões PHP</h2>
+        <p>Projetos diferentes podem exigir versões PHP distintas. Ferramentas de gerenciamento de versões resolvem isso:</p>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">phpenv</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">bash</div>
+              <pre class="example"><span class="fn">phpenv install</span> 8.3.0
+<span class="fn">phpenv global</span> 8.3.0
+<span class="fn">phpenv local</span> 8.2.0  <span class="com"># .php-version no diretório</span></pre>
+            </div>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay:80ms">
+            <h3 class="panel-title">asdf-php</h3>
+            <div class="code-container rounded-md border overflow-hidden">
+              <div class="code-header">bash</div>
+              <pre class="example"><span class="fn">asdf plugin add</span> php
+<span class="fn">asdf install php</span> 8.3.0
+<span class="fn">asdf global php</span> 8.3.0</pre>
+            </div>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <!-- REFERÊNCIAS -->
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PHP DOCUMENTATION GROUP. <strong>PHP-FPM Manual</strong>. PHP Group, 2024. Disponível em: <a href="https://www.php.net/manual/en/install.fpm.php" target="_blank" rel="noopener">php.net/fpm</a></li>
+            <li>PHPSTAN TEAM. <strong>PHPStan Documentation</strong>. 2024. Disponível em: <a href="https://phpstan.org/user-guide/getting-started" target="_blank" rel="noopener">phpstan.org</a></li>
+            <li>XDEBUG TEAM. <strong>Xdebug 3 Documentation</strong>. 2024. Disponível em: <a href="https://xdebug.org/docs" target="_blank" rel="noopener">xdebug.org/docs</a></li>
+            <li>PHP CS FIXER TEAM. <strong>PHP Coding Standards Fixer</strong>. 2024. Disponível em: <a href="https://cs.symfony.com/" target="_blank" rel="noopener">cs.symfony.com</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/php/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas PHP</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/php/aplicacoes/web.html"><span data-svg="seta-direita" aria-hidden="true"></span> PHP para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "OPcache improves PHP performance by storing precompiled script bytecode in shared memory, thereby removing the need for PHP to load and parse scripts on each request." — PHP Manual</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

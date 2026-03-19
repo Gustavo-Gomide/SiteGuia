@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para dados e IA: vetorizacao AVX2 para machine learning, operacoes matriciais SIMD, quantizacao INT8 com instrucoes VNNI, implementacoes de baixo nivel de redes neurais." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — Dados e IA | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; Dados e IA</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — Dados e IA</h1>
+          <p>O núcleo computacional de frameworks de IA como NumPy, PyTorch e TensorFlow é implementado em C/C++ com <strong>rotinas SIMD otimizadas para x86 e ARM</strong>. Operações de álgebra linear — multiplicação de matrizes (GEMM), dot products, ativações ReLU — exploram ao máximo AVX2, AVX-512 e VNNI para atingir TFLOPS de throughput em CPUs convencionais sem GPU.</p>
+        </div>
+        <p class="intro-highlight">
+          NumPy usa <strong>OpenBLAS</strong> ou <strong>MKL</strong> como backend de BLAS — ambos implementados em assembly otimizado para cada microarquitetura. Quando você chama <code>np.dot(a, b)</code> em Python, estão sendo executadas dezenas de kilobytes de código assembly AVX-512 escritos à mão.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gemm">Matrix Multiplication (GEMM) com SIMD</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Micro-kernel GEMM com AVX2 (block 8x1)</div>
+          <pre class="example"><span class="com">; GEMM micro-kernel: C[m][n] += A[m][k] * B[k][n]</span>
+<span class="com">; Estratégia: processar 8 elementos de C de uma vez com AVX2 YMM (256-bit = 8 floats)</span>
+<span class="com">;             para cada linha de A × coluna de B (inner product)</span>
+<span class="com">;</span>
+<span class="com">; rdi = C (saída), rsi = A, rdx = B</span>
+<span class="com">; rcx = m (linhas A/C), r8 = n (colunas B/C), r9 = k (colunas A = linhas B)</span>
+
+<span class="kw">section</span> .text
+
+<span class="com">; gemm_8x1: kernel de uma linha de C = 8 floats no mesmo índice da coluna B</span>
+gemm_kernel_8x1:
+    <span class="com">; Parâmetros: rdi=C_ptr, rsi=A_row_ptr, rdx=B_col_ptr, rcx=k</span>
+    <span class="kw">vxorps</span>   ymm0, ymm0, ymm0   <span class="com">; acumulador = 0</span>
+    <span class="kw">test</span>     rcx, rcx
+    <span class="kw">jz</span>       .done
+.kloop:
+    <span class="kw">vbroadcastss</span> ymm1, <span class="tp">dword</span> [rsi]  <span class="com">; broadcast A[k] para todos os 8 slots</span>
+    <span class="kw">vmovups</span>  ymm2, [rdx]              <span class="com">; carregar 8 floats de B[k][0..7]</span>
+    <span class="kw">vfmadd231ps</span> ymm0, ymm1, ymm2     <span class="com">; acc += A[k] * B[k][0..7]  (FMA)</span>
+    <span class="kw">add</span>      rsi, <span class="num">4</span>                  <span class="com">; avançar A para próximo elemento k</span>
+    <span class="kw">add</span>      rdx, <span class="num">32</span>                 <span class="com">; avançar B para próxima linha (8 floats)</span>
+    <span class="kw">dec</span>      rcx
+    <span class="kw">jnz</span>      .kloop
+.done:
+    <span class="com">; Acumular em C (C += resultado)</span>
+    <span class="kw">vmovups</span>  ymm3, [rdi]
+    <span class="kw">vaddps</span>   ymm0, ymm0, ymm3
+    <span class="kw">vmovups</span>  [rdi], ymm0
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span>
+
+<span class="com">; DGEMM (double precision) — 4 doubles por YMM</span>
+gemm_kernel_4x1_double:
+    <span class="kw">vxorpd</span>   ymm0, ymm0, ymm0
+.loop:
+    <span class="kw">vbroadcastsd</span> ymm1, <span class="tp">qword</span> [rsi]
+    <span class="kw">vmovupd</span>  ymm2, [rdx]
+    <span class="kw">vfmadd231pd</span> ymm0, ymm1, ymm2
+    <span class="kw">add</span>      rsi, <span class="num">8</span>
+    <span class="kw">add</span>      rdx, <span class="num">32</span>
+    <span class="kw">dec</span>      rcx
+    <span class="kw">jnz</span>      .loop
+    <span class="kw">vmovupd</span>  ymm3, [rdi]
+    <span class="kw">vaddpd</span>   ymm0, ymm0, ymm3
+    <span class="kw">vmovupd</span>  [rdi], ymm0
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="relu-softmax">ReLU, Sigmoid e Softmax Vetorizados</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Funcoes de ativacao com AVX2</div>
+          <pre class="example"><span class="com">; ── ReLU: f(x) = max(x, 0) ────────────────────────────────</span>
+<span class="com">; rdi = array float, rsi = n elementos</span>
+relu_avx:
+    <span class="kw">vxorps</span>  ymm7, ymm7, ymm7    <span class="com">; ymm7 = 0.0 em 8 raias</span>
+    <span class="kw">test</span>    rsi, rsi
+    <span class="kw">jz</span>      .fim
+.loop:
+    <span class="kw">vmovups</span> ymm0, [rdi]
+    <span class="kw">vmaxps</span>  ymm0, ymm0, ymm7    <span class="com">; max(x, 0) para 8 floats</span>
+    <span class="kw">vmovups</span> [rdi], ymm0
+    <span class="kw">add</span>     rdi, <span class="num">32</span>
+    <span class="kw">sub</span>     rsi, <span class="num">8</span>
+    <span class="kw">jnz</span>     .loop
+.fim:
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span>
+
+<span class="com">; ── Leaky ReLU: f(x) = x >= 0 ? x : alpha*x  (alpha=0.01) ─</span>
+<span class="kw">section</span> .rodata
+    <span class="kw">align</span> <span class="num">32</span>
+    leaky_alpha <span class="fn">dd</span> <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>, <span class="num">0.01</span>
+
+<span class="kw">section</span> .text
+leaky_relu_avx:
+    <span class="kw">vmovaps</span>  ymm6, [leaky_alpha]
+    <span class="kw">vxorps</span>   ymm7, ymm7, ymm7
+.loop:
+    <span class="kw">vmovups</span>  ymm0, [rdi]
+    <span class="kw">vmulps</span>   ymm1, ymm0, ymm6      <span class="com">; ymm1 = x * 0.01 (lado negativo)</span>
+    <span class="kw">vcmpps</span>   ymm2, ymm0, ymm7, <span class="num">13</span>  <span class="com">; ymm2 = máscara: x >= 0 → 0xFFFFFFFF</span>
+    <span class="kw">vblendvps</span> ymm0, ymm1, ymm0, ymm2 <span class="com">; blend: x>=0 → x, senão alpha*x</span>
+    <span class="kw">vmovups</span>  [rdi], ymm0
+    <span class="kw">add</span>      rdi, <span class="num">32</span>
+    <span class="kw">sub</span>      rsi, <span class="num">8</span>
+    <span class="kw">jnz</span>      .loop
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span>
+
+<span class="com">; ── Softmax numérico estável ─────────────────────────────</span>
+<span class="com">; Implementado em C com intrinsics (mais prático que .asm direto):</span>
+<span class="com">;   1. max = horizontal max de todos os elementos</span>
+<span class="com">;   2. x[i] = exp(x[i] - max)   (estabilidade numérica)</span>
+<span class="com">;   3. sum = horizontal sum</span>
+<span class="com">;   4. x[i] /= sum</span>
+<span class="com">; A função exp() em SIMD usa a aproximação: e^x ≈ 2^(x/ln2)</span>
+<span class="com">; via frexp, ldexp e tabela de lookup de 2^frac(x)</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="quantizacao">Quantizacao INT8 e VNNI</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64 &mdash; Convolucao quantizada INT8 com VNNI (AVX-512)</div>
+          <pre class="example"><span class="com">; AVX-512 VNNI (Vector Neural Network Instructions) — disponível desde Ice Lake</span>
+<span class="com">; vpdpbusd: dot product de uint8 × int8 → int32 (4 elementos por iteração)</span>
+<span class="com">; Processa 4 operações de 8-bit multiply-add de uma vez em 32 bits de saída</span>
+
+<span class="com">; Quantização INT8: converter float32 → int8</span>
+<span class="com">; scale = 127.0 / max_abs_value</span>
+<span class="com">; quantized = clamp(round(x * scale), -128, 127)</span>
+
+quantize_int8_avx2:
+    <span class="com">; rdi = float32* input, rsi = int8* output, rdx = n, xmm0 = scale</span>
+    <span class="kw">vbroadcastss</span>  ymm7, xmm0       <span class="com">; broadcast scale para 8 raias</span>
+.loop:
+    <span class="kw">vmovups</span>   ymm0, [rdi]           <span class="com">; 8 float32</span>
+    <span class="kw">vmulps</span>    ymm0, ymm0, ymm7      <span class="com">; x * scale</span>
+    <span class="kw">vcvtps2dq</span> ymm0, ymm0            <span class="com">; float → int32 (com arredondamento)</span>
+    <span class="kw">vpackssdw</span> ymm0, ymm0, ymm0     <span class="com">; int32 → int16 saturado</span>
+    <span class="kw">vpacksswb</span> xmm0, xmm0, xmm0    <span class="com">; int16 → int8 saturado</span>
+    <span class="kw">movq</span>      [rsi], xmm0           <span class="com">; salvar 8 int8</span>
+    <span class="kw">add</span>       rdi, <span class="num">32</span>
+    <span class="kw">add</span>       rsi, <span class="num">8</span>
+    <span class="kw">sub</span>       rdx, <span class="num">8</span>
+    <span class="kw">jnz</span>       .loop
+    <span class="kw">vzeroupper</span>
+    <span class="kw">ret</span>
+
+<span class="com">; AVX-512 VNNI — dot product int8: zmm = 16×(a[u8] * b[i8]) acumulado em int32</span>
+<span class="com">; Esta instrução processa 16 pares uint8×int8 e acumula em 4 int32:</span>
+<span class="com">;   vpdpbusd zmm_acc, zmm_a, zmm_b</span>
+<span class="com">; Performance: ~4× mais throughput que SIMD float32 para redes quantizadas INT8</span>
+
+<span class="com">; OBS: VNNI requer CPU Intel Ice Lake ou posterior (ou AMD Zen4+)</span>
+<span class="com">; Verificar suporte: CPUID leaf 7, ECX bit 11 = AVXVNNI</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GOTO, Kazushige; VAN DE GEIJN, Robert. <strong>Anatomy of high-performance matrix multiplication</strong>. ACM TOMS, v. 34, n. 3, 2008. Disponível em: &lt;https://dl.acm.org/doi/10.1145/1356052.1356053&gt;. Acesso em: 2025.</li>
+            <li>INTEL. <strong>Intel AVX-512 VNNI: Vector Neural Network Instructions</strong>. Intel Developer Zone, 2023. Disponível em: &lt;https://www.intel.com/content/www/us/en/developer/articles/technical/&gt;. Acesso em: 2025.</li>
+            <li>SHEN, Jiaming et al. <strong>Q8BERT: Quantized 8Bit BERT</strong>. arXiv:1910.06188, 2019. Disponível em: &lt;https://arxiv.org/abs/1910.06188&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Jogos</a></li>
+          <li><a href="embedded_iot.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Embedded e IoT</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>VFMADD231PS</strong> (Fused Multiply-Add) faz em <em>uma instrução</em>: <code>dst += src1 * src2</code>, com apenas <em>um arredondamento</em> IEEE 754 vs dois separados. Para GPT-style attention (QKV dot products) em CPUs, usar FMA em kernel GEMM bem bloqueado pode atingir 70–85% do pico teórico de FLOPS da CPU — o mesmo que frameworks como OpenBLAS e MKL fazem internamente.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

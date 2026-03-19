@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Assembly para GUI e Desktop: chamadas Win32 API no Windows, X11 no Linux direto de NASM, programacao de janelas sem framework em assembly x86-64, tratamento de eventos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Assembly — GUI e Desktop | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Assembly &mdash; GUI e Desktop</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpu" aria-hidden="true"></span></div>
+          <h1>Assembly — GUI e Desktop</h1>
+          <p>Criar interfaces gráficas em Assembly puro é um exercício revelador de como sistemas operacionais funcionam internamente. No Windows, significa chamar a <strong>Win32 API</strong> diretamente — <code>CreateWindowExA</code>, <code>ShowWindow</code>, <code>DispatchMessage</code>. No Linux, a API gráfica de baixo nível é o <strong>X11</strong>, acessado via syscall de socket ou <code>libX11</code>.</p>
+        </div>
+        <p class="intro-highlight">
+          GUI em assembly puro é educativo mas raramente prático em produção — a complexidade explodiria. O uso real é: <strong>rotinas de rendering SIMD</strong> (blitting, filtros de imagem, compositing) chamadas de um framework C/C++, e <strong>hacks de performance</strong> em engines gráficas como preenchimento de buffer de frame.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="win32-janela">Janela Windows com Win32 API em NASM</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x64/Win &mdash; Janela Win32 completa com message loop</div>
+          <pre class="example"><span class="com">; NASM Windows PE64 — Janela Win32</span>
+<span class="com">; nasm -f win64 win32_janela.asm -o win32_janela.obj</span>
+<span class="com">; link /subsystem:windows /entry:WinMain win32_janela.obj kernel32.lib user32.lib</span>
+
+<span class="kw">extern</span> RegisterClassExA, CreateWindowExA, ShowWindow, UpdateWindow
+<span class="kw">extern</span> GetMessageA, TranslateMessage, DispatchMessageA
+<span class="kw">extern</span> DefWindowProcA, PostQuitMessage, ExitProcess
+<span class="kw">extern</span> GetModuleHandleA, LoadCursorA
+
+WS_OVERLAPPEDWINDOW <span class="kw">equ</span> <span class="num">0xCF0000</span>
+SW_SHOW             <span class="kw">equ</span> <span class="num">5</span>
+WM_DESTROY          <span class="kw">equ</span> <span class="num">0x0002</span>
+IDC_ARROW           <span class="kw">equ</span> <span class="num">32512</span>
+
+<span class="kw">section</span> .data
+    class_name <span class="fn">db</span> <span class="str">"AsmWindow"</span>, <span class="num">0</span>
+    win_title  <span class="fn">db</span> <span class="str">"Janela Assembly!"</span>, <span class="num">0</span>
+
+<span class="kw">section</span> .bss
+    hwnd      <span class="fn">resq</span> <span class="num">1</span>        <span class="com">; handle da janela</span>
+    wndclass  <span class="fn">resb</span> <span class="num">80</span>       <span class="com">; WNDCLASSEX = 80 bytes</span>
+    msg       <span class="fn">resb</span> <span class="num">48</span>       <span class="com">; MSG = 48 bytes</span>
+
+<span class="kw">section</span> .text
+
+<span class="com">;;------------------------------------------------------------</span>
+<span class="com">;; WndProc: callback de mensagens da janela</span>
+<span class="com">;; rcx=hWnd,  rdx=uMsg,  r8=wParam,  r9=lParam</span>
+<span class="com">;;------------------------------------------------------------</span>
+WndProc:
+    <span class="kw">sub</span>   rsp, <span class="num">40</span>
+    <span class="kw">cmp</span>   edx, WM_DESTROY
+    <span class="kw">jne</span>   .default
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">call</span>  PostQuitMessage
+    <span class="kw">xor</span>   eax, eax
+    <span class="kw">add</span>   rsp, <span class="num">40</span>
+    <span class="kw">ret</span>
+.default:
+    <span class="kw">add</span>   rsp, <span class="num">40</span>
+    <span class="kw">jmp</span>   DefWindowProcA     <span class="com">; tail call</span>
+
+WinMain:
+    <span class="kw">sub</span>   rsp, <span class="num">40</span>
+
+    <span class="com">; GetModuleHandleA(NULL)</span>
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">call</span>  GetModuleHandleA
+    <span class="kw">mov</span>   [wndclass + <span class="num">8</span>], rax   <span class="com">; WNDCLASSEX.hInstance</span>
+
+    <span class="com">; Preencher WNDCLASSEX</span>
+    <span class="kw">mov</span>   <span class="tp">dword</span> [wndclass], <span class="num">80</span>          <span class="com">; cbSize</span>
+    <span class="kw">mov</span>   <span class="tp">dword</span> [wndclass + <span class="num">4</span>], <span class="num">3</span>       <span class="com">; style = CS_HREDRAW|CS_VREDRAW</span>
+    <span class="kw">lea</span>   rax, [<span class="kw">rel</span> WndProc]
+    <span class="kw">mov</span>   [wndclass + <span class="num">16</span>], rax          <span class="com">; lpfnWndProc</span>
+    <span class="kw">lea</span>   rax, [<span class="kw">rel</span> class_name]
+    <span class="kw">mov</span>   [wndclass + <span class="num">64</span>], rax          <span class="com">; lpszClassName</span>
+
+    <span class="com">; Cursor: IDC_ARROW</span>
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">mov</span>   edx, IDC_ARROW
+    <span class="kw">call</span>  LoadCursorA
+    <span class="kw">mov</span>   [wndclass + <span class="num">48</span>], rax          <span class="com">; hCursor</span>
+
+    <span class="com">; RegisterClassExA(&wndclass)</span>
+    <span class="kw">lea</span>   rcx, [<span class="kw">rel</span> wndclass]
+    <span class="kw">call</span>  RegisterClassExA
+
+    <span class="com">; CreateWindowExA(0, class, title, style, x, y, w, h, parent, menu, inst, param)</span>
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">lea</span>   rdx, [<span class="kw">rel</span> class_name]
+    <span class="kw">lea</span>   r8,  [<span class="kw">rel</span> win_title]
+    <span class="kw">mov</span>   r9d, WS_OVERLAPPEDWINDOW
+    <span class="kw">push</span>  <span class="num">0</span>   <span class="kw">push</span> <span class="num">0</span>              <span class="com">; lpParam, hMenu</span>
+    <span class="kw">push</span>  [wndclass + <span class="num">8</span>]          <span class="com">; hInstance</span>
+    <span class="kw">push</span>  <span class="num">480</span>  <span class="kw">push</span> <span class="num">640</span>           <span class="com">; h, w</span>
+    <span class="kw">push</span>  <span class="num">100</span>  <span class="kw">push</span> <span class="num">100</span>           <span class="com">; y, x</span>
+    <span class="kw">call</span>  CreateWindowExA
+    <span class="kw">add</span>   rsp, <span class="num">64</span>                  <span class="com">; limpar 8 parâmetros de stack</span>
+    <span class="kw">mov</span>   [hwnd], rax
+
+    <span class="com">; ShowWindow + UpdateWindow</span>
+    <span class="kw">mov</span>   rcx, rax
+    <span class="kw">mov</span>   edx, SW_SHOW
+    <span class="kw">call</span>  ShowWindow
+    <span class="kw">mov</span>   rcx, [hwnd]
+    <span class="kw">call</span>  UpdateWindow
+
+    <span class="com">; Message loop</span>
+.msg_loop:
+    <span class="kw">lea</span>   rcx, [<span class="kw">rel</span> msg]
+    <span class="kw">xor</span>   edx, edx
+    <span class="kw">xor</span>   r8d, r8d
+    <span class="kw">xor</span>   r9d, r9d
+    <span class="kw">call</span>  GetMessageA
+    <span class="kw">test</span>  eax, eax
+    <span class="kw">jz</span>    .sair
+    <span class="kw">lea</span>   rcx, [<span class="kw">rel</span> msg]
+    <span class="kw">call</span>  TranslateMessage
+    <span class="kw">lea</span>   rcx, [<span class="kw">rel</span> msg]
+    <span class="kw">call</span>  DispatchMessageA
+    <span class="kw">jmp</span>   .msg_loop
+.sair:
+    <span class="kw">xor</span>   ecx, ecx
+    <span class="kw">call</span>  ExitProcess</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="x11">X11 no Linux: janela via libX11</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">NASM x86-64/Linux &mdash; Janela X11 com libX11</div>
+          <pre class="example"><span class="com">; Janela X11 usando libX11 (protocolo X Window System)</span>
+<span class="com">; nasm -f elf64 x11_janela.asm -o x11_janela.o</span>
+<span class="com">; gcc x11_janela.o -lX11 -o x11_janela</span>
+
+<span class="kw">extern</span> XOpenDisplay, XDefaultScreen, XRootWindow
+<span class="kw">extern</span> XCreateSimpleWindow, XSelectInput, XMapWindow
+<span class="kw">extern</span> XNextEvent, XCloseDisplay, XDrawString
+<span class="kw">extern</span> XDefaultGC, XStoreName
+
+KeyPressMask     <span class="kw">equ</span> (<span class="num">1</span> &lt;&lt; <span class="num">0</span>)
+ExposureMask     <span class="kw">equ</span> (<span class="num">1</span> &lt;&lt; <span class="num">15</span>)
+Expose           <span class="kw">equ</span> <span class="num">12</span>
+KeyPress         <span class="kw">equ</span> <span class="num">2</span>
+
+<span class="kw">section</span> .data
+    disp_name <span class="fn">db</span> <span class="str">":0"</span>, <span class="num">0</span>
+    titulo    <span class="fn">db</span> <span class="str">"Janela Assembly X11"</span>, <span class="num">0</span>
+    texto     <span class="fn">db</span> <span class="str">"Ola do Assembly!"</span>
+    .len      <span class="kw">equ</span> $ - texto
+
+<span class="kw">section</span> .bss
+    display   <span class="fn">resq</span> <span class="num">1</span>
+    janela    <span class="fn">resq</span> <span class="num">1</span>
+    screen    <span class="fn">resd</span> <span class="num">1</span>
+    xevent    <span class="fn">resb</span> <span class="num">192</span>      <span class="com">; XEvent = 192 bytes</span>
+
+<span class="kw">global</span> main
+<span class="kw">section</span> .text
+main:
+    <span class="kw">push</span>  rbp
+    <span class="kw">mov</span>   rbp, rsp
+
+    <span class="com">; XOpenDisplay(":0")</span>
+    <span class="kw">lea</span>   rdi, [<span class="kw">rel</span> disp_name]
+    <span class="kw">call</span>  XOpenDisplay
+    <span class="kw">mov</span>   [display], rax
+
+    <span class="com">; screen = XDefaultScreen(display)</span>
+    <span class="kw">mov</span>   rdi, rax
+    <span class="kw">call</span>  XDefaultScreen
+    <span class="kw">mov</span>   [screen], eax
+
+    <span class="com">; root = XRootWindow(display, screen)</span>
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   esi, [screen]
+    <span class="kw">call</span>  XRootWindow         <span class="com">; rax = root window</span>
+
+    <span class="com">; XCreateSimpleWindow(display, root, x, y, w, h, border, bg, fg)</span>
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, rax
+    <span class="kw">xor</span>   edx, edx            <span class="com">; x=0</span>
+    <span class="kw">xor</span>   ecx, ecx            <span class="com">; y=0</span>
+    <span class="kw">push</span>  <span class="num">0xFFFFFF</span>            <span class="com">; background = branco</span>
+    <span class="kw">push</span>  <span class="num">1</span>                   <span class="com">; border=1</span>
+    <span class="kw">push</span>  <span class="num">300</span>                 <span class="com">; h=300</span>
+    <span class="kw">push</span>  <span class="num">400</span>                 <span class="com">; w=400</span>
+    <span class="kw">call</span>  XCreateSimpleWindow
+    <span class="kw">add</span>   rsp, <span class="num">32</span>
+    <span class="kw">mov</span>   [janela], rax
+
+    <span class="com">; Título, eventos, mapear</span>
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, [janela]
+    <span class="kw">lea</span>   rdx, [<span class="kw">rel</span> titulo]
+    <span class="kw">call</span>  XStoreName
+
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, [janela]
+    <span class="kw">mov</span>   edx, ExposureMask | KeyPressMask
+    <span class="kw">call</span>  XSelectInput
+
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, [janela]
+    <span class="kw">call</span>  XMapWindow
+
+    <span class="com">; Event loop</span>
+.loop:
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">lea</span>   rsi, [<span class="kw">rel</span> xevent]
+    <span class="kw">call</span>  XNextEvent
+    <span class="kw">mov</span>   eax, [xevent]         <span class="com">; xevent.type</span>
+    <span class="kw">cmp</span>   eax, Expose
+    <span class="kw">jne</span>   .check_key
+    <span class="com">; Desenhar texto</span>
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, [janela]
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">mov</span>   rsi, [janela]
+    <span class="kw">mov</span>   rdx, [display]       <span class="com">; gc</span>
+    <span class="kw">mov</span>   ecx, <span class="num">50</span>              <span class="com">; x</span>
+    <span class="kw">mov</span>   r8d, <span class="num">50</span>              <span class="com">; y</span>
+    <span class="kw">lea</span>   r9,  [<span class="kw">rel</span> texto]
+    <span class="kw">push</span>  texto.len
+    <span class="kw">call</span>  XDrawString
+    <span class="kw">add</span>   rsp, <span class="num">8</span>
+.check_key:
+    <span class="kw">cmp</span>   eax, KeyPress
+    <span class="kw">jne</span>   .loop
+
+    <span class="com">; Fechar ao pressionar tecla</span>
+    <span class="kw">mov</span>   rdi, [display]
+    <span class="kw">call</span>  XCloseDisplay
+    <span class="kw">pop</span>   rbp
+    <span class="kw">xor</span>   eax, eax
+    <span class="kw">ret</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>Creating a Window — Win32 API</strong>. Microsoft Docs, 2024. Disponível em: &lt;https://learn.microsoft.com/en-us/windows/win32/winmsg/creating-a-window&gt;. Acesso em: 2025.</li>
+            <li>X.ORG FOUNDATION. <strong>Xlib — C Language X Interface</strong>. 2024. Disponível em: &lt;https://x.org/releases/current/doc/libX11/libX11/libX11.html&gt;. Acesso em: 2025.</li>
+            <li>PIETREK, Matt. <strong>Peering Inside the PE: A Tour of the Win32 Portable Executable File Format</strong>. Microsoft Systems Journal, 1994.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Web e WebAssembly</a></li>
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Assembly — Jogos</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em aplicações gráficas modernas, o uso realista de assembly está em <strong>shaders de software</strong> (blitting, alpha-blending, conversão de formatos de pixel) e <strong>rotinas de compositing</strong> com AVX2 — por exemplo, misturar dois buffers RGBA de 1920×1080 com <code>vpmaddubsw</code> pode ser 6–8× mais rápido que o equivalente em C não-vetorizado.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

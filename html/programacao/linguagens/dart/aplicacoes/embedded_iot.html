@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Dart para Embedded e IoT: dart_periphery para GPIO/I2C/SPI/UART no Raspberry Pi, MQTT com mqtt_client, Flutter para paineis embarcados e comunicacao serial." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Dart — Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Dart &mdash; Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="dart" aria-hidden="true"></span></div>
+          <h1>Dart — Embedded e IoT</h1>
+          <p>Dart pode ser usado em sistemas embarcados Linux (Raspberry Pi, BeagleBone, Toradex) via <strong>dart_periphery</strong> para controlar GPIO, I2C, SPI e UART. Para IoT, <strong>mqtt_client</strong> implementa MQTT 3/5 com wss e QoS. <strong>Flutter Embedded</strong> permite criar paineis HMI touch-screen diretamente no <code>flutter-pi</code> sem X11/Wayland, rodando direto no framebuffer Linux.</p>
+        </div>
+        <p class="intro-highlight">
+          <strong>dart_periphery</strong> usa <code>dart:ffi</code> para chamar a biblioteca C <code>c-periphery</code> diretamente — sem processos filhos, sem latencia de subprocess, acesso direto aos drivers Linux do kernel via <code>/dev/</code> e <code>/sys/</code>.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gpio">GPIO — Saidas e Entradas Digitais</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dart_periphery &mdash; GPIO output (LED blink) e input com interrupt</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dart_periphery/dart_periphery.dart'</span>;
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="com">// GPIO 17 como saida (LED)</span>
+  <span class="kw">final</span> led = <span class="tp">GPIO</span>.<span class="fn">advanced</span>(<span class="num">17</span>, <span class="tp">GPIOdirection</span>.gpioDirOut);
+
+  <span class="kw">try</span> {
+    <span class="kw">for</span> (<span class="kw">var</span> i = <span class="num">0</span>; i &lt; <span class="num">10</span>; i++) {
+      led.<span class="fn">write</span>(<span class="kw">true</span>);
+      <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">500</span>));
+      led.<span class="fn">write</span>(<span class="kw">false</span>);
+      <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">500</span>));
+    }
+  } <span class="kw">finally</span> {
+    led.<span class="fn">dispose</span>();
+  }
+}
+
+<span class="com">// GPIO como entrada com deteccao de borda (interrupt)</span>
+<span class="kw">void</span> <span class="fn">botaoInterrupt</span>() {
+  <span class="kw">final</span> btn = <span class="tp">GPIO</span>.<span class="fn">advanced</span>(<span class="num">18</span>, <span class="tp">GPIOdirection</span>.gpioDirIn,
+    edge: <span class="tp">GPIOedge</span>.gpioEdgeBoth);
+
+  print(<span class="str">'Aguardando borda...'</span>);
+
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    <span class="kw">final</span> evento = btn.<span class="fn">readEvent</span>(timeout: <span class="num">10000</span>);  <span class="com">// 10s timeout</span>
+    <span class="kw">if</span> (evento != <span class="kw">null</span>) {
+      print(<span class="str">'Borda ${evento.edge.name} em ${evento.timestamp}ns'</span>);
+      <span class="com">// Debounce simples</span>
+      <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">50</span>));
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="i2c-spi">I2C e SPI — Sensores e Perifericos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dart_periphery &mdash; I2C: sensor BME280 (temperatura, umidade, pressao)</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dart_periphery/dart_periphery.dart'</span>;
+
+<span class="kw">class</span> <span class="tp">BME280</span> {
+  <span class="kw">static</span> <span class="kw">const</span> _addr    = <span class="num">0x76</span>;
+  <span class="kw">static</span> <span class="kw">const</span> _regTemp = <span class="num">0xFA</span>;
+  <span class="kw">static</span> <span class="kw">const</span> _regCtrl  = <span class="num">0xF4</span>;
+
+  <span class="kw">final</span> <span class="tp">I2C</span> _i2c;
+
+  <span class="tp">BME280</span>(this._i2c) {
+    <span class="com">// ctrl_meas: osrs_t=001 osrs_p=001 mode=11 (normal)</span>
+    _i2c.<span class="fn">writeByte</span>(_addr, _regCtrl, <span class="num">0x27</span>);
+    <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">100</span>));
+  }
+
+  <span class="tp">double</span> <span class="kw">get</span> temperatura {
+    <span class="kw">final</span> raw = _i2c.<span class="fn">readBytesReg</span>(_addr, _regTemp, <span class="num">3</span>);
+    <span class="kw">final</span> adc = ((raw[<span class="num">0</span>] &lt;&lt; <span class="num">12</span>) | (raw[<span class="num">1</span>] &lt;&lt; <span class="num">4</span>) | (raw[<span class="num">2</span>] &gt;&gt; <span class="num">4</span>));
+    <span class="kw">return</span> _compensarTemperatura(adc);
+  }
+
+  <span class="tp">double</span> <span class="fn">_compensarTemperatura</span>(<span class="tp">int</span> adc) {
+    <span class="com">// Compensacao conforme datasheet Bosch</span>
+    <span class="kw">final</span> digT1 = _i2c.<span class="fn">readWordReg</span>(_addr, <span class="num">0x88</span>);
+    <span class="kw">final</span> digT2 = _i2c.<span class="fn">readWordReg</span>(_addr, <span class="num">0x8A</span>);
+    <span class="kw">final</span> digT3 = _i2c.<span class="fn">readWordReg</span>(_addr, <span class="num">0x8C</span>);
+    <span class="kw">var</span> var1 = ((adc / <span class="num">16384.0</span>) - (digT1 / <span class="num">1024.0</span>)) * digT2;
+    <span class="kw">var</span> var2 = (adc / <span class="num">131072.0</span> - digT1 / <span class="num">8388608.0</span>);
+    var2     = var2 * var2 * digT3;
+    <span class="kw">return</span> (var1 + var2) / <span class="num">5120.0</span>;
+  }
+
+  <span class="kw">void</span> <span class="fn">fechar</span>() => _i2c.<span class="fn">dispose</span>();
+}
+
+<span class="kw">void</span> <span class="fn">main</span>() {
+  <span class="kw">final</span> i2c = <span class="tp">I2C</span>(<span class="num">1</span>);  <span class="com">// /dev/i2c-1</span>
+  <span class="kw">final</span> sensor = <span class="tp">BME280</span>(i2c);
+
+  <span class="kw">try</span> {
+    <span class="kw">while</span> (<span class="kw">true</span>) {
+      print(<span class="str">'Temperatura: ${sensor.temperatura.toStringAsFixed(2)}°C'</span>);
+      <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">2</span>));
+    }
+  } <span class="kw">finally</span> {
+    sensor.<span class="fn">fechar</span>();
+    i2c.<span class="fn">dispose</span>();
+  }
+}</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dart_periphery &mdash; SPI: display OLED SSD1306</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dart_periphery/dart_periphery.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:typed_data'</span>;
+
+<span class="kw">class</span> <span class="tp">SSD1306</span> {
+  <span class="kw">final</span> <span class="tp">SPI</span>   _spi;
+  <span class="kw">final</span> <span class="tp">GPIO</span>  _dc;   <span class="com">// Data/Command</span>
+  <span class="kw">final</span> <span class="tp">GPIO</span>  _rst;  <span class="com">// Reset</span>
+  <span class="kw">static</span> <span class="kw">const</span> _w = <span class="num">128</span>, _h = <span class="num">64</span>;
+  <span class="kw">final</span> _buffer = <span class="tp">Uint8List</span>(_w * _h ~/ <span class="num">8</span>);
+
+  <span class="tp">SSD1306</span>(this._spi, this._dc, this._rst) {
+    <span class="fn">_inicializar</span>();
+  }
+
+  <span class="kw">void</span> <span class="fn">_cmd</span>(<span class="tp">int</span> cmd) {
+    _dc.<span class="fn">write</span>(<span class="kw">false</span>);
+    _spi.<span class="fn">transfer</span>([cmd]);
+  }
+
+  <span class="kw">void</span> <span class="fn">_inicializar</span>() {
+    _rst.<span class="fn">write</span>(<span class="kw">false</span>); <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">10</span>));
+    _rst.<span class="fn">write</span>(<span class="kw">true</span>);
+    <span class="kw">for</span> (<span class="kw">final</span> c <span class="kw">in</span> [<span class="num">0xAE</span>, <span class="num">0xD5</span>, <span class="num">0x80</span>, <span class="num">0xA8</span>, <span class="num">0x3F</span>, <span class="num">0xD3</span>, <span class="num">0x00</span>, <span class="num">0xAF</span>]) {
+      <span class="fn">_cmd</span>(c);
+    }
+  }
+
+  <span class="kw">void</span> <span class="fn">setPixel</span>(<span class="tp">int</span> x, <span class="tp">int</span> y, <span class="kw">bool</span> ligado) {
+    <span class="kw">if</span> (x &lt; <span class="num">0</span> || x >= _w || y &lt; <span class="num">0</span> || y >= _h) <span class="kw">return</span>;
+    <span class="kw">final</span> idx = x + (y ~/ <span class="num">8</span>) * _w;
+    <span class="kw">if</span> (ligado) {
+      _buffer[idx] |= (<span class="num">1</span> &lt;&lt; (y & <span class="num">7</span>));
+    } <span class="kw">else</span> {
+      _buffer[idx] &= ~(<span class="num">1</span> &lt;&lt; (y & <span class="num">7</span>));
+    }
+  }
+
+  <span class="kw">void</span> <span class="fn">exibir</span>() {
+    _dc.<span class="fn">write</span>(<span class="kw">true</span>);
+    _spi.<span class="fn">transfer</span>(_buffer);
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT — Internet das Coisas</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + mqtt_client &mdash; Publicar e subscrever topicos com QoS</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:mqtt_client/mqtt_client.dart'</span>;
+<span class="kw">import</span> <span class="str">'package:mqtt_client/mqtt_server_client.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:convert'</span>;
+<span class="kw">import</span> <span class="str">'dart:io'</span>;
+
+<span class="kw">class</span> <span class="tp">MqttIoT</span> {
+  <span class="kw">late</span> <span class="tp">MqttServerClient</span> _client;
+  <span class="kw">final</span> <span class="tp">String</span> _host, _clientId;
+
+  <span class="tp">MqttIoT</span>({<span class="kw">required</span> <span class="tp">String</span> host, <span class="kw">required</span> <span class="tp">String</span> clientId})
+    : _host = host, _clientId = clientId;
+
+  <span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">conectar</span>({
+    <span class="tp">String</span>? usuario, <span class="tp">String</span>? senha, <span class="tp">bool</span> tls = <span class="kw">false</span>}) <span class="kw">async</span> {
+    _client = <span class="tp">MqttServerClient</span>.withPort(_host, _clientId, tls ? <span class="num">8883</span> : <span class="num">1883</span>);
+    _client.logging(on: <span class="kw">false</span>);
+    _client.keepAlivePeriod = <span class="num">30</span>;
+    _client.autoReconnect  = <span class="kw">true</span>;
+    _client.onAutoReconnect = () => print(<span class="str">'Reconectando...'</span>);
+
+    <span class="kw">if</span> (tls) {
+      _client.secure = <span class="kw">true</span>;
+      _client.securityContext = <span class="tp">SecurityContext</span>()
+        ..<span class="fn">setTrustedCertificates</span>(<span class="str">'ca.crt'</span>)
+        ..<span class="fn">useCertificateChain</span>(<span class="str">'client.crt'</span>)
+        ..<span class="fn">usePrivateKey</span>(<span class="str">'client.key'</span>);
+    }
+
+    <span class="kw">final</span> connMsg = <span class="tp">MqttConnectMessage</span>()
+      .<span class="fn">withClientIdentifier</span>(_clientId)
+      .<span class="fn">startClean</span>()
+      .<span class="fn">withWillTopic</span>(<span class="str">'dispositivos/$_clientId/status'</span>)
+      .<span class="fn">withWillMessage</span>(<span class="str">'offline'</span>)
+      .<span class="fn">withWillQos</span>(<span class="tp">MqttQos</span>.atLeastOnce);
+
+    <span class="kw">if</span> (usuario != <span class="kw">null</span>) connMsg.<span class="fn">authenticateAs</span>(usuario, senha);
+
+    _client.connectionMessage = connMsg;
+
+    <span class="kw">await</span> _client.<span class="fn">connect</span>(usuario, senha);
+    <span class="kw">if</span> (_client.connectionStatus!.state != <span class="tp">MqttConnectionState</span>.connected) {
+      <span class="kw">throw</span> <span class="tp">Exception</span>(<span class="str">'Falha: ${_client.connectionStatus!.returnCode}'</span>);
+    }
+    print(<span class="str">'Conectado ao broker MQTT!'</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">publicar</span>(<span class="tp">String</span> topico, <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt; payload,
+    {<span class="tp">MqttQos</span> qos = <span class="tp">MqttQos</span>.atMostOnce}) {
+    <span class="kw">final</span> builder = <span class="tp">MqttClientPayloadBuilder</span>()
+      ..<span class="fn">addString</span>(jsonEncode(payload));
+    _client.<span class="fn">publishMessage</span>(topico, qos, builder.payload!, retain: <span class="kw">false</span>);
+  }
+
+  <span class="kw">void</span> <span class="fn">subscrever</span>(<span class="tp">String</span> topico, <span class="kw">void</span> <span class="tp">Function</span>(<span class="tp">String</span>, <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;) handler) {
+    _client.<span class="fn">subscribe</span>(topico, <span class="tp">MqttQos</span>.atLeastOnce);
+    _client.updates!.<span class="fn">listen</span>((events) {
+      <span class="kw">for</span> (<span class="kw">final</span> ev <span class="kw">in</span> events) {
+        <span class="kw">final</span> msg = ev.payload <span class="kw">as</span> <span class="tp">MqttPublishMessage</span>;
+        <span class="kw">final</span> raw = <span class="tp">MqttPublishPayload</span>.<span class="fn">bytesToStringAsString</span>(msg.payload.message);
+        <span class="kw">try</span> {
+          <span class="fn">handler</span>(ev.topic, jsonDecode(raw) <span class="kw">as</span> <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;);
+        } <span class="kw">catch</span> (_) { <span class="com">/* payload nao e JSON */</span> }
+      }
+    });
+  }
+
+  <span class="kw">void</span> <span class="fn">desconectar</span>() => _client.<span class="fn">disconnect</span>();
+}
+
+<span class="com">// Uso: sensor envia telemetria a cada 5s</span>
+<span class="tp">Future</span>&lt;<span class="kw">void</span>&gt; <span class="fn">main</span>() <span class="kw">async</span> {
+  <span class="kw">final</span> mqtt = <span class="tp">MqttIoT</span>(host: <span class="str">'broker.local'</span>, clientId: <span class="str">'sensor-01'</span>);
+  <span class="kw">await</span> mqtt.<span class="fn">conectar</span>(usuario: <span class="str">'iot'</span>, senha: <span class="str">'s3cr3t'</span>, tls: <span class="kw">true</span>);
+
+  mqtt.<span class="fn">subscrever</span>(<span class="str">'atuadores/sensor-01/cmd'</span>, (topico, payload) {
+    print(<span class="str">'Comando recebido: $payload'</span>);
+  });
+
+  <span class="kw">final</span> i2c    = <span class="tp">I2C</span>(<span class="num">1</span>);
+  <span class="kw">final</span> sensor = <span class="tp">BME280</span>(i2c);
+
+  <span class="kw">while</span> (<span class="kw">true</span>) {
+    mqtt.<span class="fn">publicar</span>(<span class="str">'sensores/sensor-01/telemetria'</span>, {
+      <span class="str">'temperatura'</span>: sensor.temperatura,
+      <span class="str">'timestamp'</span>: <span class="tp">DateTime</span>.<span class="fn">now</span>().<span class="fn">toIso8601String</span>(),
+    }, qos: <span class="tp">MqttQos</span>.atLeastOnce);
+    <span class="tp">sleep</span>(<span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">5</span>));
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="uart">UART — Comunicacao Serial</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Dart + dart_periphery &mdash; UART: ler GPS NMEA e modulo Modbus RTU</div>
+          <pre class="example"><span class="kw">import</span> <span class="str">'package:dart_periphery/dart_periphery.dart'</span>;
+<span class="kw">import</span> <span class="str">'dart:typed_data'</span>;
+
+<span class="kw">class</span> <span class="tp">GpsReader</span> {
+  <span class="kw">final</span> <span class="tp">Serial</span> _serial;
+  <span class="kw">final</span> _buffer = <span class="tp">StringBuffer</span>();
+
+  <span class="tp">GpsReader</span>({<span class="tp">String</span> porta = <span class="str">'/dev/ttyAMA0'</span>, <span class="tp">int</span> baud = <span class="num">9600</span>})
+    : _serial = <span class="tp">Serial</span>(porta, <span class="tp">Baudrate</span>.b9600);
+
+  <span class="com">// Le sentencas NMEA ate encontrar GPGGA (posicao)</span>
+  <span class="tp">Future</span>&lt;<span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;?&gt; <span class="fn">lerPosicao</span>({<span class="tp">Duration</span> timeout = <span class="kw">const</span> <span class="tp">Duration</span>(seconds: <span class="num">5</span>)}) <span class="kw">async</span> {
+    <span class="kw">final</span> limite = <span class="tp">DateTime</span>.<span class="fn">now</span>().<span class="fn">add</span>(timeout);
+    <span class="kw">while</span> (<span class="tp">DateTime</span>.<span class="fn">now</span>().<span class="fn">isBefore</span>(limite)) {
+      <span class="kw">if</span> (_serial.<span class="fn">inputWaiting</span>() &gt; <span class="num">0</span>) {
+        <span class="kw">final</span> bytes = _serial.<span class="fn">read</span>(<span class="num">64</span>, timeout: <span class="num">100</span>);
+        _buffer.<span class="fn">write</span>(<span class="tp">String</span>.<span class="fn">fromCharCodes</span>(bytes));
+      }
+      <span class="kw">final</span> linha = _<span class="fn">extrairLinha</span>();
+      <span class="kw">if</span> (linha != <span class="kw">null</span> && linha.<span class="fn">startsWith</span>(<span class="str">r'$GPGGA'</span>)) {
+        <span class="kw">return</span> <span class="fn">_parseGpgga</span>(linha);
+      }
+      <span class="kw">await</span> <span class="tp">Future</span>.<span class="fn">delayed</span>(<span class="kw">const</span> <span class="tp">Duration</span>(milliseconds: <span class="num">50</span>));
+    }
+    <span class="kw">return</span> <span class="kw">null</span>;
+  }
+
+  <span class="tp">String</span>? <span class="fn">_extrairLinha</span>() {
+    <span class="kw">final</span> str = _buffer.<span class="fn">toString</span>();
+    <span class="kw">final</span> nl  = str.<span class="fn">indexOf</span>(<span class="str">'\n'</span>);
+    <span class="kw">if</span> (nl == -<span class="num">1</span>) <span class="kw">return</span> <span class="kw">null</span>;
+    <span class="kw">final</span> linha = str.<span class="fn">substring</span>(<span class="num">0</span>, nl).<span class="fn">trim</span>();
+    _buffer.<span class="fn">clear</span>();
+    _buffer.<span class="fn">write</span>(str.<span class="fn">substring</span>(nl + <span class="num">1</span>));
+    <span class="kw">return</span> linha;
+  }
+
+  <span class="tp">Map</span>&lt;<span class="tp">String</span>, <span class="kw">dynamic</span>&gt;? <span class="fn">_parseGpgga</span>(<span class="tp">String</span> linha) {
+    <span class="kw">final</span> campos = linha.<span class="fn">split</span>(<span class="str">','</span>);
+    <span class="kw">if</span> (campos.length &lt; <span class="num">10</span> || campos[<span class="num">6</span>] == <span class="str">'0'</span>) <span class="kw">return</span> <span class="kw">null</span>;
+    <span class="kw">return</span> {
+      <span class="str">'lat'</span>:  <span class="tp">double</span>.<span class="fn">tryParse</span>(campos[<span class="num">2</span>]),
+      <span class="str">'lon'</span>:  <span class="tp">double</span>.<span class="fn">tryParse</span>(campos[<span class="num">4</span>]),
+      <span class="str">'alt'</span>:  <span class="tp">double</span>.<span class="fn">tryParse</span>(campos[<span class="num">9</span>]),
+      <span class="str">'sats'</span>: <span class="tp">int</span>.<span class="fn">tryParse</span>(campos[<span class="num">7</span>]),
+    };
+  }
+
+  <span class="kw">void</span> <span class="fn">fechar</span>() => _serial.<span class="fn">dispose</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="flutter-pi">Flutter Embedded — flutter-pi no Raspberry Pi</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell &mdash; Instalar e rodar Flutter app no Raspberry Pi sem X11</div>
+          <pre class="example"><span class="com"># Instalar flutter-pi no Raspberry Pi (ARM64)</span>
+sudo apt install cmake libgles2-mesa-dev libdrm-dev libgbm-dev \
+  libsystemd-dev libinput-dev libudev-dev libxkbcommon-dev
+
+git clone --recursive https://github.com/ardera/flutter-pi.git
+cd flutter-pi ; mkdir build ; cd build
+cmake .. ; make -j$(nproc)
+sudo make install
+
+<span class="com"># No host (maquina de desenvolvimento): build do app</span>
+flutter build linux --release  # ou bundle para ARM
+flutter build bundle            # gera flutter_assets/
+
+<span class="com"># Copiar assets para o Pi</span>
+rsync -avz build/flutter_assets/ pi@raspberrypi.local:~/app/
+
+<span class="com"># Rodar no Pi diretamente no framebuffer</span>
+flutter-pi --release ~/app
+
+<span class="com"># Configurar como servico systemd</span>
+cat &gt; /etc/systemd/system/flutter-app.service &lt;&lt;EOF
+[Unit]
+Description=Flutter IoT Dashboard
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/flutter-pi --release /home/pi/app
+Restart=always
+User=pi
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl enable flutter-app
+systemctl start  flutter-app</pre>
+        </div>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 0ms">
+            <h3>Plataformas Suportadas</h3>
+            <p><strong>Raspberry Pi 3/4/5</strong> (ARM32 e ARM64), <strong>BeagleBone</strong>, <strong>Toradex Colibri/Apalis</strong>, qualquer SBC Linux com driver DRM/KMS e OpenGL ES 2.0+</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 100ms">
+            <h3>Display Suportado</h3>
+            <p>HDMI, DSI (ribbon), SPI (via DRM), <strong>touch-screen capacitivo</strong> via libinput — totalmente sem X11 ou Wayland, renderizacao direta no framebuffer</p>
+          </div>
+          <div class="card" data-reveal="slide-up" style="--reveal-delay: 200ms">
+            <h3>Performance</h3>
+            <p>60fps em Raspberry Pi 4 com Impeller (OpenGL ES), uso de CPU/GPU nativo do SoC, ideal para <strong>dashboards industriais</strong>, paineis de controle HMI e kiosks</p>
+          </div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>DART_PERIPHERY. <strong>dart_periphery — GPIO, I2C, SPI, UART for Dart</strong>. Disponível em: &lt;https://pub.dev/packages/dart_periphery&gt;. Acesso em: 2025.</li>
+            <li>MQTT_CLIENT. <strong>mqtt_client — MQTT 3.1/3.1.1/5.0</strong>. Disponível em: &lt;https://pub.dev/packages/mqtt_client&gt;. Acesso em: 2025.</li>
+            <li>ARDERA. <strong>flutter-pi — Flutter for Raspberry Pi</strong>. Disponível em: &lt;https://github.com/ardera/flutter-pi&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — Dados e IA</a></li>
+          <li><a href="gui_desktop.html"><span data-svg="seta-direita" aria-hidden="true"></span> Dart — GUI Desktop</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em sistemas IoT, nunca hardcode credenciais MQTT no codigo. Use variaveis de ambiente ou arquivos de configuracao com permissao <code>600</code> fora do codigo-fonte. Sempre habilite TLS (porta 8883) e autenticacao por certificado de cliente em producao.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

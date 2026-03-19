@@ -1,0 +1,248 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="systemd: unidades de servico, targets, dependencias, journald, timers e comparacao com SysV init — gerenciamento completo de servicos no Linux moderno." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Servicos e systemd | Linux | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="linux"></span>
+          <div>
+            <h1 class="page-title">Servicos e systemd</h1>
+            <p class="page-subtitle">Gerenciamento moderno de servicos, boot, logs e timers no Linux</p>
+          </div>
+        </div>
+        <p class="intro-highlight">O systemd substituiu o SysV init na maioria das distribuicoes a partir de 2012 e se tornou o sistema de init padrao no Linux moderno. Ele nao gerencia apenas servicos: controla toda a sequencia de boot, sistema de log (journald), montagem de sistemas de arquivos, timers, sockets, e muito mais — tudo com paralelizacao e dependencias declarativas.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — SYSTEMCTL ═══════════════════ -->
+      <section id="systemctl">
+        <h2>Comandos systemctl</h2>
+        <p>O <code>systemctl</code> e a interface principal para interagir com o systemd. Com ele voce gerencia o ciclo de vida de qualquer unit (servico, socket, timer, mount, etc.).</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">systemctl — referencia de comandos</div>
+          <pre class="code-block"># Ciclo de vida de um servico
+systemctl start   nginx
+systemctl stop    nginx
+systemctl restart nginx
+systemctl reload  nginx     # recarrega config sem reiniciar (se suportado)
+systemctl status  nginx     # exibe estado, PID, log recente e ativacao
+
+# Habilitar/desabilitar na inicializacao
+systemctl enable  nginx     # cria symlink em /etc/systemd/system/
+systemctl disable nginx
+systemctl enable --now nginx  # habilita E inicia imediatamente
+
+# Inspecao
+systemctl is-active  nginx   # retorna "active" ou "inactive"
+systemctl is-enabled nginx   # retorna "enabled" ou "disabled"
+systemctl list-units --type=service
+systemctl list-units --failed
+systemctl list-unit-files --state=enabled
+
+# Recarregar definicoes apos alterar arquivos de unit
+systemctl daemon-reload
+
+# Editar unit sem alterar o original (cria override em /etc/systemd/system/nginx.service.d/)
+systemctl edit nginx
+
+# Exibir arvore de dependencias
+systemctl list-dependencies nginx</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — UNIT FILE ═══════════════════ -->
+      <section id="unit-file">
+        <h2>Arquivo de Unit (.service)</h2>
+        <p>Uma unit de servico e um arquivo de texto simples que declara como o systemd deve gerenciar aquele processo. Arquivos do sistema ficam em <code>/usr/lib/systemd/system/</code>; customizacoes em <code>/etc/systemd/system/</code> tem precedencia.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/systemd/system/webserver.service — exemplo completo</div>
+          <pre class="code-block">[Unit]
+Description=Servidor Web Hipotetico
+Documentation=https://exemplo.com/docs
+After=network-online.target
+Wants=network-online.target
+Requires=postgresql.service
+
+[Service]
+Type=simple
+User=webuser
+Group=webgroup
+WorkingDirectory=/opt/webserver
+EnvironmentFile=/etc/webserver/env
+ExecStart=/opt/webserver/bin/webserver --config /etc/webserver/config.yaml
+ExecStop=/bin/kill -SIGTERM $MAINPID
+ExecReload=/bin/kill -SIGHUP $MAINPID
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=30s
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target</pre>
+        </div>
+
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">[Unit] — Metadados e Dependencias</h3>
+            <p><code>After</code>: inicia so apos essas units estarem ativas. <code>Requires</code>: falha se a dependencia nao estiver ativa. <code>Wants</code>: tenta iniciar a dependencia mas nao falha se ela nao estiver disponivel.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">[Service] — Execucao</h3>
+            <p><code>Type=simple</code>: o processo principal e o ExecStart. <code>Type=forking</code>: servico estilo daemon que faz fork. <code>Type=notify</code>: daemon envia sd_notify quando pronto. <code>Restart=on-failure</code>: reinicia automaticamente em caso de erro.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">[Install] — Ativacao</h3>
+            <p><code>WantedBy=multi-user.target</code> significa que o servico sera iniciado no runlevel 3 (sem interface grafica). Use <code>graphical.target</code> para servicos que precisam de X11/Wayland.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — TARGETS ═══════════════════ -->
+      <section id="targets-boot">
+        <h2>Targets e Ordem de Boot</h2>
+        <p>Targets sao agrupamentos de units que representam estados do sistema, equivalentes aos runlevels do SysV. O boot segue uma cadeia de dependencias declarativas ate atingir o target padrao.</p>
+
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Target</th>
+                <th>SysV Runlevel</th>
+                <th>Descricao</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>poweroff.target</td><td>0</td><td>Desligar o sistema</td></tr>
+              <tr><td>rescue.target</td><td>1</td><td>Modo de recuperacao — root shell, servicos minimos</td></tr>
+              <tr><td>multi-user.target</td><td>3</td><td>Multiusuario em modo texto — sem interface grafica</td></tr>
+              <tr><td>graphical.target</td><td>5</td><td>Multiusuario com interface grafica (inclui multi-user)</td></tr>
+              <tr><td>sleep.target</td><td>—</td><td>Suspender o sistema (sleep/hibernate)</td></tr>
+              <tr><td>reboot.target</td><td>6</td><td>Reiniciar o sistema</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Gerenciando targets</div>
+          <pre class="code-block"># Ver o target padrao atual
+systemctl get-default
+
+# Definir novo target padrao
+systemctl set-default multi-user.target
+
+# Trocar de target imediatamente (sessao atual)
+systemctl isolate rescue.target
+
+# Sequencia de boot resumida:
+# 1. Firmware (UEFI/BIOS) — POST, selecao de disco
+# 2. Bootloader (GRUB2) — carrega kernel e initramfs
+# 3. Kernel — inicializa hardware, monta /
+# 4. initramfs — monta filesystems criticos
+# 5. PID 1 = /sbin/init (systemd) — lanca primeiro processo
+# 6. default.target — ativa todos os units necessarios
+# 7. Login manager ou getty</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — JOURNALD ═══════════════════ -->
+      <section id="journald-logs">
+        <h2>journald e Logs</h2>
+        <p>O <code>journald</code> e o sistema de log do systemd. Armazena mensagens de todos os servicos, o kernel e o boot em formato binario indexado, permitindo filtros poderosos.</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">journalctl — exemplos de consulta</div>
+          <pre class="code-block"># Todos os logs (paginado)
+journalctl
+
+# Logs de um servico especifico
+journalctl -u nginx
+journalctl -u nginx -u postgresql
+
+# Seguir logs em tempo real (como tail -f)
+journalctl -f
+journalctl -fu nginx
+
+# Logs do boot atual
+journalctl -b
+
+# Logs de dois boots atras
+journalctl -b -2
+
+# Apenas mensagens do kernel
+journalctl -k
+
+# Filtrar por prioridade
+journalctl -p err      # apenas erros e acima
+journalctl -p warning
+
+# Filtrar por tempo
+journalctl --since "2024-01-15 10:00:00"
+journalctl --since "2 hours ago" --until "1 hour ago"
+
+# Saida sem paginacao (para scripts)
+journalctl -u nginx --no-pager
+
+# Formato JSON para processamento
+journalctl -u nginx -o json-pretty | head -50
+
+# Espaco em disco utilizado pelos logs
+journalctl --disk-usage</pre>
+        </div>
+
+        <p>Por padrao os logs sao volateis (em <code>/run/log/journal</code>) e perdidos no reboot. Para tornar persistentes, crie o diretorio e defina o armazenamento em <code>/etc/systemd/journald.conf</code>:</p>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">/etc/systemd/journald.conf — persistencia e limites</div>
+          <pre class="code-block">[Journal]
+Storage=persistent         # auto | volatile | persistent | none
+Compress=yes
+SystemMaxUse=500M          # limite total em disco
+SystemKeepFree=100M        # espaco minimo livre a manter
+MaxRetentionSec=1month     # apagar logs mais antigos que 1 mes
+MaxFileSec=1week           # rotacionar arquivos apos 1 semana</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/linux/processos_linux.html">Processos no Linux</a> para entender a relacao entre processos e units, e <a href="/html/sistemas/linux/logs_linux.html">Logs no Linux</a> para aprofundar no sistema de logs alem do journald.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"systemd nao e apenas um init — e o gerenciador de sistema completo que transformou como o Linux moderno inicializa e supervisiona seus servicos."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

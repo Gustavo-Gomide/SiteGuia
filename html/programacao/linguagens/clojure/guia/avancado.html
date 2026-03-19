@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Clojure Avançado: macros com defmacro, concorrência com atom/ref/agent, STM dosync, transducers, protocolos e multimethods, laziness, core.async, specs com clojure.spec." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Clojure — Avançado | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>Clojure &mdash; Avançado</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="clojure" aria-hidden="true"></span></div>
+          <h1>Clojure — Avançado</h1>
+          <p>O nível avançado de Clojure revela os seus superpoderes: <strong>macros homoiconicas</strong> que transformam código em tempo de compilação, o modelo de <strong>concorrência baseado em identidade/valor</strong>, <strong>transducers</strong> para transformação sem alocação intermediária, e <strong>core.async</strong> para programação assíncrona com canais.</p>
+        </div>
+        <p class="intro-highlight">
+          A frase de Rich Hickey resume o modelo de concorrência do Clojure: "State is a value at a time. An identity is an entity with a succession of values over time." — <code>atom</code>, <code>ref</code> e <code>agent</code> modelam diferentes políticas de atualização de identidade.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="macros">Macros — Metaprogramação Homoicônica</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">defmacro — criar novas formas sintáticas</div>
+          <pre class="example"><span class="com">; ── defmacro — código é dado, dado é código ──────────────────</span>
+(<span class="kw">defmacro</span> <span class="fn">unless</span>
+  <span class="str">"Executa body apenas se cond for falso."</span>
+  [cond &amp; body]
+  `(<span class="kw">when</span> (<span class="fn">not</span> ~cond) ~@body))      <span class="com">; ` = syntax-quote ; ~ = unquote</span>
+
+(<span class="fn">unless</span> (<span class="fn">empty?</span> lista)
+  (<span class="fn">println</span> <span class="str">"lista tem elementos"</span>))
+
+<span class="com">; ── macroexpand — ver o código gerado ────────────────────────</span>
+(<span class="fn">macroexpand</span> '(<span class="fn">unless</span> false (<span class="fn">println</span> <span class="str">"ok"</span>)))
+<span class="com">; => (clojure.core/when (clojure.core/not false) (println "ok"))</span>
+
+<span class="com">; ── Macro com gensym para evitar symbol capture ──────────────</span>
+(<span class="kw">defmacro</span> <span class="fn">bench</span> [expr]
+  `(<span class="kw">let</span> [start# (System/nanoTime)
+          result# ~expr
+          elapsed# (<span class="fn">-</span> (System/nanoTime) start#)]
+     (<span class="fn">println</span> <span class="str">"Tempo:"</span> (<span class="fn">/</span> elapsed# <span class="num">1e6</span>) <span class="str">"ms"</span>)
+     result#))    <span class="com">; start# gera nome único — sem conflito</span>
+
+(<span class="fn">bench</span> (<span class="fn">reduce</span> + (<span class="fn">range</span> <span class="num">1000000</span>)))
+
+<span class="com">; ── Threading macros — composição legível ────────────────────</span>
+(<span class="com">; ->  threading: insere resultado como PRIMEIRO argumento</span>)
+(-&gt; dados
+    (<span class="fn">assoc</span> <span class="str">:ativo</span> <span class="kw">true</span>)
+    (<span class="fn">update</span> <span class="str">:nome</span> clojure.string/upper-case)
+    (<span class="fn">dissoc</span> <span class="str">:senha</span>))
+
+<span class="com">; ->> threading: insere resultado como ÚLTIMO argumento</span>
+(-&gt;&gt; (range <span class="num">100</span>)
+     (<span class="fn">filter</span> even?)
+     (<span class="fn">map</span> #(* % %))
+     (<span class="fn">take</span> <span class="num">5</span>)
+     (<span class="fn">reduce</span> +))   <span class="com">; => 0+4+16+36+64 = 120</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="concorrencia">Concorrência — atom, ref, agent</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">atom, ref/dosync e agent — três modelos de estado</div>
+          <pre class="example"><span class="com">; ── atom — estado independente, swap! é atômico ─────────────</span>
+(<span class="kw">def</span> <span class="fn">contador</span> (atom <span class="num">0</span>))
+
+(swap! contador inc)         <span class="com">; CAS — compare-and-swap seguro</span>
+(swap! contador + <span class="num">10</span>)       <span class="com">; => aplica (+ @contador 10)</span>
+(reset! contador <span class="num">0</span>)         <span class="com">; forçar valor</span>
+@contador                    <span class="com">; deref — ler valor atual</span>
+
+<span class="com">; Múltiplas threads seguras via atom</span>
+(<span class="kw">def</span> <span class="fn">cache</span> (atom {}))
+(<span class="kw">defn</span> <span class="fn">buscar-com-cache</span> [id]
+  (<span class="kw">or</span> (<span class="fn">get</span> @cache id)
+      (<span class="kw">let</span> [resultado (<span class="fn">buscar-banco</span> id)]
+        (swap! cache assoc id resultado)
+        resultado)))
+
+<span class="com">; ── ref — transações coordenadas (STM) ───────────────────────</span>
+(<span class="kw">def</span> <span class="fn">conta-a</span> (ref <span class="num">1000</span>))
+(<span class="kw">def</span> <span class="fn">conta-b</span> (ref <span class="num">500</span>))
+
+(<span class="kw">defn</span> <span class="fn">transferir</span> [de para valor]
+  (<span class="fn">dosync</span>                      <span class="com">; transação atômica</span>
+    (alter de    - valor)
+    (alter para  + valor)))    <span class="com">; ambos ou nenhum</span>
+
+(<span class="fn">transferir</span> conta-a conta-b <span class="num">200</span>)
+@conta-a  <span class="com">; => 800</span>
+@conta-b  <span class="com">; => 700</span>
+
+<span class="com">; ── agent — estado assíncrono ─────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">log-agent</span> (agent []))
+(send log-agent conj {:tipo :info :msg <span class="str">"servidor iniciado"</span>})
+(send log-agent conj {:tipo :info :msg <span class="str">"conexão aceita"</span>})
+(await log-agent)   <span class="com">; bloquear até agente processar</span>
+@log-agent</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="transducers">Transducers — Transformação Sem Alocação</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Transducers — composição eficiente de transformações</div>
+          <pre class="example"><span class="com">; Transducer = transformação sem contexto de coleção</span>
+<span class="com">; Sem xf: cada etapa cria uma coleção intermediária</span>
+(-&gt;&gt; dados
+     (<span class="fn">filter</span> pred?)        <span class="com">; aloca nova seq</span>
+     (<span class="fn">map</span> transform)       <span class="com">; aloca nova seq</span>
+     (<span class="fn">take</span> <span class="num">10</span>))            <span class="com">; aloca nova seq</span>
+
+<span class="com">; Com xf: zero alocações intermediárias</span>
+(<span class="kw">def</span> <span class="fn">xf</span>
+  (<span class="fn">comp</span>
+    (<span class="fn">filter</span> pred?)        <span class="com">; retorna transducer</span>
+    (<span class="fn">map</span> transform)       <span class="com">; retorna transducer</span>
+    (<span class="fn">take</span> <span class="num">10</span>)))
+
+<span class="com">; Aplicar ao contexto que quiser</span>
+(<span class="fn">transduce</span> xf conj [] dados)      <span class="com">; => vector</span>
+(<span class="fn">transduce</span> xf + <span class="num">0</span> dados)          <span class="com">; => soma</span>
+(<span class="fn">sequence</span> xf dados)               <span class="com">; => lazy seq</span>
+(<span class="fn">into</span> [] xf dados)                <span class="com">; => vector eficiente</span>
+
+<span class="com">; Channel com transducer (core.async)</span>
+(<span class="fn">chan</span> <span class="num">10</span> xf)   <span class="com">; canal que aplica xf a cada valor</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="protocolos">Protocolos e Multimethods — Polimorfismo</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">defprotocol, defrecord, defmulti/defmethod</div>
+          <pre class="example"><span class="com">; ── Protocol — interface abstrata ────────────────────────────</span>
+(<span class="kw">defprotocol</span> <span class="fn">Serializable</span>
+  (<span class="fn">to-json</span> [this])
+  (<span class="fn">to-edn</span>  [this]))
+
+<span class="com">; ── defrecord — estrutura imutável com protocol ──────────────</span>
+(<span class="kw">defrecord</span> <span class="fn">Usuario</span> [id nome email]
+  Serializable
+  (<span class="fn">to-json</span> [this]
+    (<span class="fn">str</span> <span class="str">"{\"id\":"</span> id <span class="str">",\"nome\":\""</span> nome <span class="str">"\",\"email\":\""</span> email <span class="str">"\"}"</span>))
+  (<span class="fn">to-edn</span> [this]
+    (<span class="fn">pr-str</span> (<span class="fn">into</span> {} this))))
+
+(<span class="kw">def</span> <span class="fn">u</span> (Usuario. <span class="num">1</span> <span class="str">"Maria"</span> <span class="str">"maria@ex.com"</span>))
+(<span class="fn">to-json</span> u)   <span class="com">; => "{\"id\":1,\"nome\":\"Maria\",...}"</span>
+
+<span class="com">; ── defmulti — dispatch por função arbitrária ────────────────</span>
+(<span class="kw">defmulti</span>  <span class="fn">area</span> <span class="str">:tipo</span>)   <span class="com">; dispatch pela chave :tipo</span>
+(<span class="kw">defmethod</span> <span class="fn">area</span> <span class="str">:circulo</span>  [{:keys [raio]}]  (* Math/PI raio raio))
+(<span class="kw">defmethod</span> <span class="fn">area</span> <span class="str">:retangulo</span> [{:keys [l a]}]   (* l a))
+(<span class="kw">defmethod</span> <span class="fn">area</span> <span class="str">:default</span>   [_]  0)
+
+(<span class="fn">area</span> {<span class="str">:tipo</span> <span class="str">:circulo</span>   <span class="str">:raio</span> <span class="num">5</span>})      <span class="com">; => 78.539...</span>
+(<span class="fn">area</span> {<span class="str">:tipo</span> <span class="str">:retangulo</span> <span class="str">:l</span> <span class="num">4</span> <span class="str">:a</span> <span class="num">3</span>})   <span class="com">; => 12</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="core-async">core.async — Canais e Go Blocks</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">core.async — CSP (Communicating Sequential Processes)</div>
+          <pre class="example">(<span class="fn">require</span> '[clojure.core.async <span class="str">:as</span> async <span class="str">:refer</span> [chan go &lt;! &gt;! close!]])
+
+<span class="com">; ── Canal simples ─────────────────────────────────────────────</span>
+(<span class="kw">def</span> <span class="fn">ch</span> (chan <span class="num">10</span>))   <span class="com">; canal com buffer de 10</span>
+
+<span class="com">; go block — goroutine leve</span>
+(go
+  (&gt;! ch <span class="str">"mensagem 1"</span>)   <span class="com">; park se canal cheio</span>
+  (&gt;! ch <span class="str">"mensagem 2"</span>))
+
+(go
+  (<span class="kw">let</span> [msg (&lt;! ch)]    <span class="com">; park se canal vazio</span>
+    (<span class="fn">println</span> <span class="str">"Recebido:"</span> msg)))
+
+<span class="com">; ── pipeline — processar com paralelismo controlado ───────────</span>
+(<span class="fn">async/pipeline</span>
+  <span class="num">4</span>                           <span class="com">; 4 workers paralelos</span>
+  saida-ch
+  (<span class="fn">map</span> processar)
+  entrada-ch)
+
+<span class="com">; ── timeout e select ─────────────────────────────────────────</span>
+(go
+  (<span class="kw">let</span> [[v port] (async/alts! [ch (async/timeout <span class="num">1000</span>)])]
+    (<span class="kw">if</span> (= port ch)
+      (<span class="fn">println</span> <span class="str">"Recebido:"</span> v)
+      (<span class="fn">println</span> <span class="str">"Timeout após 1s"</span>))))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>HICKEY, Rich. <strong>Are We There Yet?</strong> JVM Language Summit, 2009. Disponível em: &lt;https://www.infoq.com/presentations/Are-We-There-Yet-Rich-Hickey&gt;. Acesso em: 2025.</li>
+            <li>Clojure.org. <strong>Transducers Reference</strong>. Disponível em: &lt;https://clojure.org/reference/transducers&gt;. Acesso em: 2025.</li>
+            <li>Clojure.org. <strong>core.async Guide</strong>. Disponível em: &lt;https://clojure.org/guides/async_walkthrough&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="fundamentos.html"><span data-svg="seta-direita" aria-hidden="true"></span> Fundamentos do Clojure</a></li>
+          <li><a href="ecossistema_tooling.html"><span data-svg="seta-direita" aria-hidden="true"></span> Ecossistema e Tooling</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> <strong>Transducers</strong> resolvem um problema real de performance: um pipeline <code>(-&gt;&gt; dados (filter f) (map g) (take 10))</code> cria 3 coleções intermediárias. Com transducers — <code>(comp (filter f) (map g) (take 10))</code> — o pipeline é executado em uma única passagem, com uma única alocação de resultado. Para processar arquivos de 1GB linha a linha, a diferença é entre caber na memória e não caber.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

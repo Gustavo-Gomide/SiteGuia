@@ -1,0 +1,205 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Drivers: o que são, tipos (caracter, bloco, rede), modelo de driver no Linux (kernel modules), como carregar/descarregar módulos e debugging de drivers." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Drivers de Dispositivo | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">Drivers de Dispositivo</h1>
+            <p class="page-subtitle">A cola entre kernel genérico e hardware específico — módulos, tipos e debugging</p>
+          </div>
+        </div>
+        <p class="intro-highlight">Drivers são a cola entre o kernel genérico e hardware específico. Um driver traduz operações abstratas como <code>read()</code> e <code>write()</code> nos comandos concretos que o controlador do dispositivo entende. Um driver ruim rodando em kernel space pode travar o sistema inteiro com um kernel panic — por isso a qualidade e revisão de drivers são críticas.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — TIPOS DE DISPOSITIVOS ═══════════════════ -->
+      <section id="tipos">
+        <h2>Tipos de Dispositivos</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Interface de acesso</th>
+                <th>Entrada em /dev</th>
+                <th>Syscalls aplicáveis</th>
+                <th>Exemplos</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Char Device</td><td>Byte a byte, sem buffer de bloco</td><td>Sim (c major:minor)</td><td>open, read, write, ioctl, mmap</td><td>/dev/tty, /dev/null, /dev/random, /dev/urandom, /dev/snd/*</td></tr>
+              <tr><td>Block Device</td><td>Acesso por blocos (512B–4KB), com buffer de I/O</td><td>Sim (b major:minor)</td><td>open, read, write, ioctl, lseek</td><td>/dev/sda, /dev/nvme0n1, /dev/mmcblk0</td></tr>
+              <tr><td>Network Device</td><td>Acesso por pacotes (frames/datagramas); sem entrada em /dev</td><td>Nao (interface de rede)</td><td>socket, send, recv, ioctl (SIOCGIFADDR…)</td><td>eth0, wlan0, lo, docker0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — MÓDULOS DO KERNEL ═══════════════════ -->
+      <section id="modulos">
+        <h2>Módulos do Kernel Linux</h2>
+        <p>Drivers Linux são compilados como <strong>Kernel Objects</strong> (<code>.ko</code>) — módulos carregáveis e descarregáveis em tempo de execução sem precisar recompilar ou reiniciar o kernel. Isso mantém o kernel base pequeno e permite atualizar drivers sem boot.</p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">bash — gerenciamento de módulos</div>
+          <pre class="code-block"># Listar módulos carregados (nome, tamanho, uso, dependentes)
+lsmod
+
+# Informações sobre um módulo específico
+modinfo iwlwifi
+# filename:       /lib/modules/6.8.0/kernel/drivers/net/wireless/intel/iwlwifi/iwlwifi.ko
+# description:    Intel(R) Wireless WiFi driver for Linux
+# depends:        cfg80211
+# vermagic:       6.8.0-52-generic SMP preempt
+
+# Carregar módulo com dependências resolvidas automaticamente
+modprobe iwlwifi
+
+# Descarregar módulo (falha se em uso)
+modprobe -r iwlwifi
+
+# Inserir módulo manualmente (sem resolver dependências)
+insmod /path/to/meudriver.ko
+
+# Remover módulo manualmente
+rmmod meudriver
+
+# Verificar módulos a carregar automaticamente no boot
+cat /etc/modules
+
+# Listar todos os módulos via /proc
+cat /proc/modules | head -10
+
+# Eventos de dispositivo em tempo real (plugar/desplugar USB)
+udevadm monitor</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — ESTRUTURA DE UM DRIVER ═══════════════════ -->
+      <section id="estrutura">
+        <h2>Estrutura de um Driver de Char (simplificado)</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C — esqueleto de driver de char device Linux</div>
+          <pre class="code-block">#include &lt;linux/module.h&gt;
+#include &lt;linux/fs.h&gt;
+#include &lt;linux/uaccess.h&gt;
+
+#define DEVICE_NAME "meuchar"
+#define MAJOR_NUM 240
+
+// Implementação das operações de arquivo
+static ssize_t dev_read(struct file *f, char __user *buf,
+                        size_t len, loff_t *off) {
+    char msg[] = "ola do driver\n";
+    size_t msg_len = strlen(msg);
+    if (*off >= msg_len) return 0;            // EOF
+    if (copy_to_user(buf, msg + *off, msg_len))
+        return -EFAULT;                        // erro ao copiar para user space
+    *off += msg_len;
+    return msg_len;
+}
+
+static ssize_t dev_write(struct file *f, const char __user *buf,
+                         size_t len, loff_t *off) {
+    printk(KERN_INFO "meuchar: %zu bytes recebidos\n", len);
+    return len;
+}
+
+// Tabela de operações — VFS consulta esta struct para cada syscall
+static struct file_operations fops = {
+    .owner = THIS_MODULE,
+    .read  = dev_read,
+    .write = dev_write,
+};
+
+// Chamado ao carregar o módulo (insmod / modprobe)
+static int __init meuchar_init(void) {
+    int ret = register_chrdev(MAJOR_NUM, DEVICE_NAME, &fops);
+    if (ret &lt; 0) {
+        printk(KERN_ALERT "Falha ao registrar char device: %d\n", ret);
+        return ret;
+    }
+    printk(KERN_INFO "meuchar: driver carregado (major %d)\n", MAJOR_NUM);
+    return 0;
+}
+
+// Chamado ao descarregar o módulo (rmmod)
+static void __exit meuchar_exit(void) {
+    unregister_chrdev(MAJOR_NUM, DEVICE_NAME);
+    printk(KERN_INFO "meuchar: driver descarregado\n");
+}
+
+module_init(meuchar_init);
+module_exit(meuchar_exit);
+
+MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Exemplo");
+MODULE_DESCRIPTION("Driver de char device minimo");</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — DEBUGGING ═══════════════════ -->
+      <section id="debugging">
+        <h2>Debugging e Problemas de Drivers</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">dmesg e journalctl -k</h3>
+            <p>Logs do kernel com timestamps. Todo <code>printk()</code> do driver aparece aqui. <code>dmesg -w</code> monitora em tempo real. <code>journalctl -k -f</code> faz o mesmo com integração ao systemd.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Kernel Oops e Panic</h3>
+            <p>Um <em>oops</em> é um erro recuperável no kernel (null pointer deref em driver): o kernel registra call stack e tenta continuar. Um <em>panic</em> é fatal: o kernel para. Ambos geram registros detalhados para post-mortem com <code>decode_stacktrace.sh</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">debugfs e /sys/kernel/debug</h3>
+            <p>Drivers podem expor variáveis internas via debugfs, acessível em <code>/sys/kernel/debug/</code>. Permite inspecionar estados internos do driver em tempo real sem recompilar. Montado com <code>mount -t debugfs none /sys/kernel/debug</code>.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">DKMS — Dynamic Kernel Module Support</h3>
+            <p>Framework que recompila automaticamente módulos out-of-tree (drivers fora do kernel oficial) após atualização do kernel. Usado por drivers NVIDIA, VirtualBox, ZFS on Linux. Evita que uma atualização de kernel quebre drivers de terceiros.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/entrada_saida/io_hardware.html">I/O — Hardware</a> e <a href="/html/sistemas/entrada_saida/io_software.html">I/O — Software</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"Um driver é o único código que um bug pode derrubar não apenas um processo, mas o sistema inteiro — essa responsabilidade exige código impecável."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

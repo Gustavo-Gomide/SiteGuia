@@ -1,0 +1,159 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Prototype: padrão criacional para criar objetos clonando um protótipo existente, evitando construções caras e repetitivas." />
+
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Prototype | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Engenharia de Software</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">Criar objetos clonando protótipos existentes</h2>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" aria-hidden="true"></div>
+          <h1 class="page-title">Prototype</h1>
+          <p class="page-subtitle">Criacional — GoF</p>
+        </div>
+        <p class="intro-highlight">Prototype cria novos objetos copiando (clonando) um objeto existente (protótipo). É útil quando a criação direta é cara (configuração pesada), quando a classe exata não é conhecida em runtime, ou quando se precisa de cópias independentes com pequenas variações.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="clonagem" class="section-title">Cópia rasa vs profunda</h2>
+        <div class="section-divider"></div>
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>O que copia</th>
+                <th>Risco</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Shallow clone</strong></td>
+                <td>Propriedades primitivas copiadas; objetos internos compartilhados.</td>
+                <td>Mutar sub-objeto afeta original e clone.</td>
+              </tr>
+              <tr>
+                <td><strong>Deep clone</strong></td>
+                <td>Toda a árvore de objetos é duplicada.</td>
+                <td>Mais caro; cuidado com ciclos e referências externas.</td>
+              </tr>
+              <tr>
+                <td><strong>Clone semântico</strong></td>
+                <td>Clone manual que decide o que copiar/compartilhar por domínio.</td>
+                <td>Mais controle; requer implementação explícita.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="exemplo" class="section-title">Exemplo — clonagem de configurações</h2>
+        <div class="section-divider"></div>
+        <div class="code-container">
+          <pre class="code-block">interface Clonavel&lt;T&gt; {
+  clonar(): T;
+}
+
+class ConfiguracaoRelatorio implements Clonavel&lt;ConfiguracaoRelatorio&gt; {
+  constructor(
+    public titulo: string,
+    public colunas: string[],
+    public filtros: Record&lt;string, string&gt;
+  ) {}
+
+  clonar(): ConfiguracaoRelatorio {
+    return new ConfiguracaoRelatorio(
+      this.titulo,
+      [...this.colunas],            // copia do array (deep)
+      { ...this.filtros }           // copia do objeto (shallow nos valores)
+    );
+  }
+}
+
+// Protótipo base
+const relatorioBase = new ConfiguracaoRelatorio(
+  'Vendas',
+  ['data', 'produto', 'valor'],
+  { status: 'ativo' }
+);
+
+// Clone com variação — sem afetar o original
+const relatorioMes = relatorioBase.clonar();
+relatorioMes.titulo = 'Vendas de Janeiro';
+relatorioMes.filtros['mes'] = '01/2025';
+
+console.log(relatorioBase.titulo);  // 'Vendas' — não afetado
+console.log(relatorioMes.titulo);   // 'Vendas de Janeiro'</pre>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="quando-usar" class="section-title">Quando usar</h2>
+        <div class="section-divider"></div>
+        <div class="grid-cards">
+          <div class="card">
+            <h3>Use quando</h3>
+            <p>Criar objetos do zero é caro (I/O, configuração pesada). Precisa de cópias independentes com pequenas variações.</p>
+          </div>
+          <div class="card">
+            <h3>Test Data Builder</h3>
+            <p>Em testes, Prototype permite criar um objeto base válido e clonar com variações por teste.</p>
+          </div>
+          <div class="card">
+            <h3>Cuidado com deep clone</h3>
+            <p>Cópia rasa de objetos com referências aninhadas pode gerar compartilhamento inesperado de estado.</p>
+          </div>
+          <div class="card">
+            <h3>Evite quando</h3>
+            <p>O objeto é simples o suficiente para criar diretamente com <code>new</code> ou literal. Clonagem adiciona complexidade sem benefício.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>Prototype é nativo em JavaScript (<code>Object.assign</code>, spread, <code>structuredClone</code>). Veja <a href="/html/engenharia_software/design/design_patterns/creational/builder.html">Builder</a> quando a construção por etapas for mais clara.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Prototype externaliza a criação por cópia — o protótipo carrega o estado padrão, o clone tem sua própria vida."
+        </p>
+      </div>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

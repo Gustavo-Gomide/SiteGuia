@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="R em Embedded e IoT: análise de dados de sensores, R no Raspberry Pi, MQTT, detecção de anomalias em séries temporais e integração com Python." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>R para Embedded e IoT | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>R para Embedded e IoT</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="r" aria-hidden="true"></span></div>
+          <h1>R para Embedded e IoT</h1>
+          <p>R na borda: análise de séries temporais de sensores, execução em ARM (Raspberry Pi), MQTT, detecção de anomalias e integração com Python para pipelines híbridos.</p>
+        </div>
+        <p class="intro-highlight">
+          R <strong>não é uma linguagem nativa de sistemas embarcados</strong> — não controla GPIO, não interage diretamente com hardware de microcontroladores. Seu papel no ecossistema IoT é na <strong>camada de análise</strong>: processar, modelar e detectar padrões nos dados coletados pelos dispositivos. Em dispositivos mais potentes como Raspberry Pi, R pode ser executado diretamente na borda.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="contexto-iot">Posicionamento de R na Arquitetura IoT</h2>
+        <p>
+          Em uma arquitetura IoT típica, R atua nas camadas superiores da pilha, onde o poder computacional está disponível:
+        </p>
+        <div class="panel">
+          <svg viewBox="0 0 600 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Arquitetura IoT com R">
+            <rect x="10" y="10" width="580" height="50" rx="8" fill="#1e3a5f" stroke="#3b7dd8" stroke-width="2"/>
+            <text x="300" y="40" text-anchor="middle" fill="#e0e8ff" font-size="14" font-weight="bold">Nuvem / Servidor Central — R para análise em batch, ML, relatórios (✓ R ideal)</text>
+
+            <rect x="10" y="80" width="580" height="50" rx="8" fill="#1a3b2e" stroke="#2ecc71" stroke-width="2"/>
+            <text x="300" y="110" text-anchor="middle" fill="#d0ffe8" font-size="14" font-weight="bold">Edge Server / Raspberry Pi — R para análise em tempo quase-real (✓ R possível)</text>
+
+            <rect x="10" y="150" width="580" height="50" rx="8" fill="#3b2a1a" stroke="#e67e22" stroke-width="2"/>
+            <text x="300" y="180" text-anchor="middle" fill="#ffd8a8" font-size="14">Gateway IoT / Computador de Borda — Python/Go típicos (R via reticulate)</text>
+
+            <rect x="10" y="220" width="580" height="35" rx="8" fill="#3b1a1a" stroke="#e74c3c" stroke-width="2"/>
+            <text x="300" y="242" text-anchor="middle" fill="#ffd0d0" font-size="12">Microcontroladores (ESP32, Arduino) — C/C++ apenas (R não aplicável)</text>
+          </svg>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="raspberry-pi">R no Raspberry Pi</h2>
+        <p>
+          O Raspberry Pi 4/5 tem processador ARM Cortex-A72/A76 de 64 bits e pode executar R satisfatoriamente para análises em tempo quase-real. O Raspberry Pi OS inclui R nos repositórios, mas a versão pode ser desatualizada.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Terminal — Instalação e configuração no Raspberry Pi</div>
+          <pre class="example"><span class="com"># Opção 1: repositório padrão do Raspberry Pi OS (versão pode ser antiga)</span>
+$ sudo apt-get update
+$ sudo apt-get install -y r-base r-base-dev
+
+<span class="com"># Opção 2: repositório CRAN para Ubuntu ARM64 (versão mais recente)</span>
+$ sudo apt-get install -y dirmngr gnupg apt-transport-https ca-certificates
+$ wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/r-project.gpg
+$ echo "deb [signed-by=/usr/share/keyrings/r-project.gpg] \
+  https://cloud.r-project.org/bin/linux/ubuntu jammy-cran40/" \
+  | sudo tee /etc/apt/sources.list.d/r-project.list
+$ sudo apt-get update
+$ sudo apt-get install -y r-base
+
+<span class="com"># Verificar versão</span>
+$ R --version
+<span class="com"># R version 4.4.1 (2024-06-14)</span>
+
+<span class="com"># Instalar dependências do sistema para pacotes comuns</span>
+$ sudo apt-get install -y libcurl4-openssl-dev libssl-dev libxml2-dev \
+  libharfbuzz-dev libfribidi-dev libfreetype6-dev libpng-dev libtiff5-dev
+
+<span class="com"># Iniciar R e instalar pacotes (pode ser lento na primeira vez)</span>
+$ Rscript -e "install.packages(c('tidyverse','data.table'), repos='https://cran.rstudio.com/')"</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="mqtt">MQTT — Recebendo Dados de Sensores</h2>
+        <p>
+          <strong>MQTT</strong> é o protocolo de mensageria padrão em IoT (leve, pub/sub, ideal para redes instáveis). O pacote <strong>mqtt</strong> (e <strong>rmqtt</strong>) permite que R se inscreva em tópicos MQTT e processe dados de sensores em tempo quase-real.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">mqtt-subscriber.R — assinar tópico de sensor</div>
+          <pre class="example"><span class="com"># Instalar: install.packages("mqtt")  (wrapper do Paho MQTT)</span>
+<span class="fn">library</span>(<span class="str">"mqtt"</span>)
+<span class="fn">library</span>(<span class="str">"jsonlite"</span>)
+
+buffer_leituras &lt;- <span class="fn">list</span>()
+
+<span class="com"># Conectar ao broker e processar mensagens</span>
+<span class="fn">mqtt_broker</span>(<span class="str">"localhost"</span>, <span class="num">1883L</span>) |&gt;
+  <span class="fn">mqtt_subscribe</span>(<span class="str">"sensores/temperatura"</span>, qos = <span class="num">1L</span>) |&gt;
+  <span class="fn">mqtt_subscribe</span>(<span class="str">"sensores/umidade"</span>, qos = <span class="num">1L</span>) |&gt;
+  <span class="fn">mqtt_run</span>(<span class="kw">function</span>(topico, mensagem, ...) {
+    dados &lt;- <span class="fn">fromJSON</span>(<span class="fn">rawToChar</span>(mensagem))
+
+    <span class="com"># Acumular no buffer</span>
+    buffer_leituras[[<span class="fn">length</span>(buffer_leituras) + <span class="num">1</span>]] &lt;&lt;- <span class="fn">data.frame</span>(
+      topico    = topico,
+      timestamp = <span class="fn">Sys.time</span>(),
+      valor     = dados$valor,
+      dispositivo = dados$id
+    )
+
+    <span class="com"># Processar a cada 100 leituras</span>
+    <span class="kw">if</span> (<span class="fn">length</span>(buffer_leituras) >= <span class="num">100</span>) {
+      df &lt;- <span class="fn">do.call</span>(<span class="fn">rbind</span>, buffer_leituras)
+      <span class="fn">processar_lote</span>(df)
+      buffer_leituras &lt;&lt;- <span class="fn">list</span>()
+    }
+  })</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="series-temporais-iot">Séries Temporais de Sensores</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">iot-series-temporais.R — análise e visualização</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"tidyverse"</span>)
+<span class="fn">library</span>(<span class="str">"lubridate"</span>)
+<span class="fn">library</span>(<span class="str">"tsibble"</span>)   <span class="com"># extensão tidy para séries temporais</span>
+<span class="fn">library</span>(<span class="str">"feasts"</span>)    <span class="com"># Feature Extraction And Statistics for Time Series</span>
+
+<span class="com"># Carregar dados de sensor</span>
+leituras &lt;- <span class="fn">read_csv</span>(<span class="str">"sensor_temperatura.csv"</span>) |&gt;
+  <span class="fn">mutate</span>(timestamp = <span class="fn">as_datetime</span>(timestamp, tz = <span class="str">"America/Sao_Paulo"</span>)) |&gt;
+  <span class="fn">as_tsibble</span>(index = timestamp, key = dispositivo)
+
+<span class="com"># Preencher gaps (timestamps faltantes com NA)</span>
+leituras &lt;- <span class="fn">fill_gaps</span>(leituras, .full = <span class="kw">TRUE</span>)
+
+<span class="com"># Decomposição STL (Seasonal and Trend decomposition using Loess)</span>
+decomp &lt;- leituras |&gt;
+  <span class="fn">model</span>(<span class="fn">STL</span>(<span class="fn">valor</span> ~ trend() + season(period = <span class="str">"day"</span>))) |&gt;
+  <span class="fn">components</span>()
+
+<span class="fn">autoplot</span>(decomp)   <span class="com"># gráfico: tendência + saz. diária + resíduo</span>
+
+<span class="com"># Agregação por hora</span>
+leituras |&gt;
+  <span class="fn">index_by</span>(hora = ~<span class="fn">floor_date</span>(., <span class="str">"hour"</span>)) |&gt;
+  <span class="fn">summarise</span>(
+    media   = <span class="fn">mean</span>(valor, na.rm = <span class="kw">TRUE</span>),
+    max_val = <span class="fn">max</span>(valor, na.rm = <span class="kw">TRUE</span>),
+    n_obs   = <span class="fn">n</span>()
+  )</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="anomaly-detection">Detecção de Anomalias</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">anomalias.R — detecção estatística</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"anomalize"</span>)  <span class="com"># tibble-based anomaly detection</span>
+<span class="fn">library</span>(<span class="str">"forecast"</span>)
+
+<span class="com"># anomalize — método IQR ou GESD</span>
+leituras |&gt;
+  <span class="fn">time_decompose</span>(valor, method = <span class="str">"stl"</span>) |&gt;
+  <span class="fn">anomalize</span>(remainder, method = <span class="str">"iqr"</span>, alpha = <span class="num">0.05</span>) |&gt;
+  <span class="fn">time_recompose</span>() |&gt;
+  <span class="fn">filter</span>(anomaly == <span class="str">"Yes"</span>) |&gt;
+  <span class="fn">select</span>(timestamp, valor, anomaly)
+
+<span class="com"># Detecção com z-score rolante (janela deslizante)</span>
+<span class="fn">detectar_anomalias</span> &lt;- <span class="kw">function</span>(x, janela = <span class="num">60</span>, limiar = <span class="num">3</span>) {
+  n    &lt;- <span class="fn">length</span>(x)
+  flag &lt;- <span class="fn">logical</span>(n)
+  <span class="kw">for</span> (i <span class="kw">in</span> (janela + <span class="num">1</span>):n) {
+    janela_x &lt;- x[(i - janela):(i - <span class="num">1</span>)]
+    z &lt;- (<span class="fn">x</span>[i] - <span class="fn">mean</span>(janela_x)) / <span class="fn">sd</span>(janela_x)
+    flag[i] &lt;- <span class="fn">abs</span>(z) &gt; limiar
+  }
+  flag
+}
+
+leituras$anomalia &lt;- <span class="fn">detectar_anomalias</span>(leituras$valor)
+
+<span class="com"># Alerta por email se anomalia detectada</span>
+<span class="kw">if</span> (<span class="fn">any</span>(<span class="fn">tail</span>(leituras$anomalia, <span class="num">5</span>))) {
+  <span class="com"># blastula::email_message(...) para envio de email com ggplot</span>
+  <span class="fn">message</span>(<span class="str">"ALERTA: anomalia detectada em sensor"</span>)
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="integracao-python">Integração com Python via reticulate</h2>
+        <p>
+          Para pipelines IoT onde a coleta de dados é feita em Python (frameworks como <code>paho-mqtt</code> têm suporte melhor) e a análise em R, o pacote <strong>reticulate</strong> permite chamar código Python diretamente de dentro de sessões R.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">reticulate-iot.R</div>
+          <pre class="example"><span class="fn">library</span>(<span class="str">"reticulate"</span>)
+
+<span class="com"># Usar ambiente Python específico (venv ou conda)</span>
+<span class="fn">use_virtualenv</span>(<span class="str">"~/envs/iot-env"</span>, required = <span class="kw">TRUE</span>)
+
+<span class="com"># Importar módulo Python</span>
+paho &lt;- <span class="fn">import</span>(<span class="str">"paho.mqtt.client"</span>)
+serial &lt;- <span class="fn">import</span>(<span class="str">"serial"</span>)   <span class="com"># pyserial para comunicação serial</span>
+
+<span class="com"># Executar script Python e recuperar variável</span>
+<span class="fn">py_run_file</span>(<span class="str">"coletar_sensores.py"</span>)
+dados_py &lt;- <span class="fn">py</span>$dados_coletados   <span class="com"># acessar variável Python</span>
+df_r     &lt;- <span class="fn">as.data.frame</span>(dados_py)
+
+<span class="com"># O inverso — passar dados R para Python</span>
+<span class="fn">py</span>$df_r &lt;- df_r   <span class="com"># disponibiliza em py$</span>
+
+<span class="com"># Tensorflow para inferência de modelo treinado em Python</span>
+tf &lt;- <span class="fn">import</span>(<span class="str">"tensorflow"</span>)
+modelo_tf &lt;- tf$keras$models$<span class="fn">load_model</span>(<span class="str">"modelo_sensor.h5"</span>)
+X_new &lt;- <span class="fn">as.matrix</span>(df_r[, features])
+previsoes &lt;- modelo_tf$<span class="fn">predict</span>(<span class="fn">r_to_py</span>(X_new))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel"><ul>
+          <li>HYNDMAN, Rob J.; ATHANASOPOULOS, George. <strong>Forecasting: Principles and Practice</strong>. 3. ed. OTexts, 2021. Disponível em: <a href="https://otexts.com/fpp3/" target="_blank" rel="noopener">otexts.com/fpp3</a></li>
+          <li>WANG, Earo; COOK, Dianne; HYNDMAN, Rob. <strong>A new tidy data structure to support exploration and modeling of temporal data</strong>. Journal of Computational and Graphical Statistics, v. 29, n. 3, 2020. Disponível em: <a href="https://doi.org/10.1080/10618600.2019.1695624" target="_blank" rel="noopener">doi.org/10.1080/10618600.2019.1695624</a></li>
+          <li>USHEY, Kevin; ALLAIRE, J.J. <strong>reticulate: Interface to Python</strong>. Posit Software, 2024. Disponível em: <a href="https://rstudio.github.io/reticulate/" target="_blank" rel="noopener">rstudio.github.io/reticulate</a></li>
+          <li>RASPBERRY PI FOUNDATION. <strong>Raspberry Pi OS Documentation</strong>. 2024. Disponível em: <a href="https://www.raspberrypi.com/documentation/" target="_blank" rel="noopener">raspberrypi.com/documentation</a></li>
+        </ul></div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Dados e IA</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/r/aplicacoes/terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> R para Terminal e CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> "The sensor only measures. R decides what the measurement means." — Padrão arquitetural IoT com R na camada analítica</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

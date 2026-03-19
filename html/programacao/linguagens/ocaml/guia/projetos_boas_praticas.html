@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Projetos e boas praticas em OCaml: arquitetura, testes, CI/CD, observabilidade, versionamento de dependencias e padroes de manutencao." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>OCaml - Projetos e Boas Praticas | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box"><p><strong>OCaml - Projetos e Boas Praticas</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="ocaml" aria-hidden="true"></span></div>
+          <h1>Projetos OCaml em nivel profissional</h1>
+          <p>Estrutura de repositorio, qualidade de codigo e operacao continua para equipes que querem evoluir software com seguranca.</p>
+        </div>
+        <p class="intro-highlight">Boas praticas em OCaml giram em torno de fronteiras claras de modulos, automacao no dune e disciplina de testes para manter invariantes de tipos ao longo do tempo.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="estrutura-projeto">Estrutura de projeto recomendada</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Layout base</div>
+          <pre class="example">meu_sistema/
+├── dune-project
+├── meu_sistema.opam
+├── lib/
+│   ├── dominio/
+│   ├── aplicacao/
+│   ├── infraestrutura/
+│   └── dune
+├── bin/
+│   ├── main.ml
+│   └── dune
+├── test/
+│   ├── unit/
+│   ├── integracao/
+│   └── dune
+└── .github/workflows/ci.yml</pre>
+        </div>
+        <p>Separar <strong>dominio</strong>, <strong>aplicacao</strong> e <strong>infraestrutura</strong> evita que detalhes de I/O contaminem logica de negocio e facilita testes deterministas.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="controle-dependencias">Dependencias, reproducibilidade e upgrades</h2>
+        <div class="panel">
+          <p>Use switch local e registre versoes minimas no arquivo <code>.opam</code>. Em pipelines, execute <code>opam lock</code> para builds reproduziveis quando o projeto exigir previsibilidade forte.</p>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Comandos essenciais</div>
+          <pre class="example">opam switch create . 5.2.0 --no-install
+opam install . --deps-only --with-test
+opam lock
+opam exec -- dune build @all
+opam exec -- dune test</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="testes-qualidade">Testes e qualidade de codigo</h2>
+        <svg viewBox="0 0 860 200" role="img" aria-label="Piramide de testes em OCaml" class="w-full rounded-md border p-sm">
+          <polygon points="430,20 120,180 740,180" fill="currentColor" opacity="0.08"></polygon>
+          <line x1="230" y1="127" x2="630" y2="127" stroke="currentColor"></line>
+          <line x1="330" y1="74" x2="530" y2="74" stroke="currentColor"></line>
+          <text x="370" y="54" fill="currentColor">E2E</text>
+          <text x="375" y="109" fill="currentColor">Integracao</text>
+          <text x="390" y="165" fill="currentColor">Unitarios</text>
+        </svg>
+        <div class="grid grid--2">
+          <div class="card"><h3>Unitarios</h3><p><strong>Alcotest</strong> para funcao pura e regras de dominio.</p></div>
+          <div class="card"><h3>Propriedade</h3><p><strong>QCheck</strong> para validar invariantes em entradas aleatorias.</p></div>
+          <div class="card"><h3>Integracao</h3><p>Testar caminho completo de API + banco com fixtures isoladas.</p></div>
+          <div class="card"><h3>Estilo</h3><p><code>ocamlformat</code> e <code>ocaml-lsp</code> no CI para consistencia.</p></div>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="padroes-avancados">Padroes avancados para manutencao longa</h2>
+        <div class="panel">
+          <ul>
+            <li>Use interfaces <code>.mli</code> para estabilizar contratos publicos.</li>
+            <li>Prefira tipos de dominio explicitos a strings "soltas".</li>
+            <li>Trate erro com <code>result</code> no nucleo e converta para HTTP/CLI na borda.</li>
+            <li>Versione APIs com modulos (<code>Api_v1</code>, <code>Api_v2</code>) para migracoes graduais.</li>
+          </ul>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Antipadrao frequente: esconder excecoes em camadas profundas. Em sistemas grandes, isso degrada observabilidade e encarece incidentes.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ci-cd">CI/CD e release</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Trecho de pipeline CI</div>
+          <pre class="example">name: ci
+on: [push, pull_request]
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: 5.2.0
+      - run: opam install . --deps-only --with-test --yes
+      - run: opam exec -- dune build @all
+      - run: opam exec -- dune test</pre>
+        </div>
+        <p>Com isso, todo commit valida build, interface de modulos e regressao funcional antes de chegar em producao.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li>OCAML. <strong>Dune Manual</strong>. Disponivel em: <a href="https://dune.readthedocs.io/" target="_blank" rel="noopener">https://dune.readthedocs.io/</a>.</li>
+            <li>OCAML. <strong>opam Documentation</strong>. Disponivel em: <a href="https://opam.ocaml.org/doc/" target="_blank" rel="noopener">https://opam.ocaml.org/doc/</a>.</li>
+            <li>TARIDES. <strong>QCheck</strong>. Disponivel em: <a href="https://github.com/c-cube/qcheck" target="_blank" rel="noopener">https://github.com/c-cube/qcheck</a>.</li>
+            <li>OCAML-CI. <strong>OCaml CI Documentation</strong>. Disponivel em: <a href="https://ocaml.ci.dev/documentation" target="_blank" rel="noopener">https://ocaml.ci.dev/documentation</a>.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/bibliotecas_frameworks.html">OCaml - Bibliotecas e Frameworks</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/guia/avancado.html">OCaml - Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/ocaml/aplicacoes/banco_dados.html">OCaml - Aplicacoes com Banco de Dados</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Projeto OCaml maduro nao depende de heroismo individual; depende de interfaces explicitas, automacao confiavel e testes que protegem o dominio.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,161 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="FAT (File Allocation Table): FAT12, FAT16, FAT32 e exFAT — estrutura, limitações, clusters, compatibilidade e comparação com sistemas modernos." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>FAT — File Allocation Table | Sistemas Operacionais | Site Guia</title>
+</head>
+<body>
+
+  <div class="nav-overlay" id="nav-overlay"></div>
+  <div class="nav-interno-overlay" id="nav-interno-overlay"></div>
+
+  <button class="menu-toggle" id="menu-toggle" aria-label="Abrir menu lateral">&#9776;</button>
+  <button class="menu-interno-toggle" id="menu-interno-toggle" aria-label="Abrir menu interno">&#9776;</button>
+
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <span>Sistemas Operacionais</span>
+      </div>
+
+      <!-- ═══════════════════ SEÇÃO 1 — INTRO ═══════════════════ -->
+      <section id="intro">
+        <div class="page-header">
+          <span class="logo logo--lg page-icon" data-svg="so"></span>
+          <div>
+            <h1 class="page-title">FAT — File Allocation Table</h1>
+            <p class="page-subtitle">FAT12, FAT16, FAT32 e exFAT: estrutura, limitações e ahol de compatibilidade universal</p>
+          </div>
+        </div>
+        <p class="intro-highlight">FAT é um dos sistemas de arquivos mais simples e amplamente compatíveis já criados, presente em pendrives, cartões SD, partições de boot EFI e legado em sistemas embarcados. Sua simplicidade é sua força e também sua limitação: sem permissões, sem journaling, sem links simbólicos.</p>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 2 — ESTRUTURA ═══════════════════ -->
+      <section id="estrutura">
+        <h2>Estrutura FAT</h2>
+        <p>Um volume FAT é dividido em três regiões principais: o Boot Record (informações do volume), as tabelas FAT (duplicadas para redundância) e a área de dados (onde os clusters de arquivos residem). O <strong>cluster</strong> é a unidade mínima de alocação — vários setores consecutivos. Cada entrada na tabela FAT aponta para o próximo cluster do arquivo, ou contém marcadores especiais.</p>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Região</th>
+                <th>Conteúdo</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Boot Record (setor 0)</td><td>BPB (BIOS Parameter Block): tamanho do setor, setores por cluster, número de FATs, tamanho do volume</td></tr>
+              <tr><td>Tabela FAT (x2)</td><td>Array de entradas de 12/16/32 bits; cada índice corresponde a um cluster; valor = próximo cluster ou EOF (0xFFF/0xFFFF/0x0FFFFFFF) ou livre (0x000)</td></tr>
+              <tr><td>Diretório Raiz (FAT12/16)</td><td>Área de tamanho fixo com entradas de 32 bytes por arquivo/subdiretório (nome 8.3, atributos, cluster inicial, tamanho)</td></tr>
+              <tr><td>Área de Dados</td><td>Clusters com os dados reais dos arquivos e subdiretórios</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">pseudocódigo — travessia de cadeia FAT</div>
+          <pre class="code-block">// Ler arquivo a partir da entrada de diretório
+cluster_atual = entrada.cluster_inicial  // ex: 5
+
+while (cluster_atual != EOF) {
+    ler_dados_do_cluster(cluster_atual)
+    cluster_proximo = FAT[cluster_atual]  // ex: FAT[5] = 8
+    cluster_atual = cluster_proximo       //     FAT[8] = 3
+}                                         //     FAT[3] = EOF
+
+// Para arquivo fragmentado: 5 → 8 → 3 → EOF
+// Leitura sequencial mas saltos físicos no disco</pre>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 3 — VARIANTES ═══════════════════ -->
+      <section id="variantes">
+        <h2>FAT12, FAT16, FAT32 e exFAT</h2>
+        <div class="scroll-x">
+          <table class="tabela-gigante">
+            <thead>
+              <tr>
+                <th>Variante</th>
+                <th>Bits por entrada FAT</th>
+                <th>Volume maximo</th>
+                <th>Arquivo maximo</th>
+                <th>Nomes de arquivo</th>
+                <th>Uso atual</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>FAT12</td><td>12 bits</td><td>32 MB</td><td>32 MB</td><td>8.3 (maiusculas)</td><td>Disquetes, partição EFI System (boot sector)</td></tr>
+              <tr><td>FAT16</td><td>16 bits</td><td>2 GB (4 GB com cluster 64 KB)</td><td>2 GB</td><td>8.3 / LFN (Win95+)</td><td>Cartoes SD mais antigos, sistemas embarcados</td></tr>
+              <tr><td>FAT32</td><td>32 bits (28 validos)</td><td>8 TB teorico; 2 TB Windows</td><td>4 GB - 1 byte</td><td>LFN (255 caracteres)</td><td>Pendrives, cartoes SD ate 32 GB, partição ESP</td></tr>
+              <tr><td>exFAT</td><td>32 bits</td><td>128 PB</td><td>128 PB</td><td>255 caracteres Unicode</td><td>Cartoes SD &gt; 32 GB, SSD externos, cameras</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 4 — LIMITAÇÕES ═══════════════════ -->
+      <section id="limitacoes">
+        <h2>Limitações e Problemas do FAT32</h2>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Limite de 4 GB por arquivo</h3>
+            <p>O campo de tamanho no diretório é um inteiro de 32 bits sem sinal, limitando arquivos a 4.294.967.295 bytes (4 GB - 1). Impossível armazenar um único arquivo de vídeo HD ou imagem de disco maior que isso no FAT32.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Sem permissões ou segurança</h3>
+            <p>Não há conceito de owner, group ou bits rwx. Qualquer sistema que monte o volume tem acesso total a todos os arquivos. Inadequado para partições de sistema Linux ou Windows.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Sem journaling</h3>
+            <p>Uma queda de energia durante uma escrita pode corromper a tabela FAT e orphanear clusters. O único recurso é o CHKDSK/fsck.fat, que varre o volume inteiro — demorado em volumes grandes.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Sem links simbólicos nem hard links</h3>
+            <p>FAT não possui inodes nem o conceito de link count. Nao é possível ter um arquivo apontando para outro (symlink) ou múltiplos nomes para o mesmo dado (hard link).</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ SEÇÃO 5 — exFAT ═══════════════════ -->
+      <section id="exfat">
+        <h2>exFAT — O Sucessor Moderno</h2>
+        <p>O exFAT (Extended FAT) foi criado pela Microsoft em 2006 para superar as limitações do FAT32 em mídias flash, sem a complexidade do NTFS. Ele remove o limite de 4 GB por arquivo e o limite prático de tamanho de volume, mantendo compatibilidade ampla.</p>
+        <div class="grid-cards">
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Suporte nativo universal</h3>
+            <p>Linux 5.4+ inclui driver exFAT nativo (exfatprogs). Windows, macOS, Android, cameras digitais e consoles de videogame modernos leem exFAT sem drivers adicionais.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Padrão SD Association</h3>
+            <p>A SD Association adotou exFAT como formato padrão para cartões SDXC (64 GB a 2 TB) e SDUC (acima de 2 TB). Câmeras e drones formatam cartões grandes em exFAT automaticamente.</p>
+          </div>
+          <div class="card" data-reveal="slide-up">
+            <h3 class="panel-title">Fragmentação e alocação</h3>
+            <p>exFAT mantém o mapa de alocação mas adiciona um Allocation Bitmap para marcar clusters livres/ocupados de forma mais eficiente. Suporta extensões para contiguous allocation hint, reduzindo fragmentação em mídias flash.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══════════════════ CALLOUT ═══════════════════ -->
+      <section id="callout">
+        <p>Veja tambem <a href="/html/sistemas/arquivos/ntfs.html">NTFS</a> e <a href="/html/sistemas/arquivos/sistema_arquivos.html">Sistema de Arquivos</a>.</p>
+        <p class="frase-destaque"><span data-svg="estrela"></span>"FAT sobreviveu por décadas não por ser o melhor, mas por ser o mais simples de implementar em qualquer hardware."</p>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

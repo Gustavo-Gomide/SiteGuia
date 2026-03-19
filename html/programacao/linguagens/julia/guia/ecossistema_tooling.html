@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Ecossistema Julia: Pkg, ambientes, testes, documentação, lint, profiling e IDEs." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+	<link rel="preload" href="/js/main.js" as="script">
+	<script src="/js/main.js" defer></script>
+	<title>Julia — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegação">
+		<span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+	<main class="main-content">
+		<div class="content-area">
+
+			<div class="Colored_border_anim_card_box"><p><strong>Julia &mdash; Ecossistema e Tooling</strong></p></div>
+
+			<section>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="julia" aria-hidden="true"></span></div>
+					<h1>Ecossistema e Tooling em Julia</h1>
+					<p>Gerenciamento de pacotes com Pkg, ambientes isolados, testes com Test.jl, documentação com Documenter.jl, benchmark, profiling e integração com VS Code, Pluto e Jupyter.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="pkg">Pkg e Ambientes</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Gerenciamento reprodutível de dependências</div>
+					<pre class="example"><span class="com"># Entrar no modo Pkg dentro do REPL</span>
+julia&gt; ]
+
+<span class="com"># Criar e ativar ambiente no diretório atual</span>
+pkg&gt; activate .
+
+<span class="com"># Adicionar dependências</span>
+pkg&gt; add DataFrames CSV Plots
+
+<span class="com"># Adicionar versão específica</span>
+pkg&gt; add HTTP@1.10
+
+<span class="com"># Remover / atualizar</span>
+pkg&gt; rm Plots
+pkg&gt; up
+
+<span class="com"># Instalar a partir do Project.toml + Manifest.toml</span>
+pkg&gt; instantiate
+
+<span class="com"># Status do ambiente</span>
+pkg&gt; status
+pkg&gt; st --manifest
+
+<span class="com"># Desenvolvimento local de pacote</span>
+pkg&gt; develop .
+
+<span class="com"># Uso por API em script</span>
+import Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+Pkg.add("BenchmarkTools")
+
+<span class="com"># Arquivos importantes:</span>
+<span class="com"># Project.toml  -> dependências diretas e metadados</span>
+<span class="com"># Manifest.toml -> árvore completa e versões resolvidas</span></pre>
+				</div>
+				<div class="panel">
+					<table class="table">
+						<thead><tr><th>Ferramenta</th><th>Papel</th></tr></thead>
+						<tbody>
+							<tr><td>Project.toml</td><td>Declara nome, uuid, versão, compatibilidade e dependências diretas</td></tr>
+							<tr><td>Manifest.toml</td><td>Congela versões exatas para builds reproduzíveis</td></tr>
+							<tr><td>Artifacts</td><td>Distribui binários e datasets versionados sem depender do sistema</td></tr>
+							<tr><td>PkgTemplates.jl</td><td>Gera estrutura padrão de pacotes Julia</td></tr>
+						</tbody>
+					</table>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="estrutura-pacotes">Estrutura de Pacotes Julia</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Layout canônico de biblioteca</div>
+					<pre class="example">MeuPacote/
+├── Project.toml
+├── Manifest.toml
+├── src/
+│   └── MeuPacote.jl
+├── test/
+│   └── runtests.jl
+├── docs/
+│   ├── make.jl
+│   └── src/
+│       └── index.md
+├── examples/
+└── benchmarks/
+
+<span class="com"># src/MeuPacote.jl</span>
+module MeuPacote
+
+export somar, Produto
+
+include("tipos.jl")
+include("algoritmos.jl")
+
+end
+
+<span class="com"># Gerar template automaticamente</span>
+using PkgTemplates
+
+tpl = Template(
+		user = "seuusuario",
+		authors = ["Seu Nome"],
+		julia = v"1.11",
+		plugins = [Git(), GitHubActions(), Tests(), Documenter{GitHubActions}()]
+)
+
+tpl("MeuPacote")</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="testes">Testes, Benchmark e Profiling</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Test.jl, BenchmarkTools e Profile</div>
+					<pre class="example">using Test
+using MeuPacote
+
+@testset "soma" begin
+		@test somar(2, 3) == 5
+		@test somar(-1, 1) == 0
+		@test_throws DomainError raiz_segura(-1)
+end
+
+@testset "aproximações numéricas" begin
+		@test sin(π / 2) ≈ 1.0 atol = 1e-12
+end
+
+<span class="com"># Executar:</span>
+<span class="com"># pkg&gt; test</span>
+
+using BenchmarkTools
+
+dados = rand(10^6)
+@benchmark sum($dados)
+@btime sort($dados)
+
+<span class="com"># Profiling</span>
+using Profile
+Profile.clear()
+@profile begin
+		for _ in 1:100
+				sort(rand(10_000))
+		end
+end
+Profile.print()
+
+<span class="com"># Memory allocation</span>
+@time sum(rand(10^6))
+@allocated sum(rand(10^6))</pre>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="documentacao">Documentação e IDEs</h2>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">Docstrings, Documenter.jl, VS Code e notebooks</div>
+					<pre class="example"><span class="com"># Docstring padrão Markdown antes da função</span>
+"""
+		distancia(x1, y1, x2, y2)
+
+Calcula a distância euclidiana entre dois pontos 2D.
+
+# Exemplos
+```julia
+distancia(0, 0, 3, 4)
+```
+"""
+function distancia(x1, y1, x2, y2)
+		sqrt((x2 - x1)^2 + (y2 - y1)^2)
+end
+
+<span class="com"># Documenter.jl</span>
+using Documenter
+using MeuPacote
+
+makedocs(
+		sitename = "MeuPacote.jl",
+		modules = [MeuPacote],
+		format = Documenter.HTML(),
+		pages = ["Home" => "index.md"]
+)
+
+deploydocs(repo = "github.com/usuario/MeuPacote.jl.git")
+
+<span class="com"># Ambientes de desenvolvimento:</span>
+<span class="com"># VS Code + extensão Julia: REPL integrado, profiler, plots, debug</span>
+<span class="com"># Pluto.jl: notebooks reativos ideais para ensino e exploração</span>
+<span class="com"># IJulia: integração com Jupyter</span>
+<span class="com"># Revise.jl: recarrega código sem reiniciar REPL</span></pre>
+				</div>
+				<div class="logic-grid">
+					<div class="panel panel--positive">
+						<p class="panel-title">Fluxo recomendado</p>
+						<ul>
+							<li>Desenvolver em ambiente local com Project.toml isolado</li>
+							<li>Usar Revise.jl para ciclo rápido</li>
+							<li>Benchmarkar com BenchmarkTools, não com @time isolado</li>
+							<li>Documentar API pública com docstrings e exemplos</li>
+						</ul>
+					</div>
+					<div class="panel panel--negative">
+						<p class="panel-title">Problemas comuns</p>
+						<ul>
+							<li>Trabalhar no ambiente global e poluir dependências</li>
+							<li>Versionar código sem Manifest quando a reprodutibilidade importa</li>
+							<li>Comparar performance com primeira execução JIT</li>
+							<li>Esquecer compat bounds no Project.toml</li>
+						</ul>
+					</div>
+				</div>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referências</h2>
+				<div class="panel">
+					<ul>
+						<li>JULIA DOCUMENTATION. <strong>Pkg</strong>. Disponível em: &lt;https://pkgdocs.julialang.org/&gt;. Acesso em: 2026.</li>
+						<li>JULIA DOCUMENTATION. <strong>Documentation of Julia's Internals and Manual</strong>. Disponível em: &lt;https://docs.julialang.org/en/v1/&gt;. Acesso em: 2026.</li>
+						<li>DOCUMENTER.JL. <strong>Guide</strong>. Disponível em: &lt;https://documenter.juliadocs.org/&gt;. Acesso em: 2026.</li>
+					</ul>
+				</div>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a href="bibliotecas_frameworks.html"><span data-svg="seta-direita" aria-hidden="true"></span> Bibliotecas e Frameworks</a></li>
+					<li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em Julia, produtividade e performance dependem muito do ambiente. Um projeto com <code>Project.toml</code>, testes automatizados, benchmark consistente e documentação clara é drasticamente mais sustentável do que scripts soltos no REPL.</p>
+			</div>
+
+		</div>
+	</main>
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

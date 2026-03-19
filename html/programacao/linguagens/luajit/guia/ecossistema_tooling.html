@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema e tooling de LuaJIT: flags de runtime, profiling, benchmark confiavel, inspecao de traces e ferramentas de apoio." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+  <link rel="preload" href="/js/main.js" as="script" />
+  <script src="/js/main.js" defer></script>
+  <title>LuaJIT - Ecossistema e Tooling | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegacao">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+      <div class="Colored_border_anim_card_box">
+        <p><strong>LuaJIT - Ecossistema e Tooling</strong></p>
+      </div>
+
+      <section>
+        <h2 id="hero" class="section-title">LuaJIT - Ecossistema e Tooling</h2>
+        <div class="page-header">
+          <span data-svg="lua" aria-hidden="true"></span>
+          <h1>Ferramentas para otimizar com evidencia, nao com achismo</h1>
+          <p>Esta secao cobre o conjunto minimo de instrumentos para diagnosticar e evoluir desempenho em LuaJIT.</p>
+        </div>
+        <p class="intro-highlight">
+          Sem medir traces, GC e latencia, qualquer tuning de LuaJIT vira opiniao; com tooling adequado, vira processo tecnico reproduzivel.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="conceitos-observabilidade" class="section-title">Conceitos de observabilidade para runtime JIT</h2>
+        <p>
+          Observabilidade em LuaJIT combina tres perguntas: o que compilou, o que saiu do trace e qual foi o custo de cada caminho.
+          Ferramentas de runtime respondem a primeira pergunta; profiling e benchmark respondem as outras duas.
+        </p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="flags-runtime" class="section-title">Flags de runtime: -jv, -jdump e -jp</h2>
+        <p>
+          As flags oficiais do executavel ajudam a entender compilacao e comportamento de traces durante a carga.
+          Use sempre em ambiente de laboratorio antes de aplicar mudancas em producao.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Shell - diagnostico inicial de comportamento JIT</div>
+          <pre class="example"><span class="com"># eventos de tracing em modo verboso</span>
+luajit -jv script.lua
+
+<span class="com"># dump de bytecode/IR/ASM (dependendo do modo)</span>
+luajit -jdump script.lua
+
+<span class="com"># profiler embutido com saida em arquivo</span>
+luajit -jp=G,profile.out script.lua</pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="info" aria-hidden="true"></span> Compare resultados apenas com mesma entrada, mesma maquina e mesma versao de runtime.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="cpu-memoria" class="section-title">Profiling de CPU, memoria e pausas de GC</h2>
+        <div class="grid-cards">
+          <div class="card">
+            <strong>jit.p</strong>
+            <p>Profiler embutido para hotspots em runtime, util para iniciar diagnostico.</p>
+          </div>
+          <div class="card">
+            <strong>perf/eBPF</strong>
+            <p>Correlaciona custo de usuario e kernel em Linux para entender syscalls e bloqueios.</p>
+          </div>
+          <div class="card">
+            <strong>Flame Graph</strong>
+            <p>Ajuda a visualizar de forma hierarquica onde o tempo total e consumido.</p>
+          </div>
+          <div class="card">
+            <strong>Metrica de GC</strong>
+            <p>Mostra impacto de churn de objetos e pausas no throughput.</p>
+          </div>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - exemplo minimo com jit.p</div>
+          <pre class="example"><span class="kw">local</span> p = <span class="kw">require</span>(<span class="str">"jit.p"</span>)
+p.<span class="fn">start</span>(<span class="str">"fi1"</span>, <span class="str">"profile.out"</span>)
+
+<span class="kw">local</span> s = 0
+<span class="kw">for</span> i = 1, 5e6 <span class="kw">do</span>
+  s = s + (i * 0.125)
+<span class="kw">end</span>
+
+p.<span class="fn">stop</span>()
+print(s)</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="benchmark-justo" class="section-title">Benchmark justo: protocolo minimo de confiabilidade</h2>
+        <div class="panel">
+          <p class="panel-title">Checklist para evitar autoengano</p>
+          <ul>
+            <li>Realizar warmup antes da medicao para permitir compilacao de traces.</li>
+            <li>Fixar dataset, afinidade de CPU e parametros de ambiente.</li>
+            <li>Separar benchmark de CPU puro e benchmark de I/O.</li>
+            <li>Executar muitas repeticoes e reportar mediana/p95.</li>
+            <li>Salvar baseline por commit para detectar regressao.</li>
+          </ul>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">LuaJIT - harness simples com warmup</div>
+          <pre class="example"><span class="kw">local</span> clock = os.clock
+
+<span class="kw">local</span> <span class="kw">function</span> <span class="fn">bench</span>(fn, rounds)
+  <span class="kw">for</span> i = 1, 8 <span class="kw">do</span> fn() <span class="kw">end</span>
+  <span class="kw">local</span> t0 = <span class="fn">clock</span>()
+  <span class="kw">for</span> i = 1, rounds <span class="kw">do</span> fn() <span class="kw">end</span>
+  <span class="kw">return</span> <span class="fn">clock</span>() - t0
+<span class="kw">end</span>
+
+<span class="kw">local</span> <span class="kw">function</span> <span class="fn">work</span>()
+  <span class="kw">local</span> z = 0
+  <span class="kw">for</span> i = 1, 100000 <span class="kw">do</span>
+    z = z + i
+  <span class="kw">end</span>
+  <span class="kw">return</span> z
+<span class="kw">end</span>
+
+print(<span class="str">"tempo="</span>, <span class="fn">bench</span>(work, 50))</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="analise-dumps" class="section-title">Inspecao de traces e leitura de sinais de regressao</h2>
+        <p>
+          Ao analisar dumps, procure por traces curtos, side exits repetitivos e uso de operacoes NYI no caminho quente.
+          Esses sintomas indicam onde atuar: modelagem de dados, fluxo de controle ou substituicao de API.
+        </p>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Pseudo-log comentado de side exits</div>
+          <pre class="example"><span class="com">-- saida resumida de -jv</span>
+[TRACE 1 api.lua:42 loop]
+[TRACE 1 side exit at api.lua:57]
+[TRACE 2 api.lua:57 -&gt; 42]
+
+<span class="com">-- leitura tecnica:</span>
+<span class="com">-- 1) loop principal foi compilado;</span>
+<span class="com">-- 2) linha 57 quebra premissa com frequencia;</span>
+<span class="com">-- 3) runtime cria trace secundario para o desvio.</span></pre>
+        </div>
+        <div class="callout">
+          <p><span data-svg="alerta" aria-hidden="true"></span> Side exit frequente costuma ser problema de modelagem de dados, nao de falta de flags.</p>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="ferramentas-complementares" class="section-title">Ferramentas complementares no ecossistema</h2>
+        <div class="panel">
+          <ul>
+            <li>OpenResty XRay para diagnostico de latencia e throughput em servicos OpenResty.</li>
+            <li>perf + FlameGraph para investigacao aprofundada em Linux.</li>
+            <li>Busted para suites de teste e regressao funcional/performance.</li>
+            <li>LuaRocks com versoes pinadas para reproducibilidade entre ambientes.</li>
+          </ul>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="fontes" class="section-title">Referencias</h2>
+        <div class="panel">
+          <ul>
+            <li><a href="https://luajit.org/running.html" target="_blank" rel="noopener">PALL, Mike. Running LuaJIT and Command Line Options. 2026.</a></li>
+            <li><a href="https://github.com/openresty/openresty-xray" target="_blank" rel="noopener">OpenResty Team. OpenResty XRay Repository. 2026.</a></li>
+            <li><a href="https://www.brendangregg.com/flamegraphs.html" target="_blank" rel="noopener">GREGG, Brendan. Flame Graphs. 2026.</a></li>
+            <li><a href="https://www.lua.org/manual/5.1/manual.html" target="_blank" rel="noopener">IERUSALIMSCHY, Roberto et al. Lua 5.1 Reference Manual. 2006.</a></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Em LuaJIT, tooling de qualidade converte intuicao em diagnostico e diagnostico em decisao de arquitetura.</p>
+        <ul class="link-list">
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/avancado.html">LuaJIT - Avancado</a></li>
+          <li><a class="link-card" href="/html/programacao/linguagens/luajit/guia/bibliotecas_frameworks.html">LuaJIT - Bibliotecas e Frameworks</a></li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

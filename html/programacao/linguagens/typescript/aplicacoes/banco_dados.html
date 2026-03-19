@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="TypeScript com banco de dados: Prisma tipos gerados, PrismaClientKnownRequestError, Drizzle ORM com InferSelectModel e InferInsertModel." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>TypeScript — Banco de Dados | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div name="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>TypeScript &mdash; Banco de Dados</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="typescript" aria-hidden="true"></span></div>
+          <h1>TypeScript com Banco de Dados</h1>
+          <p>Prisma com tipos gerados em compilacao, tratamento tipado de erros de banco, transacoes type-safe e Drizzle ORM com inferencia de schema direto para queries.</p>
+        </div>
+        <p class="intro-highlight">
+          ORMs com TypeScript fecham o gap entre schema de banco e tipos da aplicacao. Prisma gera um cliente completamente tipado a partir do schema.prisma. Drizzle e code-first: o schema TypeScript e o schema de banco.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="prisma">Prisma — Cliente Totalmente Tipado</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">schema.prisma &mdash; Modelo de dados</div>
+          <pre class="example"><span class="com">// prisma/schema.prisma</span>
+generator client {
+  provider = <span class="str">"prisma-client-js"</span>
+}
+
+datasource db {
+  provider = <span class="str">"postgresql"</span>
+  url      = env(<span class="str">"DATABASE_URL"</span>)
+}
+
+model <span class="tp">Usuario</span> {
+  id        <span class="tp">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="fn">cuid</span>())
+  nome      <span class="tp">String</span>
+  email     <span class="tp">String</span>    <span class="at">@unique</span>
+  papel     <span class="tp">Papel</span>     <span class="at">@default</span>(<span class="tp">USER</span>)
+  criadoEm  <span class="tp">DateTime</span>  <span class="at">@default</span>(<span class="fn">now</span>())
+  pedidos   <span class="tp">Pedido</span>[]
+}
+
+<span class="kw">enum</span> <span class="tp">Papel</span> { <span class="tp">USER</span> <span class="tp">ADMIN</span> }
+
+model <span class="tp">Pedido</span> {
+  id         <span class="tp">String</span>    <span class="at">@id</span> <span class="at">@default</span>(<span class="fn">cuid</span>())
+  total      <span class="tp">Decimal</span>
+  status     <span class="tp">StatusPedido</span> <span class="at">@default</span>(<span class="tp">PENDENTE</span>)
+  usuarioId  <span class="tp">String</span>
+  usuario    <span class="tp">Usuario</span>   <span class="at">@relation</span>(fields: [usuarioId], references: [id])
+  itens      <span class="tp">ItemPedido</span>[]
+}
+
+<span class="kw">enum</span> <span class="tp">StatusPedido</span> { <span class="tp">PENDENTE</span> <span class="tp">CONFIRMADO</span> <span class="tp">ENVIADO</span> <span class="tp">ENTREGUE</span> <span class="tp">CANCELADO</span> }</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Prisma &mdash; Queries tipadas, erros e transacoes</div>
+          <pre class="example"><span class="kw">import</span> { <span class="tp">PrismaClient</span>, <span class="tp">Prisma</span> } <span class="kw">from</span> <span class="str">"@prisma/client"</span>;
+<span class="kw">import</span> <span class="kw">type</span> { <span class="tp">Usuario</span>, <span class="tp">Pedido</span>, <span class="tp">StatusPedido</span> } <span class="kw">from</span> <span class="str">"@prisma/client"</span>;
+
+<span class="kw">const</span> prisma = <span class="kw">new</span> <span class="tp">PrismaClient</span>({
+  log: [{ emit: <span class="str">"event"</span>, level: <span class="str">"query"</span> }],
+});
+prisma.$on(<span class="str">"query"</span>, (e) => console.<span class="fn">log</span>(e.query, e.duration + <span class="str">"ms"</span>));
+
+<span class="com">// ---- Tipos utilitarios do Prisma ----</span>
+<span class="kw">type</span> <span class="tp">UsuarioComPedidos</span> = <span class="tp">Prisma</span>.<span class="tp">UsuarioGetPayload</span>&lt;{
+  include: { pedidos: { include: { itens: <span class="kw">true</span> } } }
+}&gt;;
+
+<span class="kw">type</span> <span class="tp">CriarUsuarioInput</span> = <span class="tp">Prisma</span>.<span class="tp">UsuarioCreateInput</span>;
+<span class="kw">type</span> <span class="tp">AtualizarUsuario</span>  = <span class="tp">Prisma</span>.<span class="tp">UsuarioUpdateInput</span>;
+
+<span class="com">// ---- Queries com tipos inferidos ----</span>
+<span class="kw">async function</span> <span class="fn">buscarUsuarioComPedidos</span>(id: <span class="kw">string</span>): <span class="tp">Promise</span>&lt;<span class="tp">UsuarioComPedidos</span> | <span class="kw">null</span>&gt; {
+  <span class="kw">return</span> prisma.usuario.<span class="fn">findUnique</span>({
+    where: { id },
+    include: { pedidos: { include: { itens: <span class="kw">true</span> } } },
+  });
+}
+
+<span class="com">// ---- Tratamento de erros do Prisma ----</span>
+<span class="kw">async function</span> <span class="fn">criarUsuario</span>(dados: <span class="tp">CriarUsuarioInput</span>): <span class="tp">Promise</span>&lt;<span class="tp">Usuario</span>&gt; {
+  <span class="kw">try</span> {
+    <span class="kw">return</span> <span class="kw">await</span> prisma.usuario.<span class="fn">create</span>({ data: dados });
+  } <span class="kw">catch</span> (e) {
+    <span class="kw">if</span> (e <span class="kw">instanceof</span> <span class="tp">Prisma</span>.<span class="tp">PrismaClientKnownRequestError</span>) {
+      <span class="kw">if</span> (e.code === <span class="str">"P2002"</span>) {
+        <span class="kw">const</span> campo = (e.meta?.target <span class="kw">as</span> <span class="kw">string</span>[])?.join(<span class="str">", "</span>);
+        <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`Conflito de unicidade no campo: </span><span class="str">${campo}</span><span class="str">`</span>);
+      }
+      <span class="kw">if</span> (e.code === <span class="str">"P2025"</span>) <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">"Registro nao encontrado"</span>);
+    }
+    <span class="kw">throw</span> e;
+  }
+}
+
+<span class="com">// ---- Transacao com $transaction ----</span>
+<span class="kw">async function</span> <span class="fn">processarPedido</span>(
+  usuarioId: <span class="kw">string</span>,
+  itens: <span class="tp">Array</span>&lt;{ produtoId: <span class="kw">string</span>; quantidade: <span class="kw">number</span>; preco: <span class="kw">number</span> }&gt;,
+): <span class="tp">Promise</span>&lt;<span class="tp">Pedido</span>&gt; {
+  <span class="kw">return</span> prisma.$transaction(<span class="kw">async</span> (tx) => {
+    <span class="com">// Verificar estoque (dentro da transacao)</span>
+    <span class="kw">for</span> (<span class="kw">const</span> item <span class="kw">of</span> itens) {
+      <span class="kw">const</span> produto = <span class="kw">await</span> tx.produto.<span class="fn">findUniqueOrThrow</span>({
+        where: { id: item.produtoId },
+      });
+      <span class="kw">if</span> (produto.estoque &lt; item.quantidade)
+        <span class="kw">throw new</span> <span class="tp">Error</span>(<span class="str">`Estoque insuficiente: </span><span class="str">${produto.nome}</span><span class="str">`</span>);
+    }
+
+    <span class="kw">const</span> total = itens.<span class="fn">reduce</span>((s, i) => s + i.preco * i.quantidade, <span class="num">0</span>);
+    <span class="kw">const</span> pedido = <span class="kw">await</span> tx.pedido.<span class="fn">create</span>({
+      data: {
+        usuarioId,
+        total,
+        itens: { create: itens },
+      },
+    });
+
+    <span class="com">// Decrementar estoque atomicamente</span>
+    <span class="kw">await</span> <span class="tp">Promise</span>.<span class="fn">all</span>(
+      itens.<span class="fn">map</span>((i) =>
+        tx.produto.<span class="fn">update</span>({
+          where: { id: i.produtoId },
+          data:  { estoque: { decrement: i.quantidade } },
+        })
+      )
+    );
+    <span class="kw">return</span> pedido;
+  });
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="drizzle">Drizzle ORM &mdash; Schema como Tipos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">TypeScript + Drizzle &mdash; Schema, queries e inferencia de tipos</div>
+          <pre class="example"><span class="kw">import</span> { drizzle } <span class="kw">from</span> <span class="str">"drizzle-orm/node-postgres"</span>;
+<span class="kw">import</span> { Pool } <span class="kw">from</span> <span class="str">"pg"</span>;
+<span class="kw">import</span> {
+  pgTable, pgEnum, text, numeric, integer, timestamp, uuid,
+} <span class="kw">from</span> <span class="str">"drizzle-orm/pg-core"</span>;
+<span class="kw">import</span> { eq, lt, gte, and, sql } <span class="kw">from</span> <span class="str">"drizzle-orm"</span>;
+<span class="kw">import</span> <span class="kw">type</span> { <span class="tp">InferSelectModel</span>, <span class="tp">InferInsertModel</span> } <span class="kw">from</span> <span class="str">"drizzle-orm"</span>;
+
+<span class="com">// ---- Schema code-first ----</span>
+<span class="kw">export const</span> papelEnum = <span class="fn">pgEnum</span>(<span class="str">"papel"</span>, [<span class="str">"user"</span>, <span class="str">"admin"</span>]);
+
+<span class="kw">export const</span> usuarios = <span class="fn">pgTable</span>(<span class="str">"usuarios"</span>, {
+  id:       <span class="fn">uuid</span>(<span class="str">"id"</span>).<span class="fn">primaryKey</span>().<span class="fn">defaultRandom</span>(),
+  nome:     <span class="fn">text</span>(<span class="str">"nome"</span>).<span class="fn">notNull</span>(),
+  email:    <span class="fn">text</span>(<span class="str">"email"</span>).<span class="fn">notNull</span>().<span class="fn">unique</span>(),
+  papel:    <span class="fn">papelEnum</span>(<span class="str">"papel"</span>).<span class="fn">default</span>(<span class="str">"user"</span>).<span class="fn">notNull</span>(),
+  criadoEm: <span class="fn">timestamp</span>(<span class="str">"criado_em"</span>).<span class="fn">defaultNow</span>().<span class="fn">notNull</span>(),
+});
+
+<span class="kw">export const</span> produtos = <span class="fn">pgTable</span>(<span class="str">"produtos"</span>, {
+  id:      <span class="fn">uuid</span>(<span class="str">"id"</span>).<span class="fn">primaryKey</span>().<span class="fn">defaultRandom</span>(),
+  nome:    <span class="fn">text</span>(<span class="str">"nome"</span>).<span class="fn">notNull</span>(),
+  preco:   <span class="fn">numeric</span>(<span class="str">"preco"</span>, { precision: <span class="num">10</span>, scale: <span class="num">2</span> }).<span class="fn">notNull</span>(),
+  estoque: <span class="fn">integer</span>(<span class="str">"estoque"</span>).<span class="fn">notNull</span>().<span class="fn">default</span>(<span class="num">0</span>),
+});
+
+<span class="com">// ---- Tipos inferidos do schema ----</span>
+<span class="kw">export type</span> <span class="tp">Usuario</span>         = <span class="tp">InferSelectModel</span>&lt;<span class="kw">typeof</span> usuarios&gt;;
+<span class="kw">export type</span> <span class="tp">NovoUsuario</span>     = <span class="tp">InferInsertModel</span>&lt;<span class="kw">typeof</span> usuarios&gt;;
+<span class="kw">export type</span> <span class="tp">Produto</span>         = <span class="tp">InferSelectModel</span>&lt;<span class="kw">typeof</span> produtos&gt;;
+<span class="kw">export type</span> <span class="tp">NovoProduto</span>     = <span class="tp">InferInsertModel</span>&lt;<span class="kw">typeof</span> produtos&gt;;
+
+<span class="com">// ---- Conexao e queries ----</span>
+<span class="kw">const</span> pool = <span class="kw">new</span> <span class="tp">Pool</span>({ connectionString: process.env.DATABASE_URL });
+<span class="kw">const</span> db = <span class="fn">drizzle</span>(pool, { schema: { usuarios, produtos } });
+
+<span class="kw">async function</span> <span class="fn">listarUsuarios</span>(papel?: <span class="str">"user"</span> | <span class="str">"admin"</span>): <span class="tp">Promise</span>&lt;<span class="tp">Usuario</span>[]&gt; {
+  <span class="kw">if</span> (papel) {
+    <span class="kw">return</span> db.<span class="fn">select</span>().<span class="fn">from</span>(usuarios).<span class="fn">where</span>(<span class="fn">eq</span>(usuarios.papel, papel));
+  }
+  <span class="kw">return</span> db.<span class="fn">select</span>().<span class="fn">from</span>(usuarios);
+}
+
+<span class="kw">async function</span> <span class="fn">inserirUsuario</span>(dados: <span class="tp">NovoUsuario</span>): <span class="tp">Promise</span>&lt;<span class="tp">Usuario</span>&gt; {
+  <span class="kw">const</span> [criado] = <span class="kw">await</span> db.<span class="fn">insert</span>(usuarios).<span class="fn">values</span>(dados).<span class="fn">returning</span>();
+  <span class="kw">return</span> criado;
+}
+
+<span class="com">// Query com filtros compostos</span>
+<span class="kw">async function</span> <span class="fn">produtosBaratosEmEstoque</span>(maxPreco: <span class="kw">string</span>): <span class="tp">Promise</span>&lt;<span class="tp">Produto</span>[]&gt; {
+  <span class="kw">return</span> db.<span class="fn">select</span>().<span class="fn">from</span>(produtos).<span class="fn">where</span>(
+    <span class="fn">and</span>(
+      <span class="fn">lt</span>(produtos.preco, maxPreco),
+      <span class="fn">gte</span>(produtos.estoque, <span class="num">1</span>),
+    )
+  ).<span class="fn">orderBy</span>(produtos.preco);
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>PRISMA. <strong>Prisma Client — TypeScript</strong>. Disponível em: &lt;https://www.prisma.io/docs/concepts/components/prisma-client&gt;. Acesso em: 2025.</li>
+            <li>DRIZZLE TEAM. <strong>Drizzle ORM — TypeScript ORM for SQL databases</strong>. Disponível em: &lt;https://orm.drizzle.team&gt;. Acesso em: 2025.</li>
+            <li>PRISMA. <strong>Error codes — PrismaClientKnownRequestError</strong>. Disponível em: &lt;https://www.prisma.io/docs/reference/api-reference/error-reference&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="dados_ia.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript para Dados e IA</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> TypeScript no Terminal</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Com Drizzle, o schema TypeScript e o schema de banco sao o mesmo — sem geracao de codigo, sem desincronizacao</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

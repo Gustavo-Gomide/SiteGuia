@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C++ para Mobile: Android NDK com JNI, iOS com Objective-C++ interop, desenvolvimento crossplatform com SDL2, e performance nativa em aplicativos mobiles." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C++ para Mobile | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C++ &mdash; Mobile</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cpp" aria-hidden="true"></span></div>
+          <h1>C++ para Mobile</h1>
+          <p>Desenvolvimento mobile nativo em C++: Android NDK com JNI para expor logica C++ ao Java/Kotlin, iOS com Objective-C++ (.mm) para bridge com Swift/Obj-C, SDL2 para apps crossplatform Android + iOS a partir do mesmo codigo C++, e boas praticas de bridge de tipos e gerenciamento de memoria.</p>
+        </div>
+        <p class="intro-highlight">
+          C++ em mobile e mais comum do que parece: jogos Unity incluem plugins nativos em C++, aplicativos de processamento de imagem usam OpenCV via NDK, e motores como Godot, Cocos2d-x e Defold compilam para Android e iOS com C++ nativo.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="android-ndk">Android NDK — JNI</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + JNI &mdash; expondo funcoes C++ para Java/Kotlin no Android</div>
+          <pre class="example"><span class="com">// native-lib.cpp</span>
+<span class="kw">#include</span> <span class="str">&lt;jni.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;string&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;cmath&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;vector&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;android/log.h&gt;</span>
+
+<span class="kw">#define</span> LOGI(...) __android_log_print(ANDROID_LOG_INFO, <span class="str">"NativeLib"</span>, __VA_ARGS__)
+<span class="kw">#define</span> LOGE(...) __android_log_print(ANDROID_LOG_ERROR, <span class="str">"NativeLib"</span>, __VA_ARGS__)
+
+<span class="com">// Nomenclatura obrigatoria: Java_PACOTE_CLASSE_METODO</span>
+<span class="kw">extern</span> <span class="str">"C"</span> {
+
+<span class="com">// String simples</span>
+JNIEXPORT <span class="tp">jstring</span> JNICALL
+<span class="fn">Java_com_exemplo_app_MainViewModel_versaoNativa</span>(
+    <span class="tp">JNIEnv</span>*  env,
+    <span class="tp">jobject</span>  <span class="com">/* this */</span>)
+{
+  <span class="kw">return</span> env-&gt;<span class="fn">NewStringUTF</span>(<span class="str">"Nativo C++17 — NDK r26"</span>);
+}
+
+<span class="com">// Operacao intensiva: FFT simplificada, retorna array de floats</span>
+JNIEXPORT <span class="tp">jfloatArray</span> JNICALL
+<span class="fn">Java_com_exemplo_app_AudioProcessor_calcularEspectro</span>(
+    <span class="tp">JNIEnv</span>*    env,
+    <span class="tp">jobject</span>    <span class="com">/* this */</span>,
+    <span class="tp">jfloatArray</span> amostras,
+    <span class="tp">jint</span>       tamanho)
+{
+  <span class="kw">if</span> (!amostras || tamanho &lt;= <span class="num">0</span>) <span class="kw">return</span> <span class="kw">nullptr</span>;
+
+  <span class="com">// Acesso aos bytes Java sem copia (GetPrimitiveArrayCritical)</span>
+  <span class="tp">jfloat</span>* data = <span class="kw">static_cast</span>&lt;<span class="tp">jfloat</span>*&gt;(
+    env-&gt;<span class="fn">GetPrimitiveArrayCritical</span>(amostras, <span class="kw">nullptr</span>));
+  <span class="kw">if</span> (!data) <span class="kw">return</span> <span class="kw">nullptr</span>;
+
+  std::<span class="tp">vector</span>&lt;<span class="kw">float</span>&gt; espectro(tamanho / <span class="num">2</span>);
+  <span class="kw">for</span> (<span class="kw">int</span> k = <span class="num">0</span>; k &lt; tamanho / <span class="num">2</span>; ++k) {
+    <span class="kw">double</span> re = <span class="num">0</span>, im = <span class="num">0</span>;
+    <span class="kw">for</span> (<span class="kw">int</span> n = <span class="num">0</span>; n &lt; tamanho; ++n) {
+      <span class="kw">double</span> theta = <span class="num">2.0</span> * M_PI * k * n / tamanho;
+      re += data[n] * std::<span class="fn">cos</span>(theta);
+      im -= data[n] * std::<span class="fn">sin</span>(theta);
+    }
+    espectro[k] = <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(std::<span class="fn">sqrt</span>(re * re + im * im));
+  }
+  <span class="com">// Liberar ponteiro critico ASAP (nao alocar objetos Java entre Get/Release)</span>
+  env-&gt;<span class="fn">ReleasePrimitiveArrayCritical</span>(amostras, data, JNI_ABORT);
+
+  <span class="tp">jfloatArray</span> resultado = env-&gt;<span class="fn">NewFloatArray</span>(tamanho / <span class="num">2</span>);
+  env-&gt;<span class="fn">SetFloatArrayRegion</span>(resultado, <span class="num">0</span>, tamanho / <span class="num">2</span>, espectro.<span class="fn">data</span>());
+  LOGI(<span class="str">"Espectro calculado: %d bins"</span>, tamanho / <span class="num">2</span>);
+  <span class="kw">return</span> resultado;
+}
+
+<span class="com">// Passar objeto Java para C++ e acessar campos com reflection</span>
+JNIEXPORT <span class="tp">jdouble</span> JNICALL
+<span class="fn">Java_com_exemplo_app_Calculator_computar</span>(
+    <span class="tp">JNIEnv</span>* env, <span class="tp">jobject</span>, <span class="tp">jobject</span> config)
+{
+  <span class="tp">jclass</span>  cls = env-&gt;<span class="fn">GetObjectClass</span>(config);
+  <span class="tp">jfieldID</span> fX = env-&gt;<span class="fn">GetFieldID</span>(cls, <span class="str">"valorX"</span>, <span class="str">"D"</span>);  <span class="com">// D = double</span>
+  <span class="tp">jfieldID</span> fY = env-&gt;<span class="fn">GetFieldID</span>(cls, <span class="str">"valorY"</span>, <span class="str">"D"</span>);
+  <span class="kw">double</span> x = env-&gt;<span class="fn">GetDoubleField</span>(config, fX);
+  <span class="kw">double</span> y = env-&gt;<span class="fn">GetDoubleField</span>(config, fY);
+  <span class="kw">return</span> std::<span class="fn">hypot</span>(x, y);
+}
+
+} <span class="com">// extern "C"</span></pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">CMakeLists.txt para Android NDK (integrado com Gradle)</div>
+          <pre class="example"><span class="com"># app/CMakeLists.txt</span>
+cmake_minimum_required(VERSION 3.22)
+project(NativeLib)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+<span class="com"># Flags de segurança</span>
+add_compile_options(
+  -Wall -Wextra -Wno-unused-parameter
+  -fstack-protector-strong
+  -D_FORTIFY_SOURCE=2
+)
+
+add_library(
+  native-lib
+  SHARED
+  native-lib.cpp
+  audio_processor.cpp
+)
+
+<span class="com"># Vincular com Android system libraries</span>
+find_library(log-lib  log)
+find_library(android-lib android)
+
+target_link_libraries(
+  native-lib
+  ${log-lib}
+  ${android-lib}
+  jnigraphics   <span class="com"># para acessar Bitmap pixels</span>
+)
+
+<span class="com"># android/app/build.gradle.kts (Kotlin DSL)</span>
+<span class="com"># android {</span>
+<span class="com">#   defaultConfig {</span>
+<span class="com">#     externalNativeBuild {</span>
+<span class="com">#       cmake { cppFlags += "-std=c++17" }</span>
+<span class="com">#     }</span>
+<span class="com">#   }</span>
+<span class="com">#   externalNativeBuild {</span>
+<span class="com">#     cmake { path = "CMakeLists.txt" }</span>
+<span class="com">#   }</span>
+<span class="com"># }</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ios-objcpp">iOS — Objective-C++ Bridge</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Objective-C++ (.mm) &mdash; expondo C++ para Swift/Objective-C</div>
+          <pre class="example"><span class="com">// ImageProcessor.hpp — interface limpa, sem dependencias C++</span>
+<span class="kw">#pragma once</span>
+<span class="kw">#include</span> <span class="str">&lt;stdint.h&gt;</span>
+
+<span class="kw">#ifdef __cplusplus</span>
+<span class="kw">extern</span> <span class="str">"C"</span> {
+<span class="kw">#endif</span>
+
+<span class="kw">typedef struct</span> { <span class="kw">float</span> r, g, b; } <span class="tp">RGBColor</span>;
+
+<span class="com">// Calcular cor media de uma imagem RGBA</span>
+<span class="tp">RGBColor</span> <span class="fn">calcularCorMedia</span>(<span class="kw">const uint8_t</span>* pixels, <span class="kw">int</span> largura, <span class="kw">int</span> altura);
+
+<span class="kw">#ifdef __cplusplus</span>
+}
+<span class="kw">#endif</span>
+
+<span class="com">// --- ImageProcessor.mm (compila C++ + Obj-C) ---</span>
+<span class="kw">#include</span> <span class="str">"ImageProcessor.hpp"</span>
+<span class="kw">#import</span> <span class="str">&lt;Foundation/Foundation.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;numeric&gt;</span>
+
+<span class="tp">RGBColor</span> <span class="fn">calcularCorMedia</span>(<span class="kw">const uint8_t</span>* pixels, <span class="kw">int</span> w, <span class="kw">int</span> h) {
+  <span class="kw">long long</span> sr = <span class="num">0</span>, sg = <span class="num">0</span>, sb = <span class="num">0</span>;
+  <span class="kw">int</span> total = w * h;
+  <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; total; ++i) {
+    sr += pixels[i * <span class="num">4</span> + <span class="num">0</span>];  <span class="com">// R</span>
+    sg += pixels[i * <span class="num">4</span> + <span class="num">1</span>];  <span class="com">// G</span>
+    sb += pixels[i * <span class="num">4</span> + <span class="num">2</span>];  <span class="com">// B</span>
+    <span class="com">// ignora canal Alpha [3]</span>
+  }
+  <span class="kw">return</span> {
+    <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(sr) / total / <span class="num">255.0f</span>,
+    <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(sg) / total / <span class="num">255.0f</span>,
+    <span class="kw">static_cast</span>&lt;<span class="kw">float</span>&gt;(sb) / total / <span class="num">255.0f</span>
+  };
+}
+
+<span class="com">// Wrapper Obj-C — expoe para Swift sem expor header C++</span>
+@interface <span class="tp">ImageProcessorBridge</span> : <span class="tp">NSObject</span>
++ (NSArray&lt;NSNumber*&gt;*)corMediaDePixels:(const uint8_t*)pixels
+                                  largura:(int)w
+                                   altura:(int)h;
+@end
+
+@implementation <span class="tp">ImageProcessorBridge</span>
++ (NSArray&lt;NSNumber*&gt;*)corMediaDePixels:(const uint8_t*)pixels
+                                  largura:(int)w
+                                   altura:(int)h {
+  <span class="tp">RGBColor</span> cor = <span class="fn">calcularCorMedia</span>(pixels, w, h);
+  <span class="kw">return</span> @[@(cor.r), @(cor.g), @(cor.b)];
+}
+@end</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Swift &mdash; chamando C++ via Objective-C bridge</div>
+          <pre class="example"><span class="com">// ViewModel.swift</span>
+<span class="kw">import</span> UIKit
+
+<span class="kw">class</span> <span class="tp">ImageViewModel</span>: <span class="tp">ObservableObject</span> {
+  <span class="at">@Published</span> <span class="kw">var</span> corMedia: UIColor = .gray
+
+  <span class="kw">func</span> <span class="fn">processarImagem</span>(_ image: UIImage) {
+    <span class="kw">guard let</span> cgImage = image.cgImage <span class="kw">else</span> { <span class="kw">return</span> }
+    <span class="kw">let</span> w = cgImage.width, h = cgImage.height
+    <span class="kw">var</span> pixels = [UInt8](repeating: 0, count: w * h * 4)
+
+    pixels.withUnsafeMutableBytes { ptr <span class="kw">in</span>
+      <span class="kw">let</span> ctx = CGContext(
+        data: ptr.baseAddress, width: w, height: h,
+        bitsPerComponent: 8, bytesPerRow: w * 4,
+        space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+      ctx?.draw(cgImage, in: CGRect(x: 0, y: 0, width: w, height: h))
+    }
+
+    pixels.withUnsafeBytes { rawBuf <span class="kw">in</span>
+      <span class="kw">let</span> rgba = rawBuf.bindMemory(to: UInt8.self).baseAddress!
+      <span class="kw">let</span> rgb = ImageProcessorBridge.corMedia(dePixels: rgba,
+                   largura: Int32(w), altura: Int32(h))
+      <span class="kw">self</span>.corMedia = UIColor(
+        red:   CGFloat(rgb[0].floatValue),
+        green: CGFloat(rgb[1].floatValue),
+        blue:  CGFloat(rgb[2].floatValue), alpha: 1)
+    }
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="sdl2-mobile">SDL2 — Crossplatform Android + iOS</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + SDL2 &mdash; main portavel que roda em Android, iOS, Desktop</div>
+          <pre class="example"><span class="kw">#include</span> <span class="str">&lt;SDL.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;SDL_ttf.h&gt;</span>
+<span class="kw">#include</span> <span class="str">&lt;print&gt;</span>
+
+<span class="com">// SDL2 redireciona main() para SDL_main em Android/iOS</span>
+<span class="kw">int</span> <span class="fn">SDL_main</span>(<span class="kw">int</span> argc, <span class="kw">char</span>* argv[]) {
+  <span class="fn">SDL_Init</span>(<span class="tp">SDL_INIT_VIDEO</span> | <span class="tp">SDL_INIT_EVENTS</span>);
+  <span class="fn">TTF_Init</span>();
+
+  <span class="com">// SDL_WINDOW_FULLSCREEN_DESKTOP: adapta ao tamanho da tela do dispositivo</span>
+  <span class="tp">SDL_Window</span>* win = <span class="fn">SDL_CreateWindow</span>(
+    <span class="str">"App"</span>, <span class="tp">SDL_WINDOWPOS_UNDEFINED</span>, <span class="tp">SDL_WINDOWPOS_UNDEFINED</span>,
+    <span class="num">0</span>, <span class="num">0</span>, <span class="tp">SDL_WINDOW_FULLSCREEN_DESKTOP</span> | <span class="tp">SDL_WINDOW_ALLOW_HIGHDPI</span>);
+  <span class="tp">SDL_Renderer</span>* ren = <span class="fn">SDL_CreateRenderer</span>(
+    win, -<span class="num">1</span>, <span class="tp">SDL_RENDERER_ACCELERATED</span> | <span class="tp">SDL_RENDERER_PRESENTVSYNC</span>);
+
+  <span class="com">// Escala logica independente de DPI — 1280x720 logico, qualquer tela</span>
+  <span class="fn">SDL_RenderSetLogicalSize</span>(ren, <span class="num">1280</span>, <span class="num">720</span>);
+
+  <span class="kw">int</span> largura, altura;
+  <span class="fn">SDL_GetWindowSize</span>(win, &amp;largura, &amp;altura);
+  std::<span class="fn">println</span>(<span class="str">"Tela: {}x{}"</span>, largura, altura);
+
+  <span class="kw">bool</span> rodando = <span class="kw">true</span>;
+  <span class="kw">float</span> btnX = <span class="num">540</span>, btnY = <span class="num">300</span>;  <span class="com">// botao central em coords logicas</span>
+
+  <span class="kw">while</span> (rodando) {
+    <span class="tp">SDL_Event</span> ev;
+    <span class="kw">while</span> (<span class="fn">SDL_PollEvent</span>(&amp;ev)) {
+      <span class="kw">switch</span> (ev.type) {
+        <span class="kw">case</span> <span class="tp">SDL_QUIT</span>:
+          rodando = <span class="kw">false</span>;
+          <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="tp">SDL_APP_WILLENTERBACKGROUND</span>:
+          <span class="com">// Pausar audio, salvar estado</span>
+          std::<span class="fn">println</span>(<span class="str">"App: background"</span>);
+          <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="tp">SDL_APP_DIDENTERFOREGROUND</span>:
+          std::<span class="fn">println</span>(<span class="str">"App: foreground"</span>);
+          <span class="kw">break</span>;
+        <span class="kw">case</span> <span class="tp">SDL_FINGERDOWN</span>: {
+          <span class="com">// Touch: coordenadas normalizadas 0..1, converter para logico</span>
+          <span class="kw">float</span> tx = ev.tfinger.x * <span class="num">1280</span>;
+          <span class="kw">float</span> ty = ev.tfinger.y * <span class="num">720</span>;
+          <span class="kw">if</span> (tx &gt; btnX &amp;&amp; tx &lt; btnX + <span class="num">200</span> &amp;&amp; ty &gt; btnY &amp;&amp; ty &lt; btnY + <span class="num">80</span>)
+            std::<span class="fn">println</span>(<span class="str">"Botao tocado!"</span>);
+          <span class="kw">break</span>;
+        }
+      }
+    }
+    <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">20</span>, <span class="num">20</span>, <span class="num">40</span>, <span class="num">255</span>);
+    <span class="fn">SDL_RenderClear</span>(ren);
+
+    <span class="tp">SDL_FRect</span> botao{ btnX, btnY, <span class="num">200</span>, <span class="num">80</span> };
+    <span class="fn">SDL_SetRenderDrawColor</span>(ren, <span class="num">80</span>, <span class="num">150</span>, <span class="num">255</span>, <span class="num">255</span>);
+    <span class="fn">SDL_RenderFillRectF</span>(ren, &amp;botao);
+    <span class="fn">SDL_RenderPresent</span>(ren);
+  }
+
+  <span class="fn">TTF_Quit</span>();
+  <span class="fn">SDL_DestroyRenderer</span>(ren);
+  <span class="fn">SDL_DestroyWindow</span>(win);
+  <span class="fn">SDL_Quit</span>();
+  <span class="kw">return</span> <span class="num">0</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="boas-praticas">JNI — Boas Praticas e Armadilhas</h2>
+
+        <div class="logic-grid">
+          <div class="panel panel--positive">
+            <h3><span data-svg="check" aria-hidden="true"></span> Correto</h3>
+            <ul>
+              <li>Usar <code>GetPrimitiveArrayCritical</code> para arrays grandes sem copia</li>
+              <li>Liberar referencias com <code>DeleteLocalRef</code> em loops longos</li>
+              <li>Cachear <code>jclass</code> e <code>jmethodID</code> no <code>JNI_OnLoad</code></li>
+              <li>Usar <code>extern "C"</code> para evitar name mangling</li>
+              <li>Validar todos os parametros vindos do Java antes de usar</li>
+            </ul>
+          </div>
+          <div class="panel panel--negative">
+            <h3><span data-svg="xmark" aria-hidden="true"></span> Evitar</h3>
+            <ul>
+              <li>Alocar objetos Java entre GetCritical/ReleaseCritical</li>
+              <li>Chamar JNI de threads criadas em C++ sem AttachCurrentThread</li>
+              <li>Passar ponteiros C++ como <code>long</code> sem verificar ABI (32 vs 64 bit)</li>
+              <li>Usar strings Java como <code>char*</code> sem <code>GetStringUTFChars</code></li>
+              <li>Esqueceu ReleaseStringUTFChars — memory leak garantido</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C++ + JNI &mdash; cache de IDs e AttachCurrentThread em std::thread</div>
+          <pre class="example"><span class="kw">static</span> <span class="tp">JavaVM</span>*   gJVM  = <span class="kw">nullptr</span>;
+<span class="kw">static</span> <span class="tp">jmethodID</span> gOnDadoID = <span class="kw">nullptr</span>;
+<span class="kw">static</span> <span class="tp">jclass</span>    gCallbackClass = <span class="kw">nullptr</span>;
+
+<span class="com">// Chamado pelo Android quando a biblioteca e carregada</span>
+JNIEXPORT <span class="tp">jint</span> JNICALL <span class="fn">JNI_OnLoad</span>(<span class="tp">JavaVM</span>* vm, <span class="kw">void</span>*) {
+  gJVM = vm;
+  <span class="tp">JNIEnv</span>* env;
+  vm-&gt;<span class="fn">GetEnv</span>((<span class="kw">void</span>**)&amp;env, <span class="tp">JNI_VERSION_1_6</span>);
+
+  <span class="com">// Cachear class/methodID — chamadas de Get*ID sao lentas</span>
+  <span class="tp">jclass</span> local = env-&gt;<span class="fn">FindClass</span>(<span class="str">"com/exemplo/app/NativeCallback"</span>);
+  gCallbackClass = (<span class="tp">jclass</span>)env-&gt;<span class="fn">NewGlobalRef</span>(local);
+  gOnDadoID = env-&gt;<span class="fn">GetMethodID</span>(gCallbackClass, <span class="str">"onDado"</span>, <span class="str">"([F)V"</span>);
+  env-&gt;<span class="fn">DeleteLocalRef</span>(local);
+  <span class="kw">return</span> <span class="tp">JNI_VERSION_1_6</span>;
+}
+
+<span class="com">// Chamar de background thread C++ (exige attach/detach)</span>
+<span class="kw">void</span> <span class="fn">notificarDeThread</span>(<span class="tp">jobject</span> cb, std::<span class="tp">vector</span>&lt;<span class="kw">float</span>&gt; dados) {
+  <span class="tp">JNIEnv</span>* env;
+  <span class="kw">bool</span> attached = <span class="kw">false</span>;
+  jint res = gJVM-&gt;<span class="fn">GetEnv</span>((<span class="kw">void</span>**)&amp;env, <span class="tp">JNI_VERSION_1_6</span>);
+  <span class="kw">if</span> (res == <span class="tp">JNI_EDETACHED</span>) {
+    gJVM-&gt;<span class="fn">AttachCurrentThread</span>(&amp;env, <span class="kw">nullptr</span>);
+    attached = <span class="kw">true</span>;
+  }
+
+  <span class="tp">jfloatArray</span> arr = env-&gt;<span class="fn">NewFloatArray</span>(<span class="kw">static_cast</span>&lt;<span class="tp">jsize</span>&gt;(dados.<span class="fn">size</span>()));
+  env-&gt;<span class="fn">SetFloatArrayRegion</span>(arr, <span class="num">0</span>, dados.<span class="fn">size</span>(), dados.<span class="fn">data</span>());
+  env-&gt;<span class="fn">CallVoidMethod</span>(cb, gOnDadoID, arr);
+  env-&gt;<span class="fn">DeleteLocalRef</span>(arr);
+
+  <span class="kw">if</span> (attached) gJVM-&gt;<span class="fn">DetachCurrentThread</span>();
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>ANDROID DEVELOPERS. <strong>Android NDK Guides</strong>. Disponível em: &lt;https://developer.android.com/ndk/guides&gt;. Acesso em: 2025.</li>
+            <li>ANDROID DEVELOPERS. <strong>JNI Tips</strong>. Disponível em: &lt;https://developer.android.com/training/articles/perf-jni&gt;. Acesso em: 2025.</li>
+            <li>APPLE. <strong>Using Swift with Cocoa and Objective-C</strong>. Disponível em: &lt;https://developer.apple.com/documentation&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="jogos.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Jogos</a></li>
+          <li><a href="terminal_cli.html"><span data-svg="seta-direita" aria-hidden="true"></span> C++ para Terminal e CLI</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> JNI funciona melhor para chamadas pesadas e infrequentes — se voce precisa cruzar a fronteira Java/C++ muitas vezes por frame, reconsidere a arquitetura: mova mais logica para o lado nativo e reduza o overhead de bridging.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

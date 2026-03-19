@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="C# para Terminal e CLI: System.CommandLine para parsing robusto, Spectre.Console para UI terminal rica (tabelas, progress bars, Live, Prompt), Piping e stdin/stdout, scripts com dotnet-script e publicacao como ferramenta global dotnet tool." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>C# para Terminal e CLI | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>C# &mdash; Terminal e CLI</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="csharp" aria-hidden="true"></span></div>
+          <h1>C# para Terminal e CLI</h1>
+          <p>C# e .NET permitem construir ferramentas de linha de comando (CLI) de alta qualidade com dois paradigmas complementares: <strong>System.CommandLine</strong> (library oficial Microsoft) para parsing robusto de argumentos, subcomandos e --help automatico; e <strong>Spectre.Console</strong> para renderizacao rica no terminal com tabelas, progress bars, paineis, live display, prompt interativo e markup colorido.</p>
+        </div>
+        <p class="intro-highlight">
+          CLIs em .NET compilados com <code>dotnet publish -r linux-x64 --self-contained -p:PublishSingleFile=true</code> produzem um unico executavel nativo sem dependencia do .NET runtime instalado na maquina alvo — ideal para distribuicao de ferramentas devops.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="system-commandline">System.CommandLine — Parsing e Subcomandos</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + System.CommandLine &mdash; CLI com subcomandos, opcoes tipadas e validacao</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">System</span>.<span class="tp">CommandLine</span>;
+
+<span class="com">// Opcoes globais</span>
+<span class="kw">var</span> verboseOpt = <span class="kw">new</span> <span class="tp">Option</span>&lt;<span class="kw">bool</span>&gt;(
+  <span class="str">"--verbose"</span>, <span class="str">"-v"</span>],
+  description: <span class="str">"Exibe saida detalhada"</span>);
+
+<span class="com">// Subcomando: deploy</span>
+<span class="kw">var</span> ambienteArg = <span class="kw">new</span> <span class="tp">Argument</span>&lt;<span class="kw">string</span>&gt;(<span class="str">"ambiente"</span>, <span class="str">"prod, staging ou dev"</span>);
+ambienteArg.<span class="fn">AddCompletions</span>(<span class="str">"prod"</span>, <span class="str">"staging"</span>, <span class="str">"dev"</span>);
+
+<span class="kw">var</span> tagOpt = <span class="kw">new</span> <span class="tp">Option</span>&lt;<span class="kw">string</span>&gt;(<span class="str">"--tag"</span>, <span class="str">"Image tag (ex: v1.3.0)"</span>) { IsRequired = <span class="kw">true</span> };
+tagOpt.<span class="fn">AddValidator</span>(r =&gt; {
+  <span class="kw">if</span> (!r.<span class="fn">GetValueForOption</span>(tagOpt)!.<span class="fn">StartsWith</span>(<span class="str">"v"</span>))
+    r.ErrorMessage = <span class="str">"Tag deve comecar com 'v' (ex: v1.0.0)"</span>;
+});
+
+<span class="kw">var</span> deployCmd = <span class="kw">new</span> <span class="tp">Command</span>(<span class="str">"deploy"</span>, <span class="str">"Faz deploy de uma imagem Docker"</span>)
+  { ambienteArg, tagOpt };
+deployCmd.<span class="fn">SetHandler</span>(<span class="kw">async</span> (ambiente, tag, verbose, ctx) =&gt;
+{
+  <span class="kw">await</span> <span class="fn">ExecutarDeployAsync</span>(ambiente, tag, verbose);
+  ctx.ExitCode = <span class="num">0</span>;
+}, ambienteArg, tagOpt, verboseOpt);
+
+<span class="com">// Subcomando: status</span>
+<span class="kw">var</span> statusCmd = <span class="kw">new</span> <span class="tp">Command</span>(<span class="str">"status"</span>, <span class="str">"Lista deployments ativos"</span>);
+statusCmd.<span class="fn">SetHandler</span>(<span class="kw">async</span> (verbose) =&gt; <span class="kw">await</span> <span class="fn">MostrarStatusAsync</span>(verbose), verboseOpt);
+
+<span class="com">// Root command</span>
+<span class="kw">var</span> root = <span class="kw">new</span> <span class="tp">RootCommand</span>(<span class="str">"Deploy CLI — gerencia deployments de containers"</span>)
+  { verboseOpt, deployCmd, statusCmd };
+
+<span class="kw">return await</span> root.<span class="fn">InvokeAsync</span>(args);</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + System.CommandLine &mdash; leitura de stdin e piping Unix-style</div>
+          <pre class="example"><span class="com">// Ferramenta de processamento de texto via pipe</span>
+<span class="com">// Uso: cat arquivo.csv | minha-ferramenta transform --upper</span>
+
+<span class="kw">var</span> upperOpt   = <span class="kw">new</span> <span class="tp">Option</span>&lt;<span class="kw">bool</span>&gt;(<span class="str">"--upper"</span>, <span class="str">"Converte para maiusculas"</span>);
+<span class="kw">var</span> arquivoOpt = <span class="kw">new</span> <span class="tp">Option</span>&lt;<span class="tp">FileInfo</span>?&gt;(<span class="str">"--input"</span>, <span class="str">"Arquivo de entrada (default: stdin)"</span>);
+
+<span class="kw">var</span> cmd = <span class="kw">new</span> <span class="tp">RootCommand</span>(<span class="str">"Processa texto linha a linha"</span>) { upperOpt, arquivoOpt };
+cmd.<span class="fn">SetHandler</span>(<span class="kw">async</span> (<span class="kw">bool</span> upper, <span class="tp">FileInfo</span>? arquivo) =&gt;
+{
+  <span class="tp">TextReader</span> reader = arquivo <span class="kw">is not null</span>
+    ? <span class="kw">new</span> <span class="tp">StreamReader</span>(arquivo.FullName)
+    : <span class="tp">Console</span>.In;
+
+  <span class="kw">string</span>? linha;
+  <span class="kw">while</span> ((linha = <span class="kw">await</span> reader.<span class="fn">ReadLineAsync</span>()) <span class="kw">is not null</span>)
+  {
+    <span class="kw">var</span> saida = upper ? linha.<span class="fn">ToUpperInvariant</span>() : linha;
+    <span class="kw">await</span> <span class="tp">Console</span>.Out.<span class="fn">WriteLineAsync</span>(saida);
+  }
+
+  <span class="kw">if</span> (arquivo <span class="kw">is not null</span>) reader.<span class="fn">Dispose</span>();
+}, upperOpt, arquivoOpt);</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="spectre">Spectre.Console — UI Terminal Rica</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Spectre.Console &mdash; tabelas, progress bars, prompts e Live Display</div>
+          <pre class="example"><span class="kw">using</span> <span class="tp">Spectre</span>.<span class="tp">Console</span>;
+
+<span class="com">// Markup colorido</span>
+<span class="tp">AnsiConsole</span>.<span class="fn">MarkupLine</span>(<span class="str">"[bold green]Iniciando deploy...[/]"</span>);
+<span class="tp">AnsiConsole</span>.<span class="fn">MarkupLine</span>(<span class="str">"[yellow]AVISO:[/] ambiente [bold]{ambiente}[/] selecionado."</span>);
+
+<span class="com">// Tabela formatada automaticamente</span>
+<span class="kw">var</span> tabela = <span class="kw">new</span> <span class="tp">Table</span>()
+  .<span class="fn">AddColumn</span>(<span class="kw">new</span> <span class="tp">TableColumn</span>(<span class="str">"[bold]Servico[/]"</span>).<span class="fn">LeftAligned</span>())
+  .<span class="fn">AddColumn</span>(<span class="kw">new</span> <span class="tp">TableColumn</span>(<span class="str">"[bold]Status[/]"</span>).<span class="fn">Centered</span>())
+  .<span class="fn">AddColumn</span>(<span class="str">"Versao"</span>)
+  .<span class="fn">AddRow</span>(<span class="str">"api-gateway"</span>,    <span class="str">"[green]Running[/]"</span>,   <span class="str">"v2.1.0"</span>)
+  .<span class="fn">AddRow</span>(<span class="str">"auth-service"</span>,  <span class="str">"[green]Running[/]"</span>,   <span class="str">"v1.4.2"</span>)
+  .<span class="fn">AddRow</span>(<span class="str">"worker"</span>,        <span class="str">"[red]Stopped[/]"</span>,   <span class="str">"v1.0.1"</span>)
+  .<span class="fn">Border</span>(<span class="tp">TableBorder</span>.Rounded);
+<span class="tp">AnsiConsole</span>.<span class="fn">Write</span>(tabela);
+
+<span class="com">// Prompt interativo com selecao multipla</span>
+<span class="kw">var</span> servicos = <span class="tp">AnsiConsole</span>.<span class="fn">Prompt</span>(
+  <span class="kw">new</span> <span class="tp">MultiSelectionPrompt</span>&lt;<span class="kw">string</span>&gt;()
+    .<span class="fn">Title</span>(<span class="str">"[bold]Quais servicos reiniciar?[/]"</span>)
+    .<span class="fn">PageSize</span>(<span class="num">10</span>)
+    .<span class="fn">AddChoices</span>(<span class="str">"api-gateway"</span>, <span class="str">"auth-service"</span>, <span class="str">"worker"</span>, <span class="str">"scheduler"</span>));
+
+<span class="com">// Progress bar com multiplas tarefas</span>
+<span class="kw">await</span> <span class="tp">AnsiConsole</span>.<span class="fn">Progress</span>()
+  .<span class="fn">AutoRefresh</span>(<span class="kw">true</span>)
+  .<span class="fn">AutoClear</span>(<span class="kw">false</span>)
+  .<span class="fn">Columns</span>(<span class="kw">new</span> <span class="tp">TaskDescriptionColumn</span>(), <span class="kw">new</span> <span class="tp">ProgressBarColumn</span>(), <span class="kw">new</span> <span class="tp">PercentageColumn</span>(), <span class="kw">new</span> <span class="tp">ElapsedTimeColumn</span>())
+  .<span class="fn">StartAsync</span>(<span class="kw">async</span> ctx =&gt; {
+    <span class="kw">var</span> t1 = ctx.<span class="fn">AddTask</span>(<span class="str">"[green]Build imagem Docker[/]"</span>, maxValue: <span class="num">100</span>);
+    <span class="kw">var</span> t2 = ctx.<span class="fn">AddTask</span>(<span class="str">"[blue]Push para registry[/]"</span>, maxValue: <span class="num">100</span>);
+    <span class="kw">while</span> (!ctx.IsFinished)
+    {
+      t1.<span class="fn">Increment</span>(<span class="num">3</span>);
+      <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">50</span>);
+      <span class="kw">if</span> (t1.Value &gt;= <span class="num">50</span>) t2.<span class="fn">Increment</span>(<span class="num">2</span>);
+    }
+  });
+
+<span class="com">// Live Display — atualiza em tempo real sem apagar tela</span>
+<span class="kw">await</span> <span class="tp">AnsiConsole</span>.<span class="fn">Live</span>(<span class="kw">new</span> <span class="tp">Table</span>().<span class="fn">AddColumn</span>(<span class="str">"Log"</span>))
+  .<span class="fn">StartAsync</span>(<span class="kw">async</span> ctx =&gt; {
+    <span class="kw">for</span> (<span class="kw">int</span> i = <span class="num">0</span>; i &lt; <span class="num">20</span>; i++)
+    {
+      ctx.UpdateTarget(<span class="kw">new</span> <span class="tp">Table</span>().<span class="fn">AddColumn</span>(<span class="str">"Log"</span>).<span class="fn">AddRow</span>($<span class="str">"[grey]{DateTime.Now:HH:mm:ss}[/] linha {i}"</span>));
+      <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">200</span>);
+    }
+  });</pre>
+        </div>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">C# + Spectre.Console &mdash; FigletText, Status spinner e ExceptionCapture</div>
+          <pre class="example"><span class="com">// FigletText — arte ASCII</span>
+<span class="tp">AnsiConsole</span>.<span class="fn">Write</span>(<span class="kw">new</span> <span class="tp">FigletText</span>(<span class="str">"Deploy CLI"</span>).<span class="fn">Color</span>(<span class="tp">Color</span>.Blue));
+
+<span class="com">// Status spinner — tarefa longa com animacao</span>
+<span class="kw">await</span> <span class="tp">AnsiConsole</span>.<span class="fn">Status</span>()
+  .<span class="fn">Spinner</span>(<span class="tp">Spinner</span>.<span class="tp">Known</span>.Dots12)
+  .<span class="fn">SpinnerStyle</span>(<span class="tp">Style</span>.<span class="fn">Parse</span>(<span class="str">"cyan"</span>))
+  .<span class="fn">StartAsync</span>(<span class="str">"Conectando ao cluster Kubernetes..."</span>, <span class="kw">async</span> ctx =&gt; {
+    <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">2000</span>);  <span class="com">// simula conexao</span>
+    ctx.Status = <span class="str">"Aplicando manifesto..."</span>;
+    <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">1500</span>);
+    ctx.Status = <span class="str">"Aguardando pods ficarem prontos..."</span>;
+    <span class="kw">await</span> <span class="tp">Task</span>.<span class="fn">Delay</span>(<span class="num">3000</span>);
+  });
+
+<span class="com">// Captura de excecao formatada</span>
+<span class="kw">try</span>
+{
+  <span class="kw">await</span> <span class="fn">ExecutarOperacaoRiscoAsync</span>();
+}
+<span class="kw">catch</span> (<span class="tp">Exception</span> ex)
+{
+  <span class="tp">AnsiConsole</span>.<span class="fn">WriteException</span>(ex, <span class="tp">ExceptionFormats</span>.ShortenEverything);
+  <span class="tp">Environment</span>.<span class="fn">Exit</span>(<span class="num">1</span>);
+}
+
+<span class="com">// Confirmar acao destrutiva</span>
+<span class="kw">if</span> (!<span class="tp">AnsiConsole</span>.<span class="fn">Confirm</span>(<span class="str">"[red bold]Tem certeza que deseja DELETAR os dados de producao?[/]"</span>, <span class="kw">false</span>))
+{
+  <span class="tp">AnsiConsole</span>.<span class="fn">MarkupLine</span>(<span class="str">"[grey]Operacao cancelada.[/]"</span>);
+  <span class="kw">return</span>;
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="dotnet-tool">Publicar como Dotnet Global Tool</h2>
+
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">XML &mdash; .csproj para dotnet tool e publicacao self-contained</div>
+          <pre class="example"><span class="com">&lt;!-- MinhaTool.csproj --&gt;</span>
+<span class="com">&lt;Project Sdk="Microsoft.NET.Sdk"&gt;</span>
+<span class="com">  &lt;PropertyGroup&gt;</span>
+<span class="com">    &lt;OutputType&gt;Exe&lt;/OutputType&gt;</span>
+<span class="com">    &lt;TargetFramework&gt;net9.0&lt;/TargetFramework&gt;</span>
+<span class="com">    &lt;Nullable&gt;enable&lt;/Nullable&gt;</span>
+<span class="com">    &lt;ImplicitUsings&gt;enable&lt;/ImplicitUsings&gt;</span>
+<span class="com">    &lt;!-- Metadados dotnet tool --&gt;</span>
+<span class="com">    &lt;PackAsTool&gt;true&lt;/PackAsTool&gt;</span>
+<span class="com">    &lt;ToolCommandName&gt;minha-tool&lt;/ToolCommandName&gt;</span>
+<span class="com">    &lt;PackageId&gt;MinhaEmpresa.MinhaTool&lt;/PackageId&gt;</span>
+<span class="com">    &lt;Version&gt;1.0.0&lt;/Version&gt;</span>
+<span class="com">    &lt;Description&gt;CLI para gerenciar deployments&lt;/Description&gt;</span>
+<span class="com">    &lt;Authors&gt;Gustavo&lt;/Authors&gt;</span>
+<span class="com">    &lt;!-- AOT + trimming para executavel menor --&gt;</span>
+<span class="com">    &lt;PublishAot&gt;true&lt;/PublishAot&gt;</span>
+<span class="com">    &lt;TrimmerRootAssembly Include="MinhaTool" /&gt;</span>
+<span class="com">  &lt;/PropertyGroup&gt;</span>
+<span class="com">  &lt;ItemGroup&gt;</span>
+<span class="com">    &lt;PackageReference Include="System.CommandLine" Version="2.0.0-beta4.*" /&gt;</span>
+<span class="com">    &lt;PackageReference Include="Spectre.Console" Version="0.*" /&gt;</span>
+<span class="com">  &lt;/ItemGroup&gt;</span>
+<span class="com">&lt;/Project&gt;</span>
+
+<span class="com">// --- Publicar ---</span>
+<span class="com">// Instalar localmente (para dev)</span>
+<span class="com">// dotnet pack -c Release -o ./nupkg</span>
+<span class="com">// dotnet tool install --global --add-source ./nupkg MinhaEmpresa.MinhaTool</span>
+<span class="com">// minha-tool deploy prod --tag v2.0.0</span>
+
+<span class="com">// Publicar no NuGet.org</span>
+<span class="com">// dotnet nuget push ./nupkg/*.nupkg --api-key $NUGET_KEY --source https://api.nuget.org/v3/index.json</span>
+
+<span class="com">// Publicar como executavel self-contained (sem .NET instalado)</span>
+<span class="com">// dotnet publish -r linux-x64 --self-contained -p:PublishSingleFile=true -p:StripSymbols=true</span>
+<span class="com">// dotnet publish -r win-x64  --self-contained -p:PublishSingleFile=true</span></pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>MICROSOFT. <strong>System.CommandLine documentation</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/standard/commandline/&gt;. Acesso em: 2025.</li>
+            <li>SPECTRECONSOLE ORG. <strong>Spectre.Console documentation</strong>. Disponível em: &lt;https://spectreconsole.net/&gt;. Acesso em: 2025.</li>
+            <li>MICROSOFT. <strong>How to create a .NET tool</strong>. Disponível em: &lt;https://learn.microsoft.com/pt-br/dotnet/core/tools/global-tools-how-to-create&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="../guia/introducao.html"><span data-svg="seta-direita" aria-hidden="true"></span> Introducao ao C#</a></li>
+          <li><a href="web.html"><span data-svg="seta-direita" aria-hidden="true"></span> C# para Web</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Use sempre <code>Environment.Exit(1)</code> em vez de apenas <code>return</code> quando a ferramenta falhar — shells e pipelines CI/CD como GitHub Actions apenas detectam falha quando o processo retorna exit code diferente de 0.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="description" content="Ecossistema COBOL: GnuCOBOL, IBM Enterprise COBOL, VS Code, Micro Focus, JCL básico, compilação, debugging com GDB e trace, e ferramentas para desenvolvimento moderno." />
+  <link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+  <link rel="stylesheet" href="/css/base.css" />
+  <link rel="icon" href="/imagens/favicon/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/imagens/favicon/favicon.png">
+  <link rel="preload" href="/js/main.js" as="script">
+  <script src="/js/main.js" defer></script>
+  <title>COBOL — Ecossistema e Tooling | Site Guia</title>
+</head>
+<body>
+  <div class="nav-overlay"></div>
+  <div class="nav-interno-overlay"></div>
+  <button class="menu-toggle" title="Abrir/fechar navegação">
+    <span class="menu-icon">☰</span><span class="close-icon">&times;</span>
+  </button>
+  <button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+    <span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+  </button>
+  <div data-include="/html/Site/partials/header.html"></div>
+  <main class="main-content">
+    <div class="content-area">
+
+      <div class="Colored_border_anim_card_box"><p><strong>COBOL &mdash; Ecossistema e Tooling</strong></p></div>
+
+      <section>
+        <div class="page-header">
+          <div class="logo logo--lg page-icon"><span data-svg="cobol" aria-hidden="true"></span></div>
+          <h1>COBOL — Ecossistema e Tooling</h1>
+          <p>O ecossistema COBOL tem dois mundos: o <strong>mainframe IBM</strong> com z/OS, Enterprise COBOL, JCL e VSAM; e o mundo <strong>open-source</strong> com GnuCOBOL rodando em Linux/Windows. Ferramentas modernas como VS Code + extensão COBOL e Zowe CLI estão conectando os dois mundos.</p>
+        </div>
+        <p class="intro-highlight">
+          Dominar o toolchain COBOL — compilador, linker, JCL e debugger — é tão importante quanto a linguagem em si. A maioria dos empregos COBOL está em bancos, governo e seguradoras que operam mainframe IBM z/OS.
+        </p>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="gnucobol">GnuCOBOL — Instalação e Compilação</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Instalação e comandos cobc essenciais</div>
+          <pre class="example"><span class="com"># ── Instalação ──────────────────────────────────────────────</span>
+<span class="com"># Ubuntu/Debian</span>
+sudo apt install gnucobol
+
+<span class="com"># Fedora/RHEL</span>
+sudo dnf install gnucobol
+
+<span class="com"># macOS (Homebrew)</span>
+brew install gnucobol
+
+<span class="com"># Windows — usar WSL2 (Ubuntu) ou gnucobol4-win</span>
+<span class="com"># Download: https://gnucobol.sourceforge.io</span>
+
+<span class="com"># ── Compilar executável (formato livre) ─────────────────────</span>
+cobc -x -free hello.cob -o hello
+./hello
+
+<span class="com"># ── Compilar executável (formato fixo – padrão IBM) ─────────</span>
+cobc -x hello.cob -o hello
+
+<span class="com"># ── Módulo de objeto para linking posterior ─────────────────</span>
+cobc -c -free calcjuros.cob              <span class="com"># gera calcjuros.o</span>
+cobc -x -free main.cob calcjuros.o -o programa
+
+<span class="com"># ── Compilação com otimização ────────────────────────────────</span>
+cobc -x -O2 -free main.cob -o programa
+
+<span class="com"># ── Flags úteis ─────────────────────────────────────────────</span>
+cobc -x -free \
+     -Wall \                 <span class="com"># todos os warnings</span>
+     -fdebugging-mode \      <span class="com"># habilitar USE FOR DEBUGGING</span>
+     -fsource-location \     <span class="com"># incluir info de linha no objeto</span>
+     main.cob -o programa</pre>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Flags do cobc</div>
+          <table class="table">
+            <thead><tr><th>Flag</th><th>Significado</th></tr></thead>
+            <tbody>
+              <tr><td><code>-x</code></td><td>Compilar executável (link automático)</td></tr>
+              <tr><td><code>-c</code></td><td>Gerar arquivo objeto .o sem linkar</td></tr>
+              <tr><td><code>-free</code></td><td>Formato livre (sem colunas fixas)</td></tr>
+              <tr><td><code>-fixed</code></td><td>Formato fixo IBM (padrão)</td></tr>
+              <tr><td><code>-Wall</code></td><td>Todos os diagnosticos de aviso</td></tr>
+              <tr><td><code>-O2</code></td><td>Otimização nível 2</td></tr>
+              <tr><td><code>-g</code></td><td>Símbolos de debug (para GDB)</td></tr>
+              <tr><td><code>-fmain</code></td><td>Gerar ponto de entrada main() para linking manual</td></tr>
+              <tr><td><code>-std=cobol2014</code></td><td>Aderência ao padrão ISO 2014</td></tr>
+              <tr><td><code>-std=ibm-strict</code></td><td>Compatibilidade com dialeto IBM</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="ibm-cobol">IBM Enterprise COBOL e z/OS</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">JCL — Job Control Language básico para mainframe</div>
+          <pre class="example"><span class="com">//</span><span class="fn">COMPJOB</span>  JOB (ACCT),'COMPILAR COBOL',CLASS=A,MSGCLASS=X
+<span class="com">//</span>
+<span class="com">//* Compilar programa COBOL com IBM Enterprise COBOL</span>
+<span class="com">//</span>
+<span class="com">//</span><span class="fn">COBRUN</span>   EXEC IGYWCL                        <span class="com">// proc de compilação IBM</span>
+<span class="com">//</span>COBOL.SYSIN DD DSN=MINHABI.SOURCE(MEUPROG),DISP=SHR
+<span class="com">//</span>LKED.SYSLMOD DD DSN=MINHABI.LOAD(MEUPROG),DISP=SHR
+<span class="com">//</span>
+<span class="com">//* Executar o programa compilado</span>
+<span class="com">//</span>
+<span class="com">//</span><span class="fn">EXECJOB</span>  JOB (ACCT),'EXECUTAR',CLASS=A,MSGCLASS=X
+<span class="com">//</span><span class="fn">STEP01</span>   EXEC PGM=MEUPROG
+<span class="com">//</span>STEPLIB  DD DSN=MINHABI.LOAD,DISP=SHR
+<span class="com">//</span>SYSOUT   DD SYSOUT=*
+<span class="com">//</span>ENTRADA  DD DSN=MINHABI.DATA.ENTRADA(0),DISP=SHR  <span class="com">// GDG base(0)=gen atual</span>
+<span class="com">//</span>SAIDA    DD DSN=MINHABI.DATA.SAIDA,
+<span class="com">//</span>            DISP=(NEW,CATLG,DELETE),
+<span class="com">//</span>            SPACE=(CYL,(10,5),RLSE),           <span class="com">// 10 cilindros, extend 5</span>
+<span class="com">//</span>            DCB=(RECFM=FB,LRECL=200,BLKSIZE=0)  <span class="com">// Fixed-Blocked, 200 bytes</span></pre>
+        </div>
+        <div class="callout callout--warning">
+          <span data-svg="info" aria-hidden="true"></span>
+          <strong>JCL</strong> não é COBOL — é a linguagem de controle de jobs do z/OS. Todo programa COBOL em mainframe é submetido via JCL. <code>DD</code> (Data Definition) define datasets de entrada/saída. <code>DISP=(NEW,CATLG,DELETE)</code> significa: criar novo; se sucesso catalogar; se erro deletar.
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="vscode">VS Code — Extensões COBOL</h2>
+        <div class="panel">
+          <div class="panel-title">Extensões VS Code para COBOL</div>
+          <table class="table">
+            <thead><tr><th>Extensão</th><th>Publisher</th><th>Recursos</th></tr></thead>
+            <tbody>
+              <tr><td>COBOL</td><td>broadcomMFD</td><td>Syntax highlight, completions, snippets, goto-definition, intellisense para copybooks</td></tr>
+              <tr><td>Zowe Explorer</td><td>Zowe</td><td>Navegar datasets z/OS, submeter jobs JCL, ver JES spool diretamente do VS Code</td></tr>
+              <tr><td>COBOL Language Support</td><td>RichardHe</td><td>Alternativo leve, suporte GnuCOBOL local</td></tr>
+              <tr><td>IBM Z Open Editor</td><td>IBM</td><td>Análise semântica com LSP, refactor, debug com remote attach</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">.vscode/settings.json — configurar extensão Broadcom COBOL</div>
+          <pre class="example">{
+  "cobol-language-support.lsp.activated": true,
+  "cobol-language-support.copybooks.paths.local": [
+    "./copybooks",
+    "./src/copybooks"
+  ],
+  "cobol-language-support.dialect": "IBM",
+  "files.associations": {
+    "*.cbl": "COBOL",
+    "*.cob": "COBOL",
+    "*.cpy": "COBOL"
+  }
+}</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="debugging">Debugging — GDB, Trace e USE FOR DEBUGGING</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Debugging com GDB e DISPLAY de diagnóstico</div>
+          <pre class="example"><span class="com"># ── Compilar com símbolos de debug ──────────────────────────</span>
+cobc -x -free -g -fsource-location programa.cob -o programa
+
+<span class="com"># ── GDB básico ───────────────────────────────────────────────</span>
+gdb ./programa
+
+(gdb) break PROCESSAR-CLIENTES     <span class="com"># breakpoint em parágrafo COBOL</span>
+(gdb) run
+(gdb) print ws_nome_cliente        <span class="com"># vars ficam snake_case em C gerado</span>
+(gdb) next
+(gdb) continue</pre>
+        </div>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">USE FOR DEBUGGING — trace nativo COBOL</div>
+          <pre class="example">       PROCEDURE DIVISION.
+       DECLARATIVES.
+       DEBUG-SECTION SECTION.
+           USE FOR DEBUGGING ON ALL PROCEDURES.
+       DEBUG-PARAGRAPH.
+           DISPLAY 'TRACE: ' DEBUG-NAME
+                   ' LINE: ' DEBUG-LINE
+                   ' CONTEUDO: ' DEBUG-CONTENTS.
+       END DECLARATIVES.
+
+       INICIO.
+<span class="com">      *> Compilar com: cobc -x -free -fdebugging-mode prog.cob</span>
+<span class="com">      *> Todas as chamadas de parágrafo serão logadas</span>
+           PERFORM PROCESSAR-CLIENTES.
+           PERFORM GERAR-RELATORIO.
+           STOP RUN.</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="make">Makefile para Projetos COBOL</h2>
+        <div class="code-container rounded-md border overflow-hidden">
+          <div class="code-header">Makefile — compilar projeto multi-módulo</div>
+          <pre class="example">COBC    = cobc
+COBFLGS = -x -free -Wall -O2
+LDFLAGS =
+
+SRCS    = src/main.cob src/utils.cob src/relatorio.cob
+TARGET  = bin/meuprograma
+
+.PHONY: all clean
+
+all: $(TARGET)
+
+$(TARGET): $(SRCS)
+	mkdir -p bin
+	$(COBC) $(COBFLGS) $(SRCS) -o $@
+
+debug: COBFLGS = -x -free -Wall -g -fsource-location -fdebugging-mode
+debug: $(TARGET)
+
+clean:
+	rm -f bin/* *.o</pre>
+        </div>
+        <div class="section-divider"></div>
+      </section>
+
+      <section>
+        <h2 class="section-title" id="referencias">Referências</h2>
+        <div class="panel">
+          <ul>
+            <li>GnuCOBOL. <strong>GnuCOBOL 3.2 User's Guide</strong>. Disponível em: &lt;https://gnucobol.sourceforge.io/guides.html&gt;. Acesso em: 2025.</li>
+            <li>IBM. <strong>Enterprise COBOL for z/OS — Programming Guide</strong>. Disponível em: &lt;https://www.ibm.com/docs/en/cobol-zos&gt;. Acesso em: 2025.</li>
+            <li>Broadcom. <strong>COBOL Language Support Extension for VS Code</strong>. Disponível em: &lt;https://marketplace.visualstudio.com/items?itemName=broadcomMFD.cobol-language-support&gt;. Acesso em: 2025.</li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="callout">
+        <ul class="link-list">
+          <li><a href="avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> COBOL Avançado</a></li>
+          <li><a href="projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Projetos e Boas Práticas</a></li>
+        </ul>
+        <p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> A extensão <strong>Zowe Explorer</strong> do VS Code permite editar programas COBOL diretamente em um mainframe IBM z/OS via SSH — abrindo o PDS (Partitioned Dataset), editando o membro e submetendo JCL para compilar e executar, tudo sem sair do editor.</p>
+      </div>
+
+    </div>
+  </main>
+  <div data-include="/html/Site/partials/footer.html"></div>
+</body>
+</html>

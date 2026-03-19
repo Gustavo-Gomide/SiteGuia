@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<meta name="color-scheme" content="dark light" />
+	<meta name="description" content="Fundamentos de Terraform/HCL: recursos, variaveis, outputs, data sources e modulos." />
+	<link rel="preload" href="/css/base.css" as="style" fetchpriority="high" />
+	<link rel="stylesheet" href="/css/base.css" />
+	<link rel="icon" href="/imagens/favicon/favicon.png" type="image/png" />
+	<link rel="apple-touch-icon" href="/imagens/favicon/favicon.png" />
+	<link rel="preload" href="/js/main.js" as="script" />
+	<script src="/js/main.js" defer></script>
+	<title>Terraform e HCL: Fundamentos | Site Guia</title>
+</head>
+
+<body>
+	<div class="nav-overlay"></div>
+	<div class="nav-interno-overlay"></div>
+	<button class="menu-toggle" title="Abrir/fechar navegacao">
+		<span class="menu-icon">☰</span><span class="close-icon">&ltimes;</span>
+	</button>
+	<button class="menu-interno-toggle" title="Abrir/fechar menu interno">
+		<span class="menu-icon">☰</span><span class="close-icon">&rtimes;</span>
+	</button>
+	<div data-include="/html/Site/partials/header.html"></div>
+
+	<main class="main-content">
+		<div class="content-area">
+			<div class="Colored_border_anim_card_box">
+				<p><strong>Terraform e HCL: Fundamentos</strong></p>
+			</div>
+
+			<section>
+				<h2 class="section-title" id="base-solida-para-terraform">Base Solida para Terraform</h2>
+				<div class="page-header">
+					<div class="logo logo--lg page-icon"><span data-svg="terraform" aria-hidden="true"></span></div>
+					<h1>Recursos, variaveis, outputs e modulos na pratica</h1>
+					<p>Aprenda os blocos que aparecem em praticamente todo projeto HCL.</p>
+				</div>
+				<p class="intro-highlight">Se voce dominar recursos, variaveis, dependencias e modulos, ja consegue montar stacks reais de infraestrutura.</p>
+				<div class="section-divider"></div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="recursos">Recursos e Atributos</h2>
+				<p>O bloco <code class="code-inline">resource</code> e a unidade principal do Terraform: ele representa algo que sera criado, alterado ou removido.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - recurso basico</div>
+					  <pre class="example"><span class="com"># Recurso EC2 basico para ambiente inicial</span>
+			<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="fn">"web"</span> {
+	ami           = <span class="str">"ami-0c02fb55956c7d316"</span>
+	instance_type = <span class="str">"t3.micro"</span>
+	tags = {
+		Name = <span class="str">"web-dev-01"</span>
+	}
+}</pre>
+				</div>
+				<p>O primeiro texto identifica o tipo do recurso e o segundo e o nome logico local dentro da configuracao.</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="variaveis-outputs">Variaveis e Outputs</h2>
+				<p>Variaveis permitem parametrizar configuracoes entre ambientes. Outputs expõem informacoes uteis para consumo humano ou de outros sistemas/pipelines.</p>
+				<div class="grid grid--2">
+					<div class="code-container rounded-md border overflow-hidden">
+						<div class="code-header">hcl - variable</div>
+						<pre class="example"><span class="kw">variable</span> <span class="str">"region"</span> {
+	type        = string
+	description = <span class="str">"Regiao AWS"</span>
+	default     = <span class="str">"us-east-1"</span>
+}</pre>
+					</div>
+					<div class="code-container rounded-md border overflow-hidden">
+						<div class="code-header">hcl - output</div>
+						<pre class="example"><span class="kw">output</span> <span class="str">"public_ip"</span> {
+	value       = aws_instance.web.public_ip
+	description = <span class="str">"IP publico da instancia web"</span>
+}</pre>
+					</div>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="data-sources">Data Sources e Leitura de Estado Externo</h2>
+				<p>Data sources consultam informacoes existentes sem gerenciar o ciclo de vida do recurso. Sao essenciais para integrar com infraestrutura ja provisionada.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - data source</div>
+					<pre class="example"><span class="kw">data</span> <span class="str">"aws_ami"</span> <span class="fn">"ubuntu"</span> {
+	most_recent = true
+	owners      = [<span class="str">"099720109477"</span>]
+
+	filter {
+		name   = <span class="str">"name"</span>
+		values = [<span class="str">"ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*"</span>]
+	}
+}</pre>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="modulos">Modulos Basicos e Reuso</h2>
+				<p>Modulo e um conjunto de arquivos Terraform reutilizavel. O modulo raiz chama modulos filhos para organizar responsabilidades.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - chamada de modulo</div>
+					<pre class="example"><span class="kw">module</span> <span class="str">"network"</span> {
+	source      = <span class="str">"./modules/network"</span>
+	project     = var.project
+	environment = var.environment
+	cidr_block  = <span class="str">"10.20.0.0/16"</span>
+}</pre>
+				</div>
+				<p>Boas interfaces de modulo possuem poucas variaveis obrigatorias, defaults coerentes e outputs claros.</p>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="dependencias">Dependencias e Ordem de Execucao</h2>
+				<p>Terraform infere dependencias quando um recurso referencia atributo de outro. Use <code class="code-inline">depends_on</code> apenas quando a dependencia nao puder ser inferida.</p>
+				<div class="code-container rounded-md border overflow-hidden">
+					<div class="code-header">hcl - dependencia explicita</div>
+					<pre class="example"><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="fn">"app"</span> {
+	ami           = data.aws_ami.ubuntu.id
+	instance_type = <span class="str">"t3.micro"</span>
+
+	depends_on = [aws_security_group.app_sg]
+}</pre>
+				</div>
+				<div class="callout">
+					<p><span data-svg="alerta" aria-hidden="true"></span> Dependencias artificiais em excesso aumentam tempo de deploy e dificultam manutencao.</p>
+				</div>
+			</section>
+
+			<section>
+				<h2 class="section-title" id="referencias">Referencias</h2>
+				<ul>
+					<li>HASHICORP. <strong>Configuration Language</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language</a>. Acesso em: 13 mar. 2026.</li>
+					<li>HASHICORP. <strong>Modules</strong>. Disponivel em: <a href="https://developer.hashicorp.com/terraform/language/modules" target="_blank" rel="noopener">developer.hashicorp.com/terraform/language/modules</a>. Acesso em: 13 mar. 2026.</li>
+					<li>YEVGENIY BRICKMAN. <strong>Terraform: Up and Running</strong>. 3. ed. Sebastopol: O'Reilly Media, 2022.</li>
+				</ul>
+			</section>
+
+			<div class="callout">
+				<ul class="link-list">
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/guia/avancado.html"><span data-svg="seta-direita" aria-hidden="true"></span> Avancar para topicos avancados</a></li>
+					<li><a class="link-card" href="/html/programacao/linguagens/terraform_hcl/guia/projetos_boas_praticas.html"><span data-svg="seta-direita" aria-hidden="true"></span> Estruturar projetos em escala</a></li>
+				</ul>
+				<p class="frase-destaque"><span data-svg="estrela" aria-hidden="true"></span> Fundamentos bem modelados evitam horas de retrabalho quando o ambiente cresce.</p>
+			</div>
+		</div>
+	</main>
+
+	<div data-include="/html/Site/partials/footer.html"></div>
+</body>
+
+</html>
