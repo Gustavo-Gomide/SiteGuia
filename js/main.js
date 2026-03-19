@@ -1,39 +1,36 @@
 /**
- * @file main.js
- * @summary Orquestrador de carregamento de scripts do site.
+ * @file main.js - Versão Autocorreção GitHub Pages
  */
 
 (function () {
     if (window.__siteGuiaMainLoaded) return;
     window.__siteGuiaMainLoaded = true;
 
-    /**
-     * Detecta o prefixo base do site.
-     * Resolve o problema de subpastas no GitHub Pages (/Guia/SiteGuia).
-     */
+    // 1. Identifica a raiz do projeto dinamicamente
     function getSiteRoot() {
         const hostname = window.location.hostname;
         const pathname = window.location.pathname;
 
+        // Se estiver no GitHub Pages (gustavo-gomide.github.io/SiteGuia)
         if (hostname.includes('github.io')) {
-            return '/Guia/SiteGuia'; 
+            return '/SiteGuia'; 
         }
-
+        // Se estiver no Localhost (procura a pasta antes de /html/)
         const index = pathname.indexOf('/html/');
         if (index !== -1) return pathname.substring(0, index);
-        
         return ''; 
     }
 
     const BASE = getSiteRoot();
+    window.__siteGuiaBase = BASE;
 
-    /**
-     * CORREÇÃO AUTOMÁTICA DE AMBIENTE (CSS e Favicon)
-     * Intercepta os links estáticos do HTML e injeta o BASE se estiver no GitHub.
-     * Isso evita erro 404 sem precisar editar os 1.400 arquivos HTML.
-     */
-    if (window.location.hostname.includes('github.io')) {
-        // Corrige Folhas de Estilo (CSS)
+    // 2. CORREÇÃO DE EMERGÊNCIA (CSS e FAVICON)
+    // Este bloco percorre o HTML e troca "/css/..." por "/SiteGuia/css/..."
+    // Isso acontece antes dos outros scripts carregarem, evitando o 404.
+    const corrigirCaminhosEstaticos = () => {
+        if (!BASE) return; // Não faz nada se estiver no Localhost raiz
+
+        // Corrige todos os links de CSS
         document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.startsWith('/') && !href.startsWith(BASE)) {
@@ -41,16 +38,19 @@
             }
         });
 
-        // Corrige Favicons e Apple Touch Icons
+        // Corrige o Favicon
         document.querySelectorAll('link[rel*="icon"]').forEach(link => {
             const href = link.getAttribute('href');
             if (href && href.startsWith('/') && !href.startsWith(BASE)) {
                 link.href = BASE + href;
             }
         });
-    }
+    };
 
-    // Mapeia os scripts injetando o prefixo BASE correto
+    // Executa a correção de caminhos imediatamente
+    corrigirCaminhosEstaticos();
+
+    // 3. CARREGAMENTO SEQUENCIAL DOS MÓDULOS
     const SCRIPTS_IN_ORDER = [
         '/js/svg_registry.js',
         '/js/base.js',
@@ -65,42 +65,25 @@
         '/js/include.js'
     ].map(p => BASE + p);
 
-    // Expõe o BASE para outros módulos (como o include.js e nav_builder.js)
-    window.__siteGuiaBase = BASE;
-
-    const loaded = new Set();
-
-    function alreadyPresent(src) {
-        return Boolean(document.querySelector(`script[src="${src}"]`));
-    }
-
-    function loadScriptSequential(src) {
-        return new Promise((resolve, reject) => {
-            if (loaded.has(src) || alreadyPresent(src)) {
-                loaded.add(src);
-                resolve();
-                return;
-            }
-
+    function loadScript(src) {
+        return new Promise((resolve) => {
             const s = document.createElement('script');
             s.src = src;
             s.async = false;
-            s.setAttribute('data-loaded-by', 'main.js');
-
-            s.onload = () => { loaded.add(src); resolve(); };
-            s.onerror = () => reject(new Error('Falha ao carregar: ' + src));
-
-            (document.head || document.documentElement).appendChild(s);
+            s.onload = resolve;
+            s.onerror = () => {
+                console.error('[main.js] Erro crítico no módulo:', src);
+                resolve(); // Não trava a fila se um script falhar
+            };
+            document.head.appendChild(s);
         });
     }
 
     (async () => {
         for (const src of SCRIPTS_IN_ORDER) {
-            await loadScriptSequential(src);
+            await loadScript(src);
         }
-        // Notifica o sistema que o BASE está pronto para uso em outros scripts
+        // Avisa que a base está pronta para os builders (nav, search)
         window.dispatchEvent(new CustomEvent('siteBaseReady', { detail: { base: BASE } }));
-    })().catch((err) => {
-        console.error('[main.js] erro ao carregar scripts:', err);
-    });
+    })();
 })();
