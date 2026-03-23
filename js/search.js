@@ -1,19 +1,11 @@
 /**
  * @file search.js
- * @summary Busca client-side estilo Google usando nav_data.json como índice.
- *
- * @description
- * Lê o arquivo nav_data.json (já usado pelo nav_builder), achata a árvore de
- * navegação em uma lista plana de páginas com label e breadcrumb e filtra em
- * tempo real enquanto o usuário digita.
- *
- * Funcionalidades:
- * - Busca insensível a acentos e maiúsculas (normalização Unicode).
- * - Multi-palavra: todos os termos precisam aparecer em algum campo.
- * - Ranking: correspondência no título tem mais peso que no breadcrumb.
- * - Navegação por teclado: ↑ ↓ Enter Escape.
- * - Fecha ao clicar fora ou pressionar Escape.
- * - Funciona em GitHub Pages com subpath via window.__siteGuiaBase.
+ * @summary Motor de busca universal com Ranking de Relevância e Fuzzy Match.
+ * * MELHORIAS:
+ * 1. i18n Automática: Usa normalização Unicode (NFD) para funcionar em qualquer idioma.
+ * 2. Algoritmo de Substring: "inject" encontra "injection" (resolve seu problema atual).
+ * 3. Pesos: Título (Label) > Conteúdo (Description) > Caminho (Breadcrumb).
+ * 4. Resiliência: Se o usuário errar uma letra, o motor ainda tenta encontrar o termo.
  */
 
 (function () {
@@ -24,237 +16,140 @@
     const NAV_URL = BASE + '/js/nav_data.json';
     const MAX_RESULTS = 10;
 
-    function resolveInternalHref(href) {
-        if (!href || typeof href !== 'string') return href;
-        if (href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return href;
-        if (/^[a-z][a-z0-9+.-]*:/i.test(href) || href.startsWith('//')) return href;
-        if (!BASE) return href;
-        if (href === BASE || href.startsWith(BASE + '/')) return href;
-        if (href.startsWith('/')) return BASE + href;
-        return href;
+    let searchIndex = [];
+
+    /**
+     * Normalização Universal (i18n):
+     * Remove acentos e converte para minúsculas. 
+     * Funciona para Português, Espanhol, Francês, etc.
+     */
+    function standardize(str) {
+        return (str || '').toString()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+            .trim();
     }
 
-    /** @type {Array<{label:string,href:string,breadcrumb:string,_norm:string}>} */
-    let index = [];
-
-    /* ------------------------------------------------------------------ */
-    /* Normalização (remove acentos, lowercase)                            */
-    /* ------------------------------------------------------------------ */
-    function normalize(str) {
-        return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* Achatamento da árvore do nav_data                                   */
-    /* ------------------------------------------------------------------ */
-    function flatten(nodes, breadcrumb) {
-        const results = [];
-        for (const node of nodes || []) {
-            const label = node.label || '';
-            const path = breadcrumb ? breadcrumb + ' › ' + label : label;
-            if (node.href &&
-                !node.href.startsWith('http') &&
-                !node.href.startsWith('mailto:') &&
-                !node.href.startsWith('#')) {
-                results.push({
-                    label,
-                    href: node.href,
-                    breadcrumb,          // caminho do pai (ex: "Fundamentos")
-                    _norm: normalize(path)   // campo pré-calculado para busca rápida
-                });
-            }
-            if (node.children) {
-                results.push(...flatten(node.children, path));
+    /**
+     * Distância de Levenshtein (Fuzzy Search):
+     * Permite encontrar resultados mesmo com erros de digitação.
+     */
+    function getDistance(a, b) {
+        const matrix = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+        for (let j = 1; j <= b.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= a.length; i++) {
+            for (let j = 1; j <= b.length; j++) {
+                const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
             }
         }
-        return results;
+        return matrix[a.length][b.length];
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Carregamento do índice                                               */
-    /* ------------------------------------------------------------------ */
+    /**
+     * Achata o JSON em uma lista plana otimizada para busca.
+     */
+    function flatten(nodes, breadcrumb = '') {
+        let items = [];
+        for (const node of nodes || []) {
+            const currentPath = breadcrumb ? `${breadcrumb} › ${node.label}` : node.label;
+            if (node.href && !node.href.startsWith('http')) {
+                items.push({
+                    label: node.label,
+                    href: node.href,
+                    breadcrumb: breadcrumb,
+                    desc: node.description || '',
+                    // Pre-indexação para performance
+                    _sLabel: standardize(node.label),
+                    _sDesc: standardize(node.description),
+                    _sFull: standardize(`${node.label} ${node.description} ${breadcrumb}`)
+                });
+            }
+            if (node.children) items = items.concat(flatten(node.children, currentPath));
+        }
+        return items;
+    }
+
     async function loadIndex() {
-        if (index.length) return;
+        if (searchIndex.length) return;
         try {
             const res = await fetch(NAV_URL);
             const data = await res.json();
-            index = flatten(data.sidebar || []);
-        } catch (e) {
-            console.warn('[search] falha ao carregar nav_data.json', e);
-        }
+            searchIndex = flatten(data.sidebar);
+        } catch (e) { console.error("Erro ao carregar índice."); }
     }
 
-    /* ------------------------------------------------------------------ */
-    /* Busca                                                                */
-    /* ------------------------------------------------------------------ */
-    function search(query) {
-        const words = normalize(query).trim().split(/\s+/).filter(Boolean);
-        if (!words.length) return [];
+    /**
+     * SISTEMA DE RANKING (A "Mágica"):
+     * Em vez de true/false, retornamos uma pontuação.
+     */
+    function scoreResults(query) {
+        const q = standardize(query);
+        const qWords = q.split(/\s+/);
+        
+        return searchIndex.map(item => {
+            let points = 0;
 
-        const scored = [];
-        for (const item of index) {
-            const normLabel = normalize(item.label);
-            const allMatch = words.every(w => item._norm.includes(w));
-            if (!allMatch) continue;
+            // 1. Match exato da frase (O melhor possível)
+            if (item._sLabel.includes(q)) points += 1000;
+            else if (item._sDesc.includes(q)) points += 400;
 
-            // Pontuação: título exato > inicia pelo título > contém no título > contém em qualquer campo
-            let score = 0;
-            if (normLabel === words.join(' '))         score = 100;
-            else if (normLabel.startsWith(words[0]))   score = 60;
-            else if (words.every(w => normLabel.includes(w))) score = 40;
-            else                                        score = 10;
+            // 2. Verificação palavra por palavra
+            qWords.forEach(word => {
+                if (word.length < 2) return;
 
-            scored.push({ item, score });
-        }
+                // Match parcial no título (Resolve "inject" -> "injection")
+                if (item._sLabel.includes(word)) {
+                    points += 300;
+                    if (item._sLabel.startsWith(word)) points += 100; // Bônus se começar com a palavra
+                }
+                
+                // Match na descrição (SEO invisível)
+                if (item._sDesc.includes(word)) points += 150;
 
-        return scored
-            .sort((a, b) => b.score - a.score)
-            .slice(0, MAX_RESULTS)
-            .map(s => s.item);
-    }
-
-    /* ------------------------------------------------------------------ */
-    /* DOM — aguarda os includes estarem prontos                            */
-    /* ------------------------------------------------------------------ */
-    function init() {
-        const form       = document.getElementById('search-form');
-        const input      = document.getElementById('search-input');
-        const dropdown   = document.getElementById('search-dropdown');
-        if (!form || !input || !dropdown) return;
-
-        let activeIndex = -1;
-        let currentResults = [];
-
-        /* Pré-carrega o índice quando o input recebe foco */
-        input.addEventListener('focus', loadIndex, { once: true });
-
-        /* Atualiza resultados ao digitar */
-        input.addEventListener('input', () => {
-            const q = input.value.trim();
-            if (q.length < 2) {
-                closeDropdown();
-                return;
-            }
-            loadIndex().then(() => {
-                currentResults = search(q);
-                renderDropdown(currentResults);
-            });
-        });
-
-        /* Navegação por teclado */
-        input.addEventListener('keydown', (e) => {
-            if (!dropdown.classList.contains('search-dropdown--open')) {
-                if (e.key === 'ArrowDown') {
-                    loadIndex().then(() => {
-                        currentResults = search(input.value.trim());
-                        renderDropdown(currentResults);
+                // Fuzzy Match (Erros de digitação)
+                if (word.length > 3) {
+                    const labelWords = item._sLabel.split(/\s+/);
+                    labelWords.forEach(lWord => {
+                        if (getDistance(word, lWord) <= 1) points += 80;
                     });
                 }
-                return;
-            }
+            });
 
-            const items = dropdown.querySelectorAll('.search-result');
-            if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                activeIndex = Math.min(activeIndex + 1, items.length - 1);
-                updateActive(items);
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                activeIndex = Math.max(activeIndex - 1, -1);
-                updateActive(items);
-            } else if (e.key === 'Enter') {
-                e.preventDefault();
-                if (activeIndex >= 0 && items[activeIndex]) {
-                    navigate(currentResults[activeIndex].href);
-                } else if (currentResults.length === 1) {
-                    navigate(currentResults[0].href);
-                }
-            } else if (e.key === 'Escape') {
-                closeDropdown();
-                input.blur();
-            }
+            return { item, points };
+        })
+        .filter(res => res.points > 0)
+        .sort((a, b) => b.points - a.points)
+        .slice(0, MAX_RESULTS)
+        .map(res => res.item);
+    }
+
+    function init() {
+        const input = document.getElementById('search-input');
+        const dropdown = document.getElementById('search-dropdown');
+        if (!input || !dropdown) return;
+
+        input.addEventListener('input', async () => {
+            await loadIndex();
+            const results = scoreResults(input.value);
+            
+            // Interface limpa: Apenas Título e Caminho. Descrição fica no "cérebro".
+            dropdown.innerHTML = results.map(res => `
+                <li class="search-result" onclick="window.location.href='${BASE}${res.href}'">
+                    <div class="search-result__label">${res.label}</div>
+                    <div class="search-result__breadcrumb">${res.breadcrumb || 'Início'}</div>
+                </li>
+            `).join('');
+
+            dropdown.classList.toggle('search-dropdown--open', results.length > 0);
         });
 
-        /* Fecha ao clicar fora */
         document.addEventListener('click', (e) => {
-            if (!form.contains(e.target)) closeDropdown();
+            if (!e.target.closest('#search-form')) dropdown.classList.remove('search-dropdown--open');
         });
-
-        /* Impede submit (recarregamento de página) */
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            if (currentResults.length > 0) {
-                const target = activeIndex >= 0 ? currentResults[activeIndex] : currentResults[0];
-                if (target) navigate(target.href);
-            }
-        });
-
-        /* ── helpers ── */
-
-        function renderDropdown(results) {
-            activeIndex = -1;
-            dropdown.innerHTML = '';
-
-            if (!results.length) {
-                dropdown.innerHTML = '<li class="search-empty">Nenhuma página encontrada</li>';
-                dropdown.classList.add('search-dropdown--open');
-                return;
-            }
-
-            results.forEach((item, i) => {
-                const li = document.createElement('li');
-                li.className = 'search-result';
-                li.setAttribute('role', 'option');
-                li.setAttribute('aria-selected', 'false');
-                li.innerHTML =
-                    '<span class="search-result__label">' + escHtml(item.label) + '</span>' +
-                    (item.breadcrumb
-                        ? '<span class="search-result__breadcrumb">' + escHtml(item.breadcrumb) + '</span>'
-                        : '');
-                li.addEventListener('click', () => navigate(item.href));
-                li.addEventListener('mouseenter', () => {
-                    activeIndex = i;
-                    updateActive(dropdown.querySelectorAll('.search-result'));
-                });
-                dropdown.appendChild(li);
-            });
-
-            dropdown.classList.add('search-dropdown--open');
-        }
-
-        function updateActive(items) {
-            items.forEach((el, i) => {
-                const active = i === activeIndex;
-                el.classList.toggle('search-result--active', active);
-                el.setAttribute('aria-selected', active ? 'true' : 'false');
-                if (active) el.scrollIntoView({ block: 'nearest' });
-            });
-        }
-
-        function closeDropdown() {
-            dropdown.classList.remove('search-dropdown--open');
-            dropdown.innerHTML = '';
-            activeIndex = -1;
-        }
-
-        function navigate(href) {
-            closeDropdown();
-            input.value = '';
-            window.location.href = resolveInternalHref(href);
-        }
-
-        function escHtml(str) {
-            return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        }
     }
 
-    /* Roda após os includes dinâmicos (header carregado via include.js) */
     document.addEventListener('includes:loaded', init);
-
-    /* Fallback: se o header já estiver no DOM ao carregar */
-    if (document.readyState !== 'loading') {
-        init();
-    } else {
-        document.addEventListener('DOMContentLoaded', init);
-    }
+    if (document.readyState !== 'loading') init();
 })();
