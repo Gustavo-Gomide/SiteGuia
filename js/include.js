@@ -87,4 +87,15 @@
   if (ran) {
     document.dispatchEvent(new CustomEvent('includes:loaded'));
   }
+  // Corrige o href do logo para o index dinâmico (funciona em subdiretórios/GitHub Pages)
+  try {
+    const BASE = (typeof window.__siteGuiaBase === 'string') ? window.__siteGuiaBase : '';
+    // Corrige o href do elemento com id 'logo-link' para sempre apontar para o index correto
+    const logoLink = document.getElementById('logo-link');
+    if (logoLink) {
+      logoLink.setAttribute('href', BASE + '/html/index.html');
+    }
+  } catch (e) {
+    console.error('Erro ao corrigir href do logo-link:', e);
+  }
 })();
