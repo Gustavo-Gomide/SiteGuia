@@ -64,9 +64,18 @@ class ThemeManager {
         document.body.classList.remove('theme-light', 'theme-dark');
         document.body.classList.add(`theme-${theme}`);
         
-        const themeToggle = document.querySelector('.theme-toggle');
+        const themeToggle = document.getElementById('theme-toggle');
         if (themeToggle) {
-            themeToggle.textContent = theme === 'light' ? '🌙' : '☀️';
+            // Procura o span interno que usa data-svg
+            const svgSpan = themeToggle.querySelector('[data-svg]');
+            if (svgSpan) {
+                svgSpan.setAttribute('data-svg', theme === 'light' ? 'dark_theme' : 'light_theme');
+                svgSpan.innerHTML = '';
+                if (window.SvgRegistry && typeof window.SvgRegistry.inject === 'function') {
+                    // Usa o parentNode do botão para garantir que a área correta seja atualizada
+                    window.SvgRegistry.inject(themeToggle.parentNode);
+                }
+            }
             themeToggle.setAttribute('aria-label', theme === 'light' ? 'Ativar tema escuro' : 'Ativar tema claro');
             themeToggle.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
         }
