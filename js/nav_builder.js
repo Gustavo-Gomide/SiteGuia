@@ -31,6 +31,14 @@
     return href;
   }
 
+  // Adicione isso onde você inicializa o header
+  const logoLink = document.getElementById('logo-link');
+  if (logoLink) {
+      // resolveInternalHref vai colocar o /SiteGuia se estiver no GitHub
+      // ou manter /html/index.html se estiver no localhost
+      logoLink.href = resolveInternalHref(logoLink.getAttribute('href'));
+  }
+
   /**
    * @typedef {Object} NavItem
    * @property {string} label Texto exibido.

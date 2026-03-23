@@ -89,13 +89,5 @@
     })().catch((err) => {
         console.error('[main.js] erro ao carregar scripts:', err);
     });
-
-    // Adicione isso onde você inicializa o header
-    const logoLink = document.getElementById('logo-link');
-    if (logoLink) {
-        // resolveInternalHref vai colocar o /SiteGuia se estiver no GitHub
-        // ou manter /html/index.html se estiver no localhost
-        logoLink.href = resolveInternalHref(logoLink.getAttribute('href'));
-    }
 })();
 
