@@ -285,6 +285,26 @@ Esta é a regra mais importante de conteúdo. Toda página deve seguir uma progr
 </section>
 ```
 
+**Seção prática (passo a passo real / troubleshooting):**
+- Mostre de onde cada informação vem (comando/tela/campo exato), não apenas o resultado final.
+- Inclua uma validação curta do resultado (o que deve acontecer se estiver correto).
+- Use blocos copiáveis (`.code-container` + `.code-block`) e explique fora do `<pre>` usando `.note`.
+- Evite explicações do tipo “imagine que…”. Prefira demonstrações reproduzíveis; quando não der, explicite a suposição.
+
+Exemplo de estrutura para procedimento:
+
+```html
+<div class="code-container rounded-md border overflow-hidden">
+  <div class="code-header">Comando / saída</div>
+  <pre class="code-block">$ comando --exemplo
+campo_A: valor
+campo_B: valor</pre>
+</div>
+
+<p class="note"><strong>Extraia:</strong> campo_A (o que significa), campo_B (o que significa).</p>
+<p class="note"><strong>Valide:</strong> qual resultado/erro esperado confirma que está certo.</p>
+```
+
 **Seção avançada:**
 - Assuma que o leitor já passou pelas seções anteriores.
 - Pode referenciar conceitos das seções básicas sem reexplicar.
@@ -483,7 +503,7 @@ O sistema de includes é controlado pelo atributo `data-include` interpretado pe
 | `data-reveal="tipo"` | Para ativar animação de scroll reveal no elemento |
 | `data-reveal-once` | Para animar apenas uma vez (não reverter ao sair da viewport) |
 | `aria-label`, `aria-hidden` | Sempre em SVGs e elementos decorativos |
-| `<abbr title="...">` | Para siglas e acrônimos na primeira ocorrência |
+| `<abbr title="...">` | Para siglas, acrônimos e termos pouco óbvios na primeira ocorrência (use `title` curto). **Não use dentro de `<pre>`/`<code>`** (preserve copiar/colar) |
 | `<strong>` e `<em>` | Para ênfase semântica. Não use apenas para estilo visual |
 
 ---
@@ -522,6 +542,7 @@ Antes de considerar a página pronta, verifique:
 - [ ] Links externos têm `target="_blank" rel="noopener"`
 - [ ] SVGs decorativos têm `aria-hidden="true"`
 - [ ] SVGs informativos têm `aria-label="..."`
+- [ ] Exemplos/saídas de terminal são copiáveis e evitam caracteres problemáticos (prefira `->` ou entidades HTML como `&rarr;` em vez de setas Unicode)
 
 ---
 
